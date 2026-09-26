@@ -7,7 +7,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "check": "pnpm run check:format && pnpm run check:lint",
+    "check": "tsx scripts/src/check/cli.ts",
     "check:format": "prettier --check .",
     "check:lint": "eslint .",
     "fix": "prettier --write . && eslint --fix .",
