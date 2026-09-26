@@ -67,7 +67,7 @@ ai-template/
 - 템플릿 폴더는 저장소의 다른 폴더를 참조하지 않는다.
 - 공유 자산은 사본으로 들어간다. 백엔드에는 API 스타일 룰셋이, 프론트엔드에는 계약(`openapi.yaml`)과 목 서버가 들어간다.
 - `scripts/sync`가 원본을 사본으로 복사한다. CI는 사본이 원본과 같은지 검사한다.
-- 스키마 이름과 경로는 계약과 정확히 일치해야 한다. 프론트 코드는 스키마 이름으로 타입을 참조하므로, 이름이 다르면 백엔드를 바꿀 때 코드가 깨진다(§5.7).
+- 계약의 스키마 이름은 백엔드 스펙에 모두 있어야 하고, operation(메서드와 경로) 집합은 계약과 같아야 한다. 프론트 코드는 스키마 이름으로 타입을 참조하므로, 이름이 다르면 백엔드를 바꿀 때 코드가 깨진다(§5.7). 백엔드 생성기가 중첩 모델에 붙이는 보조 스키마(예: `PostCreateData`)는 더 있어도 된다. 프론트 코드는 계약에 있는 이름만 참조한다.
 
 ### 3.3 새 프로젝트 생성 (create CLI)
 
@@ -337,9 +337,11 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 | 리소스 객체 | `<Name>Resource` |
 | 단건·컬렉션 문서 | `<Name>Document`, `<Name>CollectionDocument` |
 | 생성·수정 요청 문서 | `<Name>CreateDocument`, `<Name>UpdateDocument` |
-| 에러 | `ErrorDocument`, `ErrorObject` |
-| 실시간 이벤트 페이로드 | `<Event>EventDocument` (예: `PostPublishedEventDocument`) |
+| 생성·수정 요청 속성 | `<Name>CreateAttributes`, `<Name>UpdateAttributes` |
+| 실시간 이벤트 페이로드 | `<Resource><Event>EventDocument` (예: `PostPublishedEventDocument`, `UserMeUpdatedEventDocument`) |
 
+- 그 밖의 보조 스키마(`PostStatus`, `SessionGrant` 등)도 리소스 이름으로 시작한다.
+- 리소스에 속하지 않는 공용 스키마는 `ErrorCode`, `ErrorDocument`, `ErrorObject`, `ErrorSource`, `PageMeta`, `PaginationLinks`, `CollectionMeta`, `Locale`, `OAuthProvider`, `HealthReport`뿐이다.
 - 실시간 이벤트의 페이로드 스키마도 OpenAPI components에 넣는다. 그래야 프론트엔드가 같은 생성 과정으로 이벤트 타입을 얻는다. 이벤트 목록(이름, 받는 곳, 페이로드)은 OpenAPI 루트의 확장 필드 `x-realtime-events`에 기록한다.
 
 ### 5.8 스타일 룰셋 (Redocly)
@@ -356,7 +358,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 
 - 구조 검사
   - oasdiff로 백엔드가 내보낸 스펙이 계약을 깨지 않는지(breaking change) 검사한다.
-  - 스키마 이름과 경로 집합이 계약과 같은지 스크립트로 검사한다.
+  - 계약의 스키마 이름이 백엔드 스펙에 모두 있는지, operation 집합이 같은지 스크립트로 검사한다. 경로 파라미터 이름(`{id}`와 `{post_id}`)의 차이는 무시한다.
 - 동작 검사: `contract/conformance`의 블랙박스 스위트(Vitest, 계약으로 생성한 타입 클라이언트, Socket.IO 클라이언트)를 돌린다.
   - 대상은 `fastapi`, `nestjs`, `mock` 세 곳이다. 대상마다 기동 방법과 부수 채널 어댑터를 둔다. 메일 수신함은 Mailpit API 또는 목의 테스트 전용 엔드포인트로, 소셜 로그인은 모의 OAuth 서버 또는 목의 테스트 전용 흐름으로 확인한다.
   - 범위는 플랫폼 기능의 전체 흐름과 JSON:API 규칙(include, fields, sort·include 400, 415/406, 페이지 링크, 에러 형식)이다. 모든 응답 본문은 계약 스키마로 검증한다.
@@ -543,7 +545,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 | Python 린트·타입 | Ruff, import-linter, 엄격 타입 검사기(pyright 또는 pyrefly) |
 | 계약 도구 | TypeSpec(1.x) → OpenAPI 3.1, Redocly CLI(스타일 룰셋), oasdiff(breaking change 검사) |
 | 테스트 | Vitest 5, pytest, Playwright |
-| 기타 | OpenTelemetry, lefthook, 비밀 스캔 도구(gitleaks는 보안 수정만 받는 상태이므로 후속인 Betterleaks와 비교해 구현 계획에서 고른다) |
+| 기타 | OpenTelemetry, lefthook, Betterleaks(gitleaks 원작자의 후속 도구. gitleaks는 보안 수정만 받는 상태다) |
 
 ### 8.2 템플릿별
 
@@ -559,7 +561,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 
 ### 9.1 산출물
 
-1. 저장소 뼈대: 템플릿 저장소 작업용 루트 AGENTS.md와 CLAUDE.md, pnpm 워크스페이스, `.gitignore`, `.gitattributes`, `.editorconfig`, lefthook, 루트 `check`
+1. 저장소 뼈대: 템플릿 저장소 작업용 루트 AGENTS.md와 CLAUDE.md, pnpm 워크스페이스, `.gitignore`, `.gitattributes`, `.editorconfig`, lefthook과 Betterleaks, 루트 `check`, 버전과 체크섬을 고정한 외부 바이너리 설치기(`pnpm tool`)
 2. 계약: TypeSpec JSON:API 템플릿 라이브러리, 플랫폼 리소스 전체(§4, §5.6), 에러 코드 enum(§5.4), 실시간 이벤트(§4.7)를 담아 `contract/openapi.yaml`로 컴파일
 3. 스타일 룰셋: Redocly 규칙(§5.8)과 룰셋 픽스처 테스트. 계약이 룰셋을 위반 없이 통과해야 한다
 4. 적합성 테스트 틀: 대상 설정, 계약 타입 클라이언트 생성, JSON:API 공통 검증기(단위 테스트 포함), 부수 채널 어댑터 인터페이스. 플랫폼 흐름 테스트 케이스는 하위 프로젝트 1에서 FastAPI 구현과 함께 작성한다
@@ -579,7 +581,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 
 | 사이클 | 결정할 것 |
 |---|---|
-| 1. FastAPI | 명령 실행기, 잡 라이브러리(Taskiq 또는 SAQ), SQLAlchemy 2.0과 2.1 중 선택(2.1은 2026-09-24 출시), 타입 검사기(pyright 또는 pyrefly), 로컬 S3 대체재(SeaweedFS 또는 RustFS), 모의 OAuth 서버 이미지, OAuth 클라이언트 라이브러리, 제공자별 소셜 계정 연결 규칙, 파일 공개 읽기 구현과 공개 이미지 전달 방식, 회원 탈퇴 시 데이터 보존 정책, Python 전용 템플릿에서 lefthook을 설치하는 경로, 통합 테스트 격리 방식 |
+| 1. FastAPI | 명령 실행기, 잡 라이브러리(Taskiq 또는 SAQ), SQLAlchemy 2.0과 2.1 중 선택(2.1은 2026-09-24 출시), 타입 검사기(pyright 또는 pyrefly), 로컬 S3 대체재(SeaweedFS 또는 RustFS), 모의 OAuth 서버 이미지, OAuth 클라이언트 라이브러리, 제공자별 소셜 계정 연결 규칙, 파일 공개 읽기 구현과 공개 이미지 전달 방식, 회원 탈퇴 시 데이터 보존 정책, Python 전용 템플릿에서 lefthook을 설치하는 경로, Node 기반 도구(API 스타일 룰셋 `lint.js`)를 Python 전용 템플릿에서 돌리는 방법, verify-templates의 `uv` 명령 검사 구현, 통합 테스트 격리 방식 |
 | 2. web | API 클라이언트 생성기(openapi-fetch 또는 orval)와 JSON:API 역직렬화 헬퍼 설계, 데이터 패칭 패턴(RSC와 Server Actions, 클라이언트 쿼리의 역할 분담), 폼 라이브러리(TanStack Form 또는 React Hook Form), shadcn 기반(Base UI 또는 Radix), Next.js 관리 블록 처리(수용 또는 `agentRules: false`), i18n URL 전략, 목 서버 구현 방식, 단독 프론트에서 계약을 확장하는 방법(TypeSpec 원본 동봉 여부), TS 7 병용, Node 26 전환 |
 | 3. create CLI | 배포 방식(GitHub에서 npx 실행 또는 로컬 clone), 조합 루트의 세부 구성, 포트 배정 |
 | 4. admin | 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위 |
