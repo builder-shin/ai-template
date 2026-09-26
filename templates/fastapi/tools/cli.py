@@ -9,6 +9,9 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
+from tools.check.runner import run
+from tools.check.steps import STEPS
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -36,7 +39,8 @@ def dev() -> None:
 
 
 def check(fast: bool = False) -> None:
-    _not_yet("check", 7)
+    """완료 기준. 모든 단계를 돌린다. fast면 Stop hook이 쓰는 빠른 경로다."""
+    raise SystemExit(0 if run(ROOT, STEPS, out=sys.stdout, fast=fast) else 1)
 
 
 def fix() -> None:
