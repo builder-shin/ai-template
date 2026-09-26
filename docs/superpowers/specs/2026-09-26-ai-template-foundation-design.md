@@ -1,9 +1,9 @@
 # AI 바이브코딩 템플릿: 기반 설계
 
 - 작성일: 2026-09-26
-- 상태: 사용자 검토 대기
+- 상태: 승인됨. 하위 프로젝트 0(기반) 구현 완료
 - 범위: 하위 프로젝트 0(기반)의 설계와 네 템플릿 전체 로드맵
-- 다음 단계: 이 문서가 승인되면 하위 프로젝트 0의 구현 계획을 작성한다
+- 다음 단계: 하위 프로젝트 1은 [FastAPI 템플릿 설계](2026-09-26-fastapi-template-design.md)를 따른다
 
 ## 1. 목표
 
@@ -131,11 +131,11 @@ my-project/
 - 비밀번호 재설정 요청(`POST /password-reset-requests`)은 계정이 있든 없든 항상 202를 돌려준다. 재설정(`POST /password-resets`)을 하면 모든 세션을 폐기한다. 비밀번호 변경(`POST /password-changes`)을 하면 현재 세션을 뺀 나머지를 폐기한다.
 - 소셜 로그인 흐름
   1. 브라우저가 `GET /api/v1/oauth/{provider}/authorize?redirectUri=<프론트 콜백>`으로 이동한다. `redirectUri`는 허용 목록으로 검사한다.
-  2. 백엔드가 state와 PKCE를 붙여 제공자로 리다이렉트한다.
+  2. 백엔드가 state를 붙이고, PKCE를 지원하는 제공자에는 PKCE도 붙여 제공자로 리다이렉트한다.
   3. 제공자가 `GET /api/v1/oauth/{provider}/callback`으로 돌아오면, 백엔드가 계정을 연결하거나 만든 뒤 1회용 코드(60초)를 붙여 프론트 콜백으로 리다이렉트한다.
   4. 프론트 BFF가 서버 간 호출로 `POST /sessions`에 grantType `oauthCode`를 보내 토큰을 받는다. 토큰은 URL에 절대 실리지 않는다.
   - 새 제공자는 제공자 인터페이스를 구현한 파일 하나와 설정으로 추가한다.
-  - 소셜 로그인으로 만든 계정은 제공자가 검증한 이메일이면 이메일 인증을 마친 것으로 본다. 제공자가 검증을 보장하지 않는 이메일로는 기존 계정에 자동 연결하지 않는다. 제공자별 세부 연결 규칙은 FastAPI 사이클에서 정한다.
+  - 소셜 로그인으로 만든 계정은 제공자가 검증한 이메일이면 이메일 인증을 마친 것으로 본다. 제공자가 검증을 보장하지 않는 이메일로는 기존 계정에 자동 연결하지 않는다. 제공자별 세부 연결 규칙은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §6.2에 있다.
 - 백엔드는 `Authorization: Bearer`만 안다. 쿠키 처리는 프론트 BFF의 책임이다.
 - 로그인, 가입, 재설정 요청에는 IP와 식별자 기준의 엄격한 레이트 리밋을 건다.
 
@@ -155,7 +155,7 @@ my-project/
 - `POST /files`에 filename, contentType, size를 보내면 크기와 MIME 허용 목록을 검사한 뒤 `pending` 상태의 리소스를 만든다. 응답의 `meta.upload`에 presigned PUT URL, 필요한 헤더, 만료 시각이 담긴다.
 - 브라우저가 스토리지에 직접 업로드한 뒤 `PATCH /files/{id}`로 `status: "ready"`를 보낸다. 백엔드는 스토리지에 객체가 실제로 있는지와 크기를 확인한 다음 `ready`로 바꾼다. 확인에 실패하면 `file.upload_incomplete`를 돌려준다.
 - 다운로드는 `ready` 파일에 대해 수명이 짧은 presigned GET URL(`meta.downloadUrl`)로 한다.
-- 파일을 읽을 수 있는 사람은 소유자, 그리고 그 파일을 참조하는 리소스를 읽을 수 있는 사람이다(예: 발행된 글의 커버 이미지는 누구나 읽는다). 이 규칙을 구현하는 방식과 공개 이미지 전달 방식은 FastAPI 사이클에서 정한다.
+- 파일을 읽을 수 있는 사람은 소유자, 그리고 그 파일을 참조하는 리소스를 읽을 수 있는 사람이다(예: 발행된 글의 커버 이미지는 누구나 읽는다). 이 규칙을 구현하는 방식과 공개 이미지 전달 방식은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §6.5에 있다.
 - 24시간이 넘도록 `pending`인 파일은 주기 잡이 삭제한다.
 
 ### 4.5 메일, 잡, 캐시, 레이트 리밋
@@ -221,7 +221,7 @@ AI가 새 기능을 만들 때 따라 할 정답 예시다.
 
 - `users` 리소스의 속성은 보는 사람에 따라 달라진다. 다른 사람과 비로그인 사용자에게는 `name`과 아바타만 보인다. 본인과 `users:read` 권한자에게는 전체 속성이 보인다.
 - 이 규칙 때문에 공개 글의 `include=author`로 이메일이 새지 않는다.
-- 회원 탈퇴(`DELETE /me`)는 개인정보를 익명화하고 모든 세션을 폐기한다. 보존 정책의 세부는 FastAPI 사이클에서 정한다.
+- 회원 탈퇴(`DELETE /me`)는 개인정보를 익명화하고 모든 세션을 폐기한다. 보존 정책의 세부는 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §6.4에 있다.
 
 ### 4.11 범위 밖
 
@@ -398,7 +398,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 | `db:migrate` | 마이그레이션 적용 |
 | `db:reset` | 로컬 DB를 초기 상태(마이그레이션과 시드)로 되돌린다 |
 
-- 실행기: TS 템플릿과 조합 루트는 `pnpm <명령>`이다. FastAPI의 실행기는 FastAPI 사이클에서 정한다(uv 기반).
+- 실행기: TS 템플릿과 조합 루트는 `pnpm <명령>`이다. FastAPI는 poethepoet을 `uv run poe <명령>`으로 부른다([FastAPI 설계](2026-09-26-fastapi-template-design.md) F5).
 - `check`의 빠른 경로는 포맷 검사, 린트, 타입, 변경과 관련된 테스트, 생성물 최신 여부다. Stop hook이 이 경로를 쓴다. 전체 `check`는 pre-push와 CI가 돌린다. "변경과 관련된 테스트"를 고르는 방식은 템플릿 사이클에서 정한다.
 - `check`는 인프라가 필요한 테스트를 돌리기 전에 인프라가 떠 있는지 확인한다. 꺼져 있으면 "`setup`을 실행하라"는 안내와 함께 즉시 실패한다.
 - 출력 원칙
@@ -481,9 +481,9 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 |---|---|
 | PostgreSQL | 주 DB |
 | Redis | 큐, 캐시, 레이트 리밋, Socket.IO 인스턴스 간 전파 |
-| S3 호환 스토리지 | 파일 저장. MinIO 커뮤니티판은 개발이 중단되었으므로(2025년 10월 이후 이미지 없음, Docker Hub 이미지 삭제) SeaweedFS와 RustFS 중 presigned 업로드와 CORS가 동작하는 것을 FastAPI 사이클에서 검증해 고른다 |
+| S3 호환 스토리지 | 파일 저장. MinIO 커뮤니티판은 개발이 중단되어(2025년 10월 이후 이미지 없음) SeaweedFS를 쓴다([FastAPI 설계](2026-09-26-fastapi-template-design.md) F10) |
 | Mailpit | 메일 캐처. 테스트가 API로 메일 내용을 확인한다 |
-| 모의 OAuth/OIDC 서버 | 소셜 로그인 테스트. 이미지는 FastAPI 사이클에서 고른다 |
+| 모의 OAuth/OIDC 서버 | 소셜 로그인 테스트. navikt/mock-oauth2-server를 쓴다([FastAPI 설계](2026-09-26-fastapi-template-design.md) F12) |
 | Grafana LGTM (선택, compose profile) | 트레이스, 메트릭, 로그 확인 |
 
 - `setup` 한 번으로 인프라 기동, 마이그레이션, 시드(관리자 계정, 기본 역할, 예제 데이터)까지 끝난다.
@@ -542,7 +542,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 | 런타임 | Node 24 LTS, Python 3.14, pnpm 12, uv. Node 26이 2026-10-28에 LTS가 되므로 TS 템플릿 사이클 시작 시 전환을 검토한다 |
 | TypeScript | 6.0 기준. TS 7은 typescript-eslint와 @nestjs/swagger가 아직 지원하지 않는다. 빠른 타입 검사를 위해 TS 7을 병용할지는 템플릿별로 정한다 |
 | TS 린트·포맷 | ESLint 10, typescript-eslint, 경계 린트(eslint-plugin-boundaries 또는 dependency-cruiser), Prettier |
-| Python 린트·타입 | Ruff, import-linter, 엄격 타입 검사기(pyright 또는 pyrefly) |
+| Python 린트·타입 | Ruff, import-linter, basedpyright(strict) |
 | 계약 도구 | TypeSpec(1.x) → OpenAPI 3.1, Redocly CLI(스타일 룰셋), oasdiff(breaking change 검사) |
 | 테스트 | Vitest 5, pytest, Playwright |
 | 기타 | OpenTelemetry, lefthook, Betterleaks(gitleaks 원작자의 후속 도구. gitleaks는 보안 수정만 받는 상태다) |
@@ -551,7 +551,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 
 | 템플릿 | 핵심 스택 |
 |---|---|
-| FastAPI | FastAPI 0.141, Pydantic 2, pydantic-settings, SQLAlchemy 2(async)와 Alembic, python-socketio, 잡은 Taskiq 또는 SAQ(ARQ는 유지보수만 하는 상태라 제외), structlog |
+| FastAPI | FastAPI 0.141, Pydantic 2, pydantic-settings, SQLAlchemy 2(async)와 Alembic, python-socketio, Taskiq, structlog. 세부 버전과 선택 이유는 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §2, §3 |
 | NestJS | NestJS 12(ESM, Express 5), Zod 4와 내장 Standard Schema 검증(nestjs-zod는 NestJS 12를 아직 지원하지 않는다), Prisma 7(`^7`로 고정. `npm i prisma`는 이제 8 RC를 설치한다), BullMQ(@nestjs/bullmq), Socket.IO 게이트웨이와 Redis 어댑터, Vitest, pino |
 | Next.js web | Next.js 16.3(보안 릴리스 16.3.7 이상), React 19, Tailwind 4, shadcn, next-intl, `proxy.ts`와 BFF |
 | Next.js admin | web과 같은 기반에 TanStack Table 9와 리소스 선언 기반 화면을 더한다 |
@@ -581,7 +581,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 
 | 사이클 | 결정할 것 |
 |---|---|
-| 1. FastAPI | 명령 실행기, 잡 라이브러리(Taskiq 또는 SAQ), SQLAlchemy 2.0과 2.1 중 선택(2.1은 2026-09-24 출시), 타입 검사기(pyright 또는 pyrefly), 로컬 S3 대체재(SeaweedFS 또는 RustFS), 모의 OAuth 서버 이미지, OAuth 클라이언트 라이브러리, 제공자별 소셜 계정 연결 규칙, 파일 공개 읽기 구현과 공개 이미지 전달 방식, 회원 탈퇴 시 데이터 보존 정책, Python 전용 템플릿에서 lefthook을 설치하는 경로, Node 기반 도구(API 스타일 룰셋 `lint.js`)를 Python 전용 템플릿에서 돌리는 방법, verify-templates의 `uv` 명령 검사 구현, 통합 테스트 격리 방식, 감사 로그 `action`·`targetType` 값 목록(§4.6 기록 대상)을 계약 enum으로 고정하는 일, 실시간 `subscribe`·`unsubscribe` 메시지와 ack 형태를 계약에 적는 방법, 응답 본문을 계약 스키마로 검증하는 방식(§5.9)과 페이지네이션 링크 형식(절대 URL 또는 상대 경로), 백엔드 템플릿에 복사할 api-style 파일 범위(공유 자산 포함 목록), 역할 부여 규칙(자기보다 큰 권한을 줄 수 있는지), 룰셋이 `$ref`로 된 `data`를 따라가게 하는 보강, 지침·템플릿 검사가 `.venv` 같은 큰 폴더를 건너뛰는 방법 |
+| 1. FastAPI | 모두 정했다. 결정은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §2와 §7에 있다 |
 | 2. web | API 클라이언트 생성기(openapi-fetch 또는 orval)와 JSON:API 역직렬화 헬퍼 설계, 데이터 패칭 패턴(RSC와 Server Actions, 클라이언트 쿼리의 역할 분담), 폼 라이브러리(TanStack Form 또는 React Hook Form), shadcn 기반(Base UI 또는 Radix), Next.js 관리 블록 처리(수용 또는 `agentRules: false`), i18n URL 전략, 목 서버 구현 방식, 단독 프론트에서 계약을 확장하는 방법(TypeSpec 원본 동봉 여부), TS 7 병용, Node 26 전환, 템플릿 안 계약 사본(`openapi.yaml`)을 비밀 스캔에서 빼는 방법 |
 | 3. create CLI | 배포 방식(GitHub에서 npx 실행 또는 로컬 clone), 조합 루트의 세부 구성, 포트 배정 |
 | 4. admin | 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위 |
