@@ -4,16 +4,18 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 
 ## 명령
 
-| 명령                                | 하는 일                                                                           |
-| ----------------------------------- | --------------------------------------------------------------------------------- |
-| `uv run poe setup`                  | `.env`, 인프라(compose), 버킷, DB(개발·테스트·E2E), 마이그레이션, 시드를 준비한다 |
-| `uv run poe check`                  | 완료 기준. 포맷, 린트, 타입, 아키텍처, 하네스, 생성물, 계약 린트, 테스트를 돈다   |
-| `uv run poe fix`                    | 포맷과 린트 자동 수정                                                             |
-| `uv run poe test`                   | 테스트(`src`와 `tools`의 `tests/`, E2E 제외)                                      |
-| `uv run poe gen`                    | 앱을 띄우지 않고 `openapi.json`을 다시 쓴다                                       |
-| `uv run poe db:migrate`             | 개발 DB에 마이그레이션을 적용한다                                                 |
-| `uv run poe db:revision "<메시지>"` | 모델과 개발 DB를 비교해 마이그레이션 초안을 만든다                                |
-| `uv run poe db:reset`               | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                     |
+| 명령                                | 하는 일                                                                                |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| `uv run poe setup`                  | `.env`, 인프라(compose), 버킷, DB(개발·테스트·E2E), 마이그레이션, 시드를 준비한다      |
+| `uv run poe dev`                    | api(`http://127.0.0.1:8000`, 코드가 바뀌면 다시 시작), worker, scheduler를 함께 띄운다 |
+| `uv run poe check`                  | 완료 기준. 포맷, 린트, 타입, 아키텍처, 하네스, 생성물, 계약 린트, 테스트를 돈다        |
+| `uv run poe fix`                    | 포맷과 린트 자동 수정                                                                  |
+| `uv run poe test`                   | 테스트(`src`와 `tools`의 `tests/`, E2E 제외)                                           |
+| `uv run poe test:e2e`               | api, worker, scheduler를 따로 띄우고 `tests/e2e`를 돌린 뒤 내린다                      |
+| `uv run poe gen`                    | 앱을 띄우지 않고 `openapi.json`을 다시 쓴다                                            |
+| `uv run poe db:migrate`             | 개발 DB에 마이그레이션을 적용한다                                                      |
+| `uv run poe db:revision "<메시지>"` | 모델과 개발 DB를 비교해 마이그레이션 초안을 만든다                                     |
+| `uv run poe db:reset`               | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                          |
 
 - `setup`은 여러 번 돌려도 안전하다. Docker가 켜져 있어야 한다.
 - `check`는 성공하면 한 줄, 실패하면 실패한 단계의 출력과 `check 실패: <단계>`만 보여 준다. 입력 파일이 마지막 성공 때와 같은 단계는 건너뛴다(`.cache/check/`).
@@ -21,20 +23,25 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - `check --fast`는 Stop hook이 쓰는 빠른 경로다. 바뀐 모듈의 테스트만 돌린다.
 - 테스트가 "인프라가 꺼져 있다"로 멈추면 `uv run poe setup`을 돌린다.
 - `check`의 생성물 단계는 `openapi.json`이 코드와 같은지, 계약 린트 단계는 `openapi.json`이 계약 룰셋(`api-style/lint.mjs`)을 지키는지 본다.
-- `dev`, `test:e2e`는 선언만 있다. 부르면 구현할 계획 태스크를 알리고 실패한다.
+- `dev`는 출력 앞에 프로세스 이름을 붙이고, 하나가 끝나거나 Ctrl+C를 누르면 모두 내린다.
+- `test:e2e`는 개발 인프라에 DB `app_e2e`, Valkey DB 14, api 포트 18000으로 띄운다. 실패하면 프로세스 출력(`.cache/e2e/processes.log`)의 끝부분을 보여 준다.
 
 ## 구조
 
 - `src/app/main.py`: 앱 조립(`create_app`). 시작할 때 연결 자원을 `app.state`에 둔다. `uvicorn app.main:app --loop asyncio:SelectorEventLoop`으로 띄운다(Windows 기본 루프에서는 psycopg 비동기 모드가 돌지 않는다).
 - `src/app/health.py`: 헬스체크 `/health/live`, `/health/ready`(DB, Valkey, 스토리지). JSON:API가 아니라 `application/json`이다.
+- `src/app/worker.py`: Taskiq broker(Valkey 스트림, 실패하면 늘어나는 지연으로 재시도). 운영은 `taskiq worker app.worker:create_broker`, 개발과 E2E는 `python -m app.worker`(셀렉터 루프 한 프로세스)로 띄운다. 테스트는 `create_broker(in_memory=True)`로 잡을 그 자리에서 돌린다.
+- `src/app/scheduler.py`: Taskiq scheduler(잡의 `schedule` 라벨과 지연 재시도). 반드시 하나만 띄운다.
 - `src/app/core/`: 도메인을 모르는 기반. 설정(`config.py`의 `Settings` 하나), 로그(`logging.py`), DB(`db.py`), Valkey(`redis.py`), 스토리지(`storage.py`).
 - `src/app/core/jsonapi/`: JSON:API 공통 계층. 문서 모델(`models.py`), 에러(`errors.py`), 협상(`negotiation.py`), OpenAPI 후처리(`openapi.py`), 라우트 선언(`operation.py`), 쿼리 파서(`query.py`), 렌더링(`rendering.py`). 쓰는 예는 테스트 전용 샘플 `jsonapi/tests/sample.py`.
 - `src/app/modules/`: 도메인 모듈. `posts`는 골든 모듈 자리다.
 - `src/app/seed.py`: 개발용 시드. 여러 번 돌려도 안전하게 쓴다.
 - `migrations/`: Alembic 마이그레이션. 절차는 `docs/recipes/migration.md`.
 - `conftest.py`: 테스트 공용 fixture(`settings`, `infra`, `db`, `redis`).
-- `compose.yaml`: 개발 인프라(PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth). 포트는 127.0.0.1에만 열고, 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit SMTP 21025·웹 28025, 모의 OAuth 28080).
-- `tools/`: 하네스 도구. `cli.py`가 poe 명령의 입구이고, `infra.py`가 인프라 준비, `check/`가 check 실행기, `checks/`에 검사가 있다.
+- `tests/e2e/`: E2E 테스트. `test:e2e`가 띄운 api(`tools.e2e.BASE_URL`)에 실제 HTTP로 요청한다.
+- `Dockerfile`: 운영 이미지. 명령만 바꿔 api(기본), worker, scheduler, migrate로 띄운다.
+- `compose.yaml`: 개발 인프라(PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth). 포트는 127.0.0.1에만 열고, 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit SMTP 21025·웹 28025, 모의 OAuth 28080). `app` 프로필은 이미지로 migrate, api(8000), worker, scheduler를 띄운다.
+- `tools/`: 하네스 도구. `cli.py`가 poe 명령의 입구이고, `infra.py`가 인프라 준비, `dev.py`·`e2e.py`가 `processes.py`(프로세스 묶음)로 프로세스를 띄우고, `check/`가 check 실행기, `checks/`에 검사가 있다.
 - `openapi.json`: 앱이 내보낸 OpenAPI 문서(생성물, `uv run poe gen`).
 - `api-style/lint.mjs`: 저장소가 넣는 API 스타일 룰셋 번들의 사본이다.
 - `docs/recipes/`: 작업 절차.

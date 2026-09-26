@@ -1,0 +1,8 @@
+# 빌드 문맥에는 이미지에 들어가는 파일만 보낸다(.venv, .env, .cache 같은 로컬 파일은 보내지 않는다).
+*
+!pyproject.toml
+!uv.lock
+!src/
+!migrations/
+**/__pycache__
+src/**/tests

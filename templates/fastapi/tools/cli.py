@@ -7,7 +7,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import NoReturn
 
 from app.core.config import load_settings
 from tools.check.runner import run
@@ -20,10 +19,6 @@ def _python(*args: str) -> int:
     """이 가상환경의 파이썬으로 모듈을 실행하고 종료 코드를 돌려준다."""
     sys.stdout.flush()  # 앞서 찍은 줄이 자식 프로세스의 출력보다 먼저 나오게 한다
     return subprocess.run([sys.executable, "-m", *args], cwd=ROOT, check=False).returncode
-
-
-def _not_yet(command: str, task: int) -> NoReturn:
-    raise SystemExit(f"{command} 명령은 아직 없다(M1 계획의 Task {task}에서 구현한다).")
 
 
 def _ensure_env() -> None:
@@ -65,7 +60,10 @@ def setup() -> None:
 
 
 def dev() -> None:
-    _not_yet("dev", 13)
+    """api(리로드), worker, scheduler를 함께 띄운다. 하나가 끝나거나 Ctrl+C를 누르면 모두 내린다."""
+    from tools.dev import main as run_dev
+
+    raise SystemExit(run_dev())
 
 
 def check(fast: bool = False) -> None:
@@ -89,7 +87,10 @@ def test() -> None:
 
 
 def test_e2e() -> None:
-    _not_yet("test:e2e", 13)
+    """E2E: api, worker, scheduler를 E2E 설정으로 띄우고 tests/e2e를 돌린 뒤 내린다."""
+    from tools.e2e import main as run_e2e
+
+    raise SystemExit(run_e2e())
 
 
 def gen() -> None:
