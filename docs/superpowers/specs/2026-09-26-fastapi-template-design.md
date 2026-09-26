@@ -56,18 +56,19 @@
 | F13 | OAuth 클라이언트    | httpx-oauth. PKCE는 구글에만 쓴다                                                                                                                              | 구글·카카오·네이버 클라이언트를 한 인터페이스로 제공한다. 카카오는 PKCE를 지원하지 않고, 네이버는 문서에 PKCE가 없다                                                             |
 | F14 | 업로드              | 계약대로 presigned PUT이다. `Content-Type`과 `Content-Length`를 서명에 넣는다                                                                                  | 선언한 크기와 정확히 같은 크기만 올라간다. 완료 확인의 HEAD 검사가 한 번 더 막으므로 계약을 바꿀 필요가 없다                                                                     |
 | F15 | 파일 전달           | ready 파일은 모두 presigned GET(10분)으로 준다. `included`에 들어간 파일에도 `meta.downloadUrl`을 채운다                                                       | 공개 이미지도 같은 경로로 전달해 규칙을 하나로 둔다. 공개 버킷과 CDN은 운영 선택이라 전환 방법만 문서로 남긴다                                                                   |
-| F16 | Node 기반 도구      | PyPI의 `nodejs-wheel-binaries`(Node 24)로 실행하고, API 스타일 룰셋은 한 파일짜리 번들로 넣는다                                                                | 시스템 Node 없이 uv만으로 셋업한다. 번들이면 템플릿 안에서 npm을 설치할 필요가 없다                                                                                              |
+| F16 | Node 기반 도구      | PyPI의 `nodejs-wheel-binaries`(Node 24)를 `python -m nodejs_wheel`로 실행하고(명령 셸이 없다), API 스타일 룰셋은 설정까지 담은 한 파일짜리 번들로 넣는다                                                                | 시스템 Node 없이 uv만으로 셋업한다. 번들이면 템플릿 안에서 npm을 설치할 필요가 없다                                                                                              |
 | F17 | git hook과 비밀 스캔 | lefthook은 PyPI 휠로, Betterleaks는 버전과 SHA-256을 고정한 바이너리 설치기로 받는다                                                                          | lefthook은 공식 저장소가 PyPI에 휠을 올린다. Betterleaks는 바이너리로만 배포된다                                                                                                |
 | F18 | 통합 테스트 격리    | 테스트마다 바깥 트랜잭션과 SAVEPOINT를 롤백하고, Valkey는 테스트 전용 DB 번호를 비운다. 처음에는 직렬로 돌린다                                                  | 가장 빠르고 결정적이다. 병렬화가 필요해지면 워커마다 DB와 Valkey 번호를 따로 붙인다                                                                                              |
 | F19 | 응답 스키마 검증    | 적합성 스위트의 openapi-fetch 미들웨어가 모든 응답을 계약 스키마로 검증한다(Ajv, JSON Schema 2020-12)                                                          | 테스트를 쓸 때마다 검증을 잊지 않도록 클라이언트 층에서 강제한다                                                                                                                 |
 | F20 | 페이지 링크         | 상대 경로(URI-reference)로 쓰고, 대괄호는 퍼센트 인코딩한다                                                                                                    | JSON:API 1.1이 허용하고, BFF 뒤에서 백엔드 호스트를 드러내지 않는다                                                                                                              |
 | F21 | 감사 로그 값        | `action`과 `targetType`을 계약 enum으로 고정한다                                                                                                               | 두 백엔드와 admin이 같은 값을 쓰게 한다. 백엔드를 구현하기 전에 바꾸는 것이 가장 싸다                                                                                            |
 | F22 | 실시간 구독 계약    | 구독 메시지와 ack 스키마, 루트 확장 `x-realtime-messages`를 계약에 넣는다                                                                                      | 서버가 보내는 이벤트뿐 아니라 클라이언트가 보내는 메시지도 기계가 읽을 수 있어야 두 백엔드가 똑같이 구현한다                                                                     |
-| F23 | api-style 공유 자산 | 번들 파일과 룰셋 설정만 사본으로 넣는다                                                                                                                        | 룰셋의 테스트, 픽스처, TS 설정은 템플릿에 필요 없고 저장소 밖을 참조한다                                                                                                         |
+| F23 | api-style 공유 자산 | 번들 파일(`lint.mjs`) 하나만 사본으로 넣는다. 규칙 설정은 빌드할 때 번들에 들어간다                                                                                                                        | 룰셋의 테스트, 픽스처, TS 설정은 템플릿에 필요 없고 저장소 밖을 참조한다                                                                                                         |
 | F24 | 파일 탐색           | 지침 검사와 verify-templates는 `git ls-files --cached --others --exclude-standard`로 파일을 고른다                                                              | `.venv` 같은 무시된 큰 폴더를 걷지 않는다                                                                                                                                        |
 | F25 | uv 명령 검사        | verify-templates는 runner가 `uv`인 템플릿의 명령 어휘를 `pyproject.toml`의 `[tool.poe.tasks]` 키로 검사한다                                                    | F5와 짝이 되는 결정이다                                                                                                                                                          |
 | F26 | 레이트 리밋과 캐시  | redis-py로 직접 쓴다(고정 윈도 카운터, cache-aside)                                                                                                            | 관련 라이브러리는 낡았거나(slowapi, fastapi-cache2) 이 용도에 과하다. 코드가 짧아 AI가 읽고 고치기 쉽다                                                                          |
 | F27 | `test:e2e`          | 실제 프로세스를 띄워 프로세스 경계를 넘는 흐름만 본다                                                                                                          | 계약 전체 검증은 적합성 스위트가 맡는다                                                                                                                                          |
+| F28 | 로컬 인프라 포트    | 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit 21025·28025, 모의 OAuth 28080). API는 계약의 서버 주소대로 8000이다 | 개발자 PC에 흔히 떠 있는 Postgres·Redis와 겹치지 않게 한다. 계획을 검증하던 PC에서는 다른 프로젝트가 기본 포트와 +10000 포트(6379, 15432)를 이미 쓰고 있었다 |
 
 ## 3. 스택
 
@@ -101,7 +102,7 @@ templates/fastapi/
 ├── AGENTS.md, CLAUDE.md, README.md, template.json
 ├── pyproject.toml, uv.lock, .python-version, .env.example, .gitignore
 ├── compose.yaml, Dockerfile, .dockerignore, lefthook.yml, .betterleaks.toml
-├── .claude/          # settings.json, hooks/(Python), skills/(레시피 포장과 FastAPI 공식 skill)
+├── .claude/          # settings.json, skills/(레시피 포장과 FastAPI 공식 skill). hook 본문은 tools/hooks/
 ├── api-style/        # 공유 자산 사본: 룰셋 번들과 설정(직접 수정 금지)
 ├── openapi.json      # gen 생성물(커밋)
 ├── docs/             # architecture.md, stack.md, recipes/*.md
@@ -147,7 +148,7 @@ src/app/modules/posts/
 - 다른 모듈은 공개 인터페이스(`app.modules.users`)만 import한다. 내부 파일(`app.modules.users.repository` 등)은 import하지 않는다. 모듈 사이 순환 import도 금지한다.
 - `app.core`는 `app.modules`를 import하지 않는다.
 - 계층 방향과 core 금지는 import-linter(layers, forbidden 계약)로 검사한다.
-- import-linter로 표현하기 어려운 규칙(공개 인터페이스만 import, 순환 금지)은 `tools/`의 AST 검사로 막는다.
+- import-linter로 표현하기 어려운 규칙(다른 모듈은 공개 인터페이스만 import)은 `tools/`의 AST 검사로 막는다. 순환 import는 basedpyright의 `reportImportCycles`가 막는다.
 - 어느 쪽이든 실패 메시지는 "대신 이렇게 하라" 형식이다.
 
 ### 4.4 프로세스
@@ -157,12 +158,15 @@ src/app/modules/posts/
 | 프로세스  | 명령                                           | 비고                                                            |
 | --------- | ---------------------------------------------- | --------------------------------------------------------------- |
 | api       | `uvicorn app.main:app`                         | FastAPI 앱을 Socket.IO ASGI 앱이 감싼다                         |
-| worker    | `taskiq worker app.worker:broker`              | 여러 개 띄울 수 있다                                            |
-| scheduler | `taskiq scheduler app.scheduler:scheduler`     | 반드시 하나만 띄운다(F6)                                        |
+| worker    | `taskiq worker app.worker:create_broker`       | 여러 개 띄울 수 있다                                            |
+| scheduler | `taskiq scheduler app.scheduler:create_scheduler` | 반드시 하나만 띄운다(F6)                                     |
 | migrate   | 마이그레이션과 시드를 실행하고 끝난다          | 배포 단계의 별도 명령. compose `app` 프로필에서는 api보다 먼저 돈다 |
 
-- `dev`는 api, worker, scheduler를 리로드 모드로 함께 띄운다. `tools/`의 작은 프로세스 관리자가 세 프로세스의 출력 앞에 이름을 붙이고, 하나가 죽으면 모두 내린다.
+- `dev`는 api, worker, scheduler를 함께 띄우고 api만 리로드한다. `tools/`의 작은 프로세스 관리자가 세 프로세스의 출력 앞에 이름을 붙이고, 하나가 죽으면 모두 내린다.
+- worker와 scheduler의 진입점은 부를 때 설정을 읽는 팩토리 함수다. 그래서 두 모듈은 `.env` 없이 import된다.
+- Windows에서 `taskiq worker`는 잡을 기본 루프(Proactor)에서 돌려 psycopg 비동기 모드가 동작하지 않는다. 그래서 `dev`와 `test:e2e`는 worker를 `python -m app.worker`(셀렉터 루프, 한 프로세스)로 띄운다. 운영 이미지는 `taskiq worker`다.
 - compose의 기본 프로필은 인프라만 띄운다: PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth 서버. LGTM은 `observability` 프로필이다.
+- 인프라는 `127.0.0.1`에만, 기본 포트에 20000을 더한 호스트 포트로 연다(F28).
 - `app` 프로필은 migrate, api, worker, scheduler를 이미지로 띄운다. 적합성 스위트와 배포 확인에 쓴다.
 
 ## 5. JSON:API 공통 계층과 OpenAPI
@@ -210,7 +214,7 @@ src/app/modules/posts/
 ### 5.6 OpenAPI 내보내기
 
 - `gen`은 앱을 띄우지 않고 `openapi.json`을 내보낸다. `check`는 다시 내보낸 결과가 커밋된 파일과 같은지 확인하고, 룰셋 번들로 검사한다.
-- operationId는 계약과 같게 만든다. `generate_unique_id_function`에서 태그와 라우트 이름으로 만든다.
+- operationId는 계약과 같게 만든다. 라우터마다 계약의 인터페이스 이름(`Posts`, `EmailVerificationRequests` 등)을 선언하고 `<인터페이스>_<operation>`으로 만든다. 태그에서 만들 수 없는 경우가 있다(예: `EmailVerificationRequests_create`의 태그는 `email-verifications`).
 - `x-permission`은 라우트의 권한 선언에서 만든다. `x-realtime-channels`, `x-realtime-events`, `x-realtime-messages`는 실시간 레지스트리에서 만든다.
 - 루트에 `x-generated: "직접 수정 금지. uv run poe gen으로 다시 만든다"`를 넣는다. JSON은 주석을 달 수 없기 때문이다.
 
@@ -372,7 +376,10 @@ src/app/modules/posts/
 
 ### 6.9 잡, 메일, 스케줄러
 
-- broker는 taskiq-redis이고, 재시도는 `SmartRetryMiddleware`(최대 5회, 지수 백오프와 지터)다.
+- broker는 taskiq-redis의 스트림 broker(`RedisStreamBroker`)다. 처리 중에 worker가 죽으면 확인하지 않은 잡을 다른 worker가 가져간다.
+- 재시도는 `SmartRetryMiddleware`(처음 실행을 포함해 최대 5번)다. 지연은 재시도마다 5초씩 늘고(최대 60초) 0~1초 지터가 붙는다.
+  - taskiq-redis broker는 지연을 지키지 않는다. 그래서 재시도를 Valkey 스케줄 소스에 넣고 scheduler가 때가 되면 보낸다.
+  - scheduler는 스케줄을 1분마다 다시 읽으므로 재시도는 최대 1분 늦게 나간다.
 - 잡은 메일 발송, `pending` 파일 정리(매시간), 만료된 토큰과 세션 정리(매일)다.
 - 주기 작업은 작업 정의에 붙인 라벨로 선언하고, scheduler 하나가 실행한다(F6).
 - 메일
@@ -434,7 +441,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | 명령              | 내용                                                                                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `setup`           | 순서대로 실행한다. 여러 번 실행해도 안전하다: Betterleaks 설치 → `lefthook install` → compose 기동과 준비 대기 → 버킷·CORS 준비 → DB(`app`, `app_test`, `app_e2e`) 생성 → 마이그레이션 → 시드 → FastAPI 공식 skill 복사본 갱신 |
-| `dev`             | api, worker, scheduler를 리로드 모드로 함께 띄운다                                                                                                                    |
+| `dev`             | api, worker, scheduler를 함께 띄운다. api만 리로드한다                                                                                                                |
 | `check`           | §8.2                                                                                                                                                                  |
 | `fix`             | `ruff format`과 `ruff check --fix`                                                                                                                                    |
 | `test`            | pytest(E2E 제외)                                                                                                                                                      |
@@ -461,20 +468,21 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
    - `.env.example`과 설정 스키마의 일치
    - 메일 템플릿의 로케일 누락
    - AGENTS.md와 CLAUDE.md의 짝, CLAUDE.md 내용, 루트 AGENTS.md 200줄 이하
-6. 생성물 최신 여부: `openapi.json`, FastAPI skill 복사본
+6. 생성물 최신 여부: `openapi.json`
 7. 계약 린트: 룰셋 번들로 `openapi.json` 검사
-8. 테스트: 먼저 DB와 Valkey에 접속해 보고, 실패하면 "`uv run poe setup`을 실행하라"는 안내와 함께 바로 멈춘다
+8. skill 사본: FastAPI skill 복사본이 설치된 fastapi 패키지의 원본과 같은지 본다
+9. 테스트: 먼저 DB와 Valkey에 접속해 보고, 실패하면 "`uv run poe setup`을 실행하라"는 안내와 함께 바로 멈춘다
 
 - 가능한 한 실패를 `파일:줄 규칙 — 고치는 방법` 형식으로 낸다. 직접 만든 검사의 메시지는 "대신 이렇게 하라"로 쓴다.
 - 단계마다 입력 파일의 해시를 `.cache/check/`에 저장하고, 마지막 성공 이후 입력이 바뀌지 않은 단계는 건너뛴다.
-- 빠른 경로(`check --fast`)는 Stop hook이 쓴다. 1~6단계를 돌리고, 테스트는 바뀐 파일과 관련된 것만 돌린다.
+- 빠른 경로(`check --fast`)는 Stop hook이 쓴다. 계약 린트를 뺀 단계를 돌리고, 테스트는 바뀐 파일과 관련된 것만 돌린다.
   - `src/app/modules/<이름>/` 아래가 바뀌면 그 모듈의 `tests/`만 돌린다.
-  - `src/app/core/`, `tools/`, `migrations/`가 바뀌면 전체 테스트를 돌린다.
+  - 그 밖의 테스트 입력(`src/app/core/`, `tools/`, `migrations/`, 앱 조립 파일, 의존성과 설정 파일)이 바뀌면 전체 테스트를 돌린다.
   - 기준은 마지막 성공 이후 바뀐 파일이다(해시 캐시로 계산).
 
 ### 8.3 hooks
 
-모든 hook은 exec form이다: `"command": "uv", "args": ["run", "--frozen", "python", "${CLAUDE_PROJECT_DIR}/.claude/hooks/<이름>.py"]`.
+모든 hook은 exec form이다: `"command": "uv", "args": ["run", "--directory", "${CLAUDE_PROJECT_DIR}", "--frozen", "python", "-m", "tools.hooks.<이름>"]`. `--directory`가 작업 폴더를 프로젝트 루트로 바꾸므로, 설치하지 않은 `tools` 패키지의 hook 모듈을 부를 수 있다.
 
 | 이벤트                        | 동작                                                                                                                                                        |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -509,7 +517,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | ------------------------- | ------------------------------------------- | -------------------------------------- |
 | `openapi.json`            | `gen`                                       | 루트의 `x-generated`                   |
 | `api-style/**`            | 저장소의 `pnpm sync`(공유 자산)             | 폴더의 README                          |
-| FastAPI skill 복사본      | `uvx library-skills --claude --copy`(`setup`) | 원본이 설치된 fastapi 패키지 안에 있다 |
+| FastAPI skill 복사본(`.claude/skills/fastapi/`, `.agents/skills/fastapi/`) | `uvx library-skills==0.0.19 --claude --copy --yes --skill fastapi`(`setup`. 사본이 원본과 다를 때만 다시 복사한다) | 원본이 설치된 fastapi 패키지 안에 있다 |
 | `uv.lock`                 | `uv add`, `uv lock`                         | uv가 관리한다                          |
 
 모두 `check`가 최신 여부를 확인하고, Claude Code 권한이 직접 수정을 막는다.
@@ -524,7 +532,9 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 - 레시피(`docs/recipes/*.md`)
   - 모듈 추가, 엔드포인트 추가, 마이그레이션, 실시간 이벤트 추가, 잡 추가, 권한 추가, 메일 템플릿 추가
   - 각 레시피는 "언제, 명령, 고칠 파일, 확인 방법" 순서로 쓴다.
-- skill: `.claude/skills/<이름>/SKILL.md`는 레시피를 불러오고 생성기를 부르고 `check`로 확인하는 얇은 포장이다. FastAPI 공식 skill은 `uvx library-skills --claude --copy`로 넣는다. 복사 모드라 Windows에서도 동작한다.
+- skill: `.claude/skills/<이름>/SKILL.md`는 레시피를 불러오고 생성기를 부르고 `check`로 확인하는 얇은 포장이다. FastAPI 공식 skill은 `uvx library-skills --claude --copy --skill fastapi`로 넣는다. 복사 모드라 Windows에서도 동작한다.
+  - `--all`은 fastapi-cli가 가져오는 typer의 skill까지 복사하므로 쓰지 않는다.
+  - 사본은 커밋한다. `check`의 skill 사본 단계가 원본과 같은지 보고, Ruff는 마크다운 안의 코드 블록까지 포맷하므로 사본을 Ruff 검사에서 뺀다.
 
 ### 8.8 지침 파일과 문서
 
@@ -588,7 +598,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 - CI(`.github/workflows/ci.yml`)에 잡을 더한다. action은 커밋 SHA로 고정한다.
   - `fastapi`: uv 설치 → `uv run poe setup` → `check` → `test:e2e` → Docker 이미지 빌드
   - `conformance-fastapi`: `pnpm conformance fastapi`
-  - `structure-fastapi`(M4부터): `pnpm spec-compare contract/openapi.yaml templates/fastapi/openapi.json`
+  - 구조 비교: M1부터 `check` 잡에서 `pnpm spec-compare --subset contract/openapi.yaml templates/fastapi/openapi.json`(구현한 operation만 비교)을 돌리고, M4에서 `--subset`을 뗀다
 - 루트 `pnpm check`는 Python과 Docker 없이 돌도록 지금 범위를 유지한다. 템플릿 자체 검사는 CI 잡이 맡는다.
 
 ## 12. 마일스톤
@@ -601,10 +611,10 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 
 | #   | 내용                                                                                                                                                                                                                         | 완료 조건                                                                                                     |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| M1  | 계약 변경(§7), 룰셋 보강과 번들, 템플릿 골격(설정, 로그, DB, Valkey, compose, Dockerfile), JSON:API 공통 계층, 헬스체크, OpenAPI 내보내기와 계약 린트, 하네스(§8, 단 생성기·레시피·skill은 M3), 저장소 연동(§11의 CI 중 `fastapi`, `conformance-fastapi`), 적합성 스위트의 틀(응답 검증 미들웨어, 부수 채널 어댑터). `test:e2e`는 프로세스를 띄워 헬스체크만 확인한다 | `verify-templates`가 fastapi를 통과. 적합성 스모크(헬스체크, `/api/v1` 아래 404의 에러 문서, 415/406)가 FastAPI에서 통과 |
+| M1  | 계약 변경(§7), 룰셋 보강과 번들, 템플릿 골격(설정, 로그, DB, Valkey, compose, Dockerfile), JSON:API 공통 계층, 헬스체크, OpenAPI 내보내기와 계약 린트, 하네스(§8, 단 생성기·레시피·레시피 skill은 M3. FastAPI 공식 skill 사본은 M1), 저장소 연동(§11의 CI 중 `fastapi`, `conformance-fastapi`), 적합성 스위트의 틀(응답 검증 미들웨어, 부수 채널 어댑터). `test:e2e`는 프로세스를 띄워 헬스체크만 확인한다 | `verify-templates`가 fastapi를 통과. 적합성 스모크(헬스체크, `/api/v1` 아래 404의 에러 문서, 415/406)가 FastAPI에서 통과 |
 | M2  | users, roles, permissions, 가입과 이메일 인증, 세션(로그인, 갱신, 재사용 감지, 로그아웃, 목록, 폐기), 비밀번호 재설정과 변경, `/me`와 탈퇴, 사용자 관리, 메일과 잡, audit-logs, 레이트 리밋                                  | 해당 적합성 흐름 통과                                                                                          |
 | M3  | files(업로드, 완료 확인, 다운로드, 읽기 규칙, 정리 잡), posts(필터, 정렬, include, fields, 페이지, 캐시, 감사), `gen:module`, 레시피와 skill                                                                                  | 해당 적합성 흐름 통과. `gen:module`로 만든 모듈이 `check`를 통과                                               |
-| M4  | realtime(티켓, Socket.IO, 구독, 이벤트), 소셜 로그인, OpenTelemetry, `test:e2e`, 구조 비교 잡                                                                                                                                 | §1.2의 사이클 완료 조건                                                                                       |
+| M4  | realtime(티켓, Socket.IO, 구독, 이벤트), 소셜 로그인, OpenTelemetry, `test:e2e`, 구조 비교에서 `--subset` 떼기                                                                                                                | §1.2의 사이클 완료 조건                                                                                       |
 
 ## 13. 계획 단계에서 확인할 것
 
@@ -618,7 +628,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | Claude Code hook 출력 형식(PostToolUse 피드백, Stop 차단, PreToolUse 거부, SessionStart 컨텍스트)                                                | M1       | 공식 레퍼런스대로 맞춘다                                                                  |
 | `uvx library-skills --claude --copy`의 설치 위치와, 복사본 최신 여부를 검사하는 방법                                                             | M1       | skill 복사본을 커밋하지 않고 `setup`에서만 설치한다                                       |
 | SeaweedFS(`weed mini`)에서 서명된 `Content-Length`와 다른 크기의 PUT이 거부되는가. S3 API로 한 CORS 설정이 동작하는가                            | M3       | 크기는 완료 확인의 HEAD 검사로만 막고, 그 사실을 문서에 적는다                            |
-| taskiq-redis의 broker 종류와 `SmartRetryMiddleware`가 Valkey에서 동작하는가                                                                     | M2       | 다른 broker 종류를 고른다                                                                 |
+| taskiq-redis의 broker 종류와 `SmartRetryMiddleware`가 Valkey에서 동작하는가                                                                     | M1       | 다른 broker 종류를 고른다                                                                 |
 | 모의 OAuth 서버가 발급자 셋을 한 컨테이너에서 띄우고, 카카오(`kakao_account`)와 네이버(`response`)의 중첩 신원 응답을 흉내 낼 수 있는가          | M4       | 적합성은 구글로만 돌리고, 두 제공자는 단위 테스트로 확인한다                              |
 | 네이버의 PKCE 지원 여부                                                                                                                         | M4       | 지원하지 않는 것으로 두고 state만 쓴다                                                    |
 | python-socketio `ASGIApp`과 FastAPI lifespan, 쓰기 전용 매니저의 동작                                                                           | M4       | lifespan 연결 방식을 조정한다                                                             |
