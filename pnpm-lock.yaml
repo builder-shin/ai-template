@@ -202,6 +202,12 @@ importers:
       '@redocly/openapi-core':
         specifier: 2.54.2
         version: 2.54.2
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
 
   contract/conformance:
     dependencies:

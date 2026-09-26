@@ -4,5 +4,15 @@
     "allowJs": true,
     "checkJs": true
   },
-  "include": ["plugin.js", "lint.js", "rules", "test", "vitest.config.ts"]
+  "include": [
+    "plugin.js",
+    "lint.js",
+    "report.js",
+    "bundle.js",
+    "bundle-globals.d.ts",
+    "build.js",
+    "rules",
+    "test",
+    "vitest.config.ts"
+  ]
 }

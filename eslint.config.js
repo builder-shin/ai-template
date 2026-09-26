@@ -4,7 +4,13 @@ import tseslint from "typescript-eslint";
 
 export default defineConfig(
   {
-    ignores: ["**/node_modules/**", "**/generated/**", "templates/**", "**/test/fixtures/**"],
+    ignores: [
+      "**/node_modules/**",
+      "**/generated/**",
+      "templates/**",
+      "**/test/fixtures/**",
+      "contract/api-style/dist/**",
+    ],
   },
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,

@@ -1,12 +1,15 @@
 # 기본 규칙을 그대로 쓰되, 비밀 값이 들어갈 수 없는 파일은 검사하지 않는다.
 # - pnpm-lock.yaml: 패키지 이름과 해시뿐이다(@inquirer/password 같은 이름이 오탐된다).
 # - 계약: TypeSpec 원본과 생성된 OpenAPI에는 필드 이름(password 등)과 스키마 참조만 있다.
+# - 룰셋 번들: 제3자 라이브러리를 묶어 압축한 생성물이다. 템플릿 사본도 같다.
 # 테스트의 가짜 값은 줄 끝에 `betterleaks:allow` 주석을 달아 하나씩 허용한다.
 prefilter = '''
 filter.matchesAny(attributes["path"], [
   `^pnpm-lock\.yaml$`,
   `^contract/openapi\.yaml$`,
   `^contract/typespec/src/.+\.tsp$`,
+  `^contract/api-style/dist/lint\.mjs$`,
+  `^templates/[^/]+/api-style/lint\.mjs$`,
 ])
 '''
 

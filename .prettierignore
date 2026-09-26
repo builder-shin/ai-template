@@ -4,3 +4,4 @@ contract/openapi.yaml
 docs/superpowers/**
 .superpowers/
 templates/**
+contract/api-style/dist/
