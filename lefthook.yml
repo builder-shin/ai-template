@@ -1,0 +1,17 @@
+# 커밋 전에는 빠른 검사와 비밀 스캔을, 푸시 전에는 전체 check를 돌린다.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: format
+      glob: "*.{ts,js,mjs,json,md,yaml,yml}"
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    - name: lint
+      glob: "*.{ts,js,mjs}"
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
+    - name: secrets
+      run: pnpm run -s tool betterleaks git --pre-commit --staged --no-banner --redact
+pre-push:
+  jobs:
+    - name: check
+      run: pnpm check

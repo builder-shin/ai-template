@@ -3,3 +3,4 @@ packages:
   - scripts
 allowBuilds:
   esbuild: true
+  lefthook: false

@@ -7,17 +7,20 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "prepare": "lefthook install",
     "check": "tsx scripts/src/check/cli.ts",
     "check:format": "prettier --check .",
     "check:lint": "eslint .",
     "fix": "prettier --write . && eslint --fix .",
     "test": "pnpm -r run test",
-    "gen": "pnpm -r run gen"
+    "gen": "pnpm -r run gen",
+    "tool": "tsx scripts/src/tools/cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "24.13.6",
     "eslint": "10.11.0",
+    "lefthook": "2.1.14",
     "prettier": "3.9.9",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
