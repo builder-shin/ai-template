@@ -1,5 +1,13 @@
 // @ts-check
-import { bodySchema, defineRule, jsonApiOperations, record, refName } from "./util.js";
+import {
+  bodySchema,
+  constValue,
+  defineRule,
+  deref,
+  jsonApiOperations,
+  record,
+  refName,
+} from "./util.js";
 
 /** @typedef {import("./util.js").Json} Json */
 /** @typedef {import("./util.js").Problem} Problem */
@@ -16,7 +24,8 @@ export function check(doc) {
   const problems = [];
   for (const { path, method, operation } of jsonApiOperations(doc)) {
     if (method !== "get") continue;
-    const document = refName(bodySchema(record(operation.responses)["200"]));
+    const bodySchemaValue = bodySchema(record(operation.responses)["200"]);
+    const document = refName(bodySchemaValue);
     if (!document?.endsWith("CollectionDocument")) continue;
     const parameters = Array.isArray(operation.parameters) ? operation.parameters : [];
     const names = parameters.map((parameter) => record(parameter).name);
@@ -26,11 +35,23 @@ export function check(doc) {
         message: `컬렉션 GET은 "${name}" 파라미터를 선언한다(JsonApi.PageQuery와 sort를 펼쳐 넣는다).`,
       });
     }
-    if (!names.some((name) => typeof name === "string" && name.startsWith("fields["))) {
-      problems.push({
-        path: ["paths", path, method, "parameters"],
-        message: "컬렉션 GET은 주 리소스의 fields[<type>] 파라미터를 선언한다.",
-      });
+    const documentSchema = deref(doc, bodySchemaValue);
+    const items = record(record(deref(doc, documentSchema)?.properties).data).items;
+    const primaryType = constValue(deref(doc, items), "type");
+    if (primaryType !== undefined) {
+      if (!names.includes(`fields[${primaryType}]`)) {
+        problems.push({
+          path: ["paths", path, method, "parameters"],
+          message: `컬렉션 GET은 주 리소스의 fields[${primaryType}] 파라미터를 선언한다.`,
+        });
+      }
+    } else {
+      if (!names.some((name) => typeof name === "string" && name.startsWith("fields["))) {
+        problems.push({
+          path: ["paths", path, method, "parameters"],
+          message: "컬렉션 GET은 주 리소스의 fields[<type>] 파라미터를 선언한다.",
+        });
+      }
     }
     const sortable = operation["x-jsonapi-sort"];
     if (!Array.isArray(sortable) || sortable.length === 0) {

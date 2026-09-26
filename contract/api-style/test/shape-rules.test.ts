@@ -22,6 +22,16 @@ describe("jsonapi/collection-parameters", () => {
     delete at(doc, "paths", WIDGETS, "get")["x-jsonapi-sort"];
     expect(await ruleIds(doc)).toEqual(["jsonapi/collection-parameters"]);
   });
+
+  it("주 리소스가 아닌 fields[...]만 있으면 잡는다", async () => {
+    const doc = validFixture();
+    const operation = at(doc, "paths", WIDGETS, "get");
+    removeParameter(operation, "fields[widgets]");
+    const parameters = Array.isArray(operation.parameters) ? operation.parameters : [];
+    parameters.push({ name: "fields[users]", in: "query", schema: { type: "string" } });
+    operation.parameters = parameters;
+    expect(await ruleIds(doc)).toEqual(["jsonapi/collection-parameters"]);
+  });
 });
 
 describe("jsonapi/include-extension", () => {
