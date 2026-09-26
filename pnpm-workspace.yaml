@@ -1,0 +1,5 @@
+packages:
+  - contract/*
+  - scripts
+allowBuilds:
+  esbuild: true
