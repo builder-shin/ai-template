@@ -14,7 +14,8 @@
     "fix": "prettier --write . && eslint --fix .",
     "test": "pnpm -r run test",
     "gen": "pnpm -r run gen",
-    "tool": "tsx scripts/src/tools/cli.ts"
+    "tool": "tsx scripts/src/tools/cli.ts",
+    "spec-compare": "tsx scripts/src/spec-compare/cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

@@ -1,0 +1,33 @@
+# contract.yaml을 깨뜨린다: 응답의 필수 필드 title이 선택이 됐다.
+openapi: 3.1.0
+info:
+  title: Implementation
+  version: 1.0.0
+paths:
+  /api/v1/posts/{id}:
+    get:
+      operationId: getPost
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/PostDocument" }
+components:
+  schemas:
+    PostDocument:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [type, id, attributes]
+          properties:
+            type: { type: string, enum: [posts] }
+            id: { type: string }
+            attributes:
+              type: object
+              properties:
+                title: { type: string }

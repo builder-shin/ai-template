@@ -1,0 +1,33 @@
+openapi: 3.1.0
+info:
+  title: Contract
+  version: 1.0.0
+paths:
+  /api/v1/posts/{id}:
+    get:
+      operationId: getPost
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/PostDocument" }
+components:
+  schemas:
+    PostDocument:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [type, id, attributes]
+          properties:
+            type: { type: string, enum: [posts] }
+            id: { type: string }
+            attributes:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }

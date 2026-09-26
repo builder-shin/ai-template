@@ -1,0 +1,35 @@
+# contract.yaml과 호환된다: 경로 파라미터 이름이 다르고 응답에 필드가 하나 더 있다.
+openapi: 3.1.0
+info:
+  title: Implementation
+  version: 1.0.0
+paths:
+  /api/v1/posts/{post_id}:
+    get:
+      operationId: getPost
+      parameters:
+        - { name: post_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/PostDocument" }
+components:
+  schemas:
+    PostDocument:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [type, id, attributes]
+          properties:
+            type: { type: string, enum: [posts] }
+            id: { type: string }
+            attributes:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                subtitle: { type: string }
