@@ -4,6 +4,7 @@ import { resourceType, schema, spec } from "./spec.ts";
 interface RealtimeEvent {
   name: string;
   rooms: string[];
+  conditionalRooms?: { room: string; when: string }[];
   payload: string;
 }
 
@@ -17,13 +18,39 @@ const channels = spec["x-realtime-channels"] as RealtimeChannel[];
 
 describe("실시간 (§4.7)", () => {
   it("이벤트 목록이 스펙의 표와 같다", () => {
-    expect(events.map((event) => event.name)).toEqual([
-      "session.revoked",
-      "me.updated",
-      "post.created",
-      "post.updated",
-      "post.published",
-      "post.deleted",
+    expect(events).toEqual([
+      {
+        name: "session.revoked",
+        rooms: ["user:{userId}"],
+        payload: "SessionRevokedEventDocument",
+      },
+      {
+        name: "me.updated",
+        rooms: ["user:{userId}"],
+        payload: "UserMeUpdatedEventDocument",
+      },
+      {
+        name: "post.created",
+        rooms: ["posts:all", "user:{authorId}"],
+        payload: "PostCreatedEventDocument",
+      },
+      {
+        name: "post.updated",
+        rooms: ["posts:all", "user:{authorId}"],
+        conditionalRooms: [{ room: "posts", when: "published" }],
+        payload: "PostUpdatedEventDocument",
+      },
+      {
+        name: "post.published",
+        rooms: ["posts", "posts:all", "user:{authorId}"],
+        payload: "PostPublishedEventDocument",
+      },
+      {
+        name: "post.deleted",
+        rooms: ["posts:all", "user:{authorId}"],
+        conditionalRooms: [{ room: "posts", when: "wasPublished" }],
+        payload: "PostDeletedEventDocument",
+      },
     ]);
   });
 

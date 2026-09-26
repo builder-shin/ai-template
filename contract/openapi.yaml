@@ -4839,7 +4839,6 @@ components:
         - password_reset
         - account_deactivated
         - revoked
-      description: Socket.IO 이벤트 페이로드. 이벤트 목록과 받는 곳은 main.tsp의 x-realtime-events에 있다.
     SessionTokens:
       type: object
       required:
@@ -5288,7 +5287,9 @@ x-realtime-events:
     rooms:
       - posts:all
       - user:{authorId}
-      - posts (발행된 글일 때)
+    conditionalRooms:
+      - room: posts
+        when: published
     payload: PostUpdatedEventDocument
   - name: post.published
     rooms:
@@ -5300,7 +5301,9 @@ x-realtime-events:
     rooms:
       - posts:all
       - user:{authorId}
-      - posts (발행된 글이었을 때)
+    conditionalRooms:
+      - room: posts
+        when: wasPublished
     payload: PostDeletedEventDocument
 x-realtime-channels:
   - name: posts

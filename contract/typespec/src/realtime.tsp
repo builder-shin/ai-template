@@ -3,7 +3,7 @@ import "./resources/posts.tsp";
 
 namespace Platform;
 
-/** Socket.IO 이벤트 페이로드. 이벤트 목록과 받는 곳은 main.tsp의 x-realtime-events에 있다. */
+// Socket.IO 이벤트 페이로드. 이벤트 목록과 받는 곳은 main.tsp의 x-realtime-events에 있다.
 union SessionRevokedReason {
   "logout",
   "password_reset",

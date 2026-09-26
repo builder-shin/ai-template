@@ -46,7 +46,8 @@ using OpenAPI;
     },
     #{
       name: "post.updated",
-      rooms: #["posts:all", "user:{authorId}", "posts (발행된 글일 때)"],
+      rooms: #["posts:all", "user:{authorId}"],
+      conditionalRooms: #[#{ room: "posts", when: "published" }],
       payload: "PostUpdatedEventDocument",
     },
     #{
@@ -56,7 +57,8 @@ using OpenAPI;
     },
     #{
       name: "post.deleted",
-      rooms: #["posts:all", "user:{authorId}", "posts (발행된 글이었을 때)"],
+      rooms: #["posts:all", "user:{authorId}"],
+      conditionalRooms: #[#{ room: "posts", when: "wasPublished" }],
       payload: "PostDeletedEventDocument",
     }
   ]
