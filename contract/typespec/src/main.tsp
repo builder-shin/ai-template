@@ -6,6 +6,8 @@ import "./resources/health.tsp";
 import "./resources/roles.tsp";
 import "./resources/files.tsp";
 import "./resources/users.tsp";
+import "./resources/posts.tsp";
+import "./resources/audit-logs.tsp";
 
 using Http;
 using OpenAPI;
