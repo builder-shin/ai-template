@@ -12,11 +12,13 @@
     "check:format": "prettier --check .",
     "check:lint": "eslint .",
     "check:agents-md": "tsx scripts/src/agents-md/cli.ts .",
+    "check:templates": "tsx scripts/src/verify-templates/cli.ts",
     "fix": "prettier --write . && eslint --fix .",
     "test": "pnpm -r run test",
     "gen": "pnpm -r run gen",
     "tool": "tsx scripts/src/tools/cli.ts",
-    "spec-compare": "tsx scripts/src/spec-compare/cli.ts"
+    "spec-compare": "tsx scripts/src/spec-compare/cli.ts",
+    "sync": "tsx scripts/src/sync/cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
