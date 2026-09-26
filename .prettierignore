@@ -2,4 +2,5 @@ pnpm-lock.yaml
 contract/openapi.yaml
 **/generated/**
 docs/superpowers/**
+.superpowers/
 templates/**
