@@ -3,8 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "gen": "openapi-typescript ../openapi.yaml -o src/generated/api.ts",
+    "check:generated": "tsx scripts/check-generated.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "check": "pnpm run typecheck && pnpm run test"
+    "check": "pnpm run check:generated && pnpm run typecheck && pnpm run test"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "@ai-template/contract": "workspace:*",
+    "openapi-typescript": "7.13.0"
   }
 }
