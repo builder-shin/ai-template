@@ -1,0 +1,6 @@
+{
+  "name": "fastapi",
+  "kind": "backend",
+  "runner": "uv",
+  "goldenModule": "src/app/modules/posts"
+}

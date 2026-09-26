@@ -1,3 +1,8 @@
 {
-  "assets": []
+  "assets": [
+    {
+      "source": "contract/api-style/dist/lint.mjs",
+      "targets": [{ "template": "fastapi", "path": "api-style/lint.mjs" }]
+    }
+  ]
 }

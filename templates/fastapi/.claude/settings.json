@@ -1,0 +1,100 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--directory",
+              "${CLAUDE_PROJECT_DIR}",
+              "--frozen",
+              "python",
+              "-m",
+              "tools.hooks.post_edit"
+            ]
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--directory",
+              "${CLAUDE_PROJECT_DIR}",
+              "--frozen",
+              "python",
+              "-m",
+              "tools.hooks.stop"
+            ]
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--directory",
+              "${CLAUDE_PROJECT_DIR}",
+              "--frozen",
+              "python",
+              "-m",
+              "tools.hooks.pre_bash"
+            ]
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--directory",
+              "${CLAUDE_PROJECT_DIR}",
+              "--frozen",
+              "python",
+              "-m",
+              "tools.hooks.pre_edit"
+            ]
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--directory",
+              "${CLAUDE_PROJECT_DIR}",
+              "--frozen",
+              "python",
+              "-m",
+              "tools.hooks.session_start"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
