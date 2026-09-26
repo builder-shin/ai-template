@@ -152,6 +152,9 @@ describe("mediaTypeProblems", () => {
     expect(() => {
       assertMediaType({ status: 204, headers: new Headers() });
     }).not.toThrow();
+    expect(() => {
+      assertMediaType({ status: 202, headers: new Headers() });
+    }).not.toThrow();
     const ok = { status: 200, headers: new Headers({ "content-type": MEDIA_TYPE }) };
     expect(() => {
       assertMediaType(ok);
