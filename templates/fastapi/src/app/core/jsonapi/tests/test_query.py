@@ -2,10 +2,25 @@
 
 import httpx
 import pytest
+from fastapi import Request
 
-from app.core.jsonapi.tests.sample import ADA, KNOWN_ID, jsonapi_body, widget_document
+from app.core.jsonapi.query import SortField, parse_include, parse_sort
+from app.core.jsonapi.rendering import load_included
+from app.core.jsonapi.tests.sample import (
+    ADA,
+    KNOWN_ID,
+    OwnerAttributes,
+    OwnerResource,
+    jsonapi_body,
+    widget_document,
+)
 
 pytestmark = pytest.mark.anyio
+
+
+def _request(query_string: str) -> Request:
+    """파서 단위 테스트용 최소 Request. query_params는 scope의 query_string만 본다."""
+    return Request({"type": "http", "query_string": query_string.encode()})
 
 
 @pytest.mark.parametrize(
@@ -17,6 +32,14 @@ pytestmark = pytest.mark.anyio
         ("page[size]=101", "jsonapi.invalid_query", "page[size]"),
         ("page[number]=0", "jsonapi.invalid_query", "page[number]"),
         ("page%5Bnumber%5D=abc", "jsonapi.invalid_query", "page[number]"),
+        ("page[number]=2147483648", "jsonapi.invalid_query", "page[number]"),
+        (f"page[number]={chr(0xFF13)}", "jsonapi.invalid_query", "page[number]"),
+        pytest.param(
+            f"page[number]={'1' * 4301}",
+            "jsonapi.invalid_query",
+            "page[number]",
+            id="page-number-too-many-digits",
+        ),
         ("foo=1", "jsonapi.invalid_query", "foo"),
         ("fields[nope]=name", "jsonapi.invalid_query", "fields[nope]"),
         ("filter[color]=green", "jsonapi.invalid_query", "filter[color]"),
@@ -50,3 +73,35 @@ async def test_single_resource_takes_include_and_fields(client: httpx.AsyncClien
     body = response.json()
     assert body["included"] == [{"type": "users", "id": ADA, "attributes": {"name": "Ada"}}]
     assert body["data"]["relationships"]["owner"]["data"] == {"type": "users", "id": ADA}
+
+
+async def test_empty_fields_value_means_no_members(client: httpx.AsyncClient) -> None:
+    response = await client.get(
+        f"/api/v1/widgets/{KNOWN_ID}", params={"include": "owner", "fields[users]": ""}
+    )
+    assert response.status_code == 200, response.text
+    [owner] = response.json()["included"]
+    assert owner["attributes"] == {}
+
+
+def test_repeated_sort_field_is_deduped_keeping_the_first_direction() -> None:
+    request = _request("sort=-name,size,name")
+    assert parse_sort(request, {"name", "size"}) == (
+        SortField(name="name", descending=True),
+        SortField(name="size", descending=False),
+    )
+
+
+async def test_repeated_include_path_runs_its_loader_once() -> None:
+    request = _request("include=owner,owner,owner,owner,owner")
+    include = parse_include(request, {"owner"})
+    assert include == ("owner",)
+    calls: list[str] = []
+
+    async def owners() -> list[OwnerResource]:
+        calls.append("owner")
+        return [OwnerResource(type="users", id=ADA, attributes=OwnerAttributes(name="Ada"))]
+
+    result = await load_included(include, {"owner": owners})
+    assert [resource.id for resource in result] == [ADA]
+    assert calls == ["owner"]

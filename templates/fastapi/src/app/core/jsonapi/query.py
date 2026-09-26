@@ -4,6 +4,7 @@
 """
 
 import math
+import re
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 
@@ -16,6 +17,9 @@ from app.core.jsonapi.models import ErrorCode
 
 PAGE_SIZE_DEFAULT = 20
 PAGE_SIZE_MAX = 100
+# int32 최댓값. 계약이 page[number]를 int32로 선언하므로 이 값까지만 허용한다.
+_PAGE_NUMBER_MAX = 2_147_483_647
+_PAGE_DIGITS = re.compile(r"[0-9]{1,10}")
 
 
 class FilterModel(BaseModel):
@@ -91,6 +95,7 @@ def comma_separated(request: Request, name: str) -> tuple[str, ...]:
 
 
 def parse_include(request: Request, allowed: Collection[str]) -> tuple[str, ...]:
+    """반복된 경로는 처음 것만 남긴다. 그러지 않으면 모듈의 로더가 경로마다 다시 불린다."""
     if "include" not in request.query_params:
         return ()
     paths = comma_separated(request, "include")
@@ -98,46 +103,64 @@ def parse_include(request: Request, allowed: Collection[str]) -> tuple[str, ...]
         if path not in allowed:
             detail = f"Cannot include {path}."
             raise query_error(ErrorCode.JSONAPI_UNSUPPORTED_INCLUDE, "include", detail)
-    return paths
+    return tuple(dict.fromkeys(paths))
 
 
 def parse_fields(request: Request, types: Collection[str]) -> dict[str, frozenset[str]]:
-    """sparse fieldset. 리소스 타입마다 남길 멤버 이름."""
-    return {
-        resource_type: frozenset(comma_separated(request, f"fields[{resource_type}]"))
-        for resource_type in types
-        if f"fields[{resource_type}]" in request.query_params
-    }
+    """sparse fieldset. 리소스 타입마다 남길 멤버 이름.
+
+    완전히 빈 값(`fields[type]=`)은 그 타입의 멤버를 모두 뺀다는 뜻이다(JSON:API 1.1).
+    쉼표로 나눈 항목 중 하나만 비면(`a,,b`) 여전히 400이다.
+    """
+    fields: dict[str, frozenset[str]] = {}
+    for resource_type in types:
+        name = f"fields[{resource_type}]"
+        if name not in request.query_params:
+            continue
+        if single(request, name) == "":
+            fields[resource_type] = frozenset()
+        else:
+            fields[resource_type] = frozenset(comma_separated(request, name))
+    return fields
 
 
-def _positive_int(request: Request, name: str, *, default: int, maximum: int | None) -> int:
+def _positive_int(request: Request, name: str, *, default: int, maximum: int) -> int:
+    """1부터 maximum까지의 ASCII 숫자만 받는다.
+
+    `isdecimal()`은 전각 숫자도 받아들이고, 자릿수 제한 없이 `int()`에 넘기면 4300자리가
+    넘는 값에서 Python이 ValueError를 내 500이 된다. 정규식으로 자릿수부터 막는다.
+    """
     if name not in request.query_params:
         return default
     raw = single(request, name)
-    if not raw.isdecimal() or int(raw) < 1 or (maximum is not None and int(raw) > maximum):
-        bound = f"between 1 and {maximum}" if maximum is not None else "a positive integer"
-        raise query_error(ErrorCode.JSONAPI_INVALID_QUERY, name, f"{name} must be {bound}.")
+    if not _PAGE_DIGITS.fullmatch(raw) or not 1 <= int(raw) <= maximum:
+        detail = f"{name} must be between 1 and {maximum}."
+        raise query_error(ErrorCode.JSONAPI_INVALID_QUERY, name, detail)
     return int(raw)
 
 
 def parse_page(request: Request) -> Page:
-    number = _positive_int(request, "page[number]", default=1, maximum=None)
+    number = _positive_int(request, "page[number]", default=1, maximum=_PAGE_NUMBER_MAX)
     size = _positive_int(request, "page[size]", default=PAGE_SIZE_DEFAULT, maximum=PAGE_SIZE_MAX)
     return Page(number=number, size=size)
 
 
 def parse_sort(request: Request, allowed: Collection[str]) -> tuple[SortField, ...]:
-    """`sort=-createdAt,title` → 내림차순 createdAt, 오름차순 title. 없으면 빈 튜플(기본 정렬)."""
+    """`sort=-createdAt,title` → 내림차순 createdAt, 오름차순 title. 없으면 빈 튜플(기본 정렬).
+
+    같은 필드가 반복되면 처음 것만 남긴다. 정렬 결과는 같다. 나중에 오는 같은 필드는 앞선
+    동점을 다시 가르지 못하기 때문이다.
+    """
     if "sort" not in request.query_params:
         return ()
-    fields: list[SortField] = []
+    fields: dict[str, SortField] = {}
     for item in comma_separated(request, "sort"):
         name = item.removeprefix("-")
         if name not in allowed:
             detail = f"Cannot sort by {name}."
             raise query_error(ErrorCode.JSONAPI_UNSUPPORTED_SORT, "sort", detail)
-        fields.append(SortField(name=name, descending=item.startswith("-")))
-    return tuple(fields)
+        fields.setdefault(name, SortField(name=name, descending=item.startswith("-")))
+    return tuple(fields.values())
 
 
 def parse_filter[FilterT: FilterModel](request: Request, model: type[FilterT]) -> FilterT:
