@@ -1,4 +1,4 @@
-"""앱 조립: 계약과 같은 문서 정보, 태그 순서, 서버. 시작할 때 설정과 로그를 준비한다."""
+"""앱 조립: 계약과 같은 문서 정보, 태그 순서, 서버. 시작할 때 설정과 연결 자원을 준비한다."""
 
 import pytest
 
@@ -36,8 +36,8 @@ def test_openapi_header_matches_the_contract() -> None:
     ]
 
 
-async def test_startup_keeps_the_given_settings() -> None:
-    settings = Settings.model_construct(app_env="test", log_level="warning")
+async def test_startup_prepares_connections_from_the_given_settings(settings: Settings) -> None:
     app = create_app(settings)
     async with app.router.lifespan_context(app):
         assert app.state.settings is settings
+        assert app.state.engine.url.database == "app_test"

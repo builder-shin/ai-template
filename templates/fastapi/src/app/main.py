@@ -6,10 +6,14 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from app import health
 from app.core.config import Settings, load_settings
+from app.core.db import create_engine, session_factory
 from app.core.jsonapi.install import install_jsonapi
 from app.core.jsonapi.openapi import JsonApiApp
 from app.core.logging import configure_logging
+from app.core.redis import create_redis
+from app.core.storage import create_client
 
 # 계약 루트 tags와 같은 순서. operation의 태그는 모두 여기 있어야 한다(룰 operation-tag-defined).
 TAGS = (
@@ -38,14 +42,26 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
 
     만들 때는 설정을 읽지 않으므로, 앱을 띄우지 않는 곳(openapi.json 내보내기, 테스트)에서
     .env 없이 import할 수 있다. 설정이 틀리면 시작할 때 변수마다 한 줄씩 알리고 멈춘다.
+    시작할 때 연결 자원을 만들어 app.state에 둔다: settings, engine, sessions, redis, storage.
+    DB와 Valkey는 처음 쓸 때 접속한다.
     """
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         current = settings or load_settings()
         configure_logging(current)
+        engine = create_engine(current.database_url)
+        redis = create_redis(current.redis_url)
         app.state.settings = current
-        yield
+        app.state.engine = engine
+        app.state.sessions = session_factory(engine)
+        app.state.redis = redis
+        app.state.storage = create_client(current)
+        try:
+            yield
+        finally:
+            await redis.aclose()
+            await engine.dispose()
 
     app = JsonApiApp(
         title="AI Template Platform API",
@@ -56,6 +72,7 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
         lifespan=lifespan,
     )
     install_jsonapi(app)
+    app.include_router(health.router)
     return app
 
 

@@ -93,7 +93,8 @@ def test_e2e() -> None:
 
 
 def gen() -> None:
-    _not_yet("gen", 12)
+    """앱을 띄우지 않고 openapi.json을 다시 쓴다."""
+    raise SystemExit(_python("tools.openapi_export"))
 
 
 def db_migrate() -> None:

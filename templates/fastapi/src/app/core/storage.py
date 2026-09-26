@@ -7,6 +7,7 @@
 - boto3 호출은 블로킹이다. 요청을 처리하는 코드에서는 스레드로 넘겨 부른다.
 """
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import boto3
@@ -34,3 +35,11 @@ def create_client(settings: Settings, *, public: bool = False) -> S3Client:
         aws_secret_access_key=settings.s3_secret_access_key.get_secret_value(),
         config=_CONFIG,
     )
+
+
+async def check_bucket(client: S3Client, bucket: str) -> None:
+    """버킷이 있고 이 자격 증명으로 접근할 수 있는지 본다(HEAD). 아니면 예외다.
+
+    boto3 호출은 블로킹이므로 스레드에서 돈다.
+    """
+    await asyncio.to_thread(client.head_bucket, Bucket=bucket)

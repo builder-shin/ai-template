@@ -7,9 +7,10 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 | 명령                                | 하는 일                                                                           |
 | ----------------------------------- | --------------------------------------------------------------------------------- |
 | `uv run poe setup`                  | `.env`, 인프라(compose), 버킷, DB(개발·테스트·E2E), 마이그레이션, 시드를 준비한다 |
-| `uv run poe check`                  | 완료 기준. 포맷, 린트, 타입, 아키텍처, 하네스 검사, 테스트를 차례로 돌린다        |
+| `uv run poe check`                  | 완료 기준. 포맷, 린트, 타입, 아키텍처, 하네스, 생성물, 계약 린트, 테스트를 돈다   |
 | `uv run poe fix`                    | 포맷과 린트 자동 수정                                                             |
 | `uv run poe test`                   | 테스트(`src`와 `tools`의 `tests/`, E2E 제외)                                      |
+| `uv run poe gen`                    | 앱을 띄우지 않고 `openapi.json`을 다시 쓴다                                       |
 | `uv run poe db:migrate`             | 개발 DB에 마이그레이션을 적용한다                                                 |
 | `uv run poe db:revision "<메시지>"` | 모델과 개발 DB를 비교해 마이그레이션 초안을 만든다                                |
 | `uv run poe db:reset`               | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                     |
@@ -19,11 +20,13 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - 직접 만든 검사는 `파일:줄 규칙 — 고치는 방법` 한 줄씩 알린다. 고치는 방법대로 고친다.
 - `check --fast`는 Stop hook이 쓰는 빠른 경로다. 바뀐 모듈의 테스트만 돌린다.
 - 테스트가 "인프라가 꺼져 있다"로 멈추면 `uv run poe setup`을 돌린다.
-- `dev`, `test:e2e`, `gen`은 선언만 있다. 부르면 구현할 계획 태스크를 알리고 실패한다.
+- `check`의 생성물 단계는 `openapi.json`이 코드와 같은지, 계약 린트 단계는 `openapi.json`이 계약 룰셋(`api-style/lint.mjs`)을 지키는지 본다.
+- `dev`, `test:e2e`는 선언만 있다. 부르면 구현할 계획 태스크를 알리고 실패한다.
 
 ## 구조
 
-- `src/app/main.py`: 앱 조립(`create_app`). `uvicorn app.main:app`으로 띄운다.
+- `src/app/main.py`: 앱 조립(`create_app`). 시작할 때 연결 자원을 `app.state`에 둔다. `uvicorn app.main:app --loop asyncio:SelectorEventLoop`으로 띄운다(Windows 기본 루프에서는 psycopg 비동기 모드가 돌지 않는다).
+- `src/app/health.py`: 헬스체크 `/health/live`, `/health/ready`(DB, Valkey, 스토리지). JSON:API가 아니라 `application/json`이다.
 - `src/app/core/`: 도메인을 모르는 기반. 설정(`config.py`의 `Settings` 하나), 로그(`logging.py`), DB(`db.py`), Valkey(`redis.py`), 스토리지(`storage.py`).
 - `src/app/core/jsonapi/`: JSON:API 공통 계층. 문서 모델(`models.py`), 에러(`errors.py`), 협상(`negotiation.py`), OpenAPI 후처리(`openapi.py`), 라우트 선언(`operation.py`), 쿼리 파서(`query.py`), 렌더링(`rendering.py`). 쓰는 예는 테스트 전용 샘플 `jsonapi/tests/sample.py`.
 - `src/app/modules/`: 도메인 모듈. `posts`는 골든 모듈 자리다.
@@ -32,6 +35,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - `conftest.py`: 테스트 공용 fixture(`settings`, `infra`, `db`, `redis`).
 - `compose.yaml`: 개발 인프라(PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth). 포트는 127.0.0.1에만 열고, 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit SMTP 21025·웹 28025, 모의 OAuth 28080).
 - `tools/`: 하네스 도구. `cli.py`가 poe 명령의 입구이고, `infra.py`가 인프라 준비, `check/`가 check 실행기, `checks/`에 검사가 있다.
+- `openapi.json`: 앱이 내보낸 OpenAPI 문서(생성물, `uv run poe gen`).
 - `api-style/lint.mjs`: 저장소가 넣는 API 스타일 룰셋 번들의 사본이다.
 - `docs/recipes/`: 작업 절차.
 
@@ -52,6 +56,6 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - 커밋된 마이그레이션(`migrations/versions/`)은 고치거나 지우지 않는다. 바꿀 것이 있으면 새 리비전을 만든다.
 - 테스트는 대상 코드 옆의 `tests/`에 둔다: `src/app/tests/`(앱 조립), `src/app/core/tests/`, `src/app/modules/<이름>/tests/`, `tools/tests/`.
 - 테스트는 자기 인프라(DB, Valkey, 스토리지, 메일)를 모킹하지 않는다. 테스트 DB는 `app_test`, Valkey는 DB 15다. DB는 `db` fixture(테스트마다 롤백), Valkey는 `redis` fixture(테스트마다 비움)로 쓴다.
-- 생성물은 직접 고치지 않는다: `uv.lock`(`uv add`, `uv lock`), `api-style/lint.mjs`(저장소의 `pnpm sync`).
+- 생성물은 직접 고치지 않는다: `openapi.json`(`uv run poe gen`), `uv.lock`(`uv add`, `uv lock`), `api-style/lint.mjs`(저장소의 `pnpm sync`). 라우트나 문서 모델을 바꾸면 `uv run poe gen`을 돌린다.
 - 문서, 주석, 도구 메시지는 한국어로, 식별자는 영어로 쓴다.
 - 작업을 끝내기 전에 `uv run poe check`를 통과시킨다.
