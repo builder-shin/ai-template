@@ -16,3 +16,19 @@ rules:
     severity: error
     aliases:
       me: users
+  jsonapi/collection-parameters: error
+  jsonapi/include-extension: error
+  jsonapi/schema-naming:
+    severity: error
+    shared:
+      - ErrorCode
+      - ErrorDocument
+      - ErrorObject
+      - ErrorSource
+      - PageMeta
+      - PaginationLinks
+      - CollectionMeta
+      - Locale
+      - OAuthProvider
+      - HealthReport
+  jsonapi/camel-case-properties: error

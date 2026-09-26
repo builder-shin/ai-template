@@ -1,7 +1,11 @@
 // @ts-check
+import camelCaseProperties from "./rules/camel-case-properties.js";
+import collectionParameters from "./rules/collection-parameters.js";
 import errorResponse from "./rules/error-response.js";
+import includeExtension from "./rules/include-extension.js";
 import mediaType from "./rules/media-type.js";
 import requestDocument from "./rules/request-document.js";
+import schemaNaming from "./rules/schema-naming.js";
 import typeMatchesPath from "./rules/type-matches-path.js";
 
 /** JSON:API 규약 룰셋. redocly.yaml에서 `jsonapi/<규칙>`으로 켠다. */
@@ -14,6 +18,10 @@ export default function jsonApiPlugin() {
         "error-response": errorResponse,
         "request-document": requestDocument,
         "type-matches-path": typeMatchesPath,
+        "collection-parameters": collectionParameters,
+        "include-extension": includeExtension,
+        "schema-naming": schemaNaming,
+        "camel-case-properties": camelCaseProperties,
       },
     },
   };
