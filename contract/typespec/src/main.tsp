@@ -2,6 +2,7 @@ import "@typespec/http";
 import "@typespec/openapi";
 import "./jsonapi.tsp";
 import "./errors.tsp";
+import "./realtime.tsp";
 import "./resources/health.tsp";
 import "./resources/roles.tsp";
 import "./resources/files.tsp";
@@ -18,4 +19,46 @@ using OpenAPI;
 @service(#{ title: "AI Template Platform API" })
 @info(#{ version: "1.0.0" })
 @server("http://localhost:8000", "로컬 개발 서버")
+@extension(
+  "x-realtime-channels",
+  #[
+    #{
+      name: "posts",
+      permission: null,
+      description: "발행된 글의 이벤트. 익명 연결도 구독할 수 있다.",
+    },
+    #{ name: "posts:all", permission: "posts:manage", description: "모든 글의 이벤트." }
+  ]
+)
+@extension(
+  "x-realtime-events",
+  #[
+    #{
+      name: "session.revoked",
+      rooms: #["user:{userId}"],
+      payload: "SessionRevokedEventDocument",
+    },
+    #{ name: "me.updated", rooms: #["user:{userId}"], payload: "UserMeUpdatedEventDocument" },
+    #{
+      name: "post.created",
+      rooms: #["posts:all", "user:{authorId}"],
+      payload: "PostCreatedEventDocument",
+    },
+    #{
+      name: "post.updated",
+      rooms: #["posts:all", "user:{authorId}", "posts (발행된 글일 때)"],
+      payload: "PostUpdatedEventDocument",
+    },
+    #{
+      name: "post.published",
+      rooms: #["posts", "posts:all", "user:{authorId}"],
+      payload: "PostPublishedEventDocument",
+    },
+    #{
+      name: "post.deleted",
+      rooms: #["posts:all", "user:{authorId}", "posts (발행된 글이었을 때)"],
+      payload: "PostDeletedEventDocument",
+    }
+  ]
+)
 namespace Platform;
