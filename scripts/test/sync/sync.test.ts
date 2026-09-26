@@ -76,6 +76,14 @@ describe("syncSharedAssets", () => {
     expect(read(repo, "templates/web/openapi.yaml")).toBe("openapi: 3.0.0\n");
   });
 
+  it('Windows에서 드라이브로 풀리는 템플릿 이름("C:")은 거부하고 다른 템플릿을 지우지 않는다', () => {
+    const repo = makeRepo();
+    expect(() => syncSharedAssets(repo, manifest("contract", "C:", "web"))).toThrow(
+      /assets\[0\]\.targets\[0\]\.template/,
+    );
+    expect(existsSync(join(repo, "templates/web/template.json"))).toBe(true);
+  });
+
   it("원본이 없으면(오타) 사본을 지우지 않는다", () => {
     const repo = makeRepo();
     const typo = manifest("contract/opneapi.yaml", "web", "openapi.yaml");

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 /** 템플릿 루트의 template.json. verify-templates가 템플릿 종류에 맞게 검사하는 데 쓴다. */
 export interface TemplateManifest {
@@ -59,9 +59,9 @@ function isInside(parent: string, child: string): boolean {
   return path !== "" && path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path);
 }
 
-/** templates/ 바로 아래 폴더 이름 하나인지 본다. 빈 값, ".", "..", 경로 구분자는 안 된다. */
+/** templates/ 바로 아래 폴더 이름 하나인지 본다. Windows는 "C:"를 드라이브로 풀므로 ":"도 막는다. */
 function isTemplateName(name: string): boolean {
-  return name !== "" && name !== "." && name !== ".." && !/[\\/]/.test(name);
+  return name !== "" && name !== "." && name !== ".." && !/[\\/:]/.test(name);
 }
 
 /**
@@ -70,7 +70,10 @@ function isTemplateName(name: string): boolean {
  */
 export function copyPath(repoRoot: string, template: string, path: string): string | undefined {
   if (!isTemplateName(template) || isAbsolute(path)) return undefined;
-  const base = resolve(repoRoot, "templates", template);
+  const templates = resolve(repoRoot, "templates");
+  const base = resolve(templates, template);
+  // 이름 규칙과 별개로, 템플릿 폴더가 정말 templates/ 바로 아래로 풀렸는지 다시 본다.
+  if (dirname(base) !== templates) return undefined;
   const destination = resolve(base, path);
   return isInside(base, destination) ? destination : undefined;
 }
@@ -81,7 +84,8 @@ export function sourcePath(repoRoot: string, source: string): string | undefined
   const root = resolve(repoRoot);
   const location = resolve(root, source);
   const templates = resolve(root, "templates");
-  const inTemplates = location === templates || isInside(templates, location);
+  // relative로 비교해야 Windows에서 대소문자만 다른 "Templates"도 templates/로 본다.
+  const inTemplates = relative(templates, location) === "" || isInside(templates, location);
   return isInside(root, location) && !inTemplates ? location : undefined;
 }
 
@@ -100,7 +104,7 @@ function targetProblems(repoRoot: string, target: unknown, at: string): string[]
   const { template, path } = target;
   if (typeof template !== "string" || !isTemplateName(template)) {
     return [
-      `${at}.template: templates/ 바로 아래 폴더 이름 하나를 적는다. 빈 값, ".", "..", 경로 구분자는 안 된다.`,
+      `${at}.template: templates/ 바로 아래 폴더 이름 하나를 적는다. 빈 값, ".", "..", 그리고 "/", "\\", ":" 같은 구분자는 안 된다.`,
     ];
   }
   if (typeof path === "string" && copyPath(repoRoot, template, path) !== undefined) return [];

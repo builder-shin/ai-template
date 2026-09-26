@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { readSharedAssets } from "../../src/verify-templates/manifest.ts";
 
 const TEMPLATE_RULE =
-  'templates/ 바로 아래 폴더 이름 하나를 적는다. 빈 값, ".", "..", 경로 구분자는 안 된다.';
+  'templates/ 바로 아래 폴더 이름 하나를 적는다. 빈 값, ".", "..", 그리고 "/", "\\", ":" 같은 구분자는 안 된다.';
 const SOURCE_RULE = "저장소 안이면서 templates/ 밖인 상대 경로를 적는다.";
 const pathRule = (template: string) =>
   `templates/${template}/ 안쪽의 상대 경로를 적는다. 빈 값, ".", 절대 경로, 템플릿 밖으로 나가는 경로는 안 된다.`;
@@ -59,6 +59,8 @@ describe("readSharedAssets", () => {
       { template: "..", path: "scripts" },
       { template: "web/docs", path: "openapi.yaml" },
       { template: "", path: "openapi.yaml" },
+      { template: "C:", path: "web" },
+      { template: "D:", path: "openapi.yaml" },
     ];
     expect(read({ assets: [{ source: "contract/openapi.yaml", targets }] })).toEqual([
       `assets[0].targets[0].path: ${pathRule("web")}`,
@@ -70,6 +72,8 @@ describe("readSharedAssets", () => {
       `assets[0].targets[6].template: ${TEMPLATE_RULE}`,
       `assets[0].targets[7].template: ${TEMPLATE_RULE}`,
       `assets[0].targets[8].template: ${TEMPLATE_RULE}`,
+      `assets[0].targets[9].template: ${TEMPLATE_RULE}`,
+      `assets[0].targets[10].template: ${TEMPLATE_RULE}`,
     ]);
   });
 
