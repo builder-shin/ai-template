@@ -581,8 +581,8 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 
 | 사이클 | 결정할 것 |
 |---|---|
-| 1. FastAPI | 명령 실행기, 잡 라이브러리(Taskiq 또는 SAQ), SQLAlchemy 2.0과 2.1 중 선택(2.1은 2026-09-24 출시), 타입 검사기(pyright 또는 pyrefly), 로컬 S3 대체재(SeaweedFS 또는 RustFS), 모의 OAuth 서버 이미지, OAuth 클라이언트 라이브러리, 제공자별 소셜 계정 연결 규칙, 파일 공개 읽기 구현과 공개 이미지 전달 방식, 회원 탈퇴 시 데이터 보존 정책, Python 전용 템플릿에서 lefthook을 설치하는 경로, Node 기반 도구(API 스타일 룰셋 `lint.js`)를 Python 전용 템플릿에서 돌리는 방법, verify-templates의 `uv` 명령 검사 구현, 통합 테스트 격리 방식 |
-| 2. web | API 클라이언트 생성기(openapi-fetch 또는 orval)와 JSON:API 역직렬화 헬퍼 설계, 데이터 패칭 패턴(RSC와 Server Actions, 클라이언트 쿼리의 역할 분담), 폼 라이브러리(TanStack Form 또는 React Hook Form), shadcn 기반(Base UI 또는 Radix), Next.js 관리 블록 처리(수용 또는 `agentRules: false`), i18n URL 전략, 목 서버 구현 방식, 단독 프론트에서 계약을 확장하는 방법(TypeSpec 원본 동봉 여부), TS 7 병용, Node 26 전환 |
+| 1. FastAPI | 명령 실행기, 잡 라이브러리(Taskiq 또는 SAQ), SQLAlchemy 2.0과 2.1 중 선택(2.1은 2026-09-24 출시), 타입 검사기(pyright 또는 pyrefly), 로컬 S3 대체재(SeaweedFS 또는 RustFS), 모의 OAuth 서버 이미지, OAuth 클라이언트 라이브러리, 제공자별 소셜 계정 연결 규칙, 파일 공개 읽기 구현과 공개 이미지 전달 방식, 회원 탈퇴 시 데이터 보존 정책, Python 전용 템플릿에서 lefthook을 설치하는 경로, Node 기반 도구(API 스타일 룰셋 `lint.js`)를 Python 전용 템플릿에서 돌리는 방법, verify-templates의 `uv` 명령 검사 구현, 통합 테스트 격리 방식, 감사 로그 `action`·`targetType` 값 목록(§4.6 기록 대상)을 계약 enum으로 고정하는 일, 실시간 `subscribe`·`unsubscribe` 메시지와 ack 형태를 계약에 적는 방법, 응답 본문을 계약 스키마로 검증하는 방식(§5.9)과 페이지네이션 링크 형식(절대 URL 또는 상대 경로), 백엔드 템플릿에 복사할 api-style 파일 범위(공유 자산 포함 목록), 역할 부여 규칙(자기보다 큰 권한을 줄 수 있는지), 룰셋이 `$ref`로 된 `data`를 따라가게 하는 보강, 지침·템플릿 검사가 `.venv` 같은 큰 폴더를 건너뛰는 방법 |
+| 2. web | API 클라이언트 생성기(openapi-fetch 또는 orval)와 JSON:API 역직렬화 헬퍼 설계, 데이터 패칭 패턴(RSC와 Server Actions, 클라이언트 쿼리의 역할 분담), 폼 라이브러리(TanStack Form 또는 React Hook Form), shadcn 기반(Base UI 또는 Radix), Next.js 관리 블록 처리(수용 또는 `agentRules: false`), i18n URL 전략, 목 서버 구현 방식, 단독 프론트에서 계약을 확장하는 방법(TypeSpec 원본 동봉 여부), TS 7 병용, Node 26 전환, 템플릿 안 계약 사본(`openapi.yaml`)을 비밀 스캔에서 빼는 방법 |
 | 3. create CLI | 배포 방식(GitHub에서 npx 실행 또는 로컬 clone), 조합 루트의 세부 구성, 포트 배정 |
 | 4. admin | 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위 |
 | 5. NestJS | ORM 최종 확인(Prisma 7), JSON:API DTO와 swagger 스키마 이름을 맞추는 방법, 린터 구성(TS 6 제약 아래 ESLint 또는 oxlint) |
