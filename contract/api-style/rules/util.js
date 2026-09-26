@@ -78,13 +78,16 @@ export function deref(doc, schema) {
 }
 
 /**
- * 속성의 단일 값 enum을 돌려준다. 예: { properties: { type: { enum: ["posts"] } } } → "posts"
+ * 속성의 고정 값을 돌려준다. `const` 또는 값이 하나인 `enum`을 읽는다.
+ * 예: { properties: { type: { enum: ["posts"] } } } → "posts", { properties: { type: { const: "posts" } } } → "posts"
  * @param {Json | undefined} schema
  * @param {string} property
  * @returns {string | undefined}
  */
 export function constValue(schema, property) {
-  const values = record(record(schema?.properties)[property]).enum;
+  const target = record(record(schema?.properties)[property]);
+  if (typeof target.const === "string") return target.const;
+  const values = target.enum;
   if (!Array.isArray(values) || values.length !== 1) return undefined;
   const [value] = values;
   return typeof value === "string" ? value : undefined;

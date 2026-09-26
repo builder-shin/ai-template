@@ -74,6 +74,36 @@ describe("jsonapi/schema-naming", () => {
     expect(resourceName("categories")).toBe("Category");
     expect(resourceName("addresses")).toBe("Address");
   });
+
+  it("type을 const로 적어도 리소스 type을 읽는다(Pydantic의 Literal 출력)", async () => {
+    const doc = validFixture();
+    at(doc, "components", "schemas", "WidgetResource", "properties").type = {
+      type: "string",
+      const: "gadgets",
+    };
+    // 컬렉션 문서도 WidgetResource를 참조하므로 collection-parameters도 fields[gadgets]를 요구한다.
+    expect(await ruleIds(doc)).toEqual([
+      "jsonapi/collection-parameters",
+      "jsonapi/schema-naming",
+      "jsonapi/type-matches-path",
+    ]);
+  });
+
+  it("생성 문서의 data가 $ref여도 type을 읽는다", async () => {
+    const doc = validFixture();
+    const schemas = at(doc, "components", "schemas");
+    const properties = at(doc, "components", "schemas", "WidgetCreateDocument", "properties");
+    schemas.WidgetCreateData = {
+      type: "object",
+      required: ["type", "attributes"],
+      properties: {
+        type: { type: "string", enum: ["gadgets"] },
+        attributes: { $ref: "#/components/schemas/WidgetAttributes" },
+      },
+    };
+    properties.data = { $ref: "#/components/schemas/WidgetCreateData" };
+    expect(await ruleIds(doc)).toEqual(["jsonapi/schema-naming", "jsonapi/type-matches-path"]);
+  });
 });
 
 describe("jsonapi/camel-case-properties", () => {

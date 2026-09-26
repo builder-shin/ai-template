@@ -1,19 +1,21 @@
 // @ts-check
-import { constValue, defineRule, record, resourceName } from "./util.js";
+import { constValue, defineRule, deref, record, resourceName } from "./util.js";
 
 /** @typedef {import("./util.js").Json} Json */
 /** @typedef {import("./util.js").Problem} Problem */
 
 /**
  * 스키마가 선언한 JSON:API 리소스 type. 리소스 객체는 type을, 요청 문서는 data.type을 본다.
+ * data가 $ref면 따라간다(백엔드 생성기는 data를 별도 스키마로 내보내기도 한다).
+ * @param {Json} doc
  * @param {string} name
  * @param {Json} schema
  * @returns {string | undefined}
  */
-function declaredType(name, schema) {
+function declaredType(doc, name, schema) {
   if (name.endsWith("Resource")) return constValue(schema, "type");
   if (name.endsWith("CreateDocument") || name.endsWith("UpdateDocument")) {
-    return constValue(record(record(schema.properties).data), "type");
+    return constValue(deref(doc, record(record(schema.properties).data)), "type");
   }
   return undefined;
 }
@@ -32,7 +34,7 @@ export function check(doc, options) {
   const problems = [];
   const prefixes = new Set();
   for (const [name, schema] of schemas) {
-    const type = declaredType(name, record(schema));
+    const type = declaredType(doc, name, record(schema));
     if (type === undefined) continue;
     const prefix = resourceName(type);
     prefixes.add(prefix);
