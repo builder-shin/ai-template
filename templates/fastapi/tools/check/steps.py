@@ -32,5 +32,7 @@ STEPS = (
         hint="자동으로 고칠 수 있는 것은 uv run poe fix가 고친다.",
     ),
     Step("type", (PYTHON, "-m", "basedpyright"), CODE, fast=True),
+    Step("architecture", (PYTHON, "-m", "tools.checks", "architecture"), CODE, fast=True),
+    Step("harness", (PYTHON, "-m", "tools.checks", "harness"), ("**/*",), fast=True),
     Step("test", (PYTHON, "-m", "pytest"), TEST_INPUTS, narrow=select_tests),
 )

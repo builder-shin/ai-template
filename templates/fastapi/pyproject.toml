@@ -106,3 +106,24 @@ strictGenericNarrowing = true
 # 켜지 않는다: reportAny, reportExplicitAny(FastAPI의 Depends/Query, Pydantic JsonSchemaValue·model_dump,
 # httpx response.json()이 Any다), reportUnusedCallResult(부수효과 호출),
 # reportUnannotatedClassAttribute(model_config, __tablename__마다 ClassVar 주석이 필요하다)
+
+# 아키텍처 규칙(스펙 §4.3). 모듈 사이에 공개 인터페이스만 쓰는 규칙은 tools/checks/boundaries.py가 본다.
+[tool.importlinter]
+root_packages = ["app"]
+
+[[tool.importlinter.contracts]]
+id = "core-knows-no-modules"
+name = "app.core는 app.modules를 import하지 않는다"
+type = "forbidden"
+source_modules = ["app.core"]
+forbidden_modules = ["app.modules"]
+broken_contract_guidance = "core는 도메인을 모른다. 모듈이 core를 import하게 하고, core가 모듈의 기능을 불러야 하면 core에 등록 지점(콜백, 레지스트리)을 두고 모듈이 등록한다."
+
+[[tool.importlinter.contracts]]
+id = "module-layers"
+name = "모듈 안의 계층은 router → service → repository → models 한 방향이다"
+type = "layers"
+# 모든 모듈에 같은 계층을 건다. 괄호로 감싼 계층은 없어도 되므로, 파일이 없는 모듈에서도 실패하지 않는다.
+containers = ["app.modules.*"]
+layers = ["(router)", "(service)", "(policies) | (events)", "(repository)", "(models)"]
+broken_contract_guidance = "아래 계층은 위 계층을 import하지 않는다. schemas는 router와 service가, policies와 events는 service가 쓴다. 필요한 값은 위 계층이 인자로 넘긴다."
