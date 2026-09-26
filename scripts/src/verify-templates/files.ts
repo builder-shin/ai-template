@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const IGNORED = new Set(["node_modules", ".cache"]);
@@ -17,6 +17,12 @@ export function listFiles(dir: string): string[] {
   };
   visit(dir);
   return files.sort();
+}
+
+/** 사본이 원본 파일과 바이트까지 같은 파일인지 본다. 사본이 없거나 폴더면 다르다. */
+export function sameFile(source: string, copy: string): boolean {
+  if (!existsSync(copy) || !statSync(copy).isFile()) return false;
+  return readFileSync(source).equals(readFileSync(copy));
 }
 
 /** 두 폴더의 파일 목록과 내용이 같은지 비교해 다른 파일을 돌려준다. */

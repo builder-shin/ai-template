@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -17,6 +17,13 @@ const shellForm = (where: string) =>
 
 const shared: SharedAssetsManifest = {
   assets: [{ source: "contract", targets: [{ template: "web", path: "contract" }] }],
+};
+
+/** 파일 하나짜리 공유 자산(§3.2의 프론트엔드 계약 사본). */
+const fileAsset: SharedAssetsManifest = {
+  assets: [
+    { source: "contract/openapi.yaml", targets: [{ template: "web", path: "openapi.yaml" }] },
+  ],
 };
 
 function write(root: string, path: string, content: string): void {
@@ -161,5 +168,31 @@ describe("verifyTemplate", () => {
     ]);
     syncSharedAssets(repo, shared);
     expect(verify(repo)).toEqual([]);
+  });
+
+  it("파일 하나짜리 공유 자산은 사본의 바이트가 같으면 통과한다", () => {
+    const repo = makeRepo();
+    write(repo, `${WEB}/openapi.yaml`, "openapi: 3.1.0\n");
+    expect(verifyTemplate(repo, "web", fileAsset)).toEqual([]);
+  });
+
+  it("파일 하나짜리 공유 자산의 사본이 없거나, 폴더이거나, 바이트가 다르면 잡는다", () => {
+    const drift = ["openapi.yaml가 원본 contract/openapi.yaml와 다르다. pnpm sync를 돌린다."];
+    const missing = makeRepo();
+    expect(verifyTemplate(missing, "web", fileAsset)).toEqual(drift);
+    const folder = makeRepo();
+    write(folder, `${WEB}/openapi.yaml/openapi.yaml`, "openapi: 3.1.0\n");
+    expect(verifyTemplate(folder, "web", fileAsset)).toEqual(drift);
+    const changed = makeRepo();
+    write(changed, `${WEB}/openapi.yaml`, "openapi: 3.1.0\r\n");
+    expect(verifyTemplate(changed, "web", fileAsset)).toEqual(drift);
+  });
+
+  it("파일 하나짜리 공유 자산은 sync하면 복구된다", () => {
+    const repo = makeRepo();
+    write(repo, `${WEB}/openapi.yaml/stale.yaml`, "openapi: 3.0.0\n");
+    syncSharedAssets(repo, fileAsset);
+    expect(readFileSync(join(repo, WEB, "openapi.yaml"), "utf8")).toBe("openapi: 3.1.0\n");
+    expect(verifyTemplate(repo, "web", fileAsset)).toEqual([]);
   });
 });

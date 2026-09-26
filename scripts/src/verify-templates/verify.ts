@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { checkAgentsMd } from "../agents-md/check.ts";
-import { diffDirs, listFiles } from "./files.ts";
+import { diffDirs, listFiles, sameFile } from "./files.ts";
 import {
   isRecord,
   readTemplateManifest,
@@ -90,6 +90,7 @@ function requiredFileProblems(dir: string, manifest: TemplateManifest): string[]
   return problems;
 }
 
+/** 원본이 폴더면 파일마다, 파일 하나면 바이트 단위로 사본과 비교한다. */
 function sharedAssetProblems(
   repoRoot: string,
   templateName: string,
@@ -99,13 +100,14 @@ function sharedAssetProblems(
     asset.targets
       .filter((target) => target.template === templateName)
       .flatMap((target) => {
+        const source = join(repoRoot, asset.source);
         const copy = join(repoRoot, "templates", templateName, target.path);
-        const changed = diffDirs(join(repoRoot, asset.source), copy);
-        return changed.length === 0
-          ? []
-          : [
-              `${target.path}가 원본 ${asset.source}와 다르다(${changed.join(", ")}). pnpm sync를 돌린다.`,
-            ];
+        const drift = `${target.path}가 원본 ${asset.source}와 다르다`;
+        if (existsSync(source) && statSync(source).isFile()) {
+          return sameFile(source, copy) ? [] : [`${drift}. pnpm sync를 돌린다.`];
+        }
+        const changed = diffDirs(source, copy);
+        return changed.length === 0 ? [] : [`${drift}(${changed.join(", ")}). pnpm sync를 돌린다.`];
       }),
   );
 }
