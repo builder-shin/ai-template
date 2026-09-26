@@ -9,6 +9,9 @@ union SessionRevokedReason {
   "password_reset",
   "account_deactivated",
   "revoked",
+  "password_changed",
+  "refresh_token_reused",
+  "account_deleted",
 }
 
 model SessionRevokedEventDocument {

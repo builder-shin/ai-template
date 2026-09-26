@@ -78,13 +78,13 @@ paths:
           in: query
           required: false
           schema:
-            type: string
+            $ref: '#/components/schemas/AuditLogAction'
           explode: false
         - name: filter[targetType]
           in: query
           required: false
           schema:
-            type: string
+            $ref: '#/components/schemas/AuditLogTargetType'
           explode: false
         - name: filter[createdFrom]
           in: query
@@ -964,7 +964,7 @@ paths:
   /api/v1/oauth/{provider}/authorize:
     get:
       operationId: OAuth_authorize
-      description: 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다.
+      description: 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state를 붙이고, PKCE를 지원하는 제공자(google)에는 PKCE도 붙인다.
       parameters:
         - name: provider
           in: path
@@ -1022,7 +1022,7 @@ paths:
   /api/v1/oauth/{provider}/callback:
     get:
       operationId: OAuth_callback
-      description: 제공자가 돌아오는 곳. 1회용 코드(60초)를 붙여 프론트 콜백으로 보낸다.
+      description: 제공자가 돌아오는 곳. 성공하면 1회용 코드(60초)를 code로 붙여 프론트 콜백으로 보낸다. 실패하면 code 대신 error(auth.oauth_denied, auth.oauth_failed, auth.account_deactivated)를 붙여 보낸다. state가 없거나 만료됐으면 돌려보낼 곳을 모르므로 400이다.
       parameters:
         - name: provider
           in: path
@@ -3264,6 +3264,23 @@ paths:
         - health
 components:
   schemas:
+    AuditLogAction:
+      type: string
+      enum:
+        - session.login_succeeded
+        - session.login_failed
+        - session.all_revoked
+        - user.password_changed
+        - user.password_reset
+        - user.roles_changed
+        - user.deactivated
+        - user.reactivated
+        - user.deleted
+        - role.created
+        - role.updated
+        - role.deleted
+        - post.deleted_by_admin
+      description: 감사 로그에 남기는 행위. 두 백엔드는 이 목록 밖의 값을 쓰지 않는다.
     AuditLogAttributes:
       type: object
       required:
@@ -3275,12 +3292,12 @@ components:
         - createdAt
       properties:
         action:
-          type: string
-          description: '예: user.deactivated, role.updated, session.login_failed'
+          $ref: '#/components/schemas/AuditLogAction'
         targetType:
           anyOf:
-            - type: string
+            - $ref: '#/components/schemas/AuditLogTargetType'
             - type: 'null'
+          description: '대상이 없는 행위(예: 없는 계정으로 로그인 실패)면 null이다.'
         targetId:
           anyOf:
             - type: string
@@ -3373,6 +3390,13 @@ components:
         relationships:
           $ref: '#/components/schemas/AuditLogRelationships'
       description: 관계가 있는 리소스 객체.
+    AuditLogTargetType:
+      type: string
+      enum:
+        - users
+        - roles
+        - posts
+      description: 감사 로그 대상의 리소스 타입.
     CollectionMeta:
       type: object
       required:
@@ -3486,11 +3510,14 @@ components:
         - auth.token_invalid
         - auth.refresh_token_reused
         - auth.oauth_code_invalid
+        - auth.oauth_denied
+        - auth.oauth_failed
         - auth.email_not_verified
         - auth.account_deactivated
         - auth.verification_token_invalid
         - permission.denied
         - role.system_role_protected
+        - role.last_admin_protected
         - resource.not_found
         - resource.conflict
         - post.invalid_transition
@@ -3799,21 +3826,21 @@ components:
       properties:
         first:
           type: string
-          format: uri
+          format: uri-reference
         last:
           type: string
-          format: uri
+          format: uri-reference
         prev:
           anyOf:
             - type: string
-              format: uri
             - type: 'null'
+          format: uri-reference
         next:
           anyOf:
             - type: string
-              format: uri
             - type: 'null'
-      description: 컬렉션의 페이지 링크. 앞뒤 페이지가 없으면 null이다.
+          format: uri-reference
+      description: 컬렉션의 페이지 링크. 요청 경로 기준의 상대 경로이고 대괄호는 퍼센트 인코딩한다. 앞뒤 페이지가 없으면 null이다.
     PasswordChangeAttributes:
       type: object
       required:
@@ -4839,6 +4866,9 @@ components:
         - password_reset
         - account_deactivated
         - revoked
+        - password_changed
+        - refresh_token_reused
+        - account_deleted
     SessionTokens:
       type: object
       required:
@@ -4932,9 +4962,15 @@ components:
         - updatedAt
       properties:
         email:
-          type: string
+          anyOf:
+            - type: string
+            - type: 'null'
+          description: 탈퇴했거나, 검증된 이메일 없이 소셜 로그인으로 만든 계정이면 null이다.
         name:
-          type: string
+          anyOf:
+            - type: string
+            - type: 'null'
+          description: 탈퇴했거나 이름을 모르면 null이다. 프론트는 번역한 대체 문구를 보여 준다.
         locale:
           $ref: '#/components/schemas/Locale'
         status:
@@ -5091,7 +5127,10 @@ components:
         - name
       properties:
         name:
-          type: string
+          anyOf:
+            - type: string
+            - type: 'null'
+          description: 탈퇴했거나 이름을 모르면 null이다.
       description: 다른 사람과 비로그인 사용자에게 보이는 공개 속성. 이메일을 절대 담지 않는다.
     UserPublicRelationships:
       type: object
@@ -5210,6 +5249,8 @@ components:
       enum:
         - active
         - deactivated
+        - deleted
+      description: deleted는 탈퇴해 개인정보를 지운 계정이다.
     UserUpdateAttributes:
       type: object
       properties:

@@ -5,6 +5,7 @@ import { parse } from "yaml";
 /** 테스트가 쓰는 만큼만 좁힌 OpenAPI 3.1 타입. */
 export interface Schema {
   type?: string;
+  format?: string;
   enum?: unknown[];
   properties?: Record<string, Schema>;
   required?: string[];

@@ -129,7 +129,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. */
+        /** @description 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state를 붙이고, PKCE를 지원하는 제공자(google)에는 PKCE도 붙인다. */
         get: operations["OAuth_authorize"];
         put?: never;
         post?: never;
@@ -146,7 +146,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description 제공자가 돌아오는 곳. 1회용 코드(60초)를 붙여 프론트 콜백으로 보낸다. */
+        /** @description 제공자가 돌아오는 곳. 성공하면 1회용 코드(60초)를 code로 붙여 프론트 콜백으로 보낸다. 실패하면 code 대신 error(auth.oauth_denied, auth.oauth_failed, auth.account_deactivated)를 붙여 보낸다. state가 없거나 만료됐으면 돌려보낼 곳을 모르므로 400이다. */
         get: operations["OAuth_callback"];
         put?: never;
         post?: never;
@@ -465,11 +465,16 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description 감사 로그에 남기는 행위. 두 백엔드는 이 목록 밖의 값을 쓰지 않는다.
+         * @enum {string}
+         */
+        AuditLogAction: "session.login_succeeded" | "session.login_failed" | "session.all_revoked" | "user.password_changed" | "user.password_reset" | "user.roles_changed" | "user.deactivated" | "user.reactivated" | "user.deleted" | "role.created" | "role.updated" | "role.deleted" | "post.deleted_by_admin";
         /** @description 보안·관리 행위 기록. 백엔드만 쓰고 API로는 읽기만 한다. */
         AuditLogAttributes: {
-            /** @description 예: user.deactivated, role.updated, session.login_failed */
-            action: string;
-            targetType: string | null;
+            action: components["schemas"]["AuditLogAction"];
+            /** @description 대상이 없는 행위(예: 없는 계정으로 로그인 실패)면 null이다. */
+            targetType: components["schemas"]["AuditLogTargetType"] | null;
             targetId: string | null;
             metadata: Record<string, never>;
             ipAddress: string | null;
@@ -506,6 +511,11 @@ export interface components {
             attributes: components["schemas"]["AuditLogAttributes"];
             relationships: components["schemas"]["AuditLogRelationships"];
         };
+        /**
+         * @description 감사 로그 대상의 리소스 타입.
+         * @enum {string}
+         */
+        AuditLogTargetType: "users" | "roles" | "posts";
         CollectionMeta: {
             page: components["schemas"]["PageMeta"];
         };
@@ -552,7 +562,7 @@ export interface components {
          * @description 기계가 읽는 에러 코드. 형식은 `<영역>.<snake_case 사유>`. 새 코드는 docs/conventions/error-codes.md에도 추가한다.
          * @enum {string}
          */
-        ErrorCode: "jsonapi.unsupported_media_type" | "jsonapi.not_acceptable" | "jsonapi.invalid_document" | "jsonapi.invalid_query" | "jsonapi.unsupported_include" | "jsonapi.unsupported_sort" | "validation.required" | "validation.too_short" | "validation.too_long" | "validation.invalid_format" | "validation.out_of_range" | "validation.invalid_choice" | "validation.already_taken" | "auth.unauthenticated" | "auth.invalid_credentials" | "auth.token_expired" | "auth.token_invalid" | "auth.refresh_token_reused" | "auth.oauth_code_invalid" | "auth.email_not_verified" | "auth.account_deactivated" | "auth.verification_token_invalid" | "permission.denied" | "role.system_role_protected" | "resource.not_found" | "resource.conflict" | "post.invalid_transition" | "file.too_large" | "file.type_not_allowed" | "file.upload_incomplete" | "rate_limit.exceeded" | "internal.unexpected" | "service.unavailable";
+        ErrorCode: "jsonapi.unsupported_media_type" | "jsonapi.not_acceptable" | "jsonapi.invalid_document" | "jsonapi.invalid_query" | "jsonapi.unsupported_include" | "jsonapi.unsupported_sort" | "validation.required" | "validation.too_short" | "validation.too_long" | "validation.invalid_format" | "validation.out_of_range" | "validation.invalid_choice" | "validation.already_taken" | "auth.unauthenticated" | "auth.invalid_credentials" | "auth.token_expired" | "auth.token_invalid" | "auth.refresh_token_reused" | "auth.oauth_code_invalid" | "auth.oauth_denied" | "auth.oauth_failed" | "auth.email_not_verified" | "auth.account_deactivated" | "auth.verification_token_invalid" | "permission.denied" | "role.system_role_protected" | "role.last_admin_protected" | "resource.not_found" | "resource.conflict" | "post.invalid_transition" | "file.too_large" | "file.type_not_allowed" | "file.upload_incomplete" | "rate_limit.exceeded" | "internal.unexpected" | "service.unavailable";
         ErrorDocument: {
             errors: components["schemas"]["ErrorObject"][];
             meta: {
@@ -691,13 +701,15 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
-        /** @description 컬렉션의 페이지 링크. 앞뒤 페이지가 없으면 null이다. */
+        /** @description 컬렉션의 페이지 링크. 요청 경로 기준의 상대 경로이고 대괄호는 퍼센트 인코딩한다. 앞뒤 페이지가 없으면 null이다. */
         PaginationLinks: {
-            /** Format: uri */
+            /** Format: uri-reference */
             first: string;
-            /** Format: uri */
+            /** Format: uri-reference */
             last: string;
+            /** Format: uri-reference */
             prev: string | null;
+            /** Format: uri-reference */
             next: string | null;
         };
         PasswordChangeAttributes: {
@@ -1138,7 +1150,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        SessionRevokedReason: "logout" | "password_reset" | "account_deactivated" | "revoked";
+        SessionRevokedReason: "logout" | "password_reset" | "account_deactivated" | "revoked" | "password_changed" | "refresh_token_reused" | "account_deleted";
         /** @description POST /sessions의 201 응답에만 담기는 토큰. */
         SessionTokens: {
             accessToken: string;
@@ -1177,8 +1189,10 @@ export interface components {
         };
         /** @description 본인과 users:read 권한자에게 보이는 전체 속성. */
         UserAttributes: {
-            email: string;
-            name: string;
+            /** @description 탈퇴했거나, 검증된 이메일 없이 소셜 로그인으로 만든 계정이면 null이다. */
+            email: string | null;
+            /** @description 탈퇴했거나 이름을 모르면 null이다. 프론트는 번역한 대체 문구를 보여 준다. */
+            name: string | null;
             locale: components["schemas"]["Locale"];
             status: components["schemas"]["UserStatus"];
             emailVerifiedAt: string | null;
@@ -1239,7 +1253,8 @@ export interface components {
         };
         /** @description 다른 사람과 비로그인 사용자에게 보이는 공개 속성. 이메일을 절대 담지 않는다. */
         UserPublicAttributes: {
-            name: string;
+            /** @description 탈퇴했거나 이름을 모르면 null이다. */
+            name: string | null;
         };
         UserPublicRelationships: {
             /** @description 단수 관계. 대상이 없으면 data가 null이다. */
@@ -1285,8 +1300,11 @@ export interface components {
             attributes: components["schemas"]["UserAttributes"];
             relationships: components["schemas"]["UserRelationships"];
         };
-        /** @enum {string} */
-        UserStatus: "active" | "deactivated";
+        /**
+         * @description deleted는 탈퇴해 개인정보를 지운 계정이다.
+         * @enum {string}
+         */
+        UserStatus: "active" | "deactivated" | "deleted";
         UserUpdateAttributes: {
             status?: components["schemas"]["UserStatus"];
         };
@@ -1331,8 +1349,8 @@ export interface operations {
                 "fields[audit-logs]"?: string;
                 "fields[users]"?: string;
                 "filter[actor]"?: string;
-                "filter[action]"?: string;
-                "filter[targetType]"?: string;
+                "filter[action]"?: components["schemas"]["AuditLogAction"];
+                "filter[targetType]"?: components["schemas"]["AuditLogTargetType"];
                 "filter[createdFrom]"?: string;
                 "filter[createdTo]"?: string;
             };

@@ -97,13 +97,13 @@ model UpdateDocumentWithRelationships<
   };
 }
 
-/** 컬렉션의 페이지 링크. 앞뒤 페이지가 없으면 null이다. */
+/** 컬렉션의 페이지 링크. 요청 경로 기준의 상대 경로이고 대괄호는 퍼센트 인코딩한다. 앞뒤 페이지가 없으면 null이다. */
 @friendlyName("PaginationLinks")
 model PaginationLinks {
-  first: url;
-  last: url;
-  prev: url | null;
-  next: url | null;
+  @format("uri-reference") first: string;
+  @format("uri-reference") last: string;
+  @format("uri-reference") prev: string | null;
+  @format("uri-reference") next: string | null;
 }
 
 /** 페이지 정보. totalPages는 ceil(total / size)이다. */

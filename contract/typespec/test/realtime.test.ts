@@ -72,4 +72,16 @@ describe("실시간 (§4.7)", () => {
       expect.objectContaining({ name: "posts:all", permission: "posts:manage" }),
     ]);
   });
+
+  it("세션 폐기 사유는 FastAPI 설계 §6.1의 일곱 가지다", () => {
+    expect(schema("SessionRevokedReason").enum).toEqual([
+      "logout",
+      "password_reset",
+      "account_deactivated",
+      "revoked",
+      "password_changed",
+      "refresh_token_reused",
+      "account_deleted",
+    ]);
+  });
 });

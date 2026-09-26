@@ -9,12 +9,37 @@ using OpenAPI;
 
 namespace Platform;
 
+/** 감사 로그에 남기는 행위. 두 백엔드는 이 목록 밖의 값을 쓰지 않는다. */
+union AuditLogAction {
+  "session.login_succeeded",
+  "session.login_failed",
+  "session.all_revoked",
+  "user.password_changed",
+  "user.password_reset",
+  "user.roles_changed",
+  "user.deactivated",
+  "user.reactivated",
+  "user.deleted",
+  "role.created",
+  "role.updated",
+  "role.deleted",
+  "post.deleted_by_admin",
+}
+
+/** 감사 로그 대상의 리소스 타입. */
+union AuditLogTargetType {
+  "users",
+  "roles",
+  "posts",
+}
+
 /** 보안·관리 행위 기록. 백엔드만 쓰고 API로는 읽기만 한다. */
 model AuditLogAttributes {
-  /** 예: user.deactivated, role.updated, session.login_failed */
-  action: string;
+  action: AuditLogAction;
 
-  targetType: string | null;
+  /** 대상이 없는 행위(예: 없는 계정으로 로그인 실패)면 null이다. */
+  targetType: AuditLogTargetType | null;
+
   targetId: string | null;
   metadata: Record<unknown>;
   ipAddress: string | null;
@@ -59,8 +84,8 @@ interface AuditLogs {
     @query sort?: string,
     ...AuditLogQuery,
     @query("filter[actor]") filterActor?: string,
-    @query("filter[action]") filterAction?: string,
-    @query("filter[targetType]") filterTargetType?: string,
+    @query("filter[action]") filterAction?: AuditLogAction,
+    @query("filter[targetType]") filterTargetType?: AuditLogTargetType,
     @query("filter[createdFrom]") filterCreatedFrom?: utcDateTime,
     @query("filter[createdTo]") filterCreatedTo?: utcDateTime,
   ): JsonApi.Ok<AuditLogCollectionDocument> | AuthErrors | CommonErrors;

@@ -8,6 +8,7 @@ import {
   resourceType,
   responseRef,
   schema,
+  type Schema,
   spec,
   statuses,
 } from "./spec.ts";
@@ -30,6 +31,16 @@ describe("사용자 (§4.10, §5.6)", () => {
 
   it("공개 사용자의 관계는 아바타 하나뿐이다", () => {
     expect(Object.keys(schema("UserPublicRelationships").properties ?? {})).toEqual(["avatar"]);
+  });
+
+  it("탈퇴한 계정과 이메일 없는 소셜 계정을 위해 email과 name은 null일 수 있다", () => {
+    const allowsNull = (target: Schema | undefined) =>
+      target?.anyOf?.some((variant) => variant.type === "null") ?? false;
+    const full = schema("UserAttributes").properties;
+    expect(allowsNull(full?.email)).toBe(true);
+    expect(allowsNull(full?.name)).toBe(true);
+    expect(allowsNull(schema("UserPublicAttributes").properties?.name)).toBe(true);
+    expect(schema("UserStatus").enum).toEqual(["active", "deactivated", "deleted"]);
   });
 
   it("GET /me는 로그인이 필요하고 meta.permissions를 담는다", () => {

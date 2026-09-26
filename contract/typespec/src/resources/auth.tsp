@@ -189,7 +189,7 @@ interface PasswordChanges {
 @route("/api/v1/oauth/{provider}")
 @tag("oauth")
 interface OAuth {
-  /** 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. */
+  /** 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state를 붙이고, PKCE를 지원하는 제공자(google)에는 PKCE도 붙인다. */
   @get
   @route("authorize")
   authorize(@path provider: OAuthProvider, @query redirectUri: url):
@@ -202,7 +202,7 @@ interface OAuth {
     | TooManyRequests
     | InternalServerError;
 
-  /** 제공자가 돌아오는 곳. 1회용 코드(60초)를 붙여 프론트 콜백으로 보낸다. */
+  /** 제공자가 돌아오는 곳. 성공하면 1회용 코드(60초)를 code로 붙여 프론트 콜백으로 보낸다. 실패하면 code 대신 error(auth.oauth_denied, auth.oauth_failed, auth.account_deactivated)를 붙여 보낸다. state가 없거나 만료됐으면 돌려보낼 곳을 모르므로 400이다. */
   @get
   @route("callback")
   callback(

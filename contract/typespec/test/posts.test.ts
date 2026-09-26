@@ -4,6 +4,7 @@ import {
   includedRefs,
   operation,
   parameterNames,
+  refName,
   requestRef,
   resourceType,
   responseRef,
@@ -114,5 +115,33 @@ describe("감사 로그 (§4.6)", () => {
   it("포함 리소스는 공개 사용자다(users:read가 없어도 이메일이 새지 않는다)", () => {
     expect(includedRefs(schema("AuditLogDocument"))).toEqual(["UserPublicResource"]);
     expect(includedRefs(schema("AuditLogCollectionDocument"))).toEqual(["UserPublicResource"]);
+  });
+
+  it("행위와 대상 종류는 계약의 enum이다(FastAPI 설계 F21)", () => {
+    expect(schema("AuditLogAction").enum).toEqual([
+      "session.login_succeeded",
+      "session.login_failed",
+      "session.all_revoked",
+      "user.password_changed",
+      "user.password_reset",
+      "user.roles_changed",
+      "user.deactivated",
+      "user.reactivated",
+      "user.deleted",
+      "role.created",
+      "role.updated",
+      "role.deleted",
+      "post.deleted_by_admin",
+    ]);
+    expect(schema("AuditLogTargetType").enum).toEqual(["users", "roles", "posts"]);
+    const attributes = schema("AuditLogAttributes").properties;
+    expect(refName(attributes?.action)).toBe("AuditLogAction");
+    expect(
+      attributes?.targetType?.anyOf?.map((variant) => refName(variant) ?? variant.type),
+    ).toEqual(["AuditLogTargetType", "null"]);
+    const list = operation("get", "/api/v1/audit-logs");
+    const parameter = (name: string) => list.parameters?.find((item) => item.name === name);
+    expect(refName(parameter("filter[action]")?.schema)).toBe("AuditLogAction");
+    expect(refName(parameter("filter[targetType]")?.schema)).toBe("AuditLogTargetType");
   });
 });

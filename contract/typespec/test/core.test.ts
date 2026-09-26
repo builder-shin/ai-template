@@ -21,11 +21,14 @@ const ERROR_CODES = [
   "auth.token_invalid",
   "auth.refresh_token_reused",
   "auth.oauth_code_invalid",
+  "auth.oauth_denied",
+  "auth.oauth_failed",
   "auth.email_not_verified",
   "auth.account_deactivated",
   "auth.verification_token_invalid",
   "permission.denied",
   "role.system_role_protected",
+  "role.last_admin_protected",
   "resource.not_found",
   "resource.conflict",
   "post.invalid_transition",
@@ -72,5 +75,15 @@ describe("헬스체크 (JSON:API 예외)", () => {
     const ready = operation("get", "/health/ready");
     expect(statuses(ready)).toEqual(["200", "503"]);
     expect(responseRef(ready, "503", "application/json")).toBe("HealthReport");
+  });
+});
+
+describe("페이지 링크 (FastAPI 설계 F20)", () => {
+  it("네 링크 모두 상대 경로를 허용하는 URI-reference다", () => {
+    const links = schema("PaginationLinks").properties ?? {};
+    expect(Object.keys(links)).toEqual(["first", "last", "prev", "next"]);
+    for (const link of Object.values(links)) {
+      expect(link.format).toBe("uri-reference");
+    }
   });
 });

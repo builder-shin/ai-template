@@ -38,13 +38,13 @@
 
 ## 쿼리 파라미터
 
-| 파라미터                     | 규칙                                                                                                       |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `include`                    | 허용 경로를 operation의 `x-jsonapi-include`에 적는다. 그 밖의 경로는 400 `jsonapi.unsupported_include`     |
-| `fields[type]`               | 모든 리소스에서 지원한다. 요청하면 그 밖의 필드를 넣지 않는다                                              |
-| `sort`                       | 허용 필드를 `x-jsonapi-sort`에 적는다. `-` 접두사는 내림차순. 그 밖은 400 `jsonapi.unsupported_sort`       |
-| `page[number]`, `page[size]` | 기본 1과 20, 최대 100. `meta.page{number,size,total,totalPages}`와 `links.first/prev/next/last`를 돌려준다 |
-| `filter[...]`                | 리소스마다 명시한 필터만 받는다. 검색은 `filter[q]`. 모르는 필터는 400 `jsonapi.invalid_query`             |
+| 파라미터                     | 규칙                                                                                                                                                                         |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `include`                    | 허용 경로를 operation의 `x-jsonapi-include`에 적는다. 그 밖의 경로는 400 `jsonapi.unsupported_include`                                                                       |
+| `fields[type]`               | 모든 리소스에서 지원한다. 요청하면 그 밖의 필드를 넣지 않는다                                                                                                                |
+| `sort`                       | 허용 필드를 `x-jsonapi-sort`에 적는다. `-` 접두사는 내림차순. 그 밖은 400 `jsonapi.unsupported_sort`                                                                         |
+| `page[number]`, `page[size]` | 기본 1과 20, 최대 100. `meta.page{number,size,total,totalPages}`와 `links.first/prev/next/last`를 돌려준다. 링크는 요청 경로 기준의 상대 경로이고 대괄호는 퍼센트 인코딩한다 |
+| `filter[...]`                | 리소스마다 명시한 필터만 받는다. 검색은 `filter[q]`. 모르는 필터는 400 `jsonapi.invalid_query`                                                                               |
 
 - `totalPages`는 `ceil(total / size)`다. 결과가 없으면 0이다.
 - 계약의 스키마는 필드를 모두 담은 기본 표현이다. `fields[type]`을 요청한 응답은 그 표현에서 요청한 필드만 남긴 투영이다. 적합성 테스트는 이 경우 `assertSparseFieldset`으로 검사한다.

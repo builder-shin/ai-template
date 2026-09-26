@@ -15,15 +15,21 @@ union Locale {
   "en",
 }
 
+/** deleted는 탈퇴해 개인정보를 지운 계정이다. */
 union UserStatus {
   "active",
   "deactivated",
+  "deleted",
 }
 
 /** 본인과 users:read 권한자에게 보이는 전체 속성. */
 model UserAttributes {
-  email: string;
-  name: string;
+  /** 탈퇴했거나, 검증된 이메일 없이 소셜 로그인으로 만든 계정이면 null이다. */
+  email: string | null;
+
+  /** 탈퇴했거나 이름을 모르면 null이다. 프론트는 번역한 대체 문구를 보여 준다. */
+  name: string | null;
+
   locale: Locale;
   status: UserStatus;
   emailVerifiedAt: utcDateTime | null;
@@ -38,7 +44,8 @@ model UserRelationships {
 
 /** 다른 사람과 비로그인 사용자에게 보이는 공개 속성. 이메일을 절대 담지 않는다. */
 model UserPublicAttributes {
-  name: string;
+  /** 탈퇴했거나 이름을 모르면 null이다. */
+  name: string | null;
 }
 
 model UserPublicRelationships {
