@@ -1,0 +1,159 @@
+openapi: 3.1.0
+info:
+  title: AI Template Platform API
+  version: 1.0.0
+  description: AI 템플릿 플랫폼 API 계약. FastAPI와 NestJS 템플릿이 똑같이 구현한다.
+tags:
+  - name: health
+paths:
+  /health/live:
+    get:
+      operationId: Health_live
+      description: 프로세스가 살아 있는지 확인한다.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'
+      tags:
+        - health
+  /health/ready:
+    get:
+      operationId: Health_ready
+      description: DB, Redis, 스토리지 연결까지 확인한다. 하나라도 실패하면 503이다.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'
+        '503':
+          description: Service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'
+      tags:
+        - health
+components:
+  schemas:
+    ErrorCode:
+      type: string
+      enum:
+        - jsonapi.unsupported_media_type
+        - jsonapi.not_acceptable
+        - jsonapi.invalid_document
+        - jsonapi.invalid_query
+        - jsonapi.unsupported_include
+        - jsonapi.unsupported_sort
+        - validation.required
+        - validation.too_short
+        - validation.too_long
+        - validation.invalid_format
+        - validation.out_of_range
+        - validation.invalid_choice
+        - validation.already_taken
+        - auth.unauthenticated
+        - auth.invalid_credentials
+        - auth.token_expired
+        - auth.token_invalid
+        - auth.refresh_token_reused
+        - auth.oauth_code_invalid
+        - auth.email_not_verified
+        - auth.account_deactivated
+        - auth.verification_token_invalid
+        - permission.denied
+        - role.system_role_protected
+        - resource.not_found
+        - resource.conflict
+        - post.invalid_transition
+        - file.too_large
+        - file.type_not_allowed
+        - file.upload_incomplete
+        - rate_limit.exceeded
+        - internal.unexpected
+        - service.unavailable
+      description: 기계가 읽는 에러 코드. 형식은 `<영역>.<snake_case 사유>`. 새 코드는 docs/conventions/error-codes.md에도 추가한다.
+    ErrorDocument:
+      type: object
+      required:
+        - errors
+        - meta
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorObject'
+        meta:
+          type: object
+          properties:
+            traceId:
+              type: string
+          required:
+            - traceId
+    ErrorObject:
+      type: object
+      required:
+        - status
+        - code
+        - title
+      properties:
+        status:
+          type: string
+          description: HTTP 상태 코드(문자열).
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        title:
+          type: string
+          description: 개발자용 영어 요약. 사용자에게 보여 주지 않는다.
+        detail:
+          type: string
+          description: 개발자용 영어 설명.
+        source:
+          $ref: '#/components/schemas/ErrorSource'
+        meta:
+          type: object
+          properties:
+            params:
+              type: object
+              unevaluatedProperties: {}
+              description: 번역 메시지에 끼워 넣을 변수.
+    ErrorSource:
+      type: object
+      properties:
+        pointer:
+          type: string
+          description: '요청 본문 안의 JSON Pointer. 예: /data/attributes/title'
+        parameter:
+          type: string
+          description: 문제가 된 쿼리 파라미터 이름.
+      description: 에러가 가리키는 위치.
+    HealthReport:
+      type: object
+      required:
+        - status
+        - checks
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - unavailable
+        checks:
+          type: object
+          unevaluatedProperties:
+            type: string
+            enum:
+              - ok
+              - unavailable
+          description: '의존 대상별 상태. 예: { "database": "ok", "redis": "ok" }'
+      description: 헬스체크 결과. JSON:API가 아닌 예외 엔드포인트라 application/json으로 응답한다.
+servers:
+  - url: http://localhost:8000
+    description: 로컬 개발 서버
+    variables: {}
