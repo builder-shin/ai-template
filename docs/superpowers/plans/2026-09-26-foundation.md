@@ -4199,7 +4199,7 @@ model SessionOAuthCodeGrant {
 /** 로그인, 토큰 갱신, 소셜 로그인 완료를 grantType으로 구분한다. */
 @discriminated(#{ envelope: "none", discriminatorPropertyName: "grantType" })
 union SessionGrant {
-  password: SessionPasswordGrant,
+  password: SessionPasswordGrant, // betterleaks:allow
   refreshToken: SessionRefreshTokenGrant,
   oauthCode: SessionOAuthCodeGrant,
 }
