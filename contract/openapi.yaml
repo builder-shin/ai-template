@@ -4323,6 +4323,30 @@ components:
                   description: 관계가 가리키는 리소스 식별자.
                 - type: 'null'
           description: 단수 관계. 대상이 없으면 data가 null이다.
+    RealtimeAck:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+        error:
+          $ref: '#/components/schemas/ErrorObject'
+      description: subscribe·unsubscribe에 대한 서버의 ack. ok가 false면 error가 있다(권한 없음 permission.denied, 모르는 채널 validation.invalid_choice).
+    RealtimeChannel:
+      type: string
+      enum:
+        - posts
+        - posts:all
+      description: 구독할 수 있는 채널. main.tsp의 x-realtime-channels와 같은 목록이다.
+    RealtimeSubscription:
+      type: object
+      required:
+        - channel
+      properties:
+        channel:
+          $ref: '#/components/schemas/RealtimeChannel'
+      description: 클라이언트가 subscribe·unsubscribe 메시지로 보내는 페이로드.
     RealtimeTicketAttributes:
       type: object
       required:
@@ -5310,6 +5334,13 @@ servers:
   - url: http://localhost:8000
     description: 로컬 개발 서버
     variables: {}
+x-realtime-messages:
+  - name: subscribe
+    payload: RealtimeSubscription
+    ack: RealtimeAck
+  - name: unsubscribe
+    payload: RealtimeSubscription
+    ack: RealtimeAck
 x-realtime-events:
   - name: session.revoked
     rooms:

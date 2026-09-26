@@ -31,4 +31,7 @@ rules:
       - Locale
       - OAuthProvider
       - HealthReport
+      - RealtimeChannel
+      - RealtimeSubscription
+      - RealtimeAck
   jsonapi/camel-case-properties: error

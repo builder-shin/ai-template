@@ -341,7 +341,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 | 실시간 이벤트 페이로드 | `<Resource><Event>EventDocument` (예: `PostPublishedEventDocument`, `UserMeUpdatedEventDocument`) |
 
 - 그 밖의 보조 스키마(`PostStatus`, `SessionGrant` 등)도 리소스 이름으로 시작한다.
-- 리소스에 속하지 않는 공용 스키마는 `ErrorCode`, `ErrorDocument`, `ErrorObject`, `ErrorSource`, `PageMeta`, `PaginationLinks`, `CollectionMeta`, `Locale`, `OAuthProvider`, `HealthReport`뿐이다.
+- 리소스에 속하지 않는 공용 스키마는 `ErrorCode`, `ErrorDocument`, `ErrorObject`, `ErrorSource`, `PageMeta`, `PaginationLinks`, `CollectionMeta`, `Locale`, `OAuthProvider`, `HealthReport`, 그리고 실시간 구독 메시지의 `RealtimeChannel`, `RealtimeSubscription`, `RealtimeAck`([FastAPI 설계](2026-09-26-fastapi-template-design.md) §7)뿐이다.
 - 실시간 이벤트의 페이로드 스키마도 OpenAPI components에 넣는다. 그래야 프론트엔드가 같은 생성 과정으로 이벤트 타입을 얻는다. 이벤트 목록(이름, 받는 곳, 페이로드)은 OpenAPI 루트의 확장 필드 `x-realtime-events`에 기록한다.
 
 ### 5.8 스타일 룰셋 (Redocly)

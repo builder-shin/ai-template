@@ -33,7 +33,7 @@
 | 실시간 이벤트 페이로드 | `<Resource><Event>EventDocument` (예: `PostPublishedEventDocument`) |
 
 - 그 밖의 보조 스키마(`PostStatus`, `SessionGrant` 등)도 리소스 이름으로 시작한다.
-- 리소스에 속하지 않는 공용 스키마는 다음뿐이다: `ErrorCode`, `ErrorDocument`, `ErrorObject`, `ErrorSource`, `PageMeta`, `PaginationLinks`, `CollectionMeta`, `Locale`, `OAuthProvider`, `HealthReport`. 늘리려면 룰셋(`redocly.yaml`의 `shared`)과 이 목록을 함께 고친다.
+- 리소스에 속하지 않는 공용 스키마는 다음뿐이다: `ErrorCode`, `ErrorDocument`, `ErrorObject`, `ErrorSource`, `PageMeta`, `PaginationLinks`, `CollectionMeta`, `Locale`, `OAuthProvider`, `HealthReport`, 그리고 실시간 구독 메시지의 `RealtimeChannel`, `RealtimeSubscription`, `RealtimeAck`. 늘리려면 룰셋(`redocly.yaml`의 `shared`)과 이 목록을 함께 고친다.
 - 백엔드 스펙에는 계약의 스키마 이름이 모두 있어야 한다. 백엔드 생성기가 중첩 모델에 붙이는 보조 이름(예: `PostCreateData`)은 더 있어도 된다. 프론트 코드는 계약에 있는 이름만 참조한다.
 
 ## 쿼리 파라미터
@@ -68,6 +68,7 @@
 - OpenAPI 루트의 `x-realtime-channels`가 구독 가능한 채널과 필요한 권한을, `x-realtime-events`가 이벤트 이름·받는 곳·페이로드 스키마를 적는다.
 - `x-realtime-events`의 `rooms`는 그 이벤트를 늘 받는 룸이다. `user:{userId}`와 `user:{authorId}`는 해당 사용자(글 이벤트는 작성자)의 `user:{id}` 룸이다. `conditionalRooms`는 조건이 맞을 때만 받는 룸이고 `{ room, when }` 꼴이다. `when`은 `published`(바뀐 뒤 글이 발행 상태)와 `wasPublished`(지우기 전 글이 발행 상태였음) 둘 중 하나다.
 - 페이로드도 JSON:API 문서이고 `components.schemas`에 있다. 그래서 프론트엔드는 같은 생성 과정으로 이벤트 타입을 얻는다.
+- 클라이언트가 보내는 메시지는 `x-realtime-messages`에 적는다. `subscribe`와 `unsubscribe`는 페이로드 `RealtimeSubscription`(`{ channel }`)을 보내고, 서버는 ack `RealtimeAck`로 답한다. 성공이면 `{ ok: true }`, 실패면 `{ ok: false, error }`이고 `error`는 에러 객체다(권한 없음 `permission.denied`, 모르는 채널 `validation.invalid_choice`).
 
 ## 계약을 바꾸는 방법
 

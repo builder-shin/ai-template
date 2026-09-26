@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resourceType, schema, spec } from "./spec.ts";
+import { refName, resourceType, schema, spec } from "./spec.ts";
 
 interface RealtimeEvent {
   name: string;
@@ -83,5 +83,17 @@ describe("실시간 (§4.7)", () => {
       "refresh_token_reused",
       "account_deleted",
     ]);
+  });
+
+  it("클라이언트 메시지와 ack를 x-realtime-messages와 스키마로 적는다(FastAPI 설계 F22)", () => {
+    expect(spec["x-realtime-messages"]).toEqual([
+      { name: "subscribe", payload: "RealtimeSubscription", ack: "RealtimeAck" },
+      { name: "unsubscribe", payload: "RealtimeSubscription", ack: "RealtimeAck" },
+    ]);
+    expect(schema("RealtimeChannel").enum).toEqual(channels.map((channel) => channel.name));
+    expect(refName(schema("RealtimeSubscription").properties?.channel)).toBe("RealtimeChannel");
+    const ack = schema("RealtimeAck");
+    expect(ack.required).toEqual(["ok"]);
+    expect(refName(ack.properties?.error)).toBe("ErrorObject");
   });
 });

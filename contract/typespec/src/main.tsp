@@ -63,4 +63,11 @@ using OpenAPI;
     }
   ]
 )
+@extension(
+  "x-realtime-messages",
+  #[
+    #{ name: "subscribe", payload: "RealtimeSubscription", ack: "RealtimeAck" },
+    #{ name: "unsubscribe", payload: "RealtimeSubscription", ack: "RealtimeAck" }
+  ]
+)
 namespace Platform;

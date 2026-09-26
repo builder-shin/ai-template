@@ -1,5 +1,6 @@
 import "./jsonapi.tsp";
 import "./resources/posts.tsp";
+import "./errors.tsp";
 
 namespace Platform;
 
@@ -33,4 +34,21 @@ model PostPublishedEventDocument is JsonApi.Document<PostResource>;
 
 model PostDeletedEventDocument {
   data: JsonApi.ResourceIdentifier<"posts">;
+}
+
+/** 구독할 수 있는 채널. main.tsp의 x-realtime-channels와 같은 목록이다. */
+union RealtimeChannel {
+  "posts",
+  "posts:all",
+}
+
+/** 클라이언트가 subscribe·unsubscribe 메시지로 보내는 페이로드. */
+model RealtimeSubscription {
+  channel: RealtimeChannel;
+}
+
+/** subscribe·unsubscribe에 대한 서버의 ack. ok가 false면 error가 있다(권한 없음 permission.denied, 모르는 채널 validation.invalid_choice). */
+model RealtimeAck {
+  ok: boolean;
+  error?: ErrorObject;
 }
