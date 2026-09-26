@@ -14,6 +14,11 @@ const names = existsSync(templatesDir)
   : [];
 
 const shared = readSharedAssets(repoRoot);
+if (Array.isArray(shared)) {
+  for (const problem of shared) console.error(`scripts/shared-assets.json: ${problem}`);
+  process.exit(1);
+}
+
 let failed = 0;
 for (const name of names) {
   const problems = verifyTemplate(repoRoot, name, shared);
