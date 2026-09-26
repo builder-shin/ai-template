@@ -1,0 +1,237 @@
+# 모든 규칙을 통과하는 최소 JSON:API 스펙. 규칙 테스트는 이 문서를 한 군데만 고쳐서 쓴다.
+openapi: 3.1.0
+info:
+  title: Fixture API
+  version: 1.0.0
+tags:
+  - name: widgets
+  - name: me
+  - name: oauth
+  - name: health
+paths:
+  /api/v1/widgets:
+    get:
+      operationId: Widgets_list
+      tags: [widgets]
+      parameters:
+        - { name: "page[number]", in: query, schema: { type: integer } }
+        - { name: "page[size]", in: query, schema: { type: integer } }
+        - { name: sort, in: query, schema: { type: string } }
+        - { name: include, in: query, schema: { type: string } }
+        - { name: "fields[widgets]", in: query, schema: { type: string } }
+      x-jsonapi-sort: [name]
+      x-jsonapi-include: [owner]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/WidgetCollectionDocument" }
+        "400":
+          description: Bad Request
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/ErrorDocument" }
+    post:
+      operationId: Widgets_create
+      tags: [widgets]
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema: { $ref: "#/components/schemas/WidgetCreateDocument" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/WidgetDocument" }
+        "422":
+          description: Unprocessable Entity
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/ErrorDocument" }
+  /api/v1/widgets/{id}:
+    patch:
+      operationId: Widgets_update
+      tags: [widgets]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema: { $ref: "#/components/schemas/WidgetUpdateDocument" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/WidgetDocument" }
+        "404":
+          description: Not Found
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/ErrorDocument" }
+    delete:
+      operationId: Widgets_delete
+      tags: [widgets]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/ErrorDocument" }
+  /api/v1/me:
+    get:
+      operationId: Me_get
+      tags: [me]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/UserDocument" }
+        "401":
+          description: Unauthorized
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/ErrorDocument" }
+  /api/v1/oauth/google/authorize:
+    get:
+      operationId: OAuth_authorize
+      tags: [oauth]
+      responses:
+        "302":
+          description: Found
+        "400":
+          description: Bad Request
+          content:
+            application/vnd.api+json:
+              schema: { $ref: "#/components/schemas/ErrorDocument" }
+  /health/live:
+    get:
+      operationId: Health_live
+      tags: [health]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthReport" }
+components:
+  schemas:
+    ErrorCode:
+      type: string
+      enum: [internal.unexpected]
+    ErrorObject:
+      type: object
+      required: [status, code, title]
+      properties:
+        status: { type: string }
+        code: { $ref: "#/components/schemas/ErrorCode" }
+        title: { type: string }
+    ErrorDocument:
+      type: object
+      required: [errors, meta]
+      properties:
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/ErrorObject" }
+        meta:
+          type: object
+          required: [traceId]
+          properties:
+            traceId: { type: string }
+    PageMeta:
+      type: object
+      required: [number, size, total, totalPages]
+      properties:
+        number: { type: integer }
+        size: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+    PaginationLinks:
+      type: object
+      required: [first, last, prev, next]
+      properties:
+        first: { type: string }
+        last: { type: string }
+        prev: { type: [string, "null"] }
+        next: { type: [string, "null"] }
+    CollectionMeta:
+      type: object
+      required: [page]
+      properties:
+        page: { $ref: "#/components/schemas/PageMeta" }
+    WidgetAttributes:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        createdAt: { type: string, format: date-time }
+    WidgetResource:
+      type: object
+      required: [type, id, attributes]
+      properties:
+        type: { type: string, enum: [widgets] }
+        id: { type: string }
+        attributes: { $ref: "#/components/schemas/WidgetAttributes" }
+    WidgetDocument:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/WidgetResource" }
+    WidgetCollectionDocument:
+      type: object
+      required: [data, links, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/WidgetResource" }
+        links: { $ref: "#/components/schemas/PaginationLinks" }
+        meta: { $ref: "#/components/schemas/CollectionMeta" }
+    WidgetCreateDocument:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [type, attributes]
+          properties:
+            type: { type: string, enum: [widgets] }
+            attributes: { $ref: "#/components/schemas/WidgetAttributes" }
+    WidgetUpdateDocument:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [type, id]
+          properties:
+            type: { type: string, enum: [widgets] }
+            id: { type: string }
+            attributes: { $ref: "#/components/schemas/WidgetAttributes" }
+    UserResource:
+      type: object
+      required: [type, id, attributes]
+      properties:
+        type: { type: string, enum: [users] }
+        id: { type: string }
+        attributes:
+          type: object
+          properties:
+            name: { type: string }
+    UserDocument:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/UserResource" }
+    HealthReport:
+      type: object
+      properties:
+        status: { type: string }

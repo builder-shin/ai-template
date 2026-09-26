@@ -1,0 +1,14 @@
+{
+  "name": "@ai-template/api-style",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint:contract": "node lint.js ../openapi.yaml",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "check": "pnpm run typecheck && pnpm run test && pnpm run lint:contract"
+  },
+  "devDependencies": {
+    "@redocly/openapi-core": "2.54.2"
+  }
+}

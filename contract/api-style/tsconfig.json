@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": ["plugin.js", "lint.js", "rules", "test", "vitest.config.ts"]
+}

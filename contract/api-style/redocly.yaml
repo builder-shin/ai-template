@@ -1,0 +1,18 @@
+plugins:
+  - ./plugin.js
+rules:
+  struct: error
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-parameters-unique: error
+  operation-tag-defined: error
+  path-parameters-defined: error
+  paths-kebab-case: error
+  no-path-trailing-slash: error
+  jsonapi/media-type: error
+  jsonapi/error-response: error
+  jsonapi/request-document: error
+  jsonapi/type-matches-path:
+    severity: error
+    aliases:
+      me: users
