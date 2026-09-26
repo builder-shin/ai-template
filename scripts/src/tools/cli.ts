@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { ensureTool } from "./install.ts";
 import { TOOLS, isToolName } from "./manifest.ts";
 
@@ -14,4 +14,16 @@ if (name === undefined || !isToolName(name)) {
 
 const binary = await ensureTool(TOOLS[name], TOOL_CACHE_DIR);
 const result = spawnSync(binary, args, { stdio: "inherit" });
+if (result.error !== undefined) {
+  // 첫 설치가 중간에 끊겨 잘린 바이너리가 캐시에 남으면 여기로 온다. 폴더를 지우면 다음 실행이 새로 받는다.
+  console.error(
+    `${name}를 실행하지 못했다(${result.error.message}).\n` +
+      `받아 둔 바이너리가 깨졌을 수 있다. 이 폴더를 지우고 다시 실행하면 새로 받는다: ${dirname(binary)}`,
+  );
+  process.exit(1);
+}
+if (result.signal !== null) {
+  console.error(`${name}가 신호(${result.signal})를 받고 종료됐다.`);
+  process.exit(1);
+}
 process.exit(result.status ?? 1);
