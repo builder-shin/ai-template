@@ -15,6 +15,8 @@ export interface Problem {
 export interface CheckOptions {
   /** 루트 바로 아래에서 건너뛸 폴더. 예: 템플릿 저장소는 templates/를 따로 검사한다. */
   readonly exclude?: readonly string[];
+  /** 루트에 AGENTS.md와 CLAUDE.md가 반드시 있어야 하면 true. 예: 템플릿 루트. */
+  readonly requireRoot?: boolean;
 }
 
 function meaningfulLines(text: string): string[] {
@@ -38,8 +40,16 @@ export function checkAgentsMd(root: string, options: CheckOptions = {}): Problem
     const files = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name));
     const at = (name: string) => relative(root, join(dir, name)).replaceAll("\\", "/");
     const isRoot = dir === root;
+    const rootRequired = isRoot && options.requireRoot === true;
 
-    if (files.has("AGENTS.md") && !files.has("CLAUDE.md")) {
+    if (rootRequired && !files.has("AGENTS.md")) {
+      problems.push({
+        path: at("AGENTS.md"),
+        message:
+          "루트 AGENTS.md가 없다. 명령, 구조 지도, 핵심 규칙, 완료 기준, 문서 링크를 담아 만든다.",
+      });
+    }
+    if ((files.has("AGENTS.md") || rootRequired) && !files.has("CLAUDE.md")) {
       problems.push({
         path: at("CLAUDE.md"),
         message: `AGENTS.md 옆에 "${IMPORT_LINE}" 한 줄짜리 CLAUDE.md를 만든다.`,

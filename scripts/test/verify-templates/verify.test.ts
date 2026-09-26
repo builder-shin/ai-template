@@ -9,7 +9,11 @@ import { verifyTemplate } from "../../src/verify-templates/verify.ts";
 const WEB = "templates/web";
 const COMMANDS = ["setup", "dev", "check", "fix", "test", "test:e2e", "gen"];
 const HOOK = { type: "command", command: "node", args: [".claude/hooks/check.mjs"] };
+const SHELL_HOOK = { type: "command", command: "node .claude/hooks/check.mjs" };
 const EVENTS = ["PostToolUse", "Stop", "PreToolUse", "SessionStart"];
+
+const shellForm = (where: string) =>
+  `.claude/settings.json ${where}: 쉘 형식 hook이다. 실행 파일은 command에, 인자는 args 배열에 적는다(exec form).`;
 
 const shared: SharedAssetsManifest = {
   assets: [{ source: "contract", targets: [{ template: "web", path: "contract" }] }],
@@ -22,6 +26,12 @@ function write(root: string, path: string, content: string): void {
 
 function writeJson(root: string, path: string, value: unknown): void {
   write(root, path, JSON.stringify(value));
+}
+
+/** 필수 이벤트마다 exec form hook 하나를 두고, overrides로 이벤트를 바꾸거나 더한다. */
+function writeHooks(repo: string, overrides: Record<string, unknown[]> = {}): void {
+  const hooks = Object.fromEntries(EVENTS.map((event) => [event, [{ hooks: [HOOK] }]]));
+  writeJson(repo, `${WEB}/.claude/settings.json`, { hooks: { ...hooks, ...overrides } });
 }
 
 function manifest(overrides: Record<string, unknown> = {}) {
@@ -43,9 +53,7 @@ function makeRepo(): string {
   writeJson(repo, `${WEB}/package.json`, {
     scripts: Object.fromEntries(COMMANDS.map((command) => [command, "echo"])),
   });
-  writeJson(repo, `${WEB}/.claude/settings.json`, {
-    hooks: Object.fromEntries(EVENTS.map((event) => [event, [{ hooks: [HOOK] }]])),
-  });
+  writeHooks(repo);
   write(repo, `${WEB}/.env.example`, "API_BASE_URL=\n");
   write(repo, `${WEB}/docs/recipes/add-feature.md`, "# 기능 추가\n");
   write(repo, `${WEB}/src/features/posts/index.ts`, "export {};\n");
@@ -85,12 +93,31 @@ describe("verifyTemplate", () => {
 
   it("쉘 형식(args 없음) hook을 잡는다", () => {
     const repo = makeRepo();
-    const hooks: Record<string, unknown> = Object.fromEntries(
-      EVENTS.map((event) => [event, [{ hooks: [HOOK] }]]),
-    );
-    hooks.Stop = [{ hooks: [{ type: "command", command: "node .claude/hooks/check.mjs" }] }];
-    writeJson(repo, `${WEB}/.claude/settings.json`, { hooks });
-    expect(verify(repo)).toEqual(["Stop hook이 없거나 exec form(command + args)이 아니다."]);
+    writeHooks(repo, { Stop: [{ hooks: [SHELL_HOOK] }] });
+    expect(verify(repo)).toEqual([
+      "Stop hook이 없거나 exec form(command + args)이 아니다.",
+      shellForm("hooks.Stop[0].hooks[0]"),
+    ]);
+  });
+
+  it("exec form 옆의 쉘 형식 hook과 필수가 아닌 이벤트의 쉘 형식 hook도 잡는다", () => {
+    const repo = makeRepo();
+    writeHooks(repo, {
+      Stop: [{ hooks: [HOOK] }, { hooks: [SHELL_HOOK] }],
+      UserPromptSubmit: [{ hooks: [HOOK, SHELL_HOOK] }],
+    });
+    expect(verify(repo)).toEqual([
+      shellForm("hooks.Stop[1].hooks[0]"),
+      shellForm("hooks.UserPromptSubmit[0].hooks[1]"),
+    ]);
+  });
+
+  it("command가 아닌 hook(prompt 등)은 exec form 검사에서 뺀다", () => {
+    const repo = makeRepo();
+    writeHooks(repo, {
+      Stop: [{ hooks: [HOOK, { type: "prompt", prompt: "끝났는지 확인한다." }] }],
+    });
+    expect(verify(repo)).toEqual([]);
   });
 
   it("필수 파일과 골든 모듈이 없으면 잡는다", () => {
@@ -109,6 +136,21 @@ describe("verifyTemplate", () => {
     const repo = makeRepo();
     rmSync(join(repo, WEB, "CLAUDE.md"));
     expect(verify(repo)[0]).toMatch(/^CLAUDE\.md: AGENTS\.md 옆에/);
+  });
+
+  it("템플릿 루트에 AGENTS.md와 CLAUDE.md가 없으면 둘 다 잡는다", () => {
+    const noAgents =
+      "AGENTS.md: 루트 AGENTS.md가 없다. 명령, 구조 지도, 핵심 규칙, 완료 기준, 문서 링크를 담아 만든다.";
+    const neither = makeRepo();
+    rmSync(join(neither, WEB, "AGENTS.md"));
+    rmSync(join(neither, WEB, "CLAUDE.md"));
+    expect(verify(neither)).toEqual([
+      noAgents,
+      'CLAUDE.md: AGENTS.md 옆에 "@AGENTS.md" 한 줄짜리 CLAUDE.md를 만든다.',
+    ]);
+    const claudeOnly = makeRepo();
+    rmSync(join(claudeOnly, WEB, "AGENTS.md"));
+    expect(verify(claudeOnly)[0]).toBe(noAgents);
   });
 
   it("공유 자산 사본이 원본과 다르면 잡고, sync하면 복구된다", () => {
