@@ -12,6 +12,12 @@ tags:
   - name: users
   - name: posts
   - name: audit-logs
+  - name: registrations
+  - name: email-verifications
+  - name: passwords
+  - name: oauth
+  - name: sessions
+  - name: realtime
 paths:
   /api/v1/audit-logs:
     get:
@@ -254,6 +260,138 @@ paths:
       x-jsonapi-include:
         - actor
       x-permission: audit-logs:read
+  /api/v1/email-verification-requests:
+    post:
+      operationId: EmailVerificationRequests_create
+      description: 인증 메일을 다시 보낸다. 계정이 있는지 드러내지 않도록 항상 202를 돌려준다.
+      parameters: []
+      responses:
+        '202':
+          description: 202 Accepted. 비동기로 처리하며 본문이 없다.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - email-verifications
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationRequestCreateDocument'
+  /api/v1/email-verifications:
+    post:
+      operationId: EmailVerifications_create
+      description: 토큰이 틀리거나 만료되면 auth.verification_token_invalid(422).
+      parameters: []
+      responses:
+        '201':
+          description: 201 Created.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/EmailVerificationDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - email-verifications
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationCreateDocument'
   /api/v1/files:
     post:
       operationId: Files_create
@@ -823,6 +961,347 @@ paths:
         - me
       security:
         - BearerAuth: []
+  /api/v1/oauth/{provider}/authorize:
+    get:
+      operationId: OAuth_authorize
+      description: 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/OAuthProvider'
+        - name: redirectUri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+          explode: false
+      responses:
+        '302':
+          description: Redirection
+          headers:
+            location:
+              required: true
+              schema:
+                type: string
+                format: uri
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - oauth
+  /api/v1/oauth/{provider}/callback:
+    get:
+      operationId: OAuth_callback
+      description: 제공자가 돌아오는 곳. 1회용 코드(60초)를 붙여 프론트 콜백으로 보낸다.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/OAuthProvider'
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          explode: false
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '302':
+          description: Redirection
+          headers:
+            location:
+              required: true
+              schema:
+                type: string
+                format: uri
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - oauth
+  /api/v1/password-changes:
+    post:
+      operationId: PasswordChanges_create
+      description: 현재 세션을 뺀 나머지 세션을 폐기한다.
+      parameters: []
+      responses:
+        '201':
+          description: 201 Created.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/PasswordChangeDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - passwords
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeCreateDocument'
+      security:
+        - BearerAuth: []
+  /api/v1/password-reset-requests:
+    post:
+      operationId: PasswordResetRequests_create
+      description: 재설정 메일을 보낸다. 계정이 있는지 드러내지 않도록 항상 202를 돌려준다.
+      parameters: []
+      responses:
+        '202':
+          description: 202 Accepted. 비동기로 처리하며 본문이 없다.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - passwords
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestCreateDocument'
+  /api/v1/password-resets:
+    post:
+      operationId: PasswordResets_create
+      description: 토큰으로 비밀번호를 바꾸고 모든 세션을 폐기한다.
+      parameters: []
+      responses:
+        '201':
+          description: 201 Created.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - passwords
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetCreateDocument'
   /api/v1/permissions:
     get:
       operationId: Permissions_list
@@ -1417,6 +1896,156 @@ paths:
         - posts
       security:
         - BearerAuth: []
+  /api/v1/realtime-tickets:
+    post:
+      operationId: RealtimeTickets_create
+      description: BFF가 발급받아 브라우저에 넘긴다. 브라우저는 access token을 모른다.
+      parameters: []
+      responses:
+        '201':
+          description: 201 Created.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/RealtimeTicketDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - realtime
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/RealtimeTicketCreateDocument'
+      security:
+        - BearerAuth: []
+  /api/v1/registrations:
+    post:
+      operationId: Registrations_create
+      description: 가입하고 인증 메일을 보낸다. 이미 쓰는 이메일이면 validation.already_taken(422).
+      parameters: []
+      responses:
+        '201':
+          description: 201 Created.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/RegistrationDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - registrations
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/RegistrationCreateDocument'
   /api/v1/roles:
     get:
       operationId: Roles_list
@@ -1863,6 +2492,399 @@ paths:
       security:
         - BearerAuth: []
       x-permission: roles:manage
+  /api/v1/session-revocations:
+    post:
+      operationId: SessionRevocations_create
+      description: scope가 others면 현재 세션을 뺀 나머지를, all이면 전부 폐기한다.
+      parameters: []
+      responses:
+        '201':
+          description: 201 Created.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/SessionRevocationDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - sessions
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/SessionRevocationCreateDocument'
+      security:
+        - BearerAuth: []
+  /api/v1/sessions:
+    post:
+      operationId: Sessions_create
+      description: 토큰은 이 응답에만 담긴다. 이미 쓴 refresh token이면 세션 계열 전체를 폐기하고 auth.refresh_token_reused(401).
+      parameters: []
+      responses:
+        '201':
+          description: 201 Created.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/SessionWithTokensDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - sessions
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/SessionCreateDocument'
+    get:
+      operationId: Sessions_list
+      description: 내 활성 세션 목록.
+      parameters:
+        - name: page[number]
+          in: query
+          required: false
+          description: 1부터 시작하는 페이지 번호.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+          explode: false
+        - name: page[size]
+          in: query
+          required: false
+          description: 페이지 크기. 최대 100.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+          explode: false
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[sessions]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/SessionCollectionDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - sessions
+      security:
+        - BearerAuth: []
+      x-jsonapi-sort:
+        - createdAt
+        - lastUsedAt
+  /api/v1/sessions/current:
+    delete:
+      operationId: Sessions_deleteCurrent
+      description: 현재 세션 로그아웃.
+      parameters: []
+      responses:
+        '204':
+          description: 204 No Content.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - sessions
+      security:
+        - BearerAuth: []
+  /api/v1/sessions/{id}:
+    delete:
+      operationId: Sessions_delete
+      description: 내 세션 하나를 폐기한다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 204 No Content.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - sessions
+      security:
+        - BearerAuth: []
   /api/v1/users:
     get:
       operationId: Users_list
@@ -2358,6 +3380,90 @@ components:
       properties:
         page:
           $ref: '#/components/schemas/PageMeta'
+    EmailVerificationAttributes:
+      type: object
+      required:
+        - verifiedAt
+      properties:
+        verifiedAt:
+          type: string
+          format: date-time
+    EmailVerificationCreateAttributes:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: 인증 메일에 담긴 토큰.
+    EmailVerificationCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - email-verifications
+            attributes:
+              $ref: '#/components/schemas/EmailVerificationCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    EmailVerificationDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/EmailVerificationResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    EmailVerificationRequestCreateAttributes:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+    EmailVerificationRequestCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - email-verification-requests
+            attributes:
+              $ref: '#/components/schemas/EmailVerificationRequestCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    EmailVerificationResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+      properties:
+        type:
+          type: string
+          enum:
+            - email-verifications
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/EmailVerificationAttributes'
+      description: 관계가 없는 리소스 객체.
     ErrorCode:
       type: string
       enum:
@@ -2656,6 +3762,12 @@ components:
       enum:
         - ko
         - en
+    OAuthProvider:
+      type: string
+      enum:
+        - google
+        - kakao
+        - naver
     PageMeta:
       type: object
       required:
@@ -2702,6 +3814,157 @@ components:
               format: uri
             - type: 'null'
       description: 컬렉션의 페이지 링크. 앞뒤 페이지가 없으면 null이다.
+    PasswordChangeAttributes:
+      type: object
+      required:
+        - createdAt
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+    PasswordChangeCreateAttributes:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+    PasswordChangeCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - password-changes
+            attributes:
+              $ref: '#/components/schemas/PasswordChangeCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    PasswordChangeDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PasswordChangeResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    PasswordChangeResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+      properties:
+        type:
+          type: string
+          enum:
+            - password-changes
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/PasswordChangeAttributes'
+      description: 관계가 없는 리소스 객체.
+    PasswordResetAttributes:
+      type: object
+      required:
+        - createdAt
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+    PasswordResetCreateAttributes:
+      type: object
+      required:
+        - token
+        - password
+      properties:
+        token:
+          type: string
+          description: 재설정 메일에 담긴 토큰.
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+    PasswordResetCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - password-resets
+            attributes:
+              $ref: '#/components/schemas/PasswordResetCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    PasswordResetDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PasswordResetResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    PasswordResetRequestCreateAttributes:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+    PasswordResetRequestCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - password-reset-requests
+            attributes:
+              $ref: '#/components/schemas/PasswordResetRequestCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    PasswordResetResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+      properties:
+        type:
+          type: string
+          enum:
+            - password-resets
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/PasswordResetAttributes'
+      description: 관계가 없는 리소스 객체.
     PermissionAttributes:
       type: object
       required:
@@ -2991,6 +4254,165 @@ components:
                   description: 관계가 가리키는 리소스 식별자.
                 - type: 'null'
           description: 단수 관계. 대상이 없으면 data가 null이다.
+    RealtimeTicketAttributes:
+      type: object
+      required:
+        - token
+        - expiresAt
+      properties:
+        token:
+          type: string
+          description: Socket.IO 연결의 auth.ticket에 넣는다. 30초 안에 한 번만 쓸 수 있다.
+        expiresAt:
+          type: string
+          format: date-time
+    RealtimeTicketCreateAttributes:
+      type: object
+    RealtimeTicketCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - realtime-tickets
+            attributes:
+              $ref: '#/components/schemas/RealtimeTicketCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    RealtimeTicketDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/RealtimeTicketResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    RealtimeTicketResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+      properties:
+        type:
+          type: string
+          enum:
+            - realtime-tickets
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/RealtimeTicketAttributes'
+      description: 관계가 없는 리소스 객체.
+    RegistrationAttributes:
+      type: object
+      required:
+        - email
+        - createdAt
+      properties:
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    RegistrationCreateAttributes:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        locale:
+          $ref: '#/components/schemas/Locale'
+          description: 생략하면 Accept-Language로 정한다.
+    RegistrationCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - registrations
+            attributes:
+              $ref: '#/components/schemas/RegistrationCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    RegistrationDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/RegistrationResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    RegistrationRelationships:
+      type: object
+      required:
+        - user
+      properties:
+        user:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              anyOf:
+                - type: object
+                  required:
+                    - type
+                    - id
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - users
+                    id:
+                      type: string
+                  description: 관계가 가리키는 리소스 식별자.
+                - type: 'null'
+          description: 단수 관계. 대상이 없으면 data가 null이다.
+    RegistrationResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+        - relationships
+      properties:
+        type:
+          type: string
+          enum:
+            - registrations
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/RegistrationAttributes'
+        relationships:
+          $ref: '#/components/schemas/RegistrationRelationships'
+      description: 관계가 있는 리소스 객체.
     RoleAttributes:
       type: object
       required:
@@ -3133,6 +4555,310 @@ components:
             - type
             - id
       description: 수정 요청 문서. 속성 모델의 필드는 모두 선택이어야 한다.
+    SessionAttributes:
+      type: object
+      required:
+        - userAgent
+        - createdAt
+        - lastUsedAt
+        - current
+      properties:
+        userAgent:
+          anyOf:
+            - type: string
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+          description: 요청을 보낸 세션이면 true.
+    SessionCollectionDocument:
+      type: object
+      required:
+        - data
+        - links
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionResource'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/CollectionMeta'
+      description: 컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다.
+    SessionCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - sessions
+            attributes:
+              $ref: '#/components/schemas/SessionGrant'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    SessionGrant:
+      type: object
+      oneOf:
+        - $ref: '#/components/schemas/SessionPasswordGrant'
+        - $ref: '#/components/schemas/SessionRefreshTokenGrant'
+        - $ref: '#/components/schemas/SessionOAuthCodeGrant'
+      discriminator:
+        propertyName: grantType
+        mapping:
+          password: '#/components/schemas/SessionPasswordGrant'
+          refreshToken: '#/components/schemas/SessionRefreshTokenGrant'
+          oauthCode: '#/components/schemas/SessionOAuthCodeGrant'
+      description: 로그인, 토큰 갱신, 소셜 로그인 완료를 grantType으로 구분한다.
+    SessionOAuthCodeGrant:
+      type: object
+      required:
+        - grantType
+        - code
+      properties:
+        grantType:
+          type: string
+          enum:
+            - oauthCode
+        code:
+          type: string
+          description: OAuth 콜백이 프론트로 넘긴 1회용 코드.
+    SessionPasswordGrant:
+      type: object
+      required:
+        - grantType
+        - email
+        - password
+      properties:
+        grantType:
+          type: string
+          enum:
+            - password
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    SessionRefreshTokenGrant:
+      type: object
+      required:
+        - grantType
+        - refreshToken
+      properties:
+        grantType:
+          type: string
+          enum:
+            - refreshToken
+        refreshToken:
+          type: string
+    SessionRelationships:
+      type: object
+      required:
+        - user
+      properties:
+        user:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              anyOf:
+                - type: object
+                  required:
+                    - type
+                    - id
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - users
+                    id:
+                      type: string
+                  description: 관계가 가리키는 리소스 식별자.
+                - type: 'null'
+          description: 단수 관계. 대상이 없으면 data가 null이다.
+    SessionResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+        - relationships
+      properties:
+        type:
+          type: string
+          enum:
+            - sessions
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/SessionAttributes'
+        relationships:
+          $ref: '#/components/schemas/SessionRelationships'
+      description: 관계가 있는 리소스 객체.
+    SessionRevocationAttributes:
+      type: object
+      required:
+        - scope
+        - revokedCount
+        - createdAt
+      properties:
+        scope:
+          $ref: '#/components/schemas/SessionRevocationScope'
+        revokedCount:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+    SessionRevocationCreateAttributes:
+      type: object
+      required:
+        - scope
+      properties:
+        scope:
+          $ref: '#/components/schemas/SessionRevocationScope'
+    SessionRevocationCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - session-revocations
+            attributes:
+              $ref: '#/components/schemas/SessionRevocationCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    SessionRevocationDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/SessionRevocationResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    SessionRevocationResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+      properties:
+        type:
+          type: string
+          enum:
+            - session-revocations
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/SessionRevocationAttributes'
+      description: 관계가 없는 리소스 객체.
+    SessionRevocationScope:
+      type: string
+      enum:
+        - others
+        - all
+    SessionTokens:
+      type: object
+      required:
+        - accessToken
+        - accessTokenExpiresAt
+        - refreshToken
+        - refreshTokenExpiresAt
+      properties:
+        accessToken:
+          type: string
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+        refreshToken:
+          type: string
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+      description: POST /sessions의 201 응답에만 담기는 토큰.
+    SessionWithTokensAttributes:
+      type: object
+      required:
+        - userAgent
+        - createdAt
+        - lastUsedAt
+        - current
+        - accessToken
+        - accessTokenExpiresAt
+        - refreshToken
+        - refreshTokenExpiresAt
+      properties:
+        userAgent:
+          anyOf:
+            - type: string
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+          description: 요청을 보낸 세션이면 true.
+        accessToken:
+          type: string
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+        refreshToken:
+          type: string
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+    SessionWithTokensDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/SessionWithTokensResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    SessionWithTokensResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+        - relationships
+      properties:
+        type:
+          type: string
+          enum:
+            - sessions
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/SessionWithTokensAttributes'
+        relationships:
+          $ref: '#/components/schemas/SessionRelationships'
+      description: 관계가 있는 리소스 객체.
     UserAttributes:
       type: object
       required:

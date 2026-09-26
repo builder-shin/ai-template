@@ -8,6 +8,8 @@ import "./resources/files.tsp";
 import "./resources/users.tsp";
 import "./resources/posts.tsp";
 import "./resources/audit-logs.tsp";
+import "./resources/auth.tsp";
+import "./resources/sessions.tsp";
 
 using Http;
 using OpenAPI;
