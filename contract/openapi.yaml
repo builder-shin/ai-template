@@ -3314,7 +3314,7 @@ components:
         included:
           type: array
           items:
-            $ref: '#/components/schemas/UserResource'
+            $ref: '#/components/schemas/UserPublicResource'
       description: 컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다.
     AuditLogDocument:
       type: object
@@ -3326,7 +3326,7 @@ components:
         included:
           type: array
           items:
-            $ref: '#/components/schemas/UserResource'
+            $ref: '#/components/schemas/UserPublicResource'
       description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
     AuditLogRelationships:
       type: object

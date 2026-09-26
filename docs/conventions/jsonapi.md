@@ -49,6 +49,7 @@
 - `totalPages`는 `ceil(total / size)`다. 결과가 없으면 0이다.
 - 계약의 스키마는 필드를 모두 담은 기본 표현이다. `fields[type]`을 요청한 응답은 그 표현에서 요청한 필드만 남긴 투영이다. 적합성 테스트는 이 경우 `assertSparseFieldset`으로 검사한다.
 - 포함 리소스는 문서 안의 어떤 관계에서든 참조되어야 한다(full linkage). 같은 리소스를 두 번 담지 않는다.
+- 다른 리소스의 `included`에 들어가는 `users`는 보는 사람과 관계없이 항상 공개 형태(`UserPublicResource`)다(§4.10).
 
 ## 에러
 

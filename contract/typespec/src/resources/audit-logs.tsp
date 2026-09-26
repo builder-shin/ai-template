@@ -31,12 +31,13 @@ model AuditLogResource is JsonApi.ResourceWithRelationships<
   AuditLogRelationships
 >;
 
+// 행위자는 공개 표현으로 포함한다. users:read 없이 audit-logs:read만 있어도 이메일이 새지 않는다(§4.10).
 model AuditLogDocument is JsonApi.Document<AuditLogResource> {
-  included?: UserResource[];
+  included?: UserPublicResource[];
 }
 
 model AuditLogCollectionDocument is JsonApi.CollectionDocument<AuditLogResource> {
-  included?: UserResource[];
+  included?: UserPublicResource[];
 }
 
 alias AuditLogQuery = {

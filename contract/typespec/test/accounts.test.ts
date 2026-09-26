@@ -28,6 +28,10 @@ describe("사용자 (§4.10, §5.6)", () => {
     ]);
   });
 
+  it("공개 사용자의 관계는 아바타 하나뿐이다", () => {
+    expect(Object.keys(schema("UserPublicRelationships").properties ?? {})).toEqual(["avatar"]);
+  });
+
   it("GET /me는 로그인이 필요하고 meta.permissions를 담는다", () => {
     const me = operation("get", "/api/v1/me");
     expect(auth(me)).toBe("required");

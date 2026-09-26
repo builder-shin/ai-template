@@ -110,4 +110,9 @@ describe("감사 로그 (§4.6)", () => {
     );
     expect(operation("get", "/api/v1/audit-logs/{id}")["x-permission"]).toBe("audit-logs:read");
   });
+
+  it("포함 리소스는 공개 사용자다(users:read가 없어도 이메일이 새지 않는다)", () => {
+    expect(includedRefs(schema("AuditLogDocument"))).toEqual(["UserPublicResource"]);
+    expect(includedRefs(schema("AuditLogCollectionDocument"))).toEqual(["UserPublicResource"]);
+  });
 });

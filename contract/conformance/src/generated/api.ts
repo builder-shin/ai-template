@@ -481,12 +481,12 @@ export interface components {
             data: components["schemas"]["AuditLogResource"][];
             links: components["schemas"]["PaginationLinks"];
             meta: components["schemas"]["CollectionMeta"];
-            included?: components["schemas"]["UserResource"][];
+            included?: components["schemas"]["UserPublicResource"][];
         };
         /** @description 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다. */
         AuditLogDocument: {
             data: components["schemas"]["AuditLogResource"];
-            included?: components["schemas"]["UserResource"][];
+            included?: components["schemas"]["UserPublicResource"][];
         };
         AuditLogRelationships: {
             /** @description 단수 관계. 대상이 없으면 data가 null이다. */
