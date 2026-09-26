@@ -11,6 +11,7 @@
     "check": "tsx scripts/src/check/cli.ts",
     "check:format": "prettier --check .",
     "check:lint": "eslint .",
+    "check:agents-md": "tsx scripts/src/agents-md/cli.ts .",
     "fix": "prettier --write . && eslint --fix .",
     "test": "pnpm -r run test",
     "gen": "pnpm -r run gen",
