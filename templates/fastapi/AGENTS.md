@@ -25,7 +25,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 
 - `src/app/main.py`: 앱 조립(`create_app`). `uvicorn app.main:app`으로 띄운다.
 - `src/app/core/`: 도메인을 모르는 기반. 설정(`config.py`의 `Settings` 하나), 로그(`logging.py`), DB(`db.py`), Valkey(`redis.py`), 스토리지(`storage.py`).
-- `src/app/core/jsonapi/`: JSON:API 공통 계층. 문서 모델(`models.py`), 에러(`errors.py`), 협상(`negotiation.py`), OpenAPI 후처리(`openapi.py`).
+- `src/app/core/jsonapi/`: JSON:API 공통 계층. 문서 모델(`models.py`), 에러(`errors.py`), 협상(`negotiation.py`), OpenAPI 후처리(`openapi.py`), 라우트 선언(`operation.py`), 쿼리 파서(`query.py`), 렌더링(`rendering.py`). 쓰는 예는 테스트 전용 샘플 `jsonapi/tests/sample.py`.
 - `src/app/modules/`: 도메인 모듈. `posts`는 골든 모듈 자리다.
 - `src/app/seed.py`: 개발용 시드. 여러 번 돌려도 안전하게 쓴다.
 - `migrations/`: Alembic 마이그레이션. 절차는 `docs/recipes/migration.md`.
@@ -46,6 +46,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - 모든 `AGENTS.md` 옆에 `@AGENTS.md` 한 줄짜리 `CLAUDE.md`를 둔다.
 - `/api/v1` 아래 응답은 JSON:API 문서다. 에러는 `ApiError(상태, ErrorCode.<코드>, 영어 detail)`로 던지고, 에러 코드는 `ErrorCode`(계약의 목록)만 쓴다.
 - 문서 모델은 제네릭(`Document[...]`)을 라우트에 직접 쓰지 않고 계약과 같은 이름의 서브클래스를 쓴다. 선택 필드는 `Omittable[T] = MISSING`이다.
+- 라우트는 `JsonApiRouter.route(메서드, 경로, 선언, response_model=...)`로 만든다. 선언(`Operation`, 컬렉션은 `CollectionOperation`)이 operationId, 에러 응답, 쿼리 허용 목록(include, fields, sort, filter)을 함께 정한다. 쿼리는 `Depends(선언)`으로 받고, 응답은 `render()`로, 페이지는 `pagination()`으로, 포함 리소스는 `load_included()`로 만든다.
 - 로그는 `structlog.get_logger(__name__)`로 쓰고, 이벤트 이름은 영어 snake_case다. 요청의 trace id는 자동으로 붙는다.
 - 설정 필드를 더하거나 빼면 `.env.example`도 같이 고친다.
 - 커밋된 마이그레이션(`migrations/versions/`)은 고치거나 지우지 않는다. 바꿀 것이 있으면 새 리비전을 만든다.
