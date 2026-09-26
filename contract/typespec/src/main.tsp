@@ -3,6 +3,9 @@ import "@typespec/openapi";
 import "./jsonapi.tsp";
 import "./errors.tsp";
 import "./resources/health.tsp";
+import "./resources/roles.tsp";
+import "./resources/files.tsp";
+import "./resources/users.tsp";
 
 using Http;
 using OpenAPI;

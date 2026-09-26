@@ -5,7 +5,1469 @@ info:
   description: AI 템플릿 플랫폼 API 계약. FastAPI와 NestJS 템플릿이 똑같이 구현한다.
 tags:
   - name: health
+  - name: roles
+  - name: permissions
+  - name: files
+  - name: me
+  - name: users
 paths:
+  /api/v1/files:
+    post:
+      operationId: Files_create
+      description: 크기와 MIME을 검사한 뒤 pending 파일을 만들고 meta.upload에 presigned URL을 담는다.
+      parameters: []
+      responses:
+        '201':
+          description: 201 Created.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/FileDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - files
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/FileCreateDocument'
+      security:
+        - BearerAuth: []
+  /api/v1/files/{id}:
+    get:
+      operationId: Files_get
+      description: '소유자, 또는 이 파일을 참조하는 리소스를 읽을 수 있는 사람만 조회한다(예: 발행된 글의 커버 이미지는 누구나).'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: fields[files]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/FileDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - files
+      security:
+        - BearerAuth: []
+        - {}
+    patch:
+      operationId: Files_update
+      description: status를 ready로 바꿔 업로드 완료를 알린다. 객체가 없으면 file.upload_incomplete(422).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/FileDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - files
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/FileUpdateDocument'
+      security:
+        - BearerAuth: []
+    delete:
+      operationId: Files_delete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 204 No Content.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - files
+      security:
+        - BearerAuth: []
+  /api/v1/me:
+    get:
+      operationId: Me_get
+      parameters:
+        - name: include
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[users]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[roles]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[files]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/UserMeDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - me
+      security:
+        - BearerAuth: []
+      x-jsonapi-include:
+        - roles
+        - avatar
+    patch:
+      operationId: Me_update
+      parameters: []
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/UserMeDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - me
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/UserMeUpdateDocument'
+      security:
+        - BearerAuth: []
+    delete:
+      operationId: Me_delete
+      description: 회원 탈퇴. 개인정보를 익명화하고 모든 세션을 폐기한다.
+      parameters: []
+      responses:
+        '204':
+          description: 204 No Content.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - me
+      security:
+        - BearerAuth: []
+  /api/v1/permissions:
+    get:
+      operationId: Permissions_list
+      parameters:
+        - name: page[number]
+          in: query
+          required: false
+          description: 1부터 시작하는 페이지 번호.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+          explode: false
+        - name: page[size]
+          in: query
+          required: false
+          description: 페이지 크기. 최대 100.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+          explode: false
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[permissions]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/PermissionCollectionDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - permissions
+      security:
+        - BearerAuth: []
+      x-jsonapi-sort:
+        - id
+      x-permission: roles:read
+  /api/v1/roles:
+    get:
+      operationId: Roles_list
+      parameters:
+        - name: page[number]
+          in: query
+          required: false
+          description: 1부터 시작하는 페이지 번호.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+          explode: false
+        - name: page[size]
+          in: query
+          required: false
+          description: 페이지 크기. 최대 100.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+          explode: false
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[roles]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: filter[q]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/RoleCollectionDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - roles
+      security:
+        - BearerAuth: []
+      x-jsonapi-sort:
+        - name
+        - createdAt
+      x-permission: roles:read
+    post:
+      operationId: Roles_create
+      parameters: []
+      responses:
+        '201':
+          description: 201 Created.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/RoleDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - roles
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/RoleCreateDocument'
+      security:
+        - BearerAuth: []
+      x-permission: roles:manage
+  /api/v1/roles/{id}:
+    get:
+      operationId: Roles_get
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: fields[roles]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/RoleDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - roles
+      security:
+        - BearerAuth: []
+      x-permission: roles:read
+    patch:
+      operationId: Roles_update
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/RoleDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - roles
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdateDocument'
+      security:
+        - BearerAuth: []
+      x-permission: roles:manage
+    delete:
+      operationId: Roles_delete
+      description: 시스템 역할은 지울 수 없다(role.system_role_protected, 422).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 204 No Content.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - roles
+      security:
+        - BearerAuth: []
+      x-permission: roles:manage
+  /api/v1/users:
+    get:
+      operationId: Users_list
+      parameters:
+        - name: page[number]
+          in: query
+          required: false
+          description: 1부터 시작하는 페이지 번호.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+          explode: false
+        - name: page[size]
+          in: query
+          required: false
+          description: 페이지 크기. 최대 100.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+          explode: false
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: include
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[users]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[roles]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[files]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: filter[q]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: filter[status]
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+          explode: false
+        - name: filter[role]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/UserCollectionDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      x-jsonapi-include:
+        - roles
+        - avatar
+      x-jsonapi-sort:
+        - createdAt
+        - name
+        - email
+      x-permission: users:read
+  /api/v1/users/{id}:
+    get:
+      operationId: Users_get
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: include
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[users]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[roles]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: fields[files]
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/UserDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      x-jsonapi-include:
+        - roles
+        - avatar
+      x-permission: users:read
+    patch:
+      operationId: Users_update
+      description: 상태(비활성화)와 역할을 바꾼다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 200 OK.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/UserDocument'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '415':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '429':
+          description: Client error
+          headers:
+            Retry-After:
+              required: true
+              schema:
+                type: integer
+                format: int32
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '500':
+          description: Server error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '503':
+          description: Service unavailable.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateDocument'
+      security:
+        - BearerAuth: []
+      x-permission: users:manage
   /health/live:
     get:
       operationId: Health_live
@@ -42,6 +1504,13 @@ paths:
         - health
 components:
   schemas:
+    CollectionMeta:
+      type: object
+      required:
+        - page
+      properties:
+        page:
+          $ref: '#/components/schemas/PageMeta'
     ErrorCode:
       type: string
       enum:
@@ -133,6 +1602,188 @@ components:
           type: string
           description: 문제가 된 쿼리 파라미터 이름.
       description: 에러가 가리키는 위치.
+    FileAttributes:
+      type: object
+      required:
+        - filename
+        - contentType
+        - size
+        - status
+        - createdAt
+      properties:
+        filename:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/FileStatus'
+        createdAt:
+          type: string
+          format: date-time
+    FileCreateAttributes:
+      type: object
+      required:
+        - filename
+        - contentType
+        - size
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+        contentType:
+          type: string
+        size:
+          type: integer
+          format: int64
+          minimum: 1
+    FileCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - files
+            attributes:
+              $ref: '#/components/schemas/FileCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    FileDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/FileResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    FileMeta:
+      type: object
+      properties:
+        upload:
+          $ref: '#/components/schemas/FileUpload'
+          description: POST /files 응답에만 있다.
+        downloadUrl:
+          type: string
+          format: uri
+          description: ready인 파일에만 있다. 수명이 짧다.
+        downloadUrlExpiresAt:
+          type: string
+          format: date-time
+    FileRelationships:
+      type: object
+      required:
+        - owner
+      properties:
+        owner:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              anyOf:
+                - type: object
+                  required:
+                    - type
+                    - id
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - users
+                    id:
+                      type: string
+                  description: 관계가 가리키는 리소스 식별자.
+                - type: 'null'
+          description: 단수 관계. 대상이 없으면 data가 null이다.
+    FileResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+        - relationships
+      properties:
+        type:
+          type: string
+          enum:
+            - files
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/FileAttributes'
+        relationships:
+          $ref: '#/components/schemas/FileRelationships'
+        meta:
+          $ref: '#/components/schemas/FileMeta'
+      description: 관계가 있는 리소스 객체.
+    FileStatus:
+      type: string
+      enum:
+        - pending
+        - ready
+      description: 'pending: 업로드 URL만 발급됨. ready: 백엔드가 객체를 확인함.'
+    FileUpdateAttributes:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ready
+          description: 업로드를 마쳤다고 알린다. 백엔드가 객체를 확인한 뒤 ready로 바꾼다.
+    FileUpdateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - files
+            id:
+              type: string
+            attributes:
+              $ref: '#/components/schemas/FileUpdateAttributes'
+          required:
+            - type
+            - id
+      description: 수정 요청 문서. 속성 모델의 필드는 모두 선택이어야 한다.
+    FileUpload:
+      type: object
+      required:
+        - url
+        - method
+        - headers
+        - expiresAt
+      properties:
+        url:
+          type: string
+          format: uri
+        method:
+          type: string
+          enum:
+            - PUT
+        headers:
+          type: object
+          unevaluatedProperties:
+            type: string
+          description: 업로드 요청에 그대로 붙여야 하는 헤더.
+        expiresAt:
+          type: string
+          format: date-time
+      description: 브라우저가 스토리지에 직접 올릴 때 쓰는 presigned 요청 정보.
     HealthReport:
       type: object
       required:
@@ -153,6 +1804,581 @@ components:
               - unavailable
           description: '의존 대상별 상태. 예: { "database": "ok", "redis": "ok" }'
       description: 헬스체크 결과. JSON:API가 아닌 예외 엔드포인트라 application/json으로 응답한다.
+    Locale:
+      type: string
+      enum:
+        - ko
+        - en
+    PageMeta:
+      type: object
+      required:
+        - number
+        - size
+        - total
+        - totalPages
+      properties:
+        number:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int32
+        totalPages:
+          type: integer
+          format: int32
+      description: 페이지 정보. totalPages는 ceil(total / size)이다.
+    PaginationLinks:
+      type: object
+      required:
+        - first
+        - last
+        - prev
+        - next
+      properties:
+        first:
+          type: string
+          format: uri
+        last:
+          type: string
+          format: uri
+        prev:
+          anyOf:
+            - type: string
+              format: uri
+            - type: 'null'
+        next:
+          anyOf:
+            - type: string
+              format: uri
+            - type: 'null'
+      description: 컬렉션의 페이지 링크. 앞뒤 페이지가 없으면 null이다.
+    PermissionAttributes:
+      type: object
+      required:
+        - description
+        - group
+      properties:
+        description:
+          type: string
+        group:
+          type: string
+          description: '화면에서 묶어 보여 줄 그룹. 예: posts'
+      description: '권한 하나. id는 권한 코드(예: posts:manage)다.'
+    PermissionCode:
+      type: string
+      enum:
+        - admin:access
+        - users:read
+        - users:manage
+        - roles:read
+        - roles:manage
+        - audit-logs:read
+        - posts:create
+        - posts:manage
+      description: 코드에 정의된 권한. 역할은 이 값들의 묶음이다.
+    PermissionCollectionDocument:
+      type: object
+      required:
+        - data
+        - links
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionResource'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/CollectionMeta'
+      description: 컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다.
+    PermissionResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+      properties:
+        type:
+          type: string
+          enum:
+            - permissions
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/PermissionAttributes'
+      description: 관계가 없는 리소스 객체.
+    RoleAttributes:
+      type: object
+      required:
+        - name
+        - description
+        - permissions
+        - isSystem
+        - createdAt
+        - updatedAt
+      properties:
+        name:
+          type: string
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionCode'
+        isSystem:
+          type: boolean
+          description: 시드된 시스템 역할(admin, member). 삭제할 수 없다.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    RoleCollectionDocument:
+      type: object
+      required:
+        - data
+        - links
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleResource'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/CollectionMeta'
+      description: 컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다.
+    RoleCreateAttributes:
+      type: object
+      required:
+        - name
+        - permissions
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          maxLength: 200
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionCode'
+    RoleCreateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - roles
+            attributes:
+              $ref: '#/components/schemas/RoleCreateAttributes'
+          required:
+            - type
+            - attributes
+      description: 생성 요청 문서.
+    RoleDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/RoleResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    RoleResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+      properties:
+        type:
+          type: string
+          enum:
+            - roles
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/RoleAttributes'
+      description: 관계가 없는 리소스 객체.
+    RoleUpdateAttributes:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          maxLength: 200
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionCode'
+    RoleUpdateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - roles
+            id:
+              type: string
+            attributes:
+              $ref: '#/components/schemas/RoleUpdateAttributes'
+          required:
+            - type
+            - id
+      description: 수정 요청 문서. 속성 모델의 필드는 모두 선택이어야 한다.
+    UserAttributes:
+      type: object
+      required:
+        - email
+        - name
+        - locale
+        - status
+        - emailVerifiedAt
+        - createdAt
+        - updatedAt
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        locale:
+          $ref: '#/components/schemas/Locale'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        emailVerifiedAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      description: 본인과 users:read 권한자에게 보이는 전체 속성.
+    UserCollectionDocument:
+      type: object
+      required:
+        - data
+        - links
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResource'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/CollectionMeta'
+        included:
+          type: array
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/RoleResource'
+              - $ref: '#/components/schemas/FileResource'
+      description: 컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다.
+    UserDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/UserResource'
+        included:
+          type: array
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/RoleResource'
+              - $ref: '#/components/schemas/FileResource'
+      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+    UserMeDocument:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/UserResource'
+        included:
+          type: array
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/RoleResource'
+              - $ref: '#/components/schemas/FileResource'
+        meta:
+          type: object
+          properties:
+            permissions:
+              type: array
+              items:
+                $ref: '#/components/schemas/PermissionCode'
+          required:
+            - permissions
+      description: GET /me 응답. meta.permissions에 실제 적용되는 권한을 담는다.
+    UserMeUpdateAttributes:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        locale:
+          $ref: '#/components/schemas/Locale'
+    UserMeUpdateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - users
+            id:
+              type: string
+            attributes:
+              $ref: '#/components/schemas/UserMeUpdateAttributes'
+            relationships:
+              $ref: '#/components/schemas/UserMeUpdateRelationships'
+          required:
+            - type
+            - id
+      description: 관계를 함께 보내는 수정 요청 문서.
+    UserMeUpdateRelationships:
+      type: object
+      properties:
+        avatar:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              anyOf:
+                - type: object
+                  required:
+                    - type
+                    - id
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - files
+                    id:
+                      type: string
+                  description: 관계가 가리키는 리소스 식별자.
+                - type: 'null'
+          description: 단수 관계. 대상이 없으면 data가 null이다.
+    UserPublicAttributes:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+      description: 다른 사람과 비로그인 사용자에게 보이는 공개 속성. 이메일을 절대 담지 않는다.
+    UserPublicRelationships:
+      type: object
+      required:
+        - avatar
+      properties:
+        avatar:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              anyOf:
+                - type: object
+                  required:
+                    - type
+                    - id
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - files
+                    id:
+                      type: string
+                  description: 관계가 가리키는 리소스 식별자.
+                - type: 'null'
+          description: 단수 관계. 대상이 없으면 data가 null이다.
+    UserPublicResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+        - relationships
+      properties:
+        type:
+          type: string
+          enum:
+            - users
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/UserPublicAttributes'
+        relationships:
+          $ref: '#/components/schemas/UserPublicRelationships'
+      description: 관계가 있는 리소스 객체.
+    UserRelationships:
+      type: object
+      required:
+        - roles
+        - avatar
+      properties:
+        roles:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                required:
+                  - type
+                  - id
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - roles
+                  id:
+                    type: string
+                description: 관계가 가리키는 리소스 식별자.
+          description: 복수 관계.
+        avatar:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              anyOf:
+                - type: object
+                  required:
+                    - type
+                    - id
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - files
+                    id:
+                      type: string
+                  description: 관계가 가리키는 리소스 식별자.
+                - type: 'null'
+          description: 단수 관계. 대상이 없으면 data가 null이다.
+    UserResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+        - relationships
+      properties:
+        type:
+          type: string
+          enum:
+            - users
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/UserAttributes'
+        relationships:
+          $ref: '#/components/schemas/UserRelationships'
+      description: 관계가 있는 리소스 객체.
+    UserStatus:
+      type: string
+      enum:
+        - active
+        - deactivated
+    UserUpdateAttributes:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/UserStatus'
+    UserUpdateDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - users
+            id:
+              type: string
+            attributes:
+              $ref: '#/components/schemas/UserUpdateAttributes'
+            relationships:
+              $ref: '#/components/schemas/UserUpdateRelationships'
+          required:
+            - type
+            - id
+      description: 관계를 함께 보내는 수정 요청 문서.
+    UserUpdateRelationships:
+      type: object
+      properties:
+        roles:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                required:
+                  - type
+                  - id
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - roles
+                  id:
+                    type: string
+                description: 관계가 가리키는 리소스 식별자.
+          description: 복수 관계.
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: Bearer
 servers:
   - url: http://localhost:8000
     description: 로컬 개발 서버
