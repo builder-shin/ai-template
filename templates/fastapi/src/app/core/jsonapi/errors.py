@@ -56,6 +56,18 @@ _PARAM_NAMES: Mapping[str, str] = {
     "expected": "expected",
 }
 
+# Starlette HTTPException 상태 → 에러 코드. 상태와 코드가 어긋나지 않도록 상태에서 코드를 끌어낸다.
+# 목록에 없는 상태는 internal.unexpected 500으로 바꾼다.
+_HTTP_ERROR_CODES: Mapping[int, ErrorCode] = {
+    400: ErrorCode.JSONAPI_INVALID_DOCUMENT,
+    401: ErrorCode.AUTH_UNAUTHENTICATED,
+    403: ErrorCode.PERMISSION_DENIED,
+    404: ErrorCode.RESOURCE_NOT_FOUND,
+    409: ErrorCode.RESOURCE_CONFLICT,
+    429: ErrorCode.RATE_LIMIT_EXCEEDED,
+    503: ErrorCode.SERVICE_UNAVAILABLE,
+}
+
 
 class ApiError(Exception):
     """도메인과 공통 계층이 던지는 유일한 예외. 핸들러가 에러 문서로 바꾼다."""
@@ -149,7 +161,8 @@ def validation_error_objects(
 
     - JSON이 아니면 400 jsonapi.invalid_document
     - /data/attributes/*, /data/relationships/* 아래 오류는 필드마다 422 에러 객체
-    - 그 밖의 본문 오류(data 누락, type 틀림 등)는 400 jsonapi.invalid_document
+    - 그 밖의 본문 오류(data 누락, POST에서 type이 다름 등)는 400 jsonapi.invalid_document
+      (JSON:API 1.1은 409를 권하지만 계약은 POST에 409가 없다. jsonapi.md 참고)
     - 쿼리 오류는 400 jsonapi.invalid_query, 경로 오류는 404 resource.not_found
     - 둘 이상의 상태가 섞이면 JSON:API 권고대로 더 일반적인 400을 쓴다
     """
@@ -205,15 +218,28 @@ async def _validation_error_handler(request: Request, exc: Exception) -> Respons
 
 
 async def _http_error_handler(request: Request, exc: Exception) -> Response:
-    """Starlette가 던지는 404(없는 경로)·405 등. `/api/` 밖은 FastAPI 기본 형식을 둔다."""
+    """Starlette가 던지는 HTTPException을 상태별로 정해진 코드로 바꾼다.
+
+    `/api/` 밖은 FastAPI 기본 형식을 둔다. 상태 → 코드는 다음과 같다.
+    400은 jsonapi.invalid_document(예: 본문이 유효한 UTF-8이 아닐 때),
+    401은 auth.unauthenticated, 403은 permission.denied, 404와 (404로 다시 쓰는) 405는
+    resource.not_found, 409는 resource.conflict, 429는 rate_limit.exceeded, 503은
+    service.unavailable이다. 그 밖의 상태는 internal.unexpected 500으로 바꾸고 원래 상태를
+    로그에 남긴다. 405를 404로 다시 쓸 때는 헤더(Allow)를 버려 404에 405의 흔적이 남지 않게 한다.
+    """
     if not isinstance(exc, StarletteHTTPException):
         raise exc
     if not request.url.path.startswith(API_PREFIX):
         return await http_exception_handler(request, exc)
-    not_found = exc.status_code in {404, 405}
-    code = ErrorCode.RESOURCE_NOT_FOUND if not_found else ErrorCode.INTERNAL_UNEXPECTED
     status = 404 if exc.status_code == 405 else exc.status_code
-    return error_response(request.scope, status, [error_object(status, code)], exc.headers)
+    code = _HTTP_ERROR_CODES.get(status)
+    if code is None:
+        trace_id = trace_id_of(request.scope)
+        logger.error("unexpected_error", trace_id=trace_id, original_status=exc.status_code)
+        error = error_object(500, ErrorCode.INTERNAL_UNEXPECTED)
+        return error_response(request.scope, 500, [error])
+    headers = None if exc.status_code == 405 else exc.headers
+    return error_response(request.scope, status, [error_object(status, code)], headers)
 
 
 async def _unexpected_error_handler(request: Request, exc: Exception) -> Response:

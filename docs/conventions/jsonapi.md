@@ -56,6 +56,7 @@
 - 에러 응답은 `{ "errors": [...], "meta": { "traceId": "..." } }`이다.
 - 에러 객체는 `status`(문자열), `code`, `title`, `detail`, `source.pointer` 또는 `source.parameter`, `meta.params`를 담는다.
 - 필드 검증 오류는 필드마다 에러 객체 하나를 만들어 422로 응답한다.
+- 요청 본문의 `type`이 엔드포인트의 리소스와 다르면: POST는 400 `jsonapi.invalid_document`다. JSON:API 1.1은 409를 권하지만, 계약(`contract/openapi.yaml`)은 POST operation에 409 응답을 선언하지 않으므로 문서 구조 오류(400)로 다룬다. PATCH는 `type`이나 `id`가 경로의 리소스와 달라도 409 `resource.conflict`다(계약이 모든 PATCH operation에 409를 선언한다).
 - 코드 목록은 [error-codes.md](error-codes.md)에 있다.
 
 ## 인증과 권한 표기
