@@ -155,7 +155,7 @@ dev = [
     { name = "poethepoet" },
     { name = "pytest" },
     { name = "ruff" },
-    { name = "types-boto3", extra = ["s3"] },
+    { name = "types-boto3-lite", extra = ["s3"] },
 ]
 
 [package.metadata]
@@ -184,7 +184,7 @@ dev = [
     { name = "poethepoet", specifier = "==0.48.0" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.16.9" },
-    { name = "types-boto3", extras = ["s3"], specifier = "==1.43.93" },
+    { name = "types-boto3-lite", extras = ["s3"], specifier = "==1.43.93" },
 ]
 
 [[package]]
@@ -1314,16 +1314,16 @@ wheels = [
 ]
 
 [[package]]
-name = "types-boto3"
+name = "types-boto3-lite"
 version = "1.43.93"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore-stubs" },
     { name = "types-s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2c/5d/b59aab05efc3beaff138fbacced7bdef0cd7855e29b5975d85b6447f847d/types_boto3-1.43.93.tar.gz", hash = "sha256:57b3329b5e1d31277f74032b88eef22aad3efd6a59a3c63ab6fced545efb5825", size = 104921, upload-time = "2026-09-11T19:44:44.732Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/68/46bde39f37421ca77c1a78332bc3f4c449b0b23808b7648f620a71b98782/types_boto3_lite-1.43.93.tar.gz", hash = "sha256:01377ac339a3291a7a7da6f2fbf94a5ca8a8dd59107e71541fca58729005a0a6", size = 75604, upload-time = "2026-09-11T19:44:45.117Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b2/c5/c5788b26be314229a0596f2fef819c489ac186c1bea96e92430ef552d5e3/types_boto3-1.43.93-py3-none-any.whl", hash = "sha256:f41e8cd0e05321e916365951d1a06d75e3f5dc98275eb6eeeedc0ea8511d50cd", size = 71415, upload-time = "2026-09-11T19:44:40.759Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/30/bd49c65b9800439e1b8cee9366c45dcb26b464047bc23e49e3704b2ce258/types_boto3_lite-1.43.93-py3-none-any.whl", hash = "sha256:026cada3b1e96426625a600da04b370a366da6aae3896d689559cbea9c83d5af", size = 43345, upload-time = "2026-09-11T19:44:40.758Z" },
 ]
 
 [package.optional-dependencies]

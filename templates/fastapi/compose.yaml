@@ -1,0 +1,88 @@
+# 개발 인프라. `uv run poe setup`이 기본 프로필을 띄운다(docker compose up -d --wait).
+# 포트는 모두 127.0.0.1에만 연다. 호스트 포트는 기본 포트에 20000을 더한 번호이고, 컨테이너 안은 기본 포트다.
+# 다른 로컬 스택이 흔히 여는 기본 포트와 10000을 더한 포트(예: 5432, 15432)를 피한다.
+# 계정과 키는 .env.example의 개발용 값과 같다.
+# - 기본 프로필: PostgreSQL, Valkey, SeaweedFS(S3), Mailpit, 모의 OAuth 서버
+# - observability 프로필: Grafana LGTM(OpenTelemetry 수집과 조회). `docker compose --profile observability up -d`
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      - "127.0.0.1:25432:5432"
+    volumes:
+      # PostgreSQL 18 이미지는 /var/lib/postgresql 아래에 버전별 폴더를 만든다.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "--username", "app", "--dbname", "app"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  valkey:
+    image: valkey/valkey:9.1.2
+    ports:
+      - "127.0.0.1:26379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47
+    # weed mini: master, volume, filer, S3를 한 프로세스로 띄운다. 버킷은 setup이 S3 API로 만든다.
+    command: ["mini", "-dir=/data"]
+    environment:
+      AWS_ACCESS_KEY_ID: app
+      AWS_SECRET_ACCESS_KEY: app-secret
+    ports:
+      - "127.0.0.1:28333:8333"
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8333/healthz"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    ports:
+      - "127.0.0.1:21025:1025" # SMTP
+      - "127.0.0.1:28025:8025" # 웹 화면과 API
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  oauth:
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.3
+    ports:
+      - "127.0.0.1:28080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/default/.well-known/openid-configuration"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  lgtm:
+    image: grafana/otel-lgtm:0.34.0
+    profiles: [observability]
+    ports:
+      - "127.0.0.1:23000:3000" # Grafana
+      - "127.0.0.1:24317:4317" # OTLP gRPC
+      - "127.0.0.1:24318:4318" # OTLP HTTP
+    healthcheck:
+      test: ["CMD", "/otel-lgtm/docker/healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+volumes:
+  postgres-data:
+  seaweedfs-data:

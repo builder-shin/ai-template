@@ -28,8 +28,8 @@ def test_example_env_is_a_valid_configuration(tmp_path: Path) -> None:
     write_dotenv(tmp_path)
     settings = load_settings()
     assert settings.app_env == "development"
-    assert settings.database_url == "postgresql+psycopg://app:app@localhost:25432/app"
-    assert settings.redis_url == "redis://localhost:26379/0"
+    assert settings.database_url == "postgresql+psycopg://app:app@127.0.0.1:25432/app"
+    assert settings.redis_url == "redis://127.0.0.1:26379/0"
 
 
 def test_reports_each_bad_variable_on_its_own_line(
