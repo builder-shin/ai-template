@@ -92,10 +92,25 @@ describe("verifyTemplate", () => {
     expect(problems).toContain('명령 "db:reset"가 없다(docs/harness/standard.md의 명령 어휘).');
   });
 
-  it("아직 검사 방법이 없는 runner는 구현하라고 알린다", () => {
+  it("uv runner는 pyproject.toml의 [tool.poe.tasks]로 명령 어휘를 검사한다", () => {
     const repo = makeRepo();
     writeJson(repo, `${WEB}/template.json`, manifest({ runner: "uv" }));
-    expect(verify(repo)[0]).toMatch(/runner "uv"의 명령 검사는 아직 없다/);
+    const tasks = COMMANDS.map((command) => `"${command}" = "python -V"`).join("\n");
+    write(repo, `${WEB}/pyproject.toml`, `[project]\nname = "web"\n\n[tool.poe.tasks]\n${tasks}\n`);
+    expect(verify(repo)).toEqual([]);
+
+    const withoutE2e = COMMANDS.filter((command) => command !== "test:e2e")
+      .map((command) => `"${command}" = "python -V"`)
+      .join("\n");
+    write(repo, `${WEB}/pyproject.toml`, `[tool.poe.tasks]\n${withoutE2e}\n`);
+    expect(verify(repo)).toEqual(['명령 "test:e2e"가 없다(docs/harness/standard.md의 명령 어휘).']);
+  });
+
+  it("pyproject.toml을 TOML로 읽지 못하면 알린다", () => {
+    const repo = makeRepo();
+    writeJson(repo, `${WEB}/template.json`, manifest({ runner: "uv" }));
+    write(repo, `${WEB}/pyproject.toml`, "[tool.poe.tasks\n");
+    expect(verify(repo)[0]).toMatch(/^pyproject\.toml을 TOML로 읽지 못했다/);
   });
 
   it("쉘 형식(args 없음) hook을 잡는다", () => {

@@ -25,12 +25,12 @@
 }
 ```
 
-| 필드           | 값                                                                            |
-| -------------- | ----------------------------------------------------------------------------- |
-| `name`         | `templates/` 아래 폴더 이름                                                   |
-| `kind`         | `backend` 또는 `frontend`                                                     |
-| `runner`       | `pnpm`(package.json scripts) 또는 `uv`(FastAPI 사이클에서 검사 방법을 정한다) |
-| `goldenModule` | 골든 모듈 `posts`의 경로                                                      |
+| 필드           | 값                                                                                                        |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| `name`         | `templates/` 아래 폴더 이름                                                                               |
+| `kind`         | `backend` 또는 `frontend`                                                                                 |
+| `runner`       | `pnpm`(package.json scripts) 또는 `uv`(`pyproject.toml`의 `[tool.poe.tasks]`, 실행은 `uv run poe <명령>`) |
+| `goldenModule` | 골든 모듈 `posts`의 경로                                                                                  |
 
 ## 명령 어휘
 
@@ -127,6 +127,8 @@
 - 템플릿은 저장소의 다른 폴더를 참조하지 않는다. 공유 자산은 사본으로 들어간다.
 - 원본과 사본 위치는 `scripts/shared-assets.json`에 적는다. `pnpm sync`가 원본을 사본 위치로 통째로 복사한다.
 - 사본을 직접 고치지 않는다. 원본을 고치고 `pnpm sync`를 돌린다.
+
+지침 파일 검사는 `git ls-files --cached --others --exclude-standard`로 파일을 고른다. `.gitignore`에 있는 폴더(`.venv`, `node_modules` 등)는 보지 않는다.
 
 ## verify-templates가 검사하는 것
 

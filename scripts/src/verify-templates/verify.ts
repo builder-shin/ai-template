@@ -9,12 +9,16 @@ import {
   type SharedAssetsManifest,
   type TemplateManifest,
 } from "./manifest.ts";
+import { poeTasks } from "./poe.ts";
 
 export const REQUIRED_HOOKS = ["PostToolUse", "Stop", "PreToolUse", "SessionStart"];
 
-/** runner가 선언한 명령 이름. 아직 검사 방법이 없는 runner면 undefined. */
-function declaredCommands(dir: string, manifest: TemplateManifest): Set<string> | undefined {
-  if (manifest.runner !== "pnpm") return undefined;
+/**
+ * runner가 선언한 명령 이름. pnpm은 package.json scripts, uv는 pyproject.toml의 [tool.poe.tasks]다.
+ * 선언 파일을 읽지 못하면 문제 문장을 돌려준다.
+ */
+function declaredCommands(dir: string, manifest: TemplateManifest): Set<string> | string {
+  if (manifest.runner === "uv") return poeTasks(dir);
   const path = join(dir, "package.json");
   if (!existsSync(path)) return new Set();
   const pkg: unknown = JSON.parse(readFileSync(path, "utf8"));
@@ -24,11 +28,7 @@ function declaredCommands(dir: string, manifest: TemplateManifest): Set<string> 
 
 function commandProblems(dir: string, manifest: TemplateManifest): string[] {
   const declared = declaredCommands(dir, manifest);
-  if (declared === undefined) {
-    return [
-      `runner "${manifest.runner}"의 명령 검사는 아직 없다. 해당 템플릿 사이클에서 구현한다.`,
-    ];
-  }
+  if (typeof declared === "string") return [declared];
   return requiredCommands(manifest)
     .filter((command) => !declared.has(command))
     .map((command) => `명령 "${command}"가 없다(docs/harness/standard.md의 명령 어휘).`);

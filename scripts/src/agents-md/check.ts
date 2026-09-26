@@ -1,11 +1,12 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { projectFiles } from "../files/project-files.ts";
 
 export const MAX_ROOT_AGENTS_LINES = 200;
 export const IMPORT_LINE = "@AGENTS.md";
 
-/** 테스트 픽스처처럼 일부러 규칙을 어긴 폴더와 도구 폴더는 보지 않는다. */
-const SKIPPED_DIRS = new Set(["node_modules", ".git", ".cache", "fixtures"]);
+/** 테스트 픽스처는 일부러 규칙을 어기므로 보지 않는다. */
+const FIXTURES_DIR = "fixtures";
 
 export interface Problem {
   readonly path: string;
@@ -26,20 +27,34 @@ function meaningfulLines(text: string): string[] {
     .filter((line) => line !== "");
 }
 
+/** 폴더(루트 기준 상대 경로, 루트는 "")마다 그 안의 AGENTS.md·CLAUDE.md 이름을 모은다. 루트는 늘 들어간다. */
+function instructionFiles(root: string, options: CheckOptions): Map<string, Set<string>> {
+  const excluded = new Set(options.exclude ?? []);
+  const byDir = new Map<string, Set<string>>([["", new Set()]]);
+  for (const path of projectFiles(root)) {
+    const segments = path.split("/");
+    const name = segments.pop() ?? "";
+    if (name !== "AGENTS.md" && name !== "CLAUDE.md") continue;
+    if (segments.includes(FIXTURES_DIR)) continue;
+    if (segments.length > 0 && excluded.has(segments[0] ?? "")) continue;
+    const dir = segments.join("/");
+    const names = byDir.get(dir) ?? new Set<string>();
+    names.add(name);
+    byDir.set(dir, names);
+  }
+  return byDir;
+}
+
 /**
  * AGENTS.md마다 `@AGENTS.md`로 시작하는 CLAUDE.md가 옆에 있어야 한다.
  * 하위 폴더의 CLAUDE.md는 그 한 줄만 담고, 루트 CLAUDE.md만 Claude 전용 내용을 덧붙일 수 있다.
- * 루트 AGENTS.md는 200줄 이하다.
+ * 루트 AGENTS.md는 200줄 이하다. 파일은 projectFiles로 고르므로 .gitignore에 있는 폴더는 보지 않는다.
  */
 export function checkAgentsMd(root: string, options: CheckOptions = {}): Problem[] {
   const problems: Problem[] = [];
-  const excluded = new Set(options.exclude ?? []);
-
-  const visit = (dir: string): void => {
-    const entries = readdirSync(dir, { withFileTypes: true });
-    const files = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name));
-    const at = (name: string) => relative(root, join(dir, name)).replaceAll("\\", "/");
-    const isRoot = dir === root;
+  for (const [dir, files] of instructionFiles(root, options)) {
+    const at = (name: string) => (dir === "" ? name : `${dir}/${name}`);
+    const isRoot = dir === "";
     const rootRequired = isRoot && options.requireRoot === true;
 
     if (rootRequired && !files.has("AGENTS.md")) {
@@ -56,7 +71,7 @@ export function checkAgentsMd(root: string, options: CheckOptions = {}): Problem
       });
     }
     if (files.has("CLAUDE.md")) {
-      const lines = meaningfulLines(readFileSync(join(dir, "CLAUDE.md"), "utf8"));
+      const lines = meaningfulLines(readFileSync(join(root, dir, "CLAUDE.md"), "utf8"));
       if (!files.has("AGENTS.md")) {
         problems.push({
           path: at("CLAUDE.md"),
@@ -72,7 +87,7 @@ export function checkAgentsMd(root: string, options: CheckOptions = {}): Problem
       }
     }
     if (isRoot && files.has("AGENTS.md")) {
-      const count = readFileSync(join(dir, "AGENTS.md"), "utf8").trimEnd().split(/\r?\n/).length;
+      const count = readFileSync(join(root, "AGENTS.md"), "utf8").trimEnd().split(/\r?\n/).length;
       if (count > MAX_ROOT_AGENTS_LINES) {
         problems.push({
           path: at("AGENTS.md"),
@@ -80,14 +95,6 @@ export function checkAgentsMd(root: string, options: CheckOptions = {}): Problem
         });
       }
     }
-
-    for (const entry of entries) {
-      if (!entry.isDirectory() || SKIPPED_DIRS.has(entry.name)) continue;
-      if (isRoot && excluded.has(entry.name)) continue;
-      visit(join(dir, entry.name));
-    }
-  };
-
-  visit(root);
+  }
   return problems;
 }
