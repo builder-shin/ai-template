@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from redis.asyncio import Redis
-from taskiq import AsyncBroker, ScheduledTask
+from taskiq import AckableMessage, AsyncBroker, BrokerMessage, ScheduledTask
 from taskiq.receiver import Receiver
 from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListRedisScheduleSource
@@ -78,6 +78,31 @@ async def test_jobs_are_delivered_and_acknowledged(infra: Settings, redis: Redis
         await echo.kiq("안녕")
         await asyncio.wait_for(done.wait(), timeout=5)
     assert received == ["안녕"]
+    assert await unacknowledged(redis) == 0
+
+
+async def test_acknowledged_jobs_are_deleted_from_the_stream(infra: Settings, redis: Redis) -> None:
+    """확인한 잡은 스트림에서 지운다. 메일 잡에 담긴 이메일과 1회용 토큰이 남지 않는다.
+
+    taskiq-redis 1.2.3의 _ack_generator를 재정의한 것에 기댄다. 업그레이드해서 이 테스트가
+    깨지면 끝난 잡이 스트림에 계속 쌓인다.
+    """
+    broker = create_broker(infra)
+    await broker.startup()
+    messages = broker.listen()
+    try:
+        await broker.kick(
+            BrokerMessage(task_id="1", task_name="tests.echo", message=b"{}", labels={})
+        )
+        message = await anext(messages)
+        assert isinstance(message, AckableMessage)
+        acknowledging = message.ack()
+        assert acknowledging is not None
+        await acknowledging
+    finally:
+        await messages.aclose()
+        await broker.shutdown()
+    assert await redis.xlen(QUEUE) == 0
     assert await unacknowledged(redis) == 0
 
 

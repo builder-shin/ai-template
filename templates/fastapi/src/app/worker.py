@@ -5,7 +5,8 @@
   자식 프로세스마다 기본 이벤트 루프를 만드는데, Windows 기본 루프(Proactor)에서는 psycopg의
   비동기 모드가 돌지 않는다.
 - broker는 Valkey 스트림(RedisStreamBroker)이다. 잡을 끝낸 뒤에만 확인(XACK)하므로, worker가 죽어
-  확인하지 못한 메시지는 idle_timeout(10분) 뒤에 다른 worker가 가져간다(XAUTOCLAIM).
+  확인하지 못한 메시지는 idle_timeout(10분) 뒤에 다른 worker가 가져간다(XAUTOCLAIM). 확인한
+  메시지는 스트림에서 지운다(DeleteOnAckStreamBroker).
 - 실패한 잡은 SmartRetryMiddleware가 다시 보낸다(처음 실행을 포함해 MAX_ATTEMPTS번까지). 지연은
   재시도할 때마다 5초씩 늘고(최대 60초) 0~1초 지터가 붙는다. taskiq-redis의 broker는 지연을 모르므로
   재시도는 Valkey 스케줄 소스에 넣고, scheduler(app.scheduler)가 때가 되면 보낸다.
@@ -19,7 +20,10 @@
 
 import asyncio
 import contextlib
+from collections.abc import Awaitable, Callable
+from typing import override
 
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from taskiq import AsyncBroker, InMemoryBroker, SmartRetryMiddleware
 from taskiq.receiver import Receiver
@@ -35,6 +39,29 @@ QUEUE = "taskiq"  # 잡을 담는 Valkey 스트림의 키
 SCHEDULE_PREFIX = "taskiq-schedule"
 MAX_ATTEMPTS = 5
 MAX_CONCURRENT_JOBS = 100  # worker 한 프로세스가 동시에 돌리는 잡 수(taskiq worker의 기본값)
+
+
+class DeleteOnAckStreamBroker(RedisStreamBroker):
+    """확인할 때 메시지를 스트림에서 지우는 RedisStreamBroker.
+
+    taskiq-redis의 확인은 XACK만 하고 항목을 지우지 않아, 끝난 잡이 스트림에 계속 남는다.
+    메일 잡은 받는 사람의 이메일과 이름, 1회용 토큰이 든 링크를 담는다. 그래서 확인을
+    XACK와 XDEL 한 트랜잭션(MULTI/EXEC)으로 바꾼다.
+    taskiq-redis 1.2.3의 _ack_generator에 기댄다. 메시지마다 항목 id를 받는 곳은 여기뿐이다.
+    """
+
+    @override
+    def _ack_generator(self, id: str, queue_name: str) -> Callable[[], Awaitable[None]]:
+        async def ack() -> None:
+            async with (
+                Redis(connection_pool=self.connection_pool) as redis,
+                redis.pipeline(transaction=True) as pipe,
+            ):
+                pipe.xack(queue_name, self.consumer_group_name, id)
+                pipe.xdel(queue_name, id)
+                await pipe.execute()
+
+        return ack
 
 
 def create_schedule_source(settings: Settings) -> ListRedisScheduleSource:
@@ -73,7 +100,8 @@ def create_broker(
             use_delay_exponent=True,
             schedule_source=create_schedule_source(current),
         )
-        broker = RedisStreamBroker(current.redis_url, queue_name=QUEUE).with_middlewares(retry)
+        stream = DeleteOnAckStreamBroker(current.redis_url, queue_name=QUEUE)
+        broker = stream.with_middlewares(retry)
     attach_context(broker, current, sessions)
     register(broker, JOBS)
     return broker

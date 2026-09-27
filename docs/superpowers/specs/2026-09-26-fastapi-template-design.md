@@ -379,6 +379,7 @@ src/app/modules/posts/
 ### 6.9 잡, 메일, 스케줄러
 
 - broker는 taskiq-redis의 스트림 broker(`RedisStreamBroker`)다. 처리 중에 worker가 죽으면 확인하지 않은 잡을 다른 worker가 가져간다.
+  - 확인한 잡은 스트림에서 지운다(XACK와 XDEL을 한 트랜잭션으로). taskiq-redis의 확인은 XACK만 하므로 확인 함수(`_ack_generator`)를 재정의하고, 통합 테스트로 고정한다. 스트림이나 스케줄 소스(재시도)에서 기다리는 잡은 처리할 때까지 내용(메일 잡이면 받는 사람과 링크)을 담고 있다.
 - 재시도는 `SmartRetryMiddleware`(처음 실행을 포함해 최대 5번)다. 지연은 재시도마다 5초씩 늘고(최대 60초) 0~1초 지터가 붙는다.
   - taskiq-redis broker는 지연을 지키지 않는다. 그래서 재시도를 Valkey 스케줄 소스에 넣고 scheduler가 때가 되면 보낸다.
   - scheduler는 스케줄을 10초마다 다시 읽는다(`--update-interval=10`). 기본값(1분)이면 5초 뒤의 첫 재시도가 1분 가까이 늦기 때문이다.
