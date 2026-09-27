@@ -65,10 +65,1031 @@
           }
         }
       }
+    },
+    "/api/v1/roles": {
+      "get": {
+        "tags": [
+          "roles"
+        ],
+        "operationId": "Roles_list",
+        "responses": {
+          "200": {
+            "description": "200 OK.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleCollectionDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "roles:read",
+        "x-jsonapi-sort": [
+          "name",
+          "createdAt"
+        ],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "description": "1부터 시작하는 페이지 번호.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "default": 1
+            },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "description": "페이지 크기. 최대 100.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "fields[roles]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "filter[q]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "roles"
+        ],
+        "operationId": "Roles_create",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleCreateDocument"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "201 Created.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "roles:manage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/roles/{id}": {
+      "get": {
+        "tags": [
+          "roles"
+        ],
+        "operationId": "Roles_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fields[roles]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 OK.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "roles:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "roles"
+        ],
+        "operationId": "Roles_update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleUpdateDocument"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "200 OK.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "roles:manage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "roles"
+        ],
+        "description": "시스템 역할은 지울 수 없다(role.system_role_protected, 422).",
+        "operationId": "Roles_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "204 No Content."
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "roles:manage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/permissions": {
+      "get": {
+        "tags": [
+          "permissions"
+        ],
+        "operationId": "Permissions_list",
+        "responses": {
+          "200": {
+            "description": "200 OK.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionCollectionDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "roles:read",
+        "x-jsonapi-sort": [
+          "id"
+        ],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "description": "1부터 시작하는 페이지 번호.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "default": 1
+            },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "description": "페이지 크기. 최대 100.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "fields[permissions]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "CollectionMeta": {
+        "properties": {
+          "page": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "page"
+        ]
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "jsonapi.unsupported_media_type",
+          "jsonapi.not_acceptable",
+          "jsonapi.invalid_document",
+          "jsonapi.invalid_query",
+          "jsonapi.unsupported_include",
+          "jsonapi.unsupported_sort",
+          "validation.required",
+          "validation.too_short",
+          "validation.too_long",
+          "validation.invalid_format",
+          "validation.out_of_range",
+          "validation.invalid_choice",
+          "validation.already_taken",
+          "auth.unauthenticated",
+          "auth.invalid_credentials",
+          "auth.token_expired",
+          "auth.token_invalid",
+          "auth.refresh_token_reused",
+          "auth.oauth_code_invalid",
+          "auth.oauth_denied",
+          "auth.oauth_failed",
+          "auth.email_not_verified",
+          "auth.account_deactivated",
+          "auth.verification_token_invalid",
+          "permission.denied",
+          "role.system_role_protected",
+          "role.last_admin_protected",
+          "resource.not_found",
+          "resource.conflict",
+          "post.invalid_transition",
+          "file.too_large",
+          "file.type_not_allowed",
+          "file.upload_incomplete",
+          "rate_limit.exceeded",
+          "internal.unexpected",
+          "service.unavailable"
+        ],
+        "description": "기계가 읽는 에러 코드. 형식은 `<영역>.<snake_case 사유>`.\n이 목록은 계약(contract)이 정의한 에러 코드와 정확히 같아야 한다. 코드를 추가하거나\n바꿀 때는 계약을 먼저 고치고, 이 목록을 그 결과에 맞춘다."
+      },
+      "ErrorDocument": {
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ErrorObject"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "properties": {
+              "traceId": {
+                "type": "string"
+              }
+            },
+            "type": "object",
+            "required": [
+              "traceId"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "errors",
+          "meta"
+        ]
+      },
+      "ErrorObject": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "HTTP 상태 코드(문자열)."
+          },
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "title": {
+            "type": "string",
+            "description": "개발자용 영어 요약. 사용자에게 보여 주지 않는다."
+          },
+          "detail": {
+            "type": "string",
+            "description": "개발자용 영어 설명."
+          },
+          "source": {
+            "$ref": "#/components/schemas/ErrorSource"
+          },
+          "meta": {
+            "properties": {
+              "params": {
+                "unevaluatedProperties": {},
+                "type": "object",
+                "description": "번역 메시지에 끼워 넣을 변수."
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "code",
+          "title"
+        ]
+      },
+      "ErrorSource": {
+        "properties": {
+          "pointer": {
+            "type": "string",
+            "description": "요청 본문 안의 JSON Pointer. 예: /data/attributes/title"
+          },
+          "parameter": {
+            "type": "string",
+            "description": "문제가 된 쿼리 파라미터 이름."
+          }
+        },
+        "type": "object",
+        "description": "에러가 가리키는 위치."
+      },
       "HealthReport": {
         "properties": {
           "status": {
@@ -96,6 +1117,370 @@
           "checks"
         ],
         "description": "헬스체크 결과. JSON:API가 아닌 예외 엔드포인트라 application/json으로 응답한다."
+      },
+      "PageMeta": {
+        "properties": {
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "size",
+          "total",
+          "totalPages"
+        ],
+        "description": "페이지 정보. totalPages는 ceil(total / size)이다."
+      },
+      "PaginationLinks": {
+        "properties": {
+          "first": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "last": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "prev": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "uri-reference"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "uri-reference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "first",
+          "last",
+          "prev",
+          "next"
+        ],
+        "description": "컬렉션의 페이지 링크. 요청 경로 기준의 상대 경로이고 대괄호는 퍼센트 인코딩한다.\n앞뒤 페이지가 없으면 null이다."
+      },
+      "PermissionAttributes": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string",
+            "description": "화면에서 묶어 보여 줄 그룹. 예: posts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "description",
+          "group"
+        ],
+        "description": "권한 하나. id는 권한 코드(예: posts:manage)다."
+      },
+      "PermissionCode": {
+        "type": "string",
+        "enum": [
+          "admin:access",
+          "users:read",
+          "users:manage",
+          "roles:read",
+          "roles:manage",
+          "audit-logs:read",
+          "posts:create",
+          "posts:manage"
+        ],
+        "description": "코드에 정의된 권한. 역할은 이 값들의 묶음이다."
+      },
+      "PermissionCollectionDocument": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionResource"
+            },
+            "type": "array"
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CollectionMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "links",
+          "meta"
+        ],
+        "description": "컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다."
+      },
+      "PermissionResource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "permissions"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/PermissionAttributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "attributes"
+        ],
+        "description": "관계가 없는 리소스 객체."
+      },
+      "RoleAttributes": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionCode"
+            },
+            "type": "array"
+          },
+          "isSystem": {
+            "type": "boolean",
+            "description": "시드된 시스템 역할(admin, member). 삭제할 수 없다."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "permissions",
+          "isSystem",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "RoleCollectionDocument": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/RoleResource"
+            },
+            "type": "array"
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CollectionMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "links",
+          "meta"
+        ],
+        "description": "컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다."
+      },
+      "RoleCreateAttributes": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 200
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionCode"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "permissions"
+        ]
+      },
+      "RoleCreateDocument": {
+        "properties": {
+          "data": {
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "roles"
+                ]
+              },
+              "attributes": {
+                "$ref": "#/components/schemas/RoleCreateAttributes"
+              }
+            },
+            "type": "object",
+            "required": [
+              "type",
+              "attributes"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "생성 요청 문서."
+      },
+      "RoleDocument": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RoleResource"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."
+      },
+      "RoleResource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "roles"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/RoleAttributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "attributes"
+        ],
+        "description": "관계가 없는 리소스 객체."
+      },
+      "RoleUpdateAttributes": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 200
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionCode"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "RoleUpdateDocument": {
+        "properties": {
+          "data": {
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "roles"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "attributes": {
+                "$ref": "#/components/schemas/RoleUpdateAttributes"
+              }
+            },
+            "type": "object",
+            "required": [
+              "type",
+              "id"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "수정 요청 문서. 속성 모델의 필드는 모두 선택이어야 한다."
       }
     },
     "securitySchemes": {

@@ -15,7 +15,7 @@ from app.core.mail import SEND_MAIL
 from app.core.permissions import Permission
 from app.modules import audit_logs, auth, posts, roles, users
 
-ROUTERS: tuple[JsonApiRouter, ...] = ()
+ROUTERS: tuple[JsonApiRouter, ...] = (*roles.ROUTERS,)
 
 PERMISSIONS: tuple[Permission, ...] = (
     *roles.PERMISSIONS,

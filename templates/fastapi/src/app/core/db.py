@@ -12,6 +12,7 @@ from typing import Annotated, ClassVar
 
 from fastapi import Depends, Request
 from sqlalchemy import DateTime, Enum, MetaData
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -73,3 +74,12 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
+def violates(error: IntegrityError, constraint: str) -> bool:
+    """IntegrityError가 이름이 constraint인 제약(예: uq_roles_name)을 어겨 났는가.
+
+    유일 제약은 미리 조회해 막지 않고 flush에서 잡는다. 동시에 같은 값을 넣어도 한쪽만 성공한다.
+    """
+    diag: object = getattr(error.orig, "diag", None)
+    return getattr(diag, "constraint_name", None) == constraint

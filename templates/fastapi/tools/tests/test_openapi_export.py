@@ -38,22 +38,20 @@ def test_health_operations_match_the_contract(spec: dict[str, Any]) -> None:
 
 def test_health_report_schema_matches_the_contract(spec: dict[str, Any]) -> None:
     state = {"type": "string", "enum": ["ok", "unavailable"]}
-    assert spec["components"]["schemas"] == {
-        "HealthReport": {
-            "type": "object",
-            "required": ["status", "checks"],
-            "properties": {
-                "status": state,
-                "checks": {
-                    "type": "object",
-                    "unevaluatedProperties": state,
-                    "description": '의존 대상별 상태. 예: { "database": "ok", "redis": "ok" }',
-                },
+    assert spec["components"]["schemas"]["HealthReport"] == {
+        "type": "object",
+        "required": ["status", "checks"],
+        "properties": {
+            "status": state,
+            "checks": {
+                "type": "object",
+                "unevaluatedProperties": state,
+                "description": '의존 대상별 상태. 예: { "database": "ok", "redis": "ok" }',
             },
-            "description": (
-                "헬스체크 결과. JSON:API가 아닌 예외 엔드포인트라 application/json으로 응답한다."
-            ),
-        }
+        },
+        "description": (
+            "헬스체크 결과. JSON:API가 아닌 예외 엔드포인트라 application/json으로 응답한다."
+        ),
     }
 
 

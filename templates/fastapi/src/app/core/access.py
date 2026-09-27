@@ -5,6 +5,7 @@
 - 라우터는 선언마다 검사 의존성(access_guard)을 쿼리 파싱보다 먼저 단다. 그래서 인증(401)과
   권한(403)이 쿼리 오류(400)보다 먼저 나온다. 결과는 request.state.principal에 둔다.
 - 엔드포인트는 PrincipalDep(로그인 필수 선언)이나 OptionalPrincipalDep(로그인 선택)으로 받는다.
+  등록된 권한(PermissionRegistry)은 PermissionsDep으로 받는다.
 """
 
 import uuid
@@ -113,5 +114,11 @@ def optional_principal(request: Request) -> Principal | None:
     return _principal(request)
 
 
+def get_permissions(request: Request) -> PermissionRegistry:
+    registry: PermissionRegistry = request.app.state.permissions
+    return registry
+
+
 PrincipalDep = Annotated[Principal, Depends(current_principal)]
 OptionalPrincipalDep = Annotated[Principal | None, Depends(optional_principal)]
+PermissionsDep = Annotated[PermissionRegistry, Depends(get_permissions)]
