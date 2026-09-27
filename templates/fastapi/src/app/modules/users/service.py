@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,3 +54,33 @@ async def find_account(session: AsyncSession, email: str) -> User | None:
 
 async def get_account(session: AsyncSession, user_id: uuid.UUID) -> User | None:
     return await repository.get(session, user_id)
+
+
+def locale_from(accept_language: str | None) -> Locale:
+    """Accept-Language에서 지원하는 첫 로케일(q가 큰 순서). 없으면 ko다.
+
+    예: "en-US,en;q=0.9,ko;q=0.8" → en
+    """
+    ranked: list[tuple[float, int, str]] = []
+    for index, part in enumerate((accept_language or "").split(",")):
+        tag, _, parameters = part.strip().partition(";")
+        weight = 1.0
+        name, _, value = parameters.strip().partition("=")
+        if name.strip() == "q":
+            try:
+                weight = float(value)
+            except ValueError:
+                weight = 0.0
+        ranked.append((-weight, index, tag.split("-")[0].strip().lower()))
+    for _, _, language in sorted(ranked):
+        if language in Locale:
+            return Locale(language)
+    return Locale.KO
+
+
+def mark_email_verified(user: User, now: datetime) -> bool:
+    """이메일 인증을 마친 것으로 둔다. 이번에 처음 인증했으면 True다."""
+    if user.email_verified_at is not None:
+        return False
+    user.email_verified_at = now
+    return True

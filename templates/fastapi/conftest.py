@@ -120,12 +120,18 @@ async def app(
     """모듈 API 테스트용 앱. app.main.create_app의 lifespan이 두는 자원을 테스트용으로 둔다.
 
     DB는 테스트마다 롤백되는 db, Valkey는 비운 redis, 잡은 그 자리에서 실행하는 InMemoryBroker다.
+    시드처럼 시스템 역할(admin, member)을 테스트 트랜잭션 안에 만든다.
     무거운 import(앱 전체)는 이 fixture를 쓰는 테스트에서만 한다.
     """
     from app.core.jobs import JobQueue
     from app.core.storage import create_client
     from app.main import create_app
+    from app.modules import roles
     from app.worker import create_broker
+
+    async with db() as session:
+        await roles.ensure_system_roles(session)
+        await session.commit()
 
     application = create_app(infra)
     broker = create_broker(infra, in_memory=True, sessions=db)

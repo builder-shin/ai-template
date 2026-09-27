@@ -1,0 +1,7 @@
+Hello{% if name %} {{ name }}{% endif %},
+
+Open the link below to confirm your email address. The link works for 24 hours.
+
+{{ link }}
+
+If you did not sign up, you can ignore this email.

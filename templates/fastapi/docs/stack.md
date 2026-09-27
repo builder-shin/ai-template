@@ -23,6 +23,7 @@ FastAPI의 공식 skill은 `.claude/skills/fastapi/SKILL.md`에 있다. FastAPI 
 | `taskiq-redis`      | 1.2.3   | Valkey 스트림 broker와 스케줄 소스        | https://github.com/taskiq-python/taskiq-redis                                     |
 | `boto3`             | 1.43.93 | S3 호환 스토리지 클라이언트               | https://boto3.amazonaws.com/v1/documentation/api/1.43.93/index.html               |
 | `aiosmtplib` | 5.1.3 | 메일 발송(SMTP, `app.core.mail`) | https://aiosmtplib.readthedocs.io/en/stable/ |
+| `email-validator` | 2.3.0 | 이메일 형식 검사(Pydantic `EmailStr`) | https://github.com/JoshData/python-email-validator |
 | `jinja2` | 3.1.6 | 메일 템플릿(`app.core.mail`) | https://jinja.palletsprojects.com/en/stable/ |
 | `pwdlib` | 0.3.1 | 비밀번호 해시(Argon2id, `app.core.security`) | https://frankie567.github.io/pwdlib/ |
 | `pyjwt` | 2.15.0 | access token(JWT, `app.core.security`) | https://pyjwt.readthedocs.io/en/2.15.0/ |

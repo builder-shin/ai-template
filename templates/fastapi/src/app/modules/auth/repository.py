@@ -2,10 +2,10 @@
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.auth.models import LoginSession, RefreshToken
+from app.modules.auth.models import AccountToken, LoginSession, RefreshToken, TokenPurpose
 from app.modules.users import User, UserStatus
 
 
@@ -26,5 +26,24 @@ async def active_session(
     return await session.scalar(query)
 
 
-def add(session: AsyncSession, *rows: LoginSession | RefreshToken) -> None:
+def add(session: AsyncSession, *rows: LoginSession | RefreshToken | AccountToken) -> None:
     session.add_all(rows)
+
+
+async def find_account_token(
+    session: AsyncSession, token_hash: str, purpose: TokenPurpose
+) -> AccountToken | None:
+    query = select(AccountToken).where(
+        AccountToken.token_hash == token_hash, AccountToken.purpose == purpose
+    )
+    return await session.scalar(query)
+
+
+async def delete_account_tokens(
+    session: AsyncSession, user_id: uuid.UUID, purpose: TokenPurpose | None = None
+) -> None:
+    """사용자의 1회용 토큰을 지운다. purpose가 없으면 모든 목적의 토큰이다."""
+    query = delete(AccountToken).where(AccountToken.user_id == user_id)
+    if purpose is not None:
+        query = query.where(AccountToken.purpose == purpose)
+    await session.execute(query)

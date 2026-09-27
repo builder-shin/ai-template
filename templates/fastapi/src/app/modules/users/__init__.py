@@ -2,7 +2,14 @@
 
 from app.modules.users.models import Locale, User, UserStatus
 from app.modules.users.permissions import PERMISSIONS, USERS_MANAGE, USERS_READ
-from app.modules.users.service import create_account, find_account, get_account, normalize_email
+from app.modules.users.service import (
+    create_account,
+    find_account,
+    get_account,
+    locale_from,
+    mark_email_verified,
+    normalize_email,
+)
 
 __all__ = [
     "PERMISSIONS",
@@ -14,5 +21,7 @@ __all__ = [
     "create_account",
     "find_account",
     "get_account",
+    "locale_from",
+    "mark_email_verified",
     "normalize_email",
 ]

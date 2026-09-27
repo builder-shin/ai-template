@@ -1,0 +1,3 @@
+{% if name %}{{ name }}, y{% else %}Y{% endif %}our email address is confirmed. You can sign in now.
+
+{{ link }}
