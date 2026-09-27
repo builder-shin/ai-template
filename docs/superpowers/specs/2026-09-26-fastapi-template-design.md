@@ -197,6 +197,7 @@ src/app/modules/posts/
 - 엔드포인트마다 허용 목록을 선언한다: include 경로, sort 필드, filter 이름과 형식, fields 타입.
 - 공통 의존성이 `include`, `sort`, `fields[type]`, `page[number]`, `page[size]`, `filter[...]`를 파싱한다. 목록에 없으면 해당 400 코드(`jsonapi.unsupported_include`, `jsonapi.unsupported_sort`, `jsonapi.invalid_query`)를 돌려준다.
 - 같은 선언에서 OpenAPI 파라미터와 `x-jsonapi-include`, `x-jsonapi-sort` 확장을 만든다. 코드와 문서가 어긋날 수 없다.
+- 관계로 거르는 필터(`filter[role]`, `filter[author]`, `filter[actor]`)는 관련 리소스의 id(uuid)를 받는다. 기간 필터(`filter[createdFrom]`, `filter[createdTo]`)는 시작을 포함하고 끝을 포함하지 않으며, 오프셋이 없는 시각은 400이다(`docs/conventions/jsonapi.md`).
 
 ### 5.4 직렬화
 
@@ -226,8 +227,8 @@ src/app/modules/posts/
 ### 6.1 인증과 세션
 
 - access token은 JWT(HS256, 15분)이고 `sub`(사용자 id)와 `sid`(세션 id)를 담는다.
-- 인증이 필요한 요청마다 서명을 검증하고 세션 폐기 여부를 Valkey에서 확인한다.
-  - 세션을 폐기하면 `sid`를 폐기 목록에 넣는다. 항목은 access token 수명만큼만 둔다.
+- 인증이 필요한 요청마다 서명을 검증하고, 세션이 살아 있는지(세션 행의 `revoked_at`)를 DB에서 확인한다.
+  - 요청마다 사용자와 역할을 DB에서 읽으므로(§6.3) 같은 조회로 확인한다. Valkey에 폐기 목록을 따로 두지 않는다.
   - 그래서 로그아웃과 폐기가 access token 만료를 기다리지 않고 즉시 효과를 낸다.
 - refresh token
   - 불투명 토큰(32바이트)이고, DB에는 SHA-256 해시만 저장한다.
@@ -380,14 +381,15 @@ src/app/modules/posts/
 - broker는 taskiq-redis의 스트림 broker(`RedisStreamBroker`)다. 처리 중에 worker가 죽으면 확인하지 않은 잡을 다른 worker가 가져간다.
 - 재시도는 `SmartRetryMiddleware`(처음 실행을 포함해 최대 5번)다. 지연은 재시도마다 5초씩 늘고(최대 60초) 0~1초 지터가 붙는다.
   - taskiq-redis broker는 지연을 지키지 않는다. 그래서 재시도를 Valkey 스케줄 소스에 넣고 scheduler가 때가 되면 보낸다.
-  - scheduler는 스케줄을 1분마다 다시 읽으므로 재시도는 최대 1분 늦게 나간다.
+  - scheduler는 스케줄을 10초마다 다시 읽는다(`--update-interval=10`). 기본값(1분)이면 5초 뒤의 첫 재시도가 1분 가까이 늦기 때문이다.
+  - 이미 읽은 분에 나중에 들어온 예약은 다음에 읽을 때 지난 예약으로 함께 읽힌다(taskiq-redis 1.2.3). 이 동작을 통합 테스트로 고정하고, 한 번 실패한 메일이 다시 나가는지를 E2E로 본다.
 - 잡은 메일 발송, `pending` 파일 정리(매시간), 만료된 토큰과 세션 정리(매일)다.
 - 주기 작업은 작업 정의에 붙인 라벨로 선언하고, scheduler 하나가 실행한다(F6).
 - 메일
   - 템플릿은 메일을 보내는 모듈의 `templates/<로케일>/<이름>.{subject.txt,txt,html}`에 둔다. 인증, 재설정, 환영 메일은 `auth` 모듈에 있다.
   - 로케일(`ko`, `en`)마다 세 파일이 모두 있어야 한다. 빠지면 `check`가 실패한다.
   - 받는 사람의 로케일로 고르고, 없으면 `ko`를 쓴다.
-  - 링크는 설정의 프론트 주소에 `?token=`을 붙여 만든다. 적합성 스위트가 이 형식으로 토큰을 꺼낸다.
+  - 링크는 설정의 프론트 주소에 경로(`/verify-email`, `/reset-password`)와 `?token=`을 붙여 만든다(`docs/conventions/jsonapi.md`의 메일 링크). 적합성 스위트가 이 경로로 메일을 가리고 토큰을 꺼낸다.
 - 테스트는 Taskiq의 InMemoryBroker로 잡을 그 자리에서 실행한다. 메일은 실제 Mailpit으로 보낸다.
 
 ### 6.10 레이트 리밋과 캐시
@@ -575,7 +577,8 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
   - 계약에 없는 상태 코드도 실패다.
   - 스키마는 `contract/openapi.yaml`의 components를 Ajv(JSON Schema 2020-12, 형식 검사 포함)에 등록해 쓴다.
 - 부수 채널
-  - Mailbox: Mailpit API(`GET /api/v1/messages`, `GET /api/v1/message/{ID}`, `DELETE /api/v1/messages`). 받는 사람(테스트마다 고유한 이메일)으로 거르고, 제한 시간 동안 폴링한다. 테스트 파일이 병렬로 돌므로 전체 삭제는 스위트 시작 때 한 번만 한다.
+  - Mailbox: Mailpit API(`GET /api/v1/search?query=to:"주소"`, `GET /api/v1/message/{ID}`, `DELETE /api/v1/messages`). 받는 사람(테스트마다 고유한 이메일)으로 검색하고, 제한 시간 동안 폴링한다. 테스트 파일이 병렬로 돌므로 전체 삭제는 스위트 시작 때 한 번만 한다.
+  - `latest(to, { after, linkPath })`: `after`는 그 메일보다 뒤에 받은 메일만(메일함의 시각으로 비교), `linkPath`는 그 경로의 토큰 링크가 든 메일만 본다. 같은 주소로 두 번 보낸 메일과 메일 종류를 가린다. 제목은 백엔드와 로케일마다 문구가 달라 조건으로 쓰지 않는다.
   - OAuthDriver: 백엔드의 `authorize`부터 리다이렉트를 따라가 모의 OAuth 서버의 자동 로그인을 거친다. 가짜 프론트 콜백 주소에 닿으면 멈추고 `code`를 꺼낸다.
   - 카카오와 네이버의 신원 응답 형태를 모의 서버가 흉내 내지 못하면(§13), 적합성의 소셜 로그인 흐름은 구글로만 돌린다. 두 제공자는 템플릿의 단위 테스트가 맡는다.
 - 데이터: 테스트마다 무작위 이메일로 사용자를 새로 만든다. DB를 초기화하지 않고 몇 번이든 돌릴 수 있다. 관리자 흐름은 시드된 관리자를 쓰며, 자격 증명은 환경 변수(`CONFORMANCE_ADMIN_EMAIL`, `CONFORMANCE_ADMIN_PASSWORD`)로 받는다.
@@ -627,13 +630,15 @@ M1의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다
   - 에러 문서의 루트 pointer는 RFC 6901대로 `""`다.
   - 에러 우선순위(전역 429 → 415·406 → 본문 JSON 400 → 인증 401·403 → 쿼리 400 → 본문과 경로 검증 → 엄격한 429 → 도메인 에러)와 페이지 링크의 인코딩을 `docs/conventions/jsonapi.md`에 적었다.
   - `filter[`로 시작하지만 `]`로 끝나지 않는 파라미터는 400이다. filter는 별칭(camelCase)으로만 받는다.
-- M2
-  - 잡 모듈은 `create_broker` 안에서 안정된 `task_name`으로 등록한다. api도 잡을 보내려면 자기 broker가 있어야 한다.
-  - 잡이 한 번 실패한 뒤 scheduler가 다시 보내는지 E2E로 확인한다. 재시도가 taskiq-redis 1.2.3의 동작에 기대기 때문이다.
-  - `pre_bash`가 `LEFTHOOK=0`, `git -c core.hooksPath=...`, `bash -c "..."`, 다른 PC의 `psql -h`를 막는다. 셸로 `.env`를 읽는 것도 막는다.
-  - boto3 클라이언트에 연결·읽기 timeout을 둔다(헬스체크가 스레드를 오래 잡지 않게).
-  - `Mailbox.latest`에 시각이나 제목 조건을 둔다(같은 주소로 두 번 보낸 메일 구분).
-  - 모듈 경계 검사를 조립 파일(`src/app/modules/registry.py`, `src/app/main.py`)에도 적용한다.
+- M2. M2 계획에서 다음과 같이 했다.
+  - 잡은 `app.core.jobs.Job`으로 선언하고 `create_broker`가 안정된 이름(`task_name`)으로 등록한다. api는 lifespan에서 자기 broker를 만들어 잡을 보낸다(Task 8).
+  - `tests/e2e/test_jobs.py`가 Mailpit chaos로 첫 발송을 실패시키고 scheduler가 다시 보낸 메일을 받는다. scheduler는 10초마다 스케줄을 읽는다(Task 21).
+  - `pre_bash`가 `LEFTHOOK=0`·`LEFTHOOK_EXCLUDE`·`core.hooksPath`·`lefthook uninstall`, 다른 PC의 `psql -h`·`--host`·`host=`·`PGHOST`, 셸로 `.env` 읽기, `-EncodedCommand`를 막고, `bash -c`·`pwsh -Command`·`cmd /c`·`eval`·`Invoke-Expression`에 넘긴 명령도 같은 규칙으로 본다(Task 20).
+  - boto3 클라이언트는 연결 2초, 읽기 5초, 모두 두 번까지 시도한다(Task 20).
+  - `Mailbox.latest`에 `after`(메일함의 시각)와 `linkPath`(메일 링크 경로) 조건을 두었다. 제목은 백엔드마다 문구가 달라 쓰지 않는다(Task 22).
+  - 모듈 경계 검사가 조립 파일(`src/app/modules/registry.py`, `src/app/main.py`)도 본다(Task 8).
+- M3: `PATCH /me`의 아바타 검사(본인 소유의 ready 이미지)와, 탈퇴 때 아바타와 참조되지 않는 본인 파일 정리(§6.4의 3단계). M2의 `PATCH /me`는 아바타가 null이 아니면 404다.
+- M4: 세션 폐기와 역할 변경의 실시간 이벤트(`session.revoked`, `me.updated`). `SessionTokens`는 계약에서 참조하지 않는 스키마라 구조 비교에서 `--subset`을 떼면 드러난다.
 - M4: `Operation`이 JSON:API 밖의 쿼리 파라미터(`redirectUri`, `state`, `code`, `error`)를 선언하고, 제공자가 덧붙이는 파라미터를 받아들이는 콜백 모드가 있어야 한다.
 
 ## 13. 계획 단계에서 확인할 것
@@ -683,3 +688,6 @@ M1의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다
 | 카카오는 PKCE를 지원하지 않고, `is_email_valid`와 `is_email_verified`를 제공하며, 이메일이 없을 수 있다                           | https://developers.kakao.com/docs/latest/en/kakaologin/rest-api                                                                                              |
 | 네이버 프로필 응답에는 이메일 검증 플래그가 없다                                                                                 | https://github.com/naver/naver-openapi-guide/blob/master/ko/apilist.md                                                                                       |
 | httpx-oauth 0.17.0은 구글·카카오·네이버 클라이언트와 PKCE 매개변수를 제공한다                                                    | https://github.com/frankie567/httpx-oauth/releases/tag/v0.17.0 , https://github.com/frankie567/httpx-oauth/blob/master/httpx_oauth/oauth2.py                 |
+| (M2) structlog의 rich 예외 출력이 Python 3.14.7(Windows)에서 접근 위반으로 프로세스를 죽인다. 로그와 테스트는 `structlog.dev.plain_traceback`을 쓴다 | 직접 확인(rich `pretty.py`의 `_traverse`)                                                                                                                  |
+| (M2) taskiq-redis 1.2.3의 `ListRedisScheduleSource`는 스케줄을 읽을 때마다 지난 분의 예약을 SCAN으로 다시 찾는다. 키 접두사에 콜론이 있으면 지난 분을 찾지 못한다 | `taskiq_redis/list_schedule_source.py`(`get_schedules`, `_parse_time_key`)                                                                                  |
+| (M2) Mailpit 1.31.2는 `MP_ENABLE_CHAOS=true`로 띄우면 `PUT /api/v1/chaos`로 SMTP 발신을 일부러 거절한다(`{}`는 되돌린다)          | 직접 확인(E2E)                                                                                                                                              |
