@@ -23,7 +23,8 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 
 - 모듈 안의 방향은 `router → service → repository → models` 하나다. `schemas`는 router와 service가, `policies`와 `events`는 service가 쓴다. 아래 계층은 위 계층을 import하지 않는다(import-linter 계약 `module-layers`).
 - 다른 모듈은 `app.modules.<이름>` 패키지만 import한다. 내부 파일(`app.modules.users.repository` 등)은 import하지 않는다(`tools/checks/boundaries.py`). 모듈 사이의 순환 import는 basedpyright의 `reportImportCycles`가 막는다.
-- 모듈 등록(라우터, 이벤트, 잡)은 `src/app/modules/registry.py` 한 곳에서 한다(M2부터).
+- 모듈 등록은 `src/app/modules/registry.py` 한 곳에서 한다. 모듈은 공개 인터페이스(`__init__.py`)로 `ROUTERS`, `PERMISSIONS`, `JOBS`를 내보내고, 등록부가 모은다. 등록부도 모듈의 공개 인터페이스만 import한다(`module-boundary`는 `src/app/` 아래의 조립 파일도 본다).
+- 잡은 `app.core.jobs.Job(이름, 함수, cron=...)`으로 선언한다. 이름(`<모듈>.<동사구>`)이 큐의 task_name이다. 잡 함수는 설정과 DB 세션을 `context: JobContext = JOB_CONTEXT`로 받고, api는 요청에서 `JobsDep`으로 잡을 보낸다.
 
 ## 요청 흐름
 

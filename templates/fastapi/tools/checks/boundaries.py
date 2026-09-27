@@ -1,6 +1,7 @@
 """모듈 경계 검사. 다른 모듈은 app.modules.<이름> 패키지(공개 인터페이스)만 import한다.
 
-모듈 안의 계층 방향과 core → modules 금지는 import-linter 계약(pyproject.toml)이 본다.
+모듈 밖의 조립 파일(src/app/main.py, src/app/modules/registry.py 등)도 모듈의 공개 인터페이스만
+import한다. 모듈 안의 계층 방향과 core → modules 금지는 import-linter 계약(pyproject.toml)이 본다.
 """
 
 import ast
@@ -11,6 +12,7 @@ from tools.checks import Problem
 from tools.files import project_files
 
 RULE = "module-boundary"
+APP = ("src", "app")
 MODULES = ("src", "app", "modules")
 
 
@@ -43,13 +45,18 @@ def _imports(root: Path, path: PurePosixPath, tree: ast.Module) -> Iterator[tupl
                 yield node.lineno, candidate if _exists(root, candidate) else base
 
 
+def _owner(path: PurePosixPath) -> str | None:
+    """파일이 속한 모듈 이름. 모듈 밖의 파일(조립 파일)이면 None이다."""
+    return path.parts[3] if len(path.parts) >= 5 and path.parts[:3] == MODULES else None
+
+
 def check(root: Path) -> list[Problem]:
     found: set[tuple[str, int, str]] = set()
     for name in project_files(root):
         path = PurePosixPath(name)
-        if path.suffix != ".py" or len(path.parts) < 5 or path.parts[:3] != MODULES:
+        if path.suffix != ".py" or path.parts[:2] != APP:
             continue
-        own = path.parts[3]
+        own = _owner(path)
         try:
             tree = ast.parse((root / name).read_text(encoding="utf-8"))
         except SyntaxError:

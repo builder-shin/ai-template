@@ -3,7 +3,9 @@
 import pytest
 
 from app.core.config import Settings
+from app.core.jobs import JobQueue
 from app.main import create_app
+from app.modules.registry import JOBS
 
 pytestmark = pytest.mark.anyio
 
@@ -41,3 +43,6 @@ async def test_startup_prepares_connections_from_the_given_settings(settings: Se
     async with app.router.lifespan_context(app):
         assert app.state.settings is settings
         assert app.state.engine.url.database == "app_test"
+        # api는 잡을 보내려고 자기 broker를 띄운다. 등록부의 잡이 모두 있다.
+        jobs: JobQueue = app.state.jobs
+        assert set(jobs.broker.get_all_tasks()) == {job.name for job in JOBS}

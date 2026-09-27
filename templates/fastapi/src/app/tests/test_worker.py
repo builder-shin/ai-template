@@ -106,8 +106,8 @@ async def test_failed_jobs_are_retried_later_through_the_schedule_source(
     assert timedelta(seconds=5) <= retry_at - attempts[0] <= timedelta(seconds=6.5)
 
 
-async def test_in_memory_broker_runs_jobs_in_place() -> None:
-    broker = create_broker(in_memory=True)
+async def test_in_memory_broker_runs_jobs_in_place(settings: Settings) -> None:
+    broker = create_broker(settings, in_memory=True)
 
     @broker.task(task_name="tests.double")
     async def double(value: int) -> int:

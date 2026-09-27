@@ -38,3 +38,23 @@ def test_reports_imports_of_another_module_internals(tree: Tree) -> None:
         f"src/app/modules/posts/service.py:{line} module-boundary — {message}"
         for line in (4, 5, 6, 7)
     ]
+
+
+def test_assembly_files_import_only_public_interfaces(tree: Tree) -> None:
+    for path in ["__init__.py", "users/__init__.py", "users/router.py"]:
+        tree.write(f"src/app/modules/{path}")
+    tree.write(
+        "src/app/modules/registry.py",
+        "from app.modules import users\nfrom app.modules.users.router import me\n",
+    )
+    tree.write("src/app/main.py", "import app.modules.users\nfrom app.modules import registry\n")
+    tree.write("src/app/tests/test_main.py", "from app.modules.users import router\n")
+    message = (
+        "다른 모듈의 내부(app.modules.users.router)를 import했다. "
+        "대신 app.modules.users에서 import하고, "
+        "필요한 이름은 src/app/modules/users/__init__.py가 내보낸다."
+    )
+    assert [str(problem) for problem in check(tree.root)] == [
+        f"src/app/modules/registry.py:2 module-boundary — {message}",
+        f"src/app/tests/test_main.py:1 module-boundary — {message}",
+    ]
