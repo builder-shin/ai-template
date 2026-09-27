@@ -53,6 +53,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 - Windows 기본 이벤트 루프(Proactor)에서는 psycopg의 비동기 모드가 돌지 않는다. 그래서 개발과 E2E는 api를 셀렉터 루프로, worker를 셀렉터 루프 한 프로세스(`python -m app.worker`)로 띄운다. Linux(이미지)는 기본 루프가 셀렉터다.
 - 잡은 Valkey 스트림으로 주고받고, worker가 잡을 끝낸 뒤에 확인한다. 실패한 잡은 재시도가 Valkey 스케줄 소스에 들어가고 scheduler가 때가 되면 다시 보낸다(`src/app/worker.py`).
 - 주기 작업은 잡에 `schedule` 라벨로 선언하고 scheduler가 보낸다(`src/app/scheduler.py`).
+- 메일은 보내는 모듈의 템플릿(`templates/<ko|en>/<메일>.subject.txt, .txt, .html`)으로 만들고(`app.core.mail.MailTemplates`), 잡 `mail.send`(`SEND_MAIL`)가 SMTP로 보낸다. 요청은 SMTP를 기다리지 않고, 실패하면 worker가 재시도한다. 개발과 테스트의 메일은 Mailpit(http://127.0.0.1:28025)이 받는다.
 
 ## JSON:API 공통 계층 쓰는 법
 

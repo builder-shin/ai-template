@@ -5,6 +5,7 @@
 - db: 테스트마다 롤백되는 세션 팩토리. 앱의 app.state.sessions 자리에 넣는다. 앱이 commit해도
   SAVEPOINT만 풀리고, 테스트가 끝나면 바깥 트랜잭션을 롤백하므로 다음 테스트에 남지 않는다.
 - redis: 테스트마다 비운(FLUSHDB) 테스트 전용 Valkey DB.
+- mailbox: 테스트마다 비운 Mailpit. 메일은 모킹하지 않고 실제로 보낸다.
 """
 
 import asyncio
@@ -23,6 +24,7 @@ from app.core.db import create_engine
 from app.core.logging import PLAIN_TRACEBACK
 from app.core.redis import create_redis
 from tools.infra import isolated_settings, preflight
+from tools.mailpit import Mailpit
 
 ROOT = Path(__file__).resolve().parent
 
@@ -89,3 +91,11 @@ async def redis_client(infra: Settings) -> AsyncIterator[Redis]:
 async def redis(redis_client: Redis) -> Redis:
     await redis_client.flushdb()  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
     return redis_client
+
+
+@pytest.fixture
+async def mailbox(infra: Settings) -> Mailpit:
+    """테스트마다 비운 Mailpit(개발 인프라). 보낸 메일을 받는 사람으로 찾는다."""
+    mailpit = Mailpit()
+    await mailpit.clear()
+    return mailpit

@@ -6,5 +6,6 @@
 """
 
 from app.core.jobs import Job
+from app.core.mail import SEND_MAIL
 
-JOBS: tuple[Job[...], ...] = ()
+JOBS: tuple[Job[...], ...] = (SEND_MAIL,)
