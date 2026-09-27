@@ -56,8 +56,23 @@
 - 에러 응답은 `{ "errors": [...], "meta": { "traceId": "..." } }`이다.
 - 에러 객체는 `status`(문자열), `code`, `title`, `detail`, `source.pointer` 또는 `source.parameter`, `meta.params`를 담는다.
 - 필드 검증 오류는 필드마다 에러 객체 하나를 만들어 422로 응답한다.
-- 요청 본문의 `type`이 엔드포인트의 리소스와 다르면: POST는 400 `jsonapi.invalid_document`다. JSON:API 1.1은 409를 권하지만, 계약(`contract/openapi.yaml`)은 POST operation에 409 응답을 선언하지 않으므로 문서 구조 오류(400)로 다룬다. PATCH는 `type`이나 `id`가 경로의 리소스와 달라도 409 `resource.conflict`다(계약이 모든 PATCH operation에 409를 선언한다).
+- 요청 본문의 `type`이 엔드포인트의 리소스와 다르면: POST는 400 `jsonapi.invalid_document`다. JSON:API 1.1은 이때 서버가 409를 반드시(MUST) 응답해야 한다고 하지만, 계약(`contract/openapi.yaml`)은 POST operation에 409 응답을 선언하지 않으므로 문서 구조 오류(400)로 다룬다. PATCH는 `type`이나 `id`가 경로의 리소스와 달라도 409 `resource.conflict`다(계약이 모든 PATCH operation에 409를 선언한다).
 - 코드 목록은 [error-codes.md](error-codes.md)에 있다.
+
+### 상태 코드 → 에러 코드
+
+라우팅, 인증 미들웨어 등 프레임워크나 공통 계층이 JSON:API 문서 없이 HTTP 상태만 내는 에러는 그 상태로 에러 코드를 정한다. 두 백엔드 모두 이 표를 따른다.
+
+| 상태                                           | 코드                       |
+| ---------------------------------------------- | -------------------------- |
+| 400                                            | `jsonapi.invalid_document` |
+| 401                                            | `auth.unauthenticated`     |
+| 403                                            | `permission.denied`        |
+| 404, 그리고 `Allow` 헤더 없이 404로 답하는 405 | `resource.not_found`       |
+| 409                                            | `resource.conflict`        |
+| 429                                            | `rate_limit.exceeded`      |
+| 503                                            | `service.unavailable`      |
+| 그 밖의 상태                                   | 500 `internal.unexpected`  |
 
 ## 인증과 권한 표기
 
