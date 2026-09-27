@@ -71,8 +71,10 @@ paths:
         - name: filter[actor]
           in: query
           required: false
+          description: 행위자(사용자) id.
           schema:
             type: string
+            format: uuid
           explode: false
         - name: filter[action]
           in: query
@@ -1532,8 +1534,10 @@ paths:
         - name: filter[author]
           in: query
           required: false
+          description: 작성자(사용자) id.
           schema:
             type: string
+            format: uuid
           explode: false
         - name: filter[q]
           in: query
@@ -3069,8 +3073,10 @@ paths:
         - name: filter[role]
           in: query
           required: false
+          description: 역할 id.
           schema:
             type: string
+            format: uuid
           explode: false
       responses:
         '200':

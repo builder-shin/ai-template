@@ -95,6 +95,19 @@ async def roles_by_user(
     return await repository.roles_of_users(session, user_ids)
 
 
+async def find_roles(session: AsyncSession, role_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, Role]:
+    """id로 찾은 역할. 없는 id는 결과에 없다."""
+    return {role.id: role for role in await repository.get_many(session, role_ids)}
+
+
+async def change_roles(
+    session: AsyncSession, user_id: uuid.UUID, added: Iterable[Role], removed: Iterable[Role]
+) -> None:
+    """사용자에게 역할을 주고 뺀다. commit하지 않는다."""
+    repository.assign(session, user_id, added)
+    await repository.unassign(session, user_id, removed)
+
+
 async def clear_roles(session: AsyncSession, user_id: uuid.UUID) -> None:
     """사용자의 역할을 모두 뺀다(탈퇴). commit하지 않는다."""
     await repository.clear(session, user_id)

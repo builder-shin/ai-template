@@ -1,12 +1,22 @@
 """사용자의 DB 접근. commit하지 않는다(트랜잭션은 service가 정한다)."""
 
 import uuid
+from collections.abc import Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.jsonapi.query import Page, SortField
+from app.core.listing import ESCAPE, Sortable, contains, fetch_page, ordering
 from app.modules.roles import ADMIN_ROLE, Role, UserRole
 from app.modules.users.models import User, UserStatus
+
+SORT_COLUMNS: dict[str, Sortable] = {
+    "createdAt": User.created_at,
+    "name": User.name,
+    "email": User.email,
+}
+DEFAULT_SORT = (SortField(name="createdAt", descending=True),)
 
 
 async def get(session: AsyncSession, user_id: uuid.UUID) -> User | None:
@@ -20,6 +30,35 @@ async def find_by_email(session: AsyncSession, email: str) -> User | None:
 
 def add(session: AsyncSession, user: User) -> None:
     session.add(user)
+
+
+async def page(
+    session: AsyncSession,
+    *,
+    q: str | None,
+    status: UserStatus | None,
+    role_id: uuid.UUID | None,
+    sort: Sequence[SortField],
+    window: Page,
+) -> tuple[list[User], int]:
+    """사용자 한 페이지와 전체 개수.
+
+    q는 이름과 이메일의 부분 일치이고, role_id는 그 역할을 가진 사람만 남긴다.
+    """
+    query = select(User)
+    if q:
+        pattern = contains(q)
+        query = query.where(
+            or_(User.name.ilike(pattern, escape=ESCAPE), User.email.ilike(pattern, escape=ESCAPE))
+        )
+    if status is not None:
+        query = query.where(User.status == status)
+    if role_id is not None:
+        query = query.where(
+            User.id.in_(select(UserRole.user_id).where(UserRole.role_id == role_id))
+        )
+    order = ordering(sort, SORT_COLUMNS, default=DEFAULT_SORT, tiebreak=User.id)
+    return await fetch_page(session, query.order_by(*order), window)
 
 
 async def active_admins_besides(session: AsyncSession, user_id: uuid.UUID) -> int:

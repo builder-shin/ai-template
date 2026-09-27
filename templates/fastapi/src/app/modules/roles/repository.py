@@ -44,6 +44,10 @@ async def get(session: AsyncSession, role_id: uuid.UUID) -> Role | None:
     return await session.get(Role, role_id)
 
 
+async def get_many(session: AsyncSession, role_ids: Iterable[uuid.UUID]) -> list[Role]:
+    return list(await session.scalars(select(Role).where(Role.id.in_(list(role_ids)))))
+
+
 async def page(
     session: AsyncSession, name_contains: str | None, sort: Sequence[SortField], window: Page
 ) -> tuple[list[Role], int]:
@@ -73,6 +77,13 @@ async def roles_of_users(
     for user_id, role in (await session.execute(query)).tuples():
         found[user_id].append(role)
     return found
+
+
+async def unassign(session: AsyncSession, user_id: uuid.UUID, roles: Iterable[Role]) -> None:
+    role_ids = [role.id for role in roles]
+    if role_ids:
+        query = delete(UserRole).where(UserRole.user_id == user_id, UserRole.role_id.in_(role_ids))
+        await session.execute(query)
 
 
 async def clear(session: AsyncSession, user_id: uuid.UUID) -> None:

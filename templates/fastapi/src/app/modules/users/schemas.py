@@ -5,6 +5,7 @@
   늘 이 형태로 들어간다. 이메일을 절대 담지 않는다.
 """
 
+import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -132,4 +133,4 @@ class UserUpdateDocument(
 class UserFilter(FilterModel):
     q: Omittable[str] = MISSING
     status: Omittable[UserStatus] = MISSING
-    role: Omittable[str] = MISSING
+    role: Omittable[uuid.UUID] = MISSING

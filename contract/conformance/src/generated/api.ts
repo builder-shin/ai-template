@@ -1362,6 +1362,7 @@ export interface operations {
                 include?: string;
                 "fields[audit-logs]"?: string;
                 "fields[users]"?: string;
+                /** @description 행위자(사용자) id. */
                 "filter[actor]"?: string;
                 "filter[action]"?: components["schemas"]["AuditLogAction"];
                 "filter[targetType]"?: components["schemas"]["AuditLogTargetType"];
@@ -3035,6 +3036,7 @@ export interface operations {
                 "fields[users]"?: string;
                 "fields[files]"?: string;
                 "filter[status]"?: components["schemas"]["PostStatus"];
+                /** @description 작성자(사용자) id. */
                 "filter[author]"?: string;
                 "filter[q]"?: string;
             };
@@ -4825,6 +4827,7 @@ export interface operations {
                 "fields[files]"?: string;
                 "filter[q]"?: string;
                 "filter[status]"?: components["schemas"]["UserStatus"];
+                /** @description 역할 id. */
                 "filter[role]"?: string;
             };
             header?: never;

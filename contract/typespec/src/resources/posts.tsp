@@ -98,7 +98,10 @@ interface Posts {
     @query sort?: string,
     ...PostQuery,
     @query("filter[status]") filterStatus?: PostStatus,
-    @query("filter[author]") filterAuthor?: string,
+
+    /** 작성자(사용자) id. */
+    @query("filter[author]") @format("uuid") filterAuthor?: string,
+
     @query("filter[q]") filterQ?: string,
   ): JsonApi.Ok<PostCollectionDocument> | AuthErrors | CommonErrors;
 

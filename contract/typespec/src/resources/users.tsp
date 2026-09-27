@@ -148,7 +148,9 @@ interface Users {
     ...UserQuery,
     @query("filter[q]") filterQ?: string,
     @query("filter[status]") filterStatus?: UserStatus,
-    @query("filter[role]") filterRole?: string,
+
+    /** 역할 id. */
+    @query("filter[role]") @format("uuid") filterRole?: string,
   ): JsonApi.Ok<UserCollectionDocument> | AuthErrors | CommonErrors;
 
   @get

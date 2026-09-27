@@ -51,6 +51,7 @@
   - 쿼리는 `application/x-www-form-urlencoded` 규칙으로 인코딩한다. 대괄호는 `%5B`, `%5D`이고 공백은 `+`다.
   - 원래 요청의 파라미터를 받은 순서대로 두고, `page[number]`만 빼서 맨 뒤에 붙인다.
   - 예: `GET /api/v1/users?filter[q]=kim&page[size]=10&page[number]=2`의 `next`는 `/api/v1/users?filter%5Bq%5D=kim&page%5Bsize%5D=10&page%5Bnumber%5D=3`이다.
+- 관계로 거르는 필터(`filter[role]`, `filter[author]`, `filter[actor]`)는 관련 리소스의 id(uuid)를 받는다. 형식이 틀리면 400 `jsonapi.invalid_query`다.
 - `filter[이름]`의 이름은 속성 이름과 같은 camelCase만 받는다. `filter[created_from]`처럼 다른 표기는 모르는 필터(400)다. `filter[`로 시작하지만 `]`로 끝나지 않는 파라미터도 400이다.
 - 계약의 스키마는 필드를 모두 담은 기본 표현이다. `fields[type]`을 요청한 응답은 그 표현에서 요청한 필드만 남긴 투영이다. 적합성 테스트는 이 경우 `assertSparseFieldset`으로 검사한다.
 - 포함 리소스는 문서 안의 어떤 관계에서든 참조되어야 한다(full linkage). 같은 리소스를 두 번 담지 않는다.

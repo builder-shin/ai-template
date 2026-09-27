@@ -83,7 +83,10 @@ interface AuditLogs {
     ...JsonApi.PageQuery,
     @query sort?: string,
     ...AuditLogQuery,
-    @query("filter[actor]") filterActor?: string,
+
+    /** 행위자(사용자) id. */
+    @query("filter[actor]") @format("uuid") filterActor?: string,
+
     @query("filter[action]") filterAction?: AuditLogAction,
     @query("filter[targetType]") filterTargetType?: AuditLogTargetType,
     @query("filter[createdFrom]") filterCreatedFrom?: utcDateTime,

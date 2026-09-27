@@ -122,6 +122,20 @@ describe("생성·수정 응답 (JSON:API 1.1)", () => {
   });
 });
 
+describe("필터", () => {
+  it("관계로 거르는 필터는 관련 리소스의 id(uuid)를 받는다", () => {
+    const filters = [
+      ["/api/v1/users", "filter[role]"],
+      ["/api/v1/posts", "filter[author]"],
+      ["/api/v1/audit-logs", "filter[actor]"],
+    ] as const;
+    for (const [path, name] of filters) {
+      const parameter = operation("get", path).parameters?.find((each) => each.name === name);
+      expect(parameter?.schema?.format, `${path} ${name}`).toBe("uuid");
+    }
+  });
+});
+
 describe("헬스체크 (JSON:API 예외)", () => {
   it("live는 application/json으로 HealthReport를 돌려준다", () => {
     const live = operation("get", "/health/live");

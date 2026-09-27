@@ -2,7 +2,7 @@
 
 from app.modules.users.models import Locale, User, UserStatus
 from app.modules.users.permissions import PERMISSIONS, USERS_MANAGE, USERS_READ
-from app.modules.users.router import me
+from app.modules.users.router import me, users
 from app.modules.users.service import (
     Closure,
     create_account,
@@ -15,7 +15,7 @@ from app.modules.users.service import (
     set_password,
 )
 
-ROUTERS = (me,)
+ROUTERS = (me, users)
 
 __all__ = [
     "PERMISSIONS",
