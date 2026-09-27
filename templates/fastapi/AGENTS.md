@@ -41,7 +41,8 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - `tests/e2e/`: E2E 테스트. `test:e2e`가 띄운 api(`tools.e2e.BASE_URL`)에 실제 HTTP로 요청한다.
 - `Dockerfile`: 운영 이미지. 명령만 바꿔 api(기본), worker, scheduler, migrate로 띄운다.
 - `compose.yaml`: 개발 인프라(PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth). 포트는 127.0.0.1에만 열고, 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit SMTP 21025·웹 28025, 모의 OAuth 28080). `app` 프로필은 이미지로 migrate, api(8000), worker, scheduler를 띄운다.
-- `tools/`: 하네스 도구. `cli.py`가 poe 명령의 입구이고, `infra.py`가 인프라 준비, `dev.py`·`e2e.py`가 `processes.py`(프로세스 묶음)로 프로세스를 띄우고, `check/`가 check 실행기, `checks/`에 검사가 있다.
+- `tools/`: 하네스 도구. `cli.py`가 poe 명령의 입구이고, `infra.py`가 인프라 준비, `dev.py`·`e2e.py`가 `processes.py`(프로세스 묶음)로 프로세스를 띄우고, `check/`가 check 실행기, `checks/`에 검사, `hooks/`에 Claude Code hook이 있다.
+- `.claude/settings.json`: Claude Code의 hook(exec form으로 `tools.hooks.<이름>`을 부른다)과 권한.
 - `openapi.json`: 앱이 내보낸 OpenAPI 문서(생성물, `uv run poe gen`).
 - `api-style/lint.mjs`: 저장소가 넣는 API 스타일 룰셋 번들의 사본이다.
 - `docs/recipes/`: 작업 절차.
@@ -63,6 +64,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - 커밋된 마이그레이션(`migrations/versions/`)은 고치거나 지우지 않는다. 바꿀 것이 있으면 새 리비전을 만든다.
 - 테스트는 대상 코드 옆의 `tests/`에 둔다: `src/app/tests/`(앱 조립), `src/app/core/tests/`, `src/app/modules/<이름>/tests/`, `tools/tests/`.
 - 테스트는 자기 인프라(DB, Valkey, 스토리지, 메일)를 모킹하지 않는다. 테스트 DB는 `app_test`, Valkey는 DB 15다. DB는 `db` fixture(테스트마다 롤백), Valkey는 `redis` fixture(테스트마다 비움)로 쓴다.
-- 생성물은 직접 고치지 않는다: `openapi.json`(`uv run poe gen`), `uv.lock`(`uv add`, `uv lock`), `api-style/lint.mjs`(저장소의 `pnpm sync`). 라우트나 문서 모델을 바꾸면 `uv run poe gen`을 돌린다.
+- 생성물은 직접 고치지 않는다: `openapi.json`(`uv run poe gen`), `uv.lock`(`uv add`, `uv lock`), `api-style/lint.mjs`(저장소의 `pnpm sync`). 라우트나 문서 모델을 바꾸면 `uv run poe gen`을 돌린다. Claude Code 권한도 이 파일들의 수정과 `.env`, `.env.local` 읽기를 막는다(설정의 예시는 `.env.example`).
+- Claude Code hook이 규칙을 지킨다. `.py`를 고치면 그 파일만 포맷하고 자동 수정한 뒤 남은 린트 오류를 알린다. 끝낼 때 `check --fast`가 실패하면 끝나지 않는다. 강제 푸시, `--no-verify`, 이 PC가 아닌 DB 주소가 든 명령, 커밋된 마이그레이션을 지우거나 고치는 것은 막힌다. 세션을 시작하면 인프라, 마이그레이션, `openapi.json` 상태를 알린다.
 - 문서, 주석, 도구 메시지는 한국어로, 식별자는 영어로 쓴다.
 - 작업을 끝내기 전에 `uv run poe check`를 통과시킨다.

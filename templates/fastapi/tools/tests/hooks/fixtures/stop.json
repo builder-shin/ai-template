@@ -1,0 +1,9 @@
+{
+  "session_id": "8f3c2a1e-5b7d-4e0a-9c6f-1d2e3f4a5b6c",
+  "transcript_path": "/home/dev/.claude/projects/app/8f3c2a1e-5b7d-4e0a-9c6f-1d2e3f4a5b6c.jsonl",
+  "cwd": "/home/dev/app",
+  "permission_mode": "default",
+  "hook_event_name": "Stop",
+  "stop_hook_active": true,
+  "last_assistant_message": "끝냈다."
+}
