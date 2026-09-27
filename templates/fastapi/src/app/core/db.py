@@ -6,7 +6,7 @@
 """
 
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, ClassVar
 
 from fastapi import Depends, Request
@@ -27,6 +27,12 @@ NAMING_CONVENTION = {
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
     "pk": "pk_%(table_name)s",
 }
+
+
+def utc_now() -> datetime:
+    """모델 시각의 기본값(UTC). DB의 now()는 트랜잭션이 시작한 시각이라 같은 트랜잭션의 행끼리
+    순서가 갈리지 않는다. 이 함수는 부른 순간의 시각이다."""
+    return datetime.now(UTC)
 
 
 class Base(DeclarativeBase):
