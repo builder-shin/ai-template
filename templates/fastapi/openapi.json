@@ -1343,6 +1343,662 @@
           }
         }
       }
+    },
+    "/api/v1/sessions": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "description": "토큰은 이 응답에만 담긴다. 이미 쓴 refresh token이면 세션 계열 전체를 폐기하고 auth.refresh_token_reused(401).",
+        "operationId": "Sessions_create",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreateDocument"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "201 Created.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionWithTokensDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "sessions"
+        ],
+        "description": "내 활성 세션 목록.",
+        "operationId": "Sessions_list",
+        "responses": {
+          "200": {
+            "description": "200 OK.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionCollectionDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "x-jsonapi-sort": [
+          "createdAt",
+          "lastUsedAt"
+        ],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "description": "1부터 시작하는 페이지 번호.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "default": 1
+            },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "description": "페이지 크기. 최대 100.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "fields[sessions]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/current": {
+      "delete": {
+        "tags": [
+          "sessions"
+        ],
+        "description": "현재 세션 로그아웃.",
+        "operationId": "Sessions_deleteCurrent",
+        "responses": {
+          "204": {
+            "description": "204 No Content."
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}": {
+      "delete": {
+        "tags": [
+          "sessions"
+        ],
+        "description": "내 세션 하나를 폐기한다.",
+        "operationId": "Sessions_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "204 No Content."
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/session-revocations": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "description": "scope가 others면 현재 세션을 뺀 나머지를, all이면 전부 폐기한다.",
+        "operationId": "SessionRevocations_create",
+        "requestBody": {
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRevocationCreateDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "201 Created.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRevocationDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2155,6 +2811,433 @@
           "data"
         ],
         "description": "수정 요청 문서. 속성 모델의 필드는 모두 선택이어야 한다."
+      },
+      "SessionAttributes": {
+        "properties": {
+          "userAgent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "요청을 보낸 세션이면 true."
+          }
+        },
+        "type": "object",
+        "required": [
+          "userAgent",
+          "createdAt",
+          "lastUsedAt",
+          "current"
+        ]
+      },
+      "SessionCollectionDocument": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SessionResource"
+            },
+            "type": "array"
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CollectionMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "links",
+          "meta"
+        ],
+        "description": "컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다."
+      },
+      "SessionCreateDocument": {
+        "properties": {
+          "data": {
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "sessions"
+                ]
+              },
+              "attributes": {
+                "$ref": "#/components/schemas/SessionGrant"
+              }
+            },
+            "type": "object",
+            "required": [
+              "type",
+              "attributes"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "생성 요청 문서."
+      },
+      "SessionGrant": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SessionPasswordGrant"
+          },
+          {
+            "$ref": "#/components/schemas/SessionRefreshTokenGrant"
+          },
+          {
+            "$ref": "#/components/schemas/SessionOAuthCodeGrant"
+          }
+        ],
+        "type": "object",
+        "description": "로그인, 토큰 갱신, 소셜 로그인 완료를 grantType으로 구분한다.",
+        "discriminator": {
+          "propertyName": "grantType",
+          "mapping": {
+            "oauthCode": "#/components/schemas/SessionOAuthCodeGrant",
+            "password": "#/components/schemas/SessionPasswordGrant",
+            "refreshToken": "#/components/schemas/SessionRefreshTokenGrant"
+          }
+        }
+      },
+      "SessionOAuthCodeGrant": {
+        "properties": {
+          "grantType": {
+            "type": "string",
+            "enum": [
+              "oauthCode"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "description": "OAuth 콜백이 프론트로 넘긴 1회용 코드."
+          }
+        },
+        "type": "object",
+        "required": [
+          "grantType",
+          "code"
+        ]
+      },
+      "SessionPasswordGrant": {
+        "properties": {
+          "grantType": {
+            "type": "string",
+            "enum": [
+              "password"
+            ]
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grantType",
+          "email",
+          "password"
+        ]
+      },
+      "SessionRefreshTokenGrant": {
+        "properties": {
+          "grantType": {
+            "type": "string",
+            "enum": [
+              "refreshToken"
+            ]
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grantType",
+          "refreshToken"
+        ]
+      },
+      "SessionRelationships": {
+        "properties": {
+          "user": {
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "users"
+                        ]
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object",
+                    "required": [
+                      "type",
+                      "id"
+                    ],
+                    "description": "관계가 가리키는 리소스 식별자."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object",
+            "required": [
+              "data"
+            ],
+            "description": "단수 관계. 대상이 없으면 data가 null이다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "user"
+        ]
+      },
+      "SessionResource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sessions"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/SessionAttributes"
+          },
+          "relationships": {
+            "$ref": "#/components/schemas/SessionRelationships"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "attributes",
+          "relationships"
+        ],
+        "description": "관계가 있는 리소스 객체."
+      },
+      "SessionRevocationAttributes": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/SessionRevocationScope"
+          },
+          "revokedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "revokedCount",
+          "createdAt"
+        ]
+      },
+      "SessionRevocationCreateAttributes": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/SessionRevocationScope"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope"
+        ]
+      },
+      "SessionRevocationCreateDocument": {
+        "properties": {
+          "data": {
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "session-revocations"
+                ]
+              },
+              "attributes": {
+                "$ref": "#/components/schemas/SessionRevocationCreateAttributes"
+              }
+            },
+            "type": "object",
+            "required": [
+              "type",
+              "attributes"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "생성 요청 문서."
+      },
+      "SessionRevocationDocument": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SessionRevocationResource"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."
+      },
+      "SessionRevocationResource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "session-revocations"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/SessionRevocationAttributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "attributes"
+        ],
+        "description": "관계가 없는 리소스 객체."
+      },
+      "SessionRevocationScope": {
+        "type": "string",
+        "enum": [
+          "others",
+          "all"
+        ]
+      },
+      "SessionWithTokensAttributes": {
+        "properties": {
+          "userAgent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "요청을 보낸 세션이면 true."
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "accessTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "refreshTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "userAgent",
+          "createdAt",
+          "lastUsedAt",
+          "current",
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "refreshTokenExpiresAt"
+        ]
+      },
+      "SessionWithTokensDocument": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SessionWithTokensResource"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."
+      },
+      "SessionWithTokensResource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sessions"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/SessionWithTokensAttributes"
+          },
+          "relationships": {
+            "$ref": "#/components/schemas/SessionRelationships"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "attributes",
+          "relationships"
+        ],
+        "description": "관계가 있는 리소스 객체."
       }
     },
     "securitySchemes": {

@@ -242,7 +242,8 @@ def included_field[T]() -> list[T]:
 # --- 요청 문서 ---------------------------------------------------------------
 
 
-class CreateData[TypeT: str, AttributesT: JsonApiModel](InlineModel):
+class CreateData[TypeT: str, AttributesT](InlineModel):
+    # 계약(TypeSpec)처럼 생성 속성은 모델이 아니어도 된다(예: 판별 유니온 SessionGrant).
     type: TypeT
     attributes: AttributesT
 
@@ -257,7 +258,7 @@ class CreateData[TypeT: str, AttributesT: JsonApiModel](InlineModel):
 
 class CreateDataWithRelationships[
     TypeT: str,
-    AttributesT: JsonApiModel,
+    AttributesT,
     RelationshipsT: JsonApiModel,
 ](CreateData[TypeT, AttributesT]):
     relationships: Omittable[RelationshipsT] = MISSING
@@ -277,7 +278,7 @@ class UpdateDataWithRelationships[
     relationships: Omittable[RelationshipsT] = MISSING
 
 
-class CreateDocument[TypeT: str, AttributesT: JsonApiModel](JsonApiModel):
+class CreateDocument[TypeT: str, AttributesT](JsonApiModel):
     """생성 요청 문서."""
 
     data: CreateData[TypeT, AttributesT]
@@ -285,7 +286,7 @@ class CreateDocument[TypeT: str, AttributesT: JsonApiModel](JsonApiModel):
 
 class CreateDocumentWithRelationships[
     TypeT: str,
-    AttributesT: JsonApiModel,
+    AttributesT,
     RelationshipsT: JsonApiModel,
 ](JsonApiModel):
     """관계를 함께 보내는 생성 요청 문서."""

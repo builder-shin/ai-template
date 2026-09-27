@@ -1,14 +1,17 @@
 """auth의 JSON:API 문서 모델. 이름은 계약(auth.tsp, sessions.tsp)과 같다."""
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, EmailStr, Field, StringConstraints
 from pydantic.experimental.missing_sentinel import MISSING
 
 from app.core.jsonapi.models import (
+    CollectionDocument,
     CreateDocument,
     Document,
+    Int32,
     JsonApiModel,
     Omittable,
     Resource,
@@ -101,5 +104,109 @@ class EmailVerificationDocument(Document[EmailVerificationResource]):
 
 class EmailVerificationCreateDocument(
     CreateDocument[EmailVerificationType, EmailVerificationCreateAttributes]
+):
+    """생성 요청 문서."""
+
+
+# --- 세션 ----------------------------------------------------------------------
+
+SessionType = Literal["sessions"]
+SessionRevocationType = Literal["session-revocations"]
+
+
+class SessionPasswordGrant(JsonApiModel):
+    grant_type: Literal["password"]
+    email: Email
+    password: str
+
+
+class SessionRefreshTokenGrant(JsonApiModel):
+    grant_type: Literal["refreshToken"]
+    refresh_token: str
+
+
+class SessionOAuthCodeGrant(JsonApiModel):
+    grant_type: Literal["oauthCode"]
+    code: Annotated[str, Field(description="OAuth 콜백이 프론트로 넘긴 1회용 코드.")]
+
+
+# PEP 695 type 별칭이라 스키마 이름이 SessionGrant인 컴포넌트가 된다(계약과 같다).
+type SessionGrant = Annotated[
+    SessionPasswordGrant | SessionRefreshTokenGrant | SessionOAuthCodeGrant,
+    Field(
+        discriminator="grant_type",
+        description="로그인, 토큰 갱신, 소셜 로그인 완료를 grantType으로 구분한다.",
+        json_schema_extra={"type": "object"},
+    ),
+]
+
+
+class SessionAttributes(JsonApiModel):
+    user_agent: str | None
+    created_at: datetime
+    last_used_at: datetime
+    current: Annotated[bool, Field(description="요청을 보낸 세션이면 true.")]
+
+
+class SessionWithTokensAttributes(SessionAttributes):
+    access_token: str
+    access_token_expires_at: datetime
+    refresh_token: str
+    refresh_token_expires_at: datetime
+
+
+class SessionRelationships(JsonApiModel):
+    user: ToOne[UsersType]
+
+
+class SessionResource(
+    ResourceWithRelationships[SessionType, SessionAttributes, SessionRelationships]
+):
+    """관계가 있는 리소스 객체."""
+
+
+class SessionWithTokensResource(
+    ResourceWithRelationships[SessionType, SessionWithTokensAttributes, SessionRelationships]
+):
+    """관계가 있는 리소스 객체."""
+
+
+class SessionWithTokensDocument(Document[SessionWithTokensResource]):
+    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+
+
+class SessionCollectionDocument(CollectionDocument[SessionResource]):
+    """컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다."""
+
+
+class SessionCreateDocument(CreateDocument[SessionType, SessionGrant]):
+    """생성 요청 문서."""
+
+
+class SessionRevocationScope(StrEnum):
+    OTHERS = "others"
+    ALL = "all"
+
+
+class SessionRevocationAttributes(JsonApiModel):
+    scope: SessionRevocationScope
+    revoked_count: Int32
+    created_at: datetime
+
+
+class SessionRevocationCreateAttributes(JsonApiModel):
+    scope: SessionRevocationScope
+
+
+class SessionRevocationResource(Resource[SessionRevocationType, SessionRevocationAttributes]):
+    """관계가 없는 리소스 객체."""
+
+
+class SessionRevocationDocument(Document[SessionRevocationResource]):
+    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+
+
+class SessionRevocationCreateDocument(
+    CreateDocument[SessionRevocationType, SessionRevocationCreateAttributes]
 ):
     """생성 요청 문서."""

@@ -1,5 +1,6 @@
 """모든 예외를 JSON:API 에러 문서(ErrorDocument)로 바꾼다. meta.traceId는 그 요청의 trace id다."""
 
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from http import HTTPStatus
 from typing import Any
@@ -22,6 +23,7 @@ from app.core.jsonapi.models import (
     ErrorObjectMeta,
     ErrorSource,
 )
+from app.core.jsonvalue import is_array, is_object
 from app.core.logging import trace_id_of
 
 logger = structlog.get_logger(__name__)
@@ -30,6 +32,9 @@ API_PREFIX = "/api/"
 
 # 필드 검증 오류로 보는 위치. 그 밖의 본문 오류는 문서 구조 오류(400)다.
 _FIELD_POINTER_PREFIXES = ("/data/attributes/", "/data/relationships/")
+# 판별 유니온의 판별자 오류. attributes나 relationships 자체가 유니온일 때 그 안의 필드 오류다.
+_FIELD_OWNERS = ("/data/attributes", "/data/relationships")
+_DISCRIMINATOR_ERRORS = frozenset({"union_tag_not_found", "union_tag_invalid"})
 
 # Pydantic 오류 종류 → 에러 코드. 목록에 없는 종류는 validation.invalid_format이다.
 _VALIDATION_CODES: Mapping[str, ErrorCode] = {
@@ -158,6 +163,50 @@ def json_pointer(parts: Iterable[int | str]) -> str:
     return "".join("/" + str(part).replace("~", "~0").replace("/", "~1") for part in parts)
 
 
+_ABSENT = object()
+
+
+def _child(node: object, part: int | str) -> object:
+    """node 안의 part. 없으면 _ABSENT다."""
+    if is_object(node) and isinstance(part, str) and part in node:
+        found: object = node[part]
+        return found
+    if is_array(node) and isinstance(part, int) and 0 <= part < len(node):
+        item: object = node[part]
+        return item
+    return _ABSENT
+
+
+def document_path(body: object, parts: Sequence[int | str]) -> list[int | str]:
+    """Pydantic loc에서 요청 본문에 실제로 있는 경로만 남긴다(마지막 조각은 늘 남긴다).
+
+    판별 유니온(SessionGrant 등)은 loc에 태그 값을 끼워 넣는다. 예를 들어 password grant의
+    빠진 password는 ("data", "attributes", "password", "password")다. 본문을 따라가며 없는 조각을
+    건너뛰면 /data/attributes/password가 된다.
+    """
+    path: list[int | str] = []
+    node = body
+    for index, part in enumerate(parts):
+        child = _child(node, part)
+        if child is _ABSENT and index < len(parts) - 1:
+            continue
+        path.append(part)
+        node = child
+    return path
+
+
+def _discriminator_error(error: Mapping[str, Any], pointer: str) -> ErrorObject:
+    """판별 유니온의 판별자(grantType 등)가 없거나 모르는 값이면 그 필드의 422다."""
+    ctx: object = error.get("ctx")
+    described = str(ctx.get("discriminator", "")) if is_object(ctx) else ""
+    names = re.findall(r"'([^']+)'", described)
+    field = names[-1] if names else ""
+    missing = error.get("type") == "union_tag_not_found"
+    code = ErrorCode.VALIDATION_REQUIRED if missing else ErrorCode.VALIDATION_INVALID_CHOICE
+    message = str(error.get("msg", ""))
+    return error_object(422, code, message, pointer=f"{pointer}/{field}")
+
+
 def _validation_params(ctx: Mapping[str, Any] | None) -> dict[str, Any] | None:
     if not ctx:
         return None
@@ -180,6 +229,8 @@ def _body_error(error: Mapping[str, Any], pointer: str) -> ErrorObject:
     type_mismatch = error_type == "literal_error" and isinstance(error.get("input"), str)
     if pointer == "/data/type" and type_mismatch:
         return error_object(409, ErrorCode.RESOURCE_CONFLICT, message, pointer=pointer)
+    if error_type in _DISCRIMINATOR_ERRORS and pointer.startswith(_FIELD_OWNERS):
+        return _discriminator_error(error, pointer)
     if pointer.startswith(_FIELD_POINTER_PREFIXES):
         code = _VALIDATION_CODES.get(error_type, ErrorCode.VALIDATION_INVALID_FORMAT)
         params = _validation_params(error.get("ctx"))
@@ -188,13 +239,14 @@ def _body_error(error: Mapping[str, Any], pointer: str) -> ErrorObject:
 
 
 def validation_error_objects(
-    errors: Sequence[Mapping[str, Any]],
+    errors: Sequence[Mapping[str, Any]], body: object = None
 ) -> tuple[int, list[ErrorObject]]:
     """RequestValidationError의 오류 목록 → (응답 상태, 에러 객체들).
 
     - JSON이 아니면 400 jsonapi.invalid_document
     - 본문 오류는 _body_error의 규칙(403, 409, 필드마다 422, 문서 구조 400)을 따른다.
-      source.pointer는 RFC 6901이라 문서 전체는 ""다
+      source.pointer는 RFC 6901이라 문서 전체는 ""다. body(요청 본문)를 주면 본문에 없는 loc
+      조각(판별 유니온의 태그)을 뺀다
     - 쿼리 오류는 400 jsonapi.invalid_query, 경로 오류는 404 resource.not_found
     - 둘 이상의 상태가 섞이면 JSON:API 권고대로 가장 일반적인 400을 쓰고 에러 객체는 모두 담는다
     """
@@ -210,7 +262,7 @@ def validation_error_objects(
             detail = "Request body is not valid JSON."
             objects.append(error_object(400, ErrorCode.JSONAPI_INVALID_DOCUMENT, detail))
         elif where == "body":
-            found = _body_error(error, json_pointer(rest))
+            found = _body_error(error, json_pointer(document_path(body, rest)))
             statuses.add(int(found.status))
             objects.append(found)
         elif where == "path":
@@ -235,7 +287,7 @@ async def _api_error_handler(request: Request, exc: Exception) -> Response:
 async def _validation_error_handler(request: Request, exc: Exception) -> Response:
     if not isinstance(exc, RequestValidationError):
         raise exc
-    status, objects = validation_error_objects(exc.errors())
+    status, objects = validation_error_objects(exc.errors(), exc.body)
     return error_response(request.scope, status, objects)
 
 

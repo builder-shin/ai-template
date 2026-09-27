@@ -8,9 +8,9 @@ import httpx
 import pytest
 from fastapi import HTTPException
 
-from app.core.jsonapi.errors import ApiError, require_matching_id
+from app.core.jsonapi.errors import ApiError, require_matching_id, validation_error_objects
 from app.core.jsonapi.media import JSONAPI_MEDIA_TYPE
-from app.core.jsonapi.models import ErrorCode
+from app.core.jsonapi.models import ErrorCode, ErrorSource
 from app.core.jsonapi.tests.sample import KNOWN_ID, jsonapi_body, sample_app, widget_document
 
 pytestmark = pytest.mark.anyio
@@ -216,3 +216,37 @@ async def test_unmapped_http_exception_is_500_error_document() -> None:
     assert errors == [
         {"status": "500", "code": "internal.unexpected", "title": "Internal Server Error"}
     ]
+
+
+def test_discriminated_union_errors_point_into_the_document() -> None:
+    """판별 유니온은 loc에 태그 값을 끼운다. pointer는 본문에 있는 경로만 따른다."""
+    body = {"data": {"type": "sessions", "attributes": {"grantType": "password", "email": "a"}}}
+    loc = ("body", "data", "attributes", "password", "password")
+    status, [error] = validation_error_objects(
+        [{"type": "missing", "loc": loc, "msg": "Field required"}], body
+    )
+    assert (status, error.code, error.source) == (
+        422,
+        ErrorCode.VALIDATION_REQUIRED,
+        ErrorSource(pointer="/data/attributes/password"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("error_type", "code"),
+    [
+        ("union_tag_not_found", ErrorCode.VALIDATION_REQUIRED),
+        ("union_tag_invalid", ErrorCode.VALIDATION_INVALID_CHOICE),
+    ],
+)
+def test_missing_or_unknown_discriminator_is_a_field_error(
+    error_type: str, code: ErrorCode
+) -> None:
+    ctx = {"discriminator": "'grant_type' | 'grantType'"}
+    raw = {"type": error_type, "loc": ("body", "data", "attributes"), "msg": "m", "ctx": ctx}
+    status, [error] = validation_error_objects([raw], {"data": {"attributes": {}}})
+    assert (status, error.code, error.source) == (
+        422,
+        code,
+        ErrorSource(pointer="/data/attributes/grantType"),
+    )
