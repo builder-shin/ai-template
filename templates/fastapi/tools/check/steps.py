@@ -14,6 +14,14 @@ TEST_INPUTS = (
     "conftest.py",
     "pyproject.toml",
     "uv.lock",
+    # 테스트가 읽는 설정과 문서. 바뀌면 테스트를 다시 돈다.
+    ".env.example",
+    ".python-version",
+    ".claude/settings.json",
+    "compose.yaml",
+    "Dockerfile",
+    "lefthook.yml",
+    "docs/stack.md",
 )
 
 STEPS = (

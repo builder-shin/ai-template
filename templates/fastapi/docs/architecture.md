@@ -1,0 +1,67 @@
+# 아키텍처
+
+JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은 `uv run poe check`가 기계로 검사한다. 버전과 라이브러리 문서는 [stack.md](stack.md)에 있다.
+
+## 계층과 모듈
+
+- `src/app/core/`: 도메인을 모르는 기반이다. 설정, 로그, DB, Valkey, 스토리지, JSON:API 공통 계층이 있다. `app.modules`를 import하지 않는다(import-linter 계약 `core-knows-no-modules`). core가 모듈의 기능을 불러야 하면 core에 등록 지점(콜백, 레지스트리)을 두고 모듈이 등록한다.
+- `src/app/modules/<이름>/`: 도메인 모듈이다. 쓰는 파일만 만든다. 골든 모듈 `posts`가 모든 파일을 갖춘 정답 예시다(M3에서 채운다).
+
+| 파일            | 하는 일                                                                  |
+| --------------- | ------------------------------------------------------------------------ |
+| `__init__.py`   | 공개 인터페이스. 다른 모듈은 여기서 내보낸 이름만 쓴다                   |
+| `router.py`     | 라우트, 권한 선언, 쿼리 허용 목록, 응답 문서 조립                        |
+| `schemas.py`    | JSON:API 문서 모델(계약과 같은 이름)                                     |
+| `service.py`    | 유스케이스, 트랜잭션 경계(commit), 이벤트 발행, 감사 기록                |
+| `repository.py` | DB 접근                                                                  |
+| `models.py`     | SQLAlchemy 모델(`app.core.db.Base`를 상속)                               |
+| `policies.py`   | 소유권 같은 권한 판정(순수 함수)                                         |
+| `events.py`     | 이 모듈의 실시간 이벤트와 페이로드                                       |
+| `jobs.py`       | 이 모듈의 잡                                                             |
+| `templates/`    | 이 모듈이 보내는 메일 템플릿(`<ko\|en>/<메일>.subject.txt, .txt, .html`) |
+| `tests/`        | 이 모듈의 테스트                                                         |
+
+- 모듈 안의 방향은 `router → service → repository → models` 하나다. `schemas`는 router와 service가, `policies`와 `events`는 service가 쓴다. 아래 계층은 위 계층을 import하지 않는다(import-linter 계약 `module-layers`).
+- 다른 모듈은 `app.modules.<이름>` 패키지만 import한다. 내부 파일(`app.modules.users.repository` 등)은 import하지 않는다(`tools/checks/boundaries.py`). 모듈 사이의 순환 import는 basedpyright의 `reportImportCycles`가 막는다.
+- 모듈 등록(라우터, 이벤트, 잡)은 `src/app/modules/registry.py` 한 곳에서 한다(M2부터).
+
+## 요청 흐름
+
+1. `TraceIdMiddleware`(`app.core.logging`)가 요청마다 traceId(32자리 16진수)를 만들어 로그 문맥과 요청 상태에 둔다.
+2. `JsonApiNegotiationMiddleware`가 `/api/` 아래 요청의 `Content-Type`(415)과 `Accept`(406)를 본다.
+3. 라우트 선언(`Operation`, `CollectionOperation`)이 쿼리 파라미터를 파싱한다. 선언에 없는 파라미터, 허용하지 않은 include·sort, 틀린 filter·page는 400이다.
+4. router는 service를 부르고, service가 트랜잭션을 연다(`SessionDep`의 세션으로 commit). repository가 DB를 읽고 쓴다.
+5. router는 문서 모델을 만들어 `render()`로 응답한다. 에러는 `ApiError(상태, ErrorCode.<코드>, 영어 detail)`를 던지면 에러 문서(`meta.traceId` 포함)가 된다. 예상하지 못한 예외는 500 에러 문서다.
+
+`/health/live`, `/health/ready`(`src/app/health.py`)는 JSON:API가 아니라 `application/json`이다.
+
+## 프로세스
+
+이미지 하나를 명령만 바꿔 띄운다(`Dockerfile`, compose의 `app` 프로필).
+
+| 프로세스  | 운영 명령                                                                | 개발(`poe dev`)·E2E(`poe test:e2e`)                     | 비고                         |
+| --------- | ------------------------------------------------------------------------ | ------------------------------------------------------- | ---------------------------- |
+| api       | `uvicorn app.main:app --host 0.0.0.0 --port 8000`                        | `uvicorn app.main:app --loop asyncio:SelectorEventLoop` | 시작할 때 연결 자원을 만든다 |
+| worker    | `taskiq worker app.worker:create_broker --no-configure-logging`          | `python -m app.worker`                                  | 여러 개 띄울 수 있다         |
+| scheduler | `taskiq scheduler app.scheduler:create_scheduler --no-configure-logging` | 같다                                                    | 반드시 하나만 띄운다         |
+| migrate   | `alembic upgrade head && python -m app.seed`                             | `uv run poe db:migrate`                                 | 배포 단계에서 api보다 먼저   |
+
+- taskiq CLI(`taskiq worker`, `taskiq scheduler`)는 `create_broker`, `create_scheduler`를 인자 없이 부른다. 그 경로에서는 두 함수가 structlog 로그 설정을 스스로 하므로, CLI 자체의 로그 설정은 `--no-configure-logging`으로 끈다.
+- Windows 기본 이벤트 루프(Proactor)에서는 psycopg의 비동기 모드가 돌지 않는다. 그래서 개발과 E2E는 api를 셀렉터 루프로, worker를 셀렉터 루프 한 프로세스(`python -m app.worker`)로 띄운다. Linux(이미지)는 기본 루프가 셀렉터다.
+- 잡은 Valkey 스트림으로 주고받고, worker가 잡을 끝낸 뒤에 확인한다. 실패한 잡은 재시도가 Valkey 스케줄 소스에 들어가고 scheduler가 때가 되면 다시 보낸다(`src/app/worker.py`).
+- 주기 작업은 잡에 `schedule` 라벨로 선언하고 scheduler가 보낸다(`src/app/scheduler.py`).
+
+## JSON:API 공통 계층 쓰는 법
+
+라우트 선언 하나에서 operationId, 에러 응답, 쿼리 파라미터(OpenAPI)와 쿼리 파서가 함께 나온다. 전체 예시는 테스트 전용 샘플 `src/app/core/jsonapi/tests/sample.py`다.
+
+1. 문서 모델: `app.core.jsonapi.models`의 제네릭(`ResourceWithRelationships`, `Document`, `CollectionDocument`, `CreateDocument` 등)을 상속해 계약과 같은 이름의 클래스를 만든다. 선택 필드는 `Omittable[T] = MISSING`이다.
+2. 선언: `Operation(name=..., errors=..., include=..., fields=..., permission=...)`이나 `CollectionOperation(..., sort=..., filter=<FilterModel>)`. 에러 묶음은 `COMMON_ERRORS`, `BODY_ERRORS`, `AUTH_ERRORS`, `NOT_FOUND`, `CONFLICT`다.
+3. 라우터: `router = JsonApiRouter(prefix="/api/v1/posts", tag="posts", interface="Posts")`. operationId는 `<interface>_<name>`이다.
+4. 엔드포인트: `@router.route("GET", "", LIST, response_model=PostCollectionDocument)`로 달고, 쿼리는 `query: Annotated[CollectionQuery[PostFilter], Depends(LIST)]`로 받는다.
+5. 응답: `render(document, fields=query.fields)`. 페이지 링크와 `meta.page`는 `pagination(request, query.page, total)`, 포함 리소스는 `load_included(query.include, {"author": load_authors})`로 만든다.
+6. 라우트나 문서 모델을 바꾸면 `uv run poe gen`으로 `openapi.json`을 다시 쓴다. check의 `generated` 단계가 최신인지, `contract` 단계가 계약 룰셋을 지키는지 본다.
+
+## 공개 파일 전달을 바꾸는 방법
+
+지금 규칙은 ready 상태의 파일을 모두 presigned GET(10분)으로 준다. 공개 버킷과 CDN으로 바꾸는 방법은 M3에서 files 모듈과 함께 이 자리에 적는다.
