@@ -616,6 +616,24 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | M3  | files(업로드, 완료 확인, 다운로드, 읽기 규칙, 정리 잡), posts(필터, 정렬, include, fields, 페이지, 캐시, 감사), `gen:module`, 레시피와 skill                                                                                  | 해당 적합성 흐름 통과. `gen:module`로 만든 모듈이 `check`를 통과                                               |
 | M4  | realtime(티켓, Socket.IO, 구독, 이벤트), 소셜 로그인, OpenTelemetry, `test:e2e`, 구조 비교에서 `--subset` 떼기                                                                                                                | §1.2의 사이클 완료 조건                                                                                       |
 
+### 12.1 M1에서 넘긴 일
+
+M1의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
+
+- M2를 시작하기 전(NestJS가 따라 하기 전에 정한다)
+  - POST 본문의 `type` 불일치: JSON:API 1.1은 409를 요구한다(MUST). 지금 계약의 POST에는 409가 없어서 400으로 둔다. POST 오류 묶음에 409를 더할지 정한다. 클라이언트가 만든 `id`를 받지 않을 때의 403도 함께 정한다.
+  - 에러 문서의 루트 pointer는 RFC 6901대로 `""`로 바꾼다. 지금은 `"/"`다.
+  - 에러 우선순위(415·406 → 본문 JSON 400 → 쿼리 400 → 필드 422)와 페이지 링크의 인코딩을 `docs/conventions/jsonapi.md`에 적는다.
+  - `filter[`로 시작하지만 `]`로 끝나지 않는 파라미터를 400으로 막는다. filter는 별칭(camelCase)으로만 받는다(`validate_by_name` 끄기).
+- M2
+  - 잡 모듈은 `create_broker` 안에서 안정된 `task_name`으로 등록한다. api도 잡을 보내려면 자기 broker가 있어야 한다.
+  - 잡이 한 번 실패한 뒤 scheduler가 다시 보내는지 E2E로 확인한다. 재시도가 taskiq-redis 1.2.3의 동작에 기대기 때문이다.
+  - `pre_bash`가 `LEFTHOOK=0`, `git -c core.hooksPath=...`, `bash -c "..."`, 다른 PC의 `psql -h`를 막는다. 셸로 `.env`를 읽는 것도 막는다.
+  - boto3 클라이언트에 연결·읽기 timeout을 둔다(헬스체크가 스레드를 오래 잡지 않게).
+  - `Mailbox.latest`에 시각이나 제목 조건을 둔다(같은 주소로 두 번 보낸 메일 구분).
+  - 모듈 경계 검사를 조립 파일(`src/app/modules/registry.py`, `src/app/main.py`)에도 적용한다.
+- M4: `Operation`이 JSON:API 밖의 쿼리 파라미터(`redirectUri`, `state`, `code`, `error`)를 선언하고, 제공자가 덧붙이는 파라미터를 받아들이는 콜백 모드가 있어야 한다.
+
 ## 13. 계획 단계에서 확인할 것
 
 각 항목은 해당 마일스톤 계획의 첫 스파이크로 확인하고, 결과에 따라 계획을 쓴다.
