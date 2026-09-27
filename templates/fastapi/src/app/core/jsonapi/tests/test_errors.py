@@ -1,13 +1,17 @@
-"""에러 문서: 필드별 422와 포인터, 문서 구조 400, /api/ 아래 404, 예상하지 못한 예외의 500."""
+"""에러 문서: 필드별 422와 포인터, 문서 구조 400, type 불일치 409, 클라이언트 id 403,
+/api/ 아래 404, 예상하지 못한 예외의 500."""
 
+import uuid
 from typing import Any
 
 import httpx
 import pytest
 from fastapi import HTTPException
 
+from app.core.jsonapi.errors import ApiError, require_matching_id
 from app.core.jsonapi.media import JSONAPI_MEDIA_TYPE
-from app.core.jsonapi.tests.sample import jsonapi_body, sample_app, widget_document
+from app.core.jsonapi.models import ErrorCode
+from app.core.jsonapi.tests.sample import KNOWN_ID, jsonapi_body, sample_app, widget_document
 
 pytestmark = pytest.mark.anyio
 
@@ -66,7 +70,7 @@ async def test_malformed_json_is_400_invalid_document(client: httpx.AsyncClient)
     [
         ({}, "/data"),
         ({"data": []}, "/data"),
-        ({"data": {"type": "users", "attributes": {"name": "n"}}}, "/data/type"),
+        ({"data": {"type": 5, "attributes": {"name": "n"}}}, "/data/type"),
         ({"data": {"type": "widgets"}}, "/data/attributes"),
     ],
 )
@@ -76,6 +80,53 @@ async def test_structural_errors_are_400(
     errors = errors_of(await client.post("/api/v1/widgets", **jsonapi_body(document)), 400)
     assert errors[0]["code"] == "jsonapi.invalid_document"
     assert errors[0]["source"]["pointer"] == pointer
+
+
+async def test_whole_document_pointer_is_empty_string(client: httpx.AsyncClient) -> None:
+    """RFC 6901: 문서 전체는 ""다. "/"는 이름이 빈 문자열인 멤버를 가리킨다."""
+    request = jsonapi_body({})
+    request["content"] = b"[]"
+    errors = errors_of(await client.post("/api/v1/widgets", **request), 400)
+    assert [(error["code"], error["source"]) for error in errors] == [
+        ("jsonapi.invalid_document", {"pointer": ""})
+    ]
+
+
+async def test_type_mismatch_is_409_conflict(client: httpx.AsyncClient) -> None:
+    """JSON:API 1.1: 본문의 type이 엔드포인트의 리소스와 다르면 409다(MUST)."""
+    document = {"data": {"type": "users", "attributes": {"name": "n"}}}
+    errors = errors_of(await client.post("/api/v1/widgets", **jsonapi_body(document)), 409)
+    assert [(error["code"], error["source"]) for error in errors] == [
+        ("resource.conflict", {"pointer": "/data/type"})
+    ]
+
+
+async def test_client_generated_id_is_403(client: httpx.AsyncClient) -> None:
+    """JSON:API 1.1: 클라이언트가 만든 id를 받지 않으면 403이다(MUST)."""
+    document = widget_document()
+    document["data"]["id"] = "01920000-0000-7000-8000-000000000099"
+    errors = errors_of(await client.post("/api/v1/widgets", **jsonapi_body(document)), 403)
+    assert [(error["code"], error["source"]) for error in errors] == [
+        ("permission.denied", {"pointer": "/data/id"})
+    ]
+
+
+async def test_mixed_statuses_answer_400_with_every_error(client: httpx.AsyncClient) -> None:
+    """type 불일치(409)와 필드 오류(422)가 함께 나면 가장 일반적인 400으로 모두 담는다."""
+    document = {"data": {"type": "users", "attributes": {"size": 0}}}
+    errors = errors_of(await client.post("/api/v1/widgets", **jsonapi_body(document)), 400)
+    assert [error["status"] for error in errors] == ["409", "422", "422"]
+
+
+def test_require_matching_id_rejects_a_different_id_with_409() -> None:
+    require_matching_id(KNOWN_ID, uuid.UUID(KNOWN_ID))
+    with pytest.raises(ApiError) as caught:
+        require_matching_id("01920000-0000-7000-8000-000000000002", uuid.UUID(KNOWN_ID))
+    assert (caught.value.status, caught.value.code, caught.value.pointer) == (
+        409,
+        ErrorCode.RESOURCE_CONFLICT,
+        "/data/id",
+    )
 
 
 async def test_empty_body_is_400(client: httpx.AsyncClient) -> None:

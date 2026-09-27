@@ -1,10 +1,15 @@
 """쿼리 파서: 선언에 없거나 틀린 파라미터는 400이고 source.parameter가 그 이름을 가리킨다."""
 
+from datetime import datetime
+
 import httpx
 import pytest
 from fastapi import Request
+from pydantic.experimental.missing_sentinel import MISSING
 
-from app.core.jsonapi.query import SortField, parse_include, parse_sort
+from app.core.jsonapi.errors import ApiError
+from app.core.jsonapi.models import Omittable
+from app.core.jsonapi.query import FilterModel, SortField, parse_filter, parse_include, parse_sort
 from app.core.jsonapi.rendering import load_included
 from app.core.jsonapi.tests.sample import (
     ADA,
@@ -44,6 +49,7 @@ def _request(query_string: str) -> Request:
         ("fields[nope]=name", "jsonapi.invalid_query", "fields[nope]"),
         ("filter[color]=green", "jsonapi.invalid_query", "filter[color]"),
         ("filter[nope]=x", "jsonapi.invalid_query", "filter[nope]"),
+        ("filter[color=red", "jsonapi.invalid_query", "filter[color"),
         ("sort=name&sort=size", "jsonapi.invalid_query", "sort"),
     ],
 )
@@ -105,3 +111,15 @@ async def test_repeated_include_path_runs_its_loader_once() -> None:
     result = await load_included(include, {"owner": owners})
     assert [resource.id for resource in result] == [ADA]
     assert calls == ["owner"]
+
+
+class SinceFilter(FilterModel):
+    created_from: Omittable[datetime] = MISSING
+
+
+def test_filters_take_only_the_camel_case_name() -> None:
+    since = parse_filter(_request("filter[createdFrom]=2026-09-27T00:00:00Z"), SinceFilter)
+    assert since.created_from == datetime.fromisoformat("2026-09-27T00:00:00+00:00")
+    with pytest.raises(ApiError) as caught:
+        parse_filter(_request("filter[created_from]=2026-09-27T00:00:00Z"), SinceFilter)
+    assert caught.value.parameter == "filter[created_from]"

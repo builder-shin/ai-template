@@ -26,12 +26,13 @@ class FilterModel(BaseModel):
     """`filter[...]` 선언. 필드 `created_from`은 `filter[createdFrom]`이 된다.
 
     필드는 모두 `Omittable[T] = MISSING`으로 쓴다. 선언에 없는 필터는 400이다(extra="forbid").
+    필터 이름은 camelCase 별칭으로만 받는다. `filter[created_from]`은 모르는 필터다.
     """
 
     model_config = ConfigDict(
         alias_generator=to_camel,
         validate_by_alias=True,
-        validate_by_name=True,
+        validate_by_name=False,
         extra="forbid",
         frozen=True,
     )

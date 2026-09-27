@@ -39,6 +39,7 @@ from app.core.jsonapi.operation import (
     AUTH_ERRORS,
     BODY_ERRORS,
     COMMON_ERRORS,
+    CREATE_ERRORS,
     NOT_FOUND,
     CollectionOperation,
     JsonApiRouter,
@@ -147,7 +148,12 @@ LIST = CollectionOperation(
     sort=("name", "size", "createdAt"),
     filter=WidgetFilter,
 )
-CREATE = Operation(name="create", status_code=201, auth="none", errors=BODY_ERRORS + COMMON_ERRORS)
+CREATE = Operation(
+    name="create",
+    status_code=201,
+    auth="none",
+    errors=CREATE_ERRORS + BODY_ERRORS + COMMON_ERRORS,
+)
 GET = Operation(
     name="get",
     auth="none",

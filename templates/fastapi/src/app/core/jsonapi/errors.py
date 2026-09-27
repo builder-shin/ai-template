@@ -14,6 +14,7 @@ from starlette.types import Scope
 
 from app.core.jsonapi.media import JsonApiResponse
 from app.core.jsonapi.models import (
+    CLIENT_ID_ERROR,
     ErrorCode,
     ErrorDocument,
     ErrorDocumentMeta,
@@ -139,6 +140,16 @@ def error_response(
     return JsonApiResponse(document.model_dump(mode="json"), status_code=status, headers=headers)
 
 
+def require_matching_id(document_id: str, resource_id: object) -> None:
+    """수정 요청(PATCH) 본문의 data.id가 경로의 리소스와 다르면 409다(JSON:API 1.1 MUST).
+
+    resource_id는 경로의 id다. /api/v1/me는 로그인한 사용자의 id를 넘긴다.
+    """
+    if document_id != str(resource_id):
+        detail = f"data.id {document_id} does not match the resource {resource_id}."
+        raise ApiError(409, ErrorCode.RESOURCE_CONFLICT, detail, pointer="/data/id")
+
+
 def json_pointer(parts: Iterable[int | str]) -> str:
     """Pydantic loc → RFC 6901 JSON Pointer.
 
@@ -154,20 +165,38 @@ def _validation_params(ctx: Mapping[str, Any] | None) -> dict[str, Any] | None:
     return params or None
 
 
+def _body_error(error: Mapping[str, Any], pointer: str) -> ErrorObject:
+    """본문 검증 오류 하나 → 에러 객체. 상태는 JSON:API 1.1의 규칙을 따른다.
+
+    - 생성 요청(POST)의 data에 클라이언트가 만든 id가 있으면 403 permission.denied(/data/id)
+    - data.type이 엔드포인트의 리소스와 다르면 409 resource.conflict(POST와 PATCH 모두)
+    - /data/attributes/*, /data/relationships/* 아래 오류는 필드마다 422
+    - 그 밖(data 누락, 문자열이 아닌 type 등)은 문서 구조 오류 400 jsonapi.invalid_document
+    """
+    error_type = str(error.get("type", ""))
+    message = str(error.get("msg", ""))
+    if error_type == CLIENT_ID_ERROR:
+        return error_object(403, ErrorCode.PERMISSION_DENIED, message, pointer="/data/id")
+    type_mismatch = error_type == "literal_error" and isinstance(error.get("input"), str)
+    if pointer == "/data/type" and type_mismatch:
+        return error_object(409, ErrorCode.RESOURCE_CONFLICT, message, pointer=pointer)
+    if pointer.startswith(_FIELD_POINTER_PREFIXES):
+        code = _VALIDATION_CODES.get(error_type, ErrorCode.VALIDATION_INVALID_FORMAT)
+        params = _validation_params(error.get("ctx"))
+        return error_object(422, code, message, pointer=pointer, params=params)
+    return error_object(400, ErrorCode.JSONAPI_INVALID_DOCUMENT, message, pointer=pointer)
+
+
 def validation_error_objects(
     errors: Sequence[Mapping[str, Any]],
 ) -> tuple[int, list[ErrorObject]]:
     """RequestValidationError의 오류 목록 → (응답 상태, 에러 객체들).
 
     - JSON이 아니면 400 jsonapi.invalid_document
-    - /data/attributes/*, /data/relationships/* 아래 오류는 필드마다 422 에러 객체
-    - 그 밖의 본문 오류(data 누락 등)는 400 jsonapi.invalid_document
-    - POST 본문의 data.type이 엔드포인트의 리소스와 다르면 400 jsonapi.invalid_document다.
-      JSON:API 1.1은 이때 409를 반드시(MUST) 쓰라고 하지만, 계약(contract)이 POST operation에
-      409 응답을 선언하지 않으므로 문서 구조 오류(400)로 다룬다. PATCH에서 data.type이나 id가
-      경로의 리소스와 다르면 409 resource.conflict다(계약이 모든 PATCH operation에 409를 선언한다)
+    - 본문 오류는 _body_error의 규칙(403, 409, 필드마다 422, 문서 구조 400)을 따른다.
+      source.pointer는 RFC 6901이라 문서 전체는 ""다
     - 쿼리 오류는 400 jsonapi.invalid_query, 경로 오류는 404 resource.not_found
-    - 둘 이상의 상태가 섞이면 JSON:API 권고대로 더 일반적인 400을 쓴다
+    - 둘 이상의 상태가 섞이면 JSON:API 권고대로 가장 일반적인 400을 쓰고 에러 객체는 모두 담는다
     """
     objects: list[ErrorObject] = []
     statuses: set[int] = set()
@@ -181,19 +210,9 @@ def validation_error_objects(
             detail = "Request body is not valid JSON."
             objects.append(error_object(400, ErrorCode.JSONAPI_INVALID_DOCUMENT, detail))
         elif where == "body":
-            pointer = json_pointer(rest)
-            if pointer.startswith(_FIELD_POINTER_PREFIXES):
-                code = _VALIDATION_CODES.get(error_type, ErrorCode.VALIDATION_INVALID_FORMAT)
-                statuses.add(422)
-                params = _validation_params(error.get("ctx"))
-                objects.append(error_object(422, code, message, pointer=pointer, params=params))
-            else:
-                statuses.add(400)
-                objects.append(
-                    error_object(
-                        400, ErrorCode.JSONAPI_INVALID_DOCUMENT, message, pointer=pointer or "/"
-                    )
-                )
+            found = _body_error(error, json_pointer(rest))
+            statuses.add(int(found.status))
+            objects.append(found)
         elif where == "path":
             statuses.add(404)
             objects.append(error_object(404, ErrorCode.RESOURCE_NOT_FOUND, "Resource not found."))

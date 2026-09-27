@@ -10,6 +10,14 @@ import pytest
 
 from app.core.jsonapi.media import JSONAPI_MEDIA_TYPE
 from app.core.jsonapi.openapi import GENERATED_NOTICE
+from app.core.jsonapi.operation import (
+    AUTH_ERRORS,
+    BODY_ERRORS,
+    COMMON_ERRORS,
+    HttpMethod,
+    JsonApiRouter,
+    Operation,
+)
 from app.core.jsonapi.tests.sample import sample_app
 
 REF = "#/components/schemas/"
@@ -104,6 +112,40 @@ def test_errors_security_and_permission(spec: dict[str, Any]) -> None:
     assert deleting["security"] == [{"BearerAuth": []}]
     assert deleting["x-permission"] == "widgets:manage"
     assert "content" not in deleting["responses"]["204"]
+
+
+def test_create_declares_403_and_409_once(spec: dict[str, Any]) -> None:
+    """JSON:API 1.1: POST는 클라이언트가 만든 id(403)와 type 불일치(409)를 선언한다."""
+    create = operation(spec, "post", "")
+    assert list(create["responses"]) == [
+        "201",
+        "400",
+        "403",
+        "406",
+        "409",
+        "415",
+        "422",
+        "429",
+        "500",
+        "503",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("method", "errors", "missing"),
+    [
+        ("POST", BODY_ERRORS + COMMON_ERRORS, "403, 409"),
+        ("POST", AUTH_ERRORS + BODY_ERRORS + COMMON_ERRORS, "409"),
+        ("PATCH", AUTH_ERRORS + BODY_ERRORS + COMMON_ERRORS, "409"),
+    ],
+)
+def test_writes_must_declare_the_jsonapi_statuses(
+    method: HttpMethod, errors: tuple[int, ...], missing: str
+) -> None:
+    router = JsonApiRouter(prefix="/gadgets", tag="gadgets", interface="Gadgets")
+    declared = Operation(name="write", errors=errors)
+    with pytest.raises(ValueError, match=f"Gadgets_write: errors에 {missing}가 없다"):
+        router.route(method, "", declared, response_model=None)
 
 
 def test_page_links_match_the_contract(spec: dict[str, Any]) -> None:

@@ -27,13 +27,18 @@ from pydantic import (
     GetCoreSchemaHandler,
     GetJsonSchemaHandler,
     ValidatorFunctionWrapHandler,
+    model_validator,
 )
 from pydantic.alias_generators import to_camel
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import CoreSchema, core_schema
+from pydantic_core import CoreSchema, PydanticCustomError, core_schema
+
+from app.core.jsonvalue import is_object
 
 INLINE_MARKER = "x-inline"
+# 생성 요청의 data에 클라이언트가 만든 id가 있을 때의 검증 오류 종류. errors.py가 403으로 바꾼다.
+CLIENT_ID_ERROR = "client_generated_id"
 
 
 def _keep_missing(value: Any, handler: ValidatorFunctionWrapHandler) -> Any:
@@ -240,6 +245,14 @@ def included_field[T]() -> list[T]:
 class CreateData[TypeT: str, AttributesT: JsonApiModel](InlineModel):
     type: TypeT
     attributes: AttributesT
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_client_id(cls, data: Any) -> Any:
+        """클라이언트가 만든 id는 받지 않는다. 에러 핸들러가 403 permission.denied로 바꾼다."""
+        if is_object(data) and "id" in data:
+            raise PydanticCustomError(CLIENT_ID_ERROR, "Client-generated ids are not supported.")
+        return data
 
 
 class CreateDataWithRelationships[

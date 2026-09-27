@@ -43,9 +43,15 @@ BODY_ERRORS = (415, 422)
 AUTH_ERRORS = (401, 403)
 NOT_FOUND = (404,)
 CONFLICT = (409,)
+# 모든 POST에 넣는다: 클라이언트가 만든 id는 403, 본문의 type 불일치는 409다(JSON:API 1.1).
+# 로그인이 필요한 POST에서 AUTH_ERRORS와 403이 겹쳐도 된다. 응답은 상태마다 하나다.
+CREATE_ERRORS = (403, 409)
 
 type Auth = Literal["none", "optional", "required"]
 type HttpMethod = Literal["GET", "POST", "PATCH", "DELETE"]
+
+# 메서드마다 선언에 반드시 있어야 하는 에러 상태(JSON:API 1.1). PATCH의 409는 type·id 불일치다.
+_REQUIRED_ERRORS: Mapping[HttpMethod, tuple[int, ...]] = {"POST": CREATE_ERRORS, "PATCH": CONFLICT}
 
 _SUCCESS_DESCRIPTIONS: Mapping[int, str] = {
     200: "200 OK.",
@@ -145,7 +151,7 @@ class Operation:
 
     def responses(self) -> dict[int | str, dict[str, Any]]:
         responses: dict[int | str, dict[str, Any]] = {}
-        for status in sorted(self.errors):
+        for status in sorted(set(self.errors)):
             response: dict[str, Any] = {
                 "model": ErrorDocument,
                 "description": _ERROR_DESCRIPTIONS[status],
@@ -219,7 +225,9 @@ class CollectionOperation[FilterT: FilterModel](Operation):
     @override
     def is_known_parameter(self, name: str) -> bool:
         # 모르는 filter[x]는 필터 모델(extra="forbid")이 source.parameter와 함께 거부한다.
-        return name.startswith("filter[") or super().is_known_parameter(name)
+        # ]로 닫지 않은 filter[x는 필터가 아니므로 모르는 파라미터(400)다.
+        is_filter = name.startswith("filter[") and name.endswith("]")
+        return is_filter or super().is_known_parameter(name)
 
     @override
     async def __call__(self, request: Request) -> CollectionQuery[FilterT]:
@@ -249,6 +257,14 @@ class JsonApiRouter:
         response_model: type[BaseModel] | None,
     ) -> Callable[[EndpointT], EndpointT]:
         operation_id = f"{self.interface}_{operation.name}"
+        missing = [
+            status for status in _REQUIRED_ERRORS.get(method, ()) if status not in operation.errors
+        ]
+        if missing:
+            raise ValueError(
+                f"{operation_id}: errors에 {', '.join(map(str, missing))}가 없다. POST 선언에는 "
+                "CREATE_ERRORS(403, 409), PATCH 선언에는 CONFLICT(409)를 넣는다(JSON:API 1.1)."
+            )
         return self.api.api_route(
             path,
             methods=[method],
