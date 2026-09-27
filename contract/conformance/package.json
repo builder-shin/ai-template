@@ -7,6 +7,7 @@
     "check:generated": "tsx scripts/check-generated.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
+    "test:flows": "vitest run --config vitest.flows.config.ts",
     "check": "pnpm run check:generated && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
