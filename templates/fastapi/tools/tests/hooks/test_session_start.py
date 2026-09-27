@@ -2,7 +2,10 @@
 
 from pathlib import Path
 
+import pytest
+
 from app.core.config import Settings
+from tools.hooks import session_start
 from tools.hooks.session_start import infra_line, migration_line, openapi_line, summary
 from tools.tests.hooks import fixture, run_hook
 
@@ -13,6 +16,26 @@ def test_summary_of_a_ready_project(infra: Settings) -> None:
             "프로젝트 상태(세션을 시작할 때 SessionStart hook이 본 것):",
             "- 인프라: 떠 있다(PostgreSQL, Valkey).",
             "- 마이그레이션: 최신이다(DB app_test).",
+            "- openapi.json: 코드와 같다.",
+        ]
+    )
+
+
+def test_a_broken_probe_still_lets_the_others_report(
+    infra: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """probe 하나가 터져도 나머지 줄은 그대로 나온다."""
+
+    def broken(settings: Settings) -> tuple[set[str], set[str]]:
+        raise RuntimeError(f"{settings.app_env} 마이그레이션 스크립트가 깨졌다")
+
+    monkeypatch.setattr(session_start, "migration_state", broken)
+    reason = f"{infra.app_env} 마이그레이션 스크립트가 깨졌다"
+    assert summary(infra) == "\n".join(
+        [
+            "프로젝트 상태(세션을 시작할 때 SessionStart hook이 본 것):",
+            "- 인프라: 떠 있다(PostgreSQL, Valkey).",
+            f"- 마이그레이션: 확인하지 못했다({reason}).",
             "- openapi.json: 코드와 같다.",
         ]
     )

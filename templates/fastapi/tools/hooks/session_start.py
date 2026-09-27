@@ -60,17 +60,45 @@ def migration_state(settings: Settings) -> tuple[set[str], set[str]]:
     return applied, heads
 
 
+def _failure_line(label: str, error: Exception) -> str:
+    """probe 하나가 실패했을 때 보여줄 한 줄. 트레이스백 대신 원인의 첫 줄만 담는다."""
+    lines = str(error).strip().splitlines()
+    first = lines[0] if lines else type(error).__name__
+    return f"- {label}: 확인하지 못했다({first})."
+
+
 def summary(settings: Settings) -> str:
-    problems = unreachable(settings)
-    lines = [HEADER, infra_line(problems)]
+    """인프라, 마이그레이션, openapi.json을 확인해 한 줄씩 담는다.
+
+    probe 하나가 실패해도(앱 임포트 오류, 깨진 마이그레이션 스크립트 등) 트레이스백을 내지
+    않는다. 그 줄에 원인의 첫 줄만 적고 나머지 probe는 그대로 확인한다.
+    """
+    lines = [HEADER]
+
+    problems: list[str] = []
+    try:
+        problems = unreachable(settings)
+    except Exception as error:
+        lines.append(_failure_line("인프라", error))
+    else:
+        lines.append(infra_line(problems))
+
     if any(problem.startswith("PostgreSQL") for problem in problems):
         lines.append("- 마이그레이션: DB에 접속하지 못해 보지 못했다.")
     else:
-        applied, heads = migration_state(settings)
-        database = make_url(settings.database_url).database or ""
-        lines.append(migration_line(database, applied=applied, heads=heads))
-    current = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
-    lines.append(openapi_line(fresh=current == render_openapi()))
+        try:
+            applied, heads = migration_state(settings)
+            database = make_url(settings.database_url).database or ""
+            lines.append(migration_line(database, applied=applied, heads=heads))
+        except Exception as error:
+            lines.append(_failure_line("마이그레이션", error))
+
+    try:
+        current = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
+        lines.append(openapi_line(fresh=current == render_openapi()))
+    except Exception as error:
+        lines.append(_failure_line("openapi.json", error))
+
     return "\n".join(lines)
 
 
