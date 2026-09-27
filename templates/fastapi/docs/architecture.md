@@ -29,9 +29,10 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 
 1. `TraceIdMiddleware`(`app.core.logging`)가 요청마다 traceId(32자리 16진수)를 만들어 로그 문맥과 요청 상태에 둔다.
 2. `JsonApiNegotiationMiddleware`가 `/api/` 아래 요청의 `Content-Type`(415)과 `Accept`(406)를 본다.
-3. 라우트 선언(`Operation`, `CollectionOperation`)이 쿼리 파라미터를 파싱한다. 선언에 없는 파라미터, 허용하지 않은 include·sort, 틀린 filter·page는 400이다.
-4. router는 service를 부르고, service가 트랜잭션을 연다(`SessionDep`의 세션으로 commit). repository가 DB를 읽고 쓴다.
-5. router는 문서 모델을 만들어 `render()`로 응답한다. 에러는 `ApiError(상태, ErrorCode.<코드>, 영어 detail)`를 던지면 에러 문서(`meta.traceId` 포함)가 된다. 예상하지 못한 예외는 500 에러 문서다.
+3. 라우트 선언의 `auth`와 `permission`을 인증 검사(`app.core.access`)가 강제한다. Bearer 토큰을 인증기(auth 모듈)가 검증해 주체(`Principal`)를 만들고, 권한이 없으면 403이다. 토큰이 없거나 틀리면 401이다.
+4. 라우트 선언(`Operation`, `CollectionOperation`)이 쿼리 파라미터를 파싱한다. 선언에 없는 파라미터, 허용하지 않은 include·sort, 틀린 filter·page는 400이다.
+5. router는 service를 부르고, service가 트랜잭션을 연다(`SessionDep`의 세션으로 commit). repository가 DB를 읽고 쓴다.
+6. router는 문서 모델을 만들어 `render()`로 응답한다. 에러는 `ApiError(상태, ErrorCode.<코드>, 영어 detail)`를 던지면 에러 문서(`meta.traceId` 포함)가 된다. 예상하지 못한 예외는 500 에러 문서다.
 
 `/health/live`, `/health/ready`(`src/app/health.py`)는 JSON:API가 아니라 `application/json`이다.
 

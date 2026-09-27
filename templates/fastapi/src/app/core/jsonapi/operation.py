@@ -2,6 +2,7 @@
 
 - operationId(`<인터페이스>_<이름>`), 라우트 이름, 성공 상태와 설명
 - 에러 응답(ErrorDocument, 429의 Retry-After), 보안(`security`), `x-permission`
+- 인증과 권한 검사(의존성). auth와 permission을 app.core.access가 강제한다
 - 쿼리 파라미터(OpenAPI)와 `x-jsonapi-include`, `x-jsonapi-sort`
 - 쿼리 파서(의존성). 선언에 없는 쿼리 파라미터는 400이다. 파서 본체는 query.py에 있다.
 
@@ -18,6 +19,7 @@ from typing import Any, Literal, override
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
+from app.core.access import Auth, access_guard
 from app.core.jsonapi.media import JsonApiResponse
 from app.core.jsonapi.models import ErrorCode, ErrorDocument
 from app.core.jsonapi.openapi import COMPONENTS_EXTENSION
@@ -47,7 +49,6 @@ CONFLICT = (409,)
 # 로그인이 필요한 POST에서 AUTH_ERRORS와 403이 겹쳐도 된다. 응답은 상태마다 하나다.
 CREATE_ERRORS = (403, 409)
 
-type Auth = Literal["none", "optional", "required"]
 type HttpMethod = Literal["GET", "POST", "PATCH", "DELETE"]
 
 # 메서드마다 선언에 반드시 있어야 하는 에러 상태(JSON:API 1.1). PATCH의 409는 type·id 불일치다.
@@ -241,6 +242,15 @@ class CollectionOperation[FilterT: FilterModel](Operation):
         )
 
 
+def _access(operation: Operation) -> list[Any]:
+    """인증·권한 검사 의존성. 쿼리를 파싱하기 전에 돈다(401·403이 쿼리 400보다 먼저다)."""
+    if operation.auth == "none":
+        if operation.permission is not None:
+            raise ValueError(f"{operation.name}: permission이 있으면 auth는 required다.")
+        return []
+    return [Depends(access_guard(operation.auth, operation.permission))]
+
+
 class JsonApiRouter:
     """모듈의 라우터. TypeSpec `interface Posts`와 `@tag("posts")`에 대응한다."""
 
@@ -278,5 +288,5 @@ class JsonApiRouter:
             openapi_extra=operation.openapi_extra(),
             # 모든 라우트가 자기 선언으로 쿼리를 검사한다. 엔드포인트가 같은 선언을 Depends로 받으면
             # FastAPI가 요청 안에서 결과를 캐시하므로 한 번만 파싱한다.
-            dependencies=[Depends(operation)],
+            dependencies=[*_access(operation), Depends(operation)],
         )

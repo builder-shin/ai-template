@@ -2,6 +2,7 @@
 
 계약에 없는 리소스라 openapi.json에는 들어가지 않는다. 테스트가 sample_app()으로 앱에 붙인다.
 모듈의 라우터가 쓰는 방법(선언 하나에서 문서와 쿼리 파서를 함께 만든다)을 그대로 따른다.
+인증은 가짜 인증기(MANAGER_TOKEN, MEMBER_TOKEN)로 한다. DB에 붙지 않는다.
 """
 
 import json
@@ -15,7 +16,9 @@ from typing import Annotated, Any, Literal
 from fastapi import Depends, Path, Request, Response
 from pydantic import Field
 from pydantic.experimental.missing_sentinel import MISSING
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.access import Principal, install_access
 from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.install import install_jsonapi
 from app.core.jsonapi.media import JSONAPI_MEDIA_TYPE, JsonApiBody
@@ -47,6 +50,7 @@ from app.core.jsonapi.operation import (
 )
 from app.core.jsonapi.query import CollectionQuery, FilterModel, ResourceQuery, SortField
 from app.core.jsonapi.rendering import load_included, pagination, render
+from app.core.permissions import Permission, PermissionRegistry
 
 WidgetType = Literal["widgets"]
 Name = Annotated[str, Field(min_length=1, max_length=50)]
@@ -55,6 +59,9 @@ KNOWN_ID = "01920000-0000-7000-8000-000000000001"
 ADA = "01920000-0000-7000-8000-0000000000aa"
 GRACE = "01920000-0000-7000-8000-0000000000bb"
 CREATED_AT = datetime(2026, 9, 26, tzinfo=UTC)
+MANAGER_TOKEN = "sample-manager"  # widgets:manage 권한이 있는 주체
+MEMBER_TOKEN = "sample-member"  # 권한이 없는 주체
+WIDGETS_MANAGE = Permission("widgets:manage", "Manage widgets.", "widgets")
 
 
 class WidgetColor(StrEnum):
@@ -161,7 +168,6 @@ GET = Operation(
     include=OWNER_INCLUDES,
     fields=WIDGET_FIELDS,
 )
-# 인증과 권한은 선언만 한다. 강제하는 것은 M2의 인증 계층이다.
 DELETE = Operation(
     name="delete",
     status_code=204,
@@ -260,10 +266,25 @@ async def delete_widget(widget_id: WidgetId) -> Response:
     return Response(status_code=204)
 
 
+async def sample_authenticate(request: Request, session: AsyncSession, token: str) -> Principal:
+    """가짜 인증기. 두 샘플 토큰만 알고, 그 밖은 401이다."""
+    grants = {MANAGER_TOKEN: frozenset({WIDGETS_MANAGE.code}), MEMBER_TOKEN: frozenset[str]()}
+    if token not in grants:
+        raise ApiError(401, ErrorCode.AUTH_TOKEN_INVALID, "Unknown sample token.")
+    return Principal(
+        user_id=uuid.UUID(ADA), session_id=uuid.UUID(KNOWN_ID), permissions=grants[token]
+    )
+
+
 def sample_app() -> JsonApiApp:
-    """JSON:API 공통 계층을 건 앱에 샘플 리소스를 /api/v1 아래로 붙인다."""
+    """JSON:API 공통 계층과 가짜 인증기를 건 앱에 샘플 리소스를 /api/v1 아래로 붙인다.
+
+    인증 검사는 요청 세션을 인증기에 넘기므로 세션 팩토리를 둔다(DB에 붙지 않는다).
+    """
     app = JsonApiApp()
     install_jsonapi(app)
+    app.state.sessions = async_sessionmaker[AsyncSession]()
+    install_access(app, sample_authenticate, PermissionRegistry([WIDGETS_MANAGE]))
     app.include_router(router.api, prefix="/api/v1")
     return app
 

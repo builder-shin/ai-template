@@ -4,7 +4,14 @@ import httpx
 import pytest
 
 from app.core.jsonapi.rendering import load_included
-from app.core.jsonapi.tests.sample import ADA, GRACE, KNOWN_ID, OwnerAttributes, OwnerResource
+from app.core.jsonapi.tests.sample import (
+    ADA,
+    GRACE,
+    KNOWN_ID,
+    MANAGER_TOKEN,
+    OwnerAttributes,
+    OwnerResource,
+)
 
 pytestmark = pytest.mark.anyio
 
@@ -71,7 +78,8 @@ async def test_descending_sort(client: httpx.AsyncClient) -> None:
 
 
 async def test_delete_is_204_without_body(client: httpx.AsyncClient) -> None:
-    response = await client.delete(f"/api/v1/widgets/{KNOWN_ID}")
+    headers = {"authorization": f"Bearer {MANAGER_TOKEN}"}
+    response = await client.delete(f"/api/v1/widgets/{KNOWN_ID}", headers=headers)
     assert response.status_code == 204
     assert response.content == b""
     assert "content-type" not in response.headers

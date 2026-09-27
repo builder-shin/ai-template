@@ -79,7 +79,8 @@ extend-exclude = [".claude/skills", ".agents/skills"]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC", "S", "PT", "PGH", "N"]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S101"]
+# 테스트는 assert를 쓰고, 가짜 비밀번호와 토큰을 상수로 둔다(S105, S106).
+"**/tests/**" = ["S101", "S105", "S106"]
 # 하네스 도구는 상수로 만든 명령(ruff, pytest, git 등)만 실행한다. S603은 인자가 상수가 아니면 모든 호출을 잡는다.
 "tools/**" = ["S603", "S607"]
 # S105는 이름에 token이 든 문자열 상수를 비밀번호로 본다. 에러 코드(AUTH_TOKEN_EXPIRED 등)를 오탐한다.
