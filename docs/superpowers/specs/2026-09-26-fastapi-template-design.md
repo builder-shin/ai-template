@@ -516,7 +516,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | 생성물                    | 만드는 방법                                 | 표시                                   |
 | ------------------------- | ------------------------------------------- | -------------------------------------- |
 | `openapi.json`            | `gen`                                       | 루트의 `x-generated`                   |
-| `api-style/**`            | 저장소의 `pnpm sync`(공유 자산)             | 폴더의 README                          |
+| `api-style/lint.mjs`      | 저장소의 `pnpm sync`(공유 자산)             | 템플릿 AGENTS.md의 생성물 목록          |
 | FastAPI skill 복사본(`.claude/skills/fastapi/`, `.agents/skills/fastapi/`) | `uvx library-skills==0.0.19 --claude --copy --yes --skill fastapi`(`setup`. 사본이 원본과 다를 때만 다시 복사한다) | 원본이 설치된 fastapi 패키지 안에 있다 |
 | `uv.lock`                 | `uv add`, `uv lock`                         | uv가 관리한다                          |
 
@@ -590,7 +590,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
   - `schema-naming`이 `$ref`로 된 `data`를 따라가게 고친다. 백엔드 생성기는 `data`를 `$ref`로 내보내기 때문이다.
   - 공용 이름 목록에 실시간 스키마 셋을 더한다.
   - esbuild로 한 파일짜리 번들(`dist/lint.mjs`)을 만든다. 번들이 소스와 같은지는 `check:fresh` 같은 검사로 확인한다.
-- 공유 자산(`scripts/shared-assets.json`): 번들과 `redocly.yaml`을 `templates/fastapi/api-style/`로 복사한다(F23).
+- 공유 자산(`scripts/shared-assets.json`): 번들 파일(`lint.mjs`) 하나만 `templates/fastapi/api-style/`로 복사한다(F23).
 - `verify-templates`
   - runner `uv`의 명령 어휘를 `[tool.poe.tasks]` 키로 검사한다(F25).
   - 지침 검사와 함께 파일 탐색을 `git ls-files --cached --others --exclude-standard`로 바꾼다(F24). git 저장소가 아닌 테스트용 임시 폴더에서는 지금처럼 직접 걷는다.
