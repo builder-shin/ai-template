@@ -10,6 +10,7 @@ import { extractToken, MAIL_LINKS } from "../../src/side-channels.ts";
 import { resolveAdmin, resolveMailbox, resolveTarget } from "../../src/targets.ts";
 
 export type ErrorDocument = components["schemas"]["ErrorDocument"];
+export type PermissionCode = components["schemas"]["PermissionCode"];
 
 export const target = resolveTarget(process.env);
 export const mailbox = resolveMailbox(process.env);
@@ -113,7 +114,49 @@ export async function newUser(): Promise<Session> {
   return signIn(account);
 }
 
-/** 시드된 관리자로 로그인한다. */
+let adminSession: Promise<Session> | undefined;
+
+/**
+ * 시드된 관리자로 로그인한 세션. 흐름 파일마다 한 번만 로그인한다.
+ * 흐름은 시드된 관리자의 상태와 역할을 바꾸지 않는다. 막혀야 할 변경이 뚫리면 다음 실행이 망가진다.
+ */
 export function signInAdmin(): Promise<Session> {
-  return signIn(admin);
+  adminSession ??= signIn(admin);
+  return adminSession;
+}
+
+/** 겹치지 않는 이름(역할 이름 등). */
+export function uniqueName(label: string): string {
+  return `${label}-${randomUUID().slice(0, 8)}`;
+}
+
+/** 관리자가 이 권한만 가진 역할을 만들어 새 사용자에게 준다. 사용자는 member 역할도 그대로 가진다. */
+export async function userWith(
+  permissions: PermissionCode[],
+): Promise<Session & { roleId: string }> {
+  const [manager, user] = await Promise.all([signInAdmin(), newUser()]);
+  const created = await manager.api.POST("/api/v1/roles", {
+    body: { data: { type: "roles", attributes: { name: uniqueName("role"), permissions } } },
+  });
+  const roleId = created.data?.data.id;
+  if (roleId === undefined)
+    throw new Error(`역할을 만들지 못했다: ${String(created.response.status)}`);
+  const current = await manager.api.GET("/api/v1/users/{id}", {
+    params: { path: { id: user.userId } },
+  });
+  const held = current.data?.data.relationships.roles.data ?? [];
+  const updated = await manager.api.PATCH("/api/v1/users/{id}", {
+    params: { path: { id: user.userId } },
+    body: {
+      data: {
+        type: "users",
+        id: user.userId,
+        relationships: { roles: { data: [...held, { type: "roles", id: roleId }] } },
+      },
+    },
+  });
+  if (updated.response.status !== 200) {
+    throw new Error(`역할을 주지 못했다: ${String(updated.response.status)}`);
+  }
+  return { ...user, roleId };
 }
