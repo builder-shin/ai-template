@@ -108,3 +108,20 @@ async def revoke_sessions(
         query = query.where(LoginSession.id != keep)
     revoked = await session.scalars(query.values(revoked_at=now).returning(LoginSession.id))
     return len(revoked.all())
+
+
+async def purge_expired(session: AsyncSession, now: datetime) -> dict[str, int]:
+    """만료된 1회용 토큰과 refresh token, 폐기했거나 만료된 세션을 지운다. 지운 개수를 돌려준다."""
+    tokens = await session.scalars(
+        delete(AccountToken).where(AccountToken.expires_at <= now).returning(AccountToken.id)
+    )
+    refresh = await session.scalars(
+        delete(RefreshToken).where(RefreshToken.expires_at <= now).returning(RefreshToken.id)
+    )
+    ended = (LoginSession.revoked_at.is_not(None)) | (LoginSession.expires_at <= now)
+    sessions = await session.scalars(delete(LoginSession).where(ended).returning(LoginSession.id))
+    return {
+        "account_tokens": len(tokens.all()),
+        "refresh_tokens": len(refresh.all()),
+        "sessions": len(sessions.all()),
+    }

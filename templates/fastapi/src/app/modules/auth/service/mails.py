@@ -12,6 +12,7 @@ from app.modules.users import User
 
 TEMPLATES = MailTemplates(Path(__file__).resolve().parents[1] / "templates")
 VERIFY_PATH = "/verify-email"
+RESET_PATH = "/reset-password"
 
 
 def link(settings: Settings, path: str, token: str) -> str:
@@ -32,3 +33,7 @@ def verification(settings: Settings, user: User, token: str) -> Mail:
 
 def welcome(settings: Settings, user: User) -> Mail:
     return _render(user, "welcome", link=settings.frontend_url)
+
+
+def password_reset(settings: Settings, user: User, token: str) -> Mail:
+    return _render(user, "reset_password", link=link(settings, RESET_PATH, token))

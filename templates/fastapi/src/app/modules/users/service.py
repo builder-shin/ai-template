@@ -84,3 +84,7 @@ def mark_email_verified(user: User, now: datetime) -> bool:
         return False
     user.email_verified_at = now
     return True
+
+
+def set_password(user: User, password: str) -> None:
+    user.password_hash = hash_password(password)

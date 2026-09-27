@@ -135,9 +135,9 @@ async def test_scheduler_reads_label_schedules_and_the_retry_source(
         pass
 
     await labels.startup()
-    assert [(task.task_name, task.cron) for task in await labels.get_schedules()] == [
-        ("tests.hourly", "0 * * * *")
-    ]
+    schedules = {(task.task_name, task.cron) for task in await labels.get_schedules()}
+    # 등록부(app.modules.registry.JOBS)의 주기 잡도 함께 읽힌다.
+    assert {("tests.hourly", "0 * * * *"), ("auth.purge_credentials", "0 3 * * *")} <= schedules
     retry = ScheduledTask(
         task_name="tests.fail", labels={}, args=[], kwargs={}, time=datetime.now(UTC)
     )

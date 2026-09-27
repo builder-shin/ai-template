@@ -1999,6 +1999,409 @@
           }
         ]
       }
+    },
+    "/api/v1/password-reset-requests": {
+      "post": {
+        "tags": [
+          "passwords"
+        ],
+        "description": "재설정 메일을 보낸다. 계정이 있는지 드러내지 않도록 항상 202를 돌려준다.",
+        "operationId": "PasswordResetRequests_create",
+        "requestBody": {
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequestCreateDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "202 Accepted.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/password-resets": {
+      "post": {
+        "tags": [
+          "passwords"
+        ],
+        "description": "토큰으로 비밀번호를 바꾸고 모든 세션을 폐기한다.",
+        "operationId": "PasswordResets_create",
+        "requestBody": {
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetCreateDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "201 Created.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/password-changes": {
+      "post": {
+        "tags": [
+          "passwords"
+        ],
+        "description": "현재 세션을 뺀 나머지 세션을 폐기한다.",
+        "operationId": "PasswordChanges_create",
+        "requestBody": {
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeCreateDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "201 Created.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordChangeDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2364,6 +2767,228 @@
           "next"
         ],
         "description": "컬렉션의 페이지 링크. 요청 경로 기준의 상대 경로이고 대괄호는 퍼센트 인코딩한다.\n앞뒤 페이지가 없으면 null이다."
+      },
+      "PasswordChangeAttributes": {
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "createdAt"
+        ]
+      },
+      "PasswordChangeCreateAttributes": {
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8
+          }
+        },
+        "type": "object",
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "PasswordChangeCreateDocument": {
+        "properties": {
+          "data": {
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "password-changes"
+                ]
+              },
+              "attributes": {
+                "$ref": "#/components/schemas/PasswordChangeCreateAttributes"
+              }
+            },
+            "type": "object",
+            "required": [
+              "type",
+              "attributes"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "생성 요청 문서."
+      },
+      "PasswordChangeDocument": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PasswordChangeResource"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."
+      },
+      "PasswordChangeResource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "password-changes"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/PasswordChangeAttributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "attributes"
+        ],
+        "description": "관계가 없는 리소스 객체."
+      },
+      "PasswordResetAttributes": {
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "createdAt"
+        ]
+      },
+      "PasswordResetCreateAttributes": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "재설정 메일에 담긴 토큰."
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "password"
+        ]
+      },
+      "PasswordResetCreateDocument": {
+        "properties": {
+          "data": {
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "password-resets"
+                ]
+              },
+              "attributes": {
+                "$ref": "#/components/schemas/PasswordResetCreateAttributes"
+              }
+            },
+            "type": "object",
+            "required": [
+              "type",
+              "attributes"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "생성 요청 문서."
+      },
+      "PasswordResetDocument": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PasswordResetResource"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."
+      },
+      "PasswordResetRequestCreateAttributes": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ]
+      },
+      "PasswordResetRequestCreateDocument": {
+        "properties": {
+          "data": {
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "password-reset-requests"
+                ]
+              },
+              "attributes": {
+                "$ref": "#/components/schemas/PasswordResetRequestCreateAttributes"
+              }
+            },
+            "type": "object",
+            "required": [
+              "type",
+              "attributes"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "생성 요청 문서."
+      },
+      "PasswordResetResource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "password-resets"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/PasswordResetAttributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "attributes"
+        ],
+        "description": "관계가 없는 리소스 객체."
       },
       "PermissionAttributes": {
         "properties": {

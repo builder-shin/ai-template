@@ -9,6 +9,7 @@ from app.modules.users.service import (
     locale_from,
     mark_email_verified,
     normalize_email,
+    set_password,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "locale_from",
     "mark_email_verified",
     "normalize_email",
+    "set_password",
 ]

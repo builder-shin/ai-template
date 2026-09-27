@@ -23,5 +23,5 @@ PERMISSIONS: tuple[Permission, ...] = (
     *audit_logs.PERMISSIONS,
     *posts.PERMISSIONS,
 )
-JOBS: tuple[Job[...], ...] = (SEND_MAIL,)
+JOBS: tuple[Job[...], ...] = (SEND_MAIL, *auth.JOBS)
 AUTHENTICATOR: Authenticator = auth.authenticate

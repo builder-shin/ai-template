@@ -210,3 +210,64 @@ class SessionRevocationCreateDocument(
     CreateDocument[SessionRevocationType, SessionRevocationCreateAttributes]
 ):
     """생성 요청 문서."""
+
+
+# --- 비밀번호 ----------------------------------------------------------------------
+
+PasswordResetRequestType = Literal["password-reset-requests"]
+PasswordResetType = Literal["password-resets"]
+PasswordChangeType = Literal["password-changes"]
+
+
+class PasswordResetRequestCreateAttributes(JsonApiModel):
+    email: Email
+
+
+class PasswordResetRequestCreateDocument(
+    CreateDocument[PasswordResetRequestType, PasswordResetRequestCreateAttributes]
+):
+    """생성 요청 문서."""
+
+
+class PasswordResetAttributes(JsonApiModel):
+    created_at: datetime
+
+
+class PasswordResetCreateAttributes(JsonApiModel):
+    token: Annotated[str, Field(description="재설정 메일에 담긴 토큰.")]
+    password: Password
+
+
+class PasswordResetResource(Resource[PasswordResetType, PasswordResetAttributes]):
+    """관계가 없는 리소스 객체."""
+
+
+class PasswordResetDocument(Document[PasswordResetResource]):
+    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+
+
+class PasswordResetCreateDocument(CreateDocument[PasswordResetType, PasswordResetCreateAttributes]):
+    """생성 요청 문서."""
+
+
+class PasswordChangeAttributes(JsonApiModel):
+    created_at: datetime
+
+
+class PasswordChangeCreateAttributes(JsonApiModel):
+    current_password: str
+    new_password: Password
+
+
+class PasswordChangeResource(Resource[PasswordChangeType, PasswordChangeAttributes]):
+    """관계가 없는 리소스 객체."""
+
+
+class PasswordChangeDocument(Document[PasswordChangeResource]):
+    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+
+
+class PasswordChangeCreateDocument(
+    CreateDocument[PasswordChangeType, PasswordChangeCreateAttributes]
+):
+    """생성 요청 문서."""
