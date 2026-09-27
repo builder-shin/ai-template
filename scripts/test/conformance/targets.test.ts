@@ -27,13 +27,15 @@ describe("적합성 대상", () => {
     ]);
   });
 
-  it("흐름 테스트에 대상과 부수 채널 주소를 넘긴다", () => {
+  it("흐름 테스트에 대상, 부수 채널 주소, 시드된 관리자를 넘긴다", () => {
     const fastapi = TARGETS.fastapi;
     if (fastapi === undefined) throw new Error("fastapi 대상이 없다");
     expect(testEnv(fastapi)).toEqual({
       CONFORMANCE_TARGET: "fastapi",
       CONFORMANCE_BASE_URL: "http://localhost:8000",
       CONFORMANCE_MAILPIT_URL: "http://localhost:28025",
+      CONFORMANCE_ADMIN_EMAIL: "admin@example.com",
+      CONFORMANCE_ADMIN_PASSWORD: "admin-password", // betterleaks:allow 개발용 시드 관리자
     });
   });
 });

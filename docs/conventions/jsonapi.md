@@ -111,6 +111,15 @@
 - 페이로드도 JSON:API 문서이고 `components.schemas`에 있다. 그래서 프론트엔드는 같은 생성 과정으로 이벤트 타입을 얻는다.
 - 클라이언트가 보내는 메시지는 `x-realtime-messages`에 적는다. `subscribe`와 `unsubscribe`는 페이로드 `RealtimeSubscription`(`{ channel }`)을 보내고, 서버는 ack `RealtimeAck`로 답한다. 성공이면 `{ ok: true }`, 실패면 `{ ok: false, error }`이고 `error`는 에러 객체다(권한 없음 `permission.denied`, 모르는 채널 `validation.invalid_choice`).
 
+## 메일 링크
+
+인증 메일과 재설정 메일은 프론트 주소(`FRONTEND_URL`)의 경로에 토큰을 붙인 링크를 담는다. 프론트는 그 경로에서 토큰을 받아 API를 부른다. 적합성 스위트는 이 경로로 메일의 종류를 가리고 토큰을 꺼낸다.
+
+| 메일            | 링크                                         | 프론트가 부르는 API                |
+| --------------- | -------------------------------------------- | ---------------------------------- |
+| 이메일 인증     | `{FRONTEND_URL}/verify-email?token=<토큰>`   | `POST /api/v1/email-verifications` |
+| 비밀번호 재설정 | `{FRONTEND_URL}/reset-password?token=<토큰>` | `POST /api/v1/password-resets`     |
+
 ## 계약을 바꾸는 방법
 
 1. `contract/typespec/src/`의 TypeSpec을 고친다. 새 리소스는 `resources/posts.tsp`의 구조를 따른다.

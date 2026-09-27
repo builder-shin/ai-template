@@ -12,7 +12,12 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
     name: "fastapi",
     composeFile: "templates/fastapi/compose.yaml",
     baseUrl: "http://localhost:8000",
-    env: { CONFORMANCE_MAILPIT_URL: "http://localhost:28025" },
+    env: {
+      CONFORMANCE_MAILPIT_URL: "http://localhost:28025",
+      // compose.yaml의 x-app이 시드하는 관리자(SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD)와 같은 값이다.
+      CONFORMANCE_ADMIN_EMAIL: "admin@example.com",
+      CONFORMANCE_ADMIN_PASSWORD: "admin-password", // betterleaks:allow 개발용 시드 관리자
+    },
   },
 };
 

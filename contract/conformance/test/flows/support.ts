@@ -1,0 +1,117 @@
+/**
+ * 흐름 테스트의 공통 준비: 대상, 메일함, 시드된 관리자, 계정 도우미.
+ * 흐름 파일은 병렬로 돌고 DB를 초기화하지 않으므로, 계정은 테스트마다 새 이메일로 만든다.
+ */
+
+import { randomUUID } from "node:crypto";
+import { type ApiClient, createApiClient } from "../../src/client.ts";
+import type { components } from "../../src/generated/api.ts";
+import { extractToken, MAIL_LINKS } from "../../src/side-channels.ts";
+import { resolveAdmin, resolveMailbox, resolveTarget } from "../../src/targets.ts";
+
+export type ErrorDocument = components["schemas"]["ErrorDocument"];
+
+export const target = resolveTarget(process.env);
+export const mailbox = resolveMailbox(process.env);
+export const admin = resolveAdmin(process.env);
+
+/** 흐름이 가입할 때 쓰는 비밀번호. */
+export const PASSWORD = "conformance-password"; // betterleaks:allow 적합성 흐름의 가짜 비밀번호
+
+/** 모든 응답을 계약으로 검증하는 클라이언트. accessToken을 주면 로그인한 요청이다. */
+export function api(accessToken?: string): ApiClient {
+  return createApiClient({
+    baseUrl: target.baseUrl,
+    ...(accessToken === undefined ? {} : { accessToken }),
+  });
+}
+
+/** 테스트마다 고유한 이메일. */
+export function uniqueEmail(label = "user"): string {
+  return `${label}-${randomUUID()}@example.com`;
+}
+
+/** 에러 문서의 (코드, source.pointer) 목록. */
+export function problems(error: ErrorDocument | undefined): [string, string | undefined][] {
+  return (error?.errors ?? []).map((item) => [item.code, item.source?.pointer]);
+}
+
+/** 에러 문서의 코드 목록. */
+export function codes(error: ErrorDocument | undefined): string[] {
+  return (error?.errors ?? []).map((item) => item.code);
+}
+
+export interface Account {
+  readonly email: string;
+  readonly password: string;
+  readonly userId: string;
+}
+
+export interface Session extends Account {
+  readonly sessionId: string;
+  readonly accessToken: string;
+  readonly refreshToken: string;
+  /** 이 세션으로 로그인한 클라이언트. */
+  readonly api: ApiClient;
+}
+
+/** 가입만 한다(인증 전). 인증 메일은 mailbox.latest로 받는다. */
+export async function register(email = uniqueEmail(), name = "적합성"): Promise<Account> {
+  const { data, response } = await api().POST("/api/v1/registrations", {
+    body: { data: { type: "registrations", attributes: { email, password: PASSWORD, name } } },
+  });
+  const userId = data?.data.relationships.user.data?.id;
+  if (userId === undefined) throw new Error(`가입하지 못했다: ${String(response.status)}`);
+  return { email, password: PASSWORD, userId };
+}
+
+/** 가장 최근 인증 메일의 토큰. */
+export async function verificationToken(email: string): Promise<string> {
+  const mail = await mailbox.latest(email, { linkPath: MAIL_LINKS.emailVerification });
+  return extractToken(mail);
+}
+
+/** 인증 메일의 토큰으로 이메일 인증을 마친다. */
+export async function verify(account: Account): Promise<void> {
+  const token = await verificationToken(account.email);
+  const { response } = await api().POST("/api/v1/email-verifications", {
+    body: { data: { type: "email-verifications", attributes: { token } } },
+  });
+  if (response.status !== 201) {
+    throw new Error(`이메일을 인증하지 못했다: ${String(response.status)}`);
+  }
+}
+
+/** 비밀번호로 로그인한다. */
+export async function signIn(credentials: {
+  readonly email: string;
+  readonly password: string;
+}): Promise<Session> {
+  const { email, password } = credentials;
+  const { data, response } = await api().POST("/api/v1/sessions", {
+    body: { data: { type: "sessions", attributes: { grantType: "password", email, password } } },
+  });
+  if (data === undefined) throw new Error(`로그인하지 못했다: ${String(response.status)}`);
+  const { id, attributes, relationships } = data.data;
+  return {
+    email,
+    password,
+    userId: relationships.user.data?.id ?? "",
+    sessionId: id,
+    accessToken: attributes.accessToken,
+    refreshToken: attributes.refreshToken,
+    api: api(attributes.accessToken),
+  };
+}
+
+/** 가입과 이메일 인증을 마치고 로그인한 새 사용자. */
+export async function newUser(): Promise<Session> {
+  const account = await register();
+  await verify(account);
+  return signIn(account);
+}
+
+/** 시드된 관리자로 로그인한다. */
+export function signInAdmin(): Promise<Session> {
+  return signIn(admin);
+}

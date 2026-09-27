@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MAIL_LINKS } from "../src/side-channels.ts";
 import { createMailpitMailbox } from "../src/side-channels/mailpit.ts";
 import { createRedirectOAuthDriver } from "../src/side-channels/oauth.ts";
 
@@ -10,38 +11,94 @@ function redirect(location: string): Response {
   return new Response(null, { status: 302, headers: { location } });
 }
 
-describe("Mailpit 메일함", () => {
-  it("받는 사람의 가장 최근 메일 본문을 읽는다", async () => {
-    const calls: string[] = [];
-    const fetchStub = (input: string | URL | Request) => {
-      const url = String(input instanceof Request ? input.url : input);
-      calls.push(url);
-      if (url.endsWith("/api/v1/messages")) {
-        return Promise.resolve(
-          json({
-            messages: [
-              { ID: "b", To: [{ Address: "other@example.com" }], Subject: "x" },
-              { ID: "a", To: [{ Address: "user@example.com" }], Subject: "Verify" },
-            ],
-          }),
-        );
-      }
+const SEARCH = `http://mail.test/api/v1/search?query=${encodeURIComponent('to:"user@example.com"')}`;
+
+interface StoredMail {
+  readonly ID: string;
+  readonly Created: string;
+  readonly Subject: string;
+  readonly Text: string;
+}
+
+/** Mailpit API 흉내. 검색은 최신순(앞이 최신)으로 돌려준다. */
+function mailpitStub(stored: readonly StoredMail[], calls: string[] = []) {
+  return (input: string | URL | Request) => {
+    const url = String(input instanceof Request ? input.url : input);
+    calls.push(url);
+    if (url.startsWith("http://mail.test/api/v1/search")) {
       return Promise.resolve(
-        json({
-          ID: "a",
-          To: [{ Address: "user@example.com" }],
-          Subject: "Verify",
-          Text: "go ?token=abc",
-        }),
+        json({ messages: stored.map(({ ID, Created }) => ({ ID, Created })) }),
       );
+    }
+    const found = stored.find((mail) => url.endsWith(`/api/v1/message/${mail.ID}`));
+    return Promise.resolve(json(found));
+  };
+}
+
+const VERIFY: StoredMail = {
+  ID: "a",
+  Created: "2026-09-27T05:00:00.000Z",
+  Subject: "Verify",
+  Text: "go /verify-email?token=abc",
+};
+const WELCOME: StoredMail = {
+  ID: "b",
+  Created: "2026-09-27T05:00:01.000Z",
+  Subject: "Welcome",
+  Text: "hello",
+};
+
+describe("Mailpit 메일함", () => {
+  it("받는 사람으로 검색해 가장 최근 메일을 읽는다", async () => {
+    const calls: string[] = [];
+    const mailbox = createMailpitMailbox("http://mail.test", {
+      fetch: mailpitStub([WELCOME, VERIFY], calls),
+    });
+    expect(await mailbox.latest("user@example.com")).toEqual({
+      id: "b",
+      to: "user@example.com",
+      subject: "Welcome",
+      text: "hello",
+      receivedAt: "2026-09-27T05:00:01.000Z",
+    });
+    expect(calls).toEqual([SEARCH, "http://mail.test/api/v1/message/b"]);
+  });
+
+  it("linkPath가 있으면 그 경로의 토큰 링크가 든 메일만 본다", async () => {
+    const mailbox = createMailpitMailbox("http://mail.test", {
+      fetch: mailpitStub([WELCOME, VERIFY]),
+    });
+    const mail = await mailbox.latest("user@example.com", {
+      linkPath: MAIL_LINKS.emailVerification,
+    });
+    expect(mail.id).toBe("a");
+  });
+
+  it("after가 있으면 그 메일보다 뒤에 받은 메일만 본다", async () => {
+    const first = await createMailpitMailbox("http://mail.test", {
+      fetch: mailpitStub([VERIFY]),
+    }).latest("user@example.com");
+    const again = {
+      ...VERIFY,
+      ID: "c",
+      Created: "2026-09-27T05:00:02.000Z",
+      Text: "go /verify-email?token=def",
     };
-    const mailbox = createMailpitMailbox("http://mail.test", { fetch: fetchStub });
-    const mail = await mailbox.latest("user@example.com");
-    expect(mail).toEqual({ to: "user@example.com", subject: "Verify", text: "go ?token=abc" });
-    expect(calls).toEqual([
-      "http://mail.test/api/v1/messages",
-      "http://mail.test/api/v1/message/a",
-    ]);
+    const mailbox = createMailpitMailbox("http://mail.test", {
+      fetch: mailpitStub([again, WELCOME, VERIFY]),
+    });
+    const mail = await mailbox.latest("user@example.com", {
+      after: first,
+      linkPath: MAIL_LINKS.emailVerification,
+    });
+    expect(mail.id).toBe("c");
+    const stale = createMailpitMailbox("http://mail.test", {
+      fetch: mailpitStub([VERIFY]),
+      pollMs: 5,
+    });
+    await expect(stale.latest("user@example.com", { after: first, timeoutMs: 20 })).rejects.toThrow(
+      "user@example.com",
+    );
   });
 
   it("제한 시간 안에 메일이 오지 않으면 던진다", async () => {

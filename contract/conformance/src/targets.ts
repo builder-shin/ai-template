@@ -1,3 +1,6 @@
+import type { Mailbox } from "./side-channels.ts";
+import { createMailpitMailbox } from "./side-channels/mailpit.ts";
+
 export const TARGET_NAMES = ["fastapi", "nestjs", "mock"] as const;
 
 export type TargetName = (typeof TARGET_NAMES)[number];
@@ -24,4 +27,31 @@ export function resolveTarget(env: Readonly<Record<string, string | undefined>>)
     throw new Error("CONFORMANCE_BASE_URL에 대상 주소를 넣는다. 예: http://localhost:8000");
   }
   return { name, baseUrl: baseUrl.replace(/\/+$/, "") };
+}
+
+/** 시드된 관리자. 관리자 흐름이 이 계정으로 로그인한다. */
+export interface AdminCredentials {
+  readonly email: string;
+  readonly password: string;
+}
+
+/** 환경 변수에서 시드된 관리자의 자격 증명을 읽는다(CONFORMANCE_ADMIN_EMAIL, CONFORMANCE_ADMIN_PASSWORD). */
+export function resolveAdmin(env: Readonly<Record<string, string | undefined>>): AdminCredentials {
+  const email = env.CONFORMANCE_ADMIN_EMAIL;
+  const password = env.CONFORMANCE_ADMIN_PASSWORD;
+  if (!email || !password) {
+    throw new Error(
+      "CONFORMANCE_ADMIN_EMAIL과 CONFORMANCE_ADMIN_PASSWORD에 시드된 관리자의 자격 증명을 넣는다.",
+    );
+  }
+  return { email, password };
+}
+
+/** 대상이 보낸 메일을 읽는 메일함. 실제 백엔드는 Mailpit(CONFORMANCE_MAILPIT_URL)이다. */
+export function resolveMailbox(env: Readonly<Record<string, string | undefined>>): Mailbox {
+  const url = env.CONFORMANCE_MAILPIT_URL;
+  if (url === undefined || !URL.canParse(url)) {
+    throw new Error("CONFORMANCE_MAILPIT_URL에 Mailpit 주소를 넣는다. 예: http://localhost:28025");
+  }
+  return createMailpitMailbox(url);
 }
