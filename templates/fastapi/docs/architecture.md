@@ -44,7 +44,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 이미지 하나를 명령만 바꿔 띄운다(`Dockerfile`, compose의 `app` 프로필).
 
 | 프로세스  | 운영 명령                                                                                     | 개발(`poe dev`)·E2E(`poe test:e2e`)                     | 비고                         |
-| --------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------- |
+| --------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------- |
 | api       | `uvicorn app.main:app --host 0.0.0.0 --port 8000`                                             | `uvicorn app.main:app --loop asyncio:SelectorEventLoop` | 시작할 때 연결 자원을 만든다 |
 | worker    | `taskiq worker app.worker:create_broker --no-configure-logging`                               | `python -m app.worker`                                  | 여러 개 띄울 수 있다         |
 | scheduler | `taskiq scheduler app.scheduler:create_scheduler --no-configure-logging --update-interval=10` | 같다                                                    | 반드시 하나만 띄운다         |
