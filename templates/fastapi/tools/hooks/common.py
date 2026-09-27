@@ -102,8 +102,6 @@ def tracked(root: Path, *pathspecs: str) -> set[str]:
     command = ["git", "ls-files", "-z", "--", *pathspecs]
     try:
         result = subprocess.run(command, cwd=root, capture_output=True, check=True)
-    except OSError:
-        return set()
-    except subprocess.CalledProcessError:
+    except OSError, subprocess.CalledProcessError:
         return set()
     return {path for path in result.stdout.decode("utf-8").split("\0") if path}
