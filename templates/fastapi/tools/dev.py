@@ -17,7 +17,15 @@ ROOT = Path(__file__).resolve().parent.parent
 PORT = 8000
 WORKER = Command("worker", (sys.executable, "-m", "app.worker"))
 SCHEDULER = Command(
-    "scheduler", (sys.executable, "-m", "taskiq", "scheduler", "app.scheduler:create_scheduler")
+    "scheduler",
+    (
+        sys.executable,
+        "-m",
+        "taskiq",
+        "scheduler",
+        "app.scheduler:create_scheduler",
+        "--no-configure-logging",
+    ),
 )
 
 

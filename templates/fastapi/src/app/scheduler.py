@@ -11,12 +11,19 @@ from taskiq import TaskiqScheduler
 from taskiq.schedule_sources import LabelScheduleSource
 
 from app.core.config import Settings, load_settings
+from app.core.logging import configure_logging
 from app.worker import create_broker, create_schedule_source
 
 
 def create_scheduler(settings: Settings | None = None) -> TaskiqScheduler:
     """scheduler를 만든다. settings가 없으면 .env와 환경 변수에서 읽는다."""
-    current = settings or load_settings()
+    current = settings
+    if current is None:
+        # taskiq CLI(`taskiq scheduler app.scheduler:create_scheduler`)는 인자 없이 부른다. 그
+        # 경로, 즉 운영 scheduler에서만 여기서 로그를 설정한다. 읽은 설정을 create_broker에 그대로
+        # 넘겨서 거기서는 다시 설정하지 않는다(settings가 있으면 create_broker도 건너뛴다).
+        current = load_settings()
+        configure_logging(current)
     broker = create_broker(current)
     return TaskiqScheduler(
         broker, sources=[LabelScheduleSource(broker), create_schedule_source(current)]

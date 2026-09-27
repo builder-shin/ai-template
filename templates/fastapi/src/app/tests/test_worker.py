@@ -12,6 +12,8 @@ from taskiq.receiver import Receiver
 from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListRedisScheduleSource
 
+from app import scheduler as app_scheduler
+from app import worker as app_worker
 from app.core.config import Settings
 from app.scheduler import create_scheduler
 from app.worker import QUEUE, create_broker, create_schedule_source
@@ -141,3 +143,45 @@ async def test_scheduler_reads_label_schedules_and_the_retry_source(
     )
     await create_schedule_source(infra).add_schedule(retry)
     assert [task.schedule_id for task in await schedules_of(retries)] == [retry.schedule_id]
+
+
+def test_create_broker_without_settings_configures_logging_once(
+    monkeypatch: pytest.MonkeyPatch, settings: Settings
+) -> None:
+    """settings 없이 부르는 것은 taskiq CLI(운영 worker)다. 그 경로에서만 로그를 설정한다."""
+    configured: list[Settings] = []
+    monkeypatch.setattr(app_worker, "load_settings", lambda: settings)
+    monkeypatch.setattr(app_worker, "configure_logging", configured.append)
+    app_worker.create_broker()
+    assert configured == [settings]
+
+
+def test_create_broker_with_settings_does_not_configure_logging(
+    monkeypatch: pytest.MonkeyPatch, settings: Settings
+) -> None:
+    """settings를 직접 넘기면(테스트, serve()) 로그를 다시 설정하지 않는다."""
+    configured: list[Settings] = []
+    monkeypatch.setattr(app_worker, "configure_logging", configured.append)
+    app_worker.create_broker(settings)
+    assert configured == []
+
+
+def test_create_scheduler_without_settings_configures_logging_once(
+    monkeypatch: pytest.MonkeyPatch, settings: Settings
+) -> None:
+    """create_scheduler가 읽은 settings를 create_broker에 그대로 넘겨 한 번만 설정된다."""
+    configured: list[Settings] = []
+    monkeypatch.setattr(app_scheduler, "load_settings", lambda: settings)
+    monkeypatch.setattr(app_scheduler, "configure_logging", configured.append)
+    app_scheduler.create_scheduler()
+    assert configured == [settings]
+
+
+def test_create_scheduler_with_settings_does_not_configure_logging(
+    monkeypatch: pytest.MonkeyPatch, settings: Settings
+) -> None:
+    """settings를 직접 넘기면 로그를 설정하지 않는다."""
+    configured: list[Settings] = []
+    monkeypatch.setattr(app_scheduler, "configure_logging", configured.append)
+    app_scheduler.create_scheduler(settings)
+    assert configured == []

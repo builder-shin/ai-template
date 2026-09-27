@@ -129,7 +129,7 @@ services:
 
   worker:
     <<: *app
-    command: ["taskiq", "worker", "app.worker:create_broker"]
+    command: ["taskiq", "worker", "app.worker:create_broker", "--no-configure-logging"]
     healthcheck:
       disable: true
     depends_on:
@@ -141,7 +141,7 @@ services:
   scheduler:
     <<: *app
     # 반드시 하나만 띄운다(여러 개면 같은 주기 작업을 여러 번 보낸다).
-    command: ["taskiq", "scheduler", "app.scheduler:create_scheduler"]
+    command: ["taskiq", "scheduler", "app.scheduler:create_scheduler", "--no-configure-logging"]
     healthcheck:
       disable: true
     depends_on:

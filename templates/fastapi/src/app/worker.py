@@ -42,7 +42,12 @@ def create_broker(settings: Settings | None = None, *, in_memory: bool = False) 
     """broker를 만든다. settings가 없으면 .env와 환경 변수에서 읽는다."""
     if in_memory:
         return InMemoryBroker(await_inplace=True)
-    current = settings or load_settings()
+    current = settings
+    if current is None:
+        # taskiq CLI(`taskiq worker app.worker:create_broker`)는 인자 없이 부른다. 그 경로,
+        # 즉 운영 worker에서만 여기서 로그를 설정한다(테스트와 serve()는 settings를 직접 넘긴다).
+        current = load_settings()
+        configure_logging(current)
     retry = SmartRetryMiddleware(
         default_retry_count=MAX_ATTEMPTS,
         default_retry_label=True,
