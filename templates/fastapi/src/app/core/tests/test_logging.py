@@ -57,3 +57,17 @@ def test_development_logs_are_for_people() -> None:
     assert "widget_seen" in output
     assert "widget=w1" in output
     assert not output.startswith("{")
+
+
+def test_development_exceptions_use_the_standard_traceback() -> None:
+    """rich 트레이스백은 쓰지 않는다. Python 3.14.7(Windows)에서 rich가 프레임을 훑다가 죽는다."""
+    stream = io.StringIO()
+    configure_logging(DEVELOPMENT, stream=stream)
+    try:
+        raise ValueError("bad widget")
+    except ValueError:
+        structlog.get_logger("app.tests").exception("widget_failed")
+    output = stream.getvalue()
+    assert "Traceback (most recent call last):" in output
+    assert "ValueError: bad widget" in output
+    assert "╭" not in output  # rich 패널의 모서리(╭)

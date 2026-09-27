@@ -2,6 +2,8 @@
 
 - 로그는 structlog로 쓴다. 개발 환경(APP_ENV=development)은 사람이 읽는 콘솔 형식,
   나머지는 JSON 한 줄이다.
+- 예외는 표준 traceback 형식으로 쓴다. structlog의 기본 콘솔 출력(rich)은 쓰지 않는다: Python 3.14.7
+  (Windows)에서 rich가 트레이스백의 프레임을 훑다가 프로세스가 접근 위반으로 죽는다(확인함).
 - 표준 logging(uvicorn, SQLAlchemy 등)의 로그도 같은 형식으로 낸다.
 - 요청마다 trace id(32자리 16진수)를 만들어 그 요청의 로그와 에러 문서의 meta.traceId에
   같은 값을 쓴다.
@@ -20,6 +22,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.core.config import Settings
 
 TRACE_ID_KEY = "trace_id"
+PLAIN_TRACEBACK = structlog.dev.plain_traceback  # 콘솔 출력의 예외 형식(rich를 쓰지 않는다)
 HANDLER_NAME = "app"
 # 표준 logging으로 로그를 내는 라이브러리 중 자기 핸들러를 다는 것. 핸들러를 떼고 루트로 보낸다.
 _OWN_HANDLER_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access")
@@ -35,7 +38,7 @@ def configure_logging(settings: Settings, *, stream: TextIO | None = None) -> No
         structlog.processors.TimeStamper(fmt="iso", utc=True),
     ]
     rendering: list[structlog.types.Processor] = (
-        [structlog.dev.ConsoleRenderer(colors=output.isatty())]
+        [structlog.dev.ConsoleRenderer(colors=output.isatty(), exception_formatter=PLAIN_TRACEBACK)]
         if settings.app_env == "development"
         else [structlog.processors.format_exc_info, structlog.processors.JSONRenderer()]
     )

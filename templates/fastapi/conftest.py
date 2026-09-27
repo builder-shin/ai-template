@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+import structlog
 from alembic import command
 from alembic.config import Config
 from redis.asyncio import Redis
@@ -19,10 +20,22 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.core.config import Settings, load_settings
 from app.core.db import create_engine
+from app.core.logging import PLAIN_TRACEBACK
 from app.core.redis import create_redis
 from tools.infra import isolated_settings, preflight
 
 ROOT = Path(__file__).resolve().parent
+
+# 로그를 설정하지 않는 테스트(configure_logging을 부르지 않는 앱)의 structlog 기본값.
+# structlog의 기본 콘솔 출력은 rich로 예외를 그리는데, Python 3.14.7(Windows)에서 프로세스가
+# 접근 위반으로 죽는다(app.core.logging과 같은 이유).
+structlog.configure(
+    processors=[
+        structlog.processors.add_log_level,
+        structlog.dev.set_exc_info,
+        structlog.dev.ConsoleRenderer(colors=False, exception_formatter=PLAIN_TRACEBACK),
+    ]
+)
 
 
 @pytest.fixture(scope="session")
