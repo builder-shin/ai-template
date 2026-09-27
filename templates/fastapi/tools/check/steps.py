@@ -47,5 +47,12 @@ STEPS = (
         ("openapi.json", "api-style/lint.mjs", "uv.lock"),
         hint="계약 룰셋 위반이다. 라우트 선언이나 문서 모델을 고치고 uv run poe gen을 돌린다.",
     ),
+    Step(
+        "skills",
+        (PYTHON, "-m", "tools.checks", "skills"),
+        (".claude/skills/**/*", ".agents/skills/**/*", "uv.lock"),
+        fast=True,
+        hint="uv run poe setup으로 FastAPI skill 사본을 다시 만든다.",
+    ),
     Step("test", (PYTHON, "-m", "pytest"), TEST_INPUTS, narrow=select_tests),
 )

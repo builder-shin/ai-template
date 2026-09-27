@@ -70,6 +70,8 @@ addopts = ["-ra", "--strict-markers"]
 
 [tool.ruff]
 line-length = 100
+# FastAPI skill 사본은 생성물이다. ruff format이 마크다운 안의 파이썬 코드 블록을 고치지 않게 뺀다.
+extend-exclude = [".claude/skills", ".agents/skills"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC", "S", "PT", "PGH", "N"]

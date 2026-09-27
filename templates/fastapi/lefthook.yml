@@ -1,0 +1,17 @@
+# git hook. uv run poe setup이 lefthook install로 건다(이 폴더가 git 저장소의 최상위일 때만).
+# 커밋 전에는 스테이징한 .py의 포맷(고친 결과를 다시 스테이징)과 린트, 비밀 스캔을, 푸시 전에는 check를 돌린다.
+pre-commit:
+  jobs:
+    - name: format
+      glob: "*.py"
+      run: uv run --frozen ruff format {staged_files}
+      stage_fixed: true
+    - name: lint
+      glob: "*.py"
+      run: uv run --frozen ruff check {staged_files}
+    - name: secrets
+      run: uv run --frozen python -m tools.binaries betterleaks git --pre-commit --staged --no-banner --redact
+pre-push:
+  jobs:
+    - name: check
+      run: uv run poe check

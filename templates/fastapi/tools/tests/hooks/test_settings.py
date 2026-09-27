@@ -39,5 +39,7 @@ def test_secrets_and_generated_files_are_protected() -> None:
         "Edit(./openapi.json)",
         "Edit(./api-style/**)",
         "Edit(./uv.lock)",
+        "Edit(./.claude/skills/fastapi/**)",
+        "Edit(./.agents/skills/fastapi/**)",
     } <= deny
     assert "Read(./.env.example)" not in deny

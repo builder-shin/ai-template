@@ -4,25 +4,26 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 
 ## 명령
 
-| 명령                                | 하는 일                                                                                |
-| ----------------------------------- | -------------------------------------------------------------------------------------- |
-| `uv run poe setup`                  | `.env`, 인프라(compose), 버킷, DB(개발·테스트·E2E), 마이그레이션, 시드를 준비한다      |
-| `uv run poe dev`                    | api(`http://127.0.0.1:8000`, 코드가 바뀌면 다시 시작), worker, scheduler를 함께 띄운다 |
-| `uv run poe check`                  | 완료 기준. 포맷, 린트, 타입, 아키텍처, 하네스, 생성물, 계약 린트, 테스트를 돈다        |
-| `uv run poe fix`                    | 포맷과 린트 자동 수정                                                                  |
-| `uv run poe test`                   | 테스트(`src`와 `tools`의 `tests/`, E2E 제외)                                           |
-| `uv run poe test:e2e`               | api, worker, scheduler를 따로 띄우고 `tests/e2e`를 돌린 뒤 내린다                      |
-| `uv run poe gen`                    | 앱을 띄우지 않고 `openapi.json`을 다시 쓴다                                            |
-| `uv run poe db:migrate`             | 개발 DB에 마이그레이션을 적용한다                                                      |
-| `uv run poe db:revision "<메시지>"` | 모델과 개발 DB를 비교해 마이그레이션 초안을 만든다                                     |
-| `uv run poe db:reset`               | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                          |
+| 명령                                | 하는 일                                                                                                                      |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `uv run poe setup`                  | `.env`, Betterleaks, git hook, 인프라(compose), 버킷, DB(개발·테스트·E2E), 마이그레이션, 시드, FastAPI skill 사본을 준비한다 |
+| `uv run poe dev`                    | api(`http://127.0.0.1:8000`, 코드가 바뀌면 다시 시작), worker, scheduler를 함께 띄운다                                       |
+| `uv run poe check`                  | 완료 기준. 포맷, 린트, 타입, 아키텍처, 하네스, 생성물, 계약 린트, skill 사본, 테스트를 돈다                                  |
+| `uv run poe fix`                    | 포맷과 린트 자동 수정                                                                                                        |
+| `uv run poe test`                   | 테스트(`src`와 `tools`의 `tests/`, E2E 제외)                                                                                 |
+| `uv run poe test:e2e`               | api, worker, scheduler를 따로 띄우고 `tests/e2e`를 돌린 뒤 내린다                                                            |
+| `uv run poe gen`                    | 앱을 띄우지 않고 `openapi.json`을 다시 쓴다                                                                                  |
+| `uv run poe db:migrate`             | 개발 DB에 마이그레이션을 적용한다                                                                                            |
+| `uv run poe db:revision "<메시지>"` | 모델과 개발 DB를 비교해 마이그레이션 초안을 만든다                                                                           |
+| `uv run poe db:reset`               | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                                                                |
 
-- `setup`은 여러 번 돌려도 안전하다. Docker가 켜져 있어야 한다.
+- `setup`은 여러 번 돌려도 안전하다. Docker가 켜져 있어야 한다. git hook은 이 폴더가 git 저장소의 최상위일 때만 건다.
+- git hook(`lefthook.yml`): 커밋 전에는 스테이징한 `.py`의 포맷(고친 결과를 다시 스테이징)과 린트, 비밀 스캔(Betterleaks)을, 푸시 전에는 `uv run poe check`를 돈다.
 - `check`는 성공하면 한 줄, 실패하면 실패한 단계의 출력과 `check 실패: <단계>`만 보여 준다. 입력 파일이 마지막 성공 때와 같은 단계는 건너뛴다(`.cache/check/`).
 - 직접 만든 검사는 `파일:줄 규칙 — 고치는 방법` 한 줄씩 알린다. 고치는 방법대로 고친다.
 - `check --fast`는 Stop hook이 쓰는 빠른 경로다. 바뀐 모듈의 테스트만 돌린다.
 - 테스트가 "인프라가 꺼져 있다"로 멈추면 `uv run poe setup`을 돌린다.
-- `check`의 생성물 단계는 `openapi.json`이 코드와 같은지, 계약 린트 단계는 `openapi.json`이 계약 룰셋(`api-style/lint.mjs`)을 지키는지 본다.
+- `check`의 생성물 단계는 `openapi.json`이 코드와 같은지, 계약 린트 단계는 `openapi.json`이 계약 룰셋(`api-style/lint.mjs`)을 지키는지, skill 단계는 FastAPI skill 사본이 설치된 fastapi와 같은지 본다.
 - `dev`는 출력 앞에 프로세스 이름을 붙이고, 하나가 끝나거나 Ctrl+C를 누르면 모두 내린다.
 - `test:e2e`는 개발 인프라에 DB `app_e2e`, Valkey DB 14, api 포트 18000으로 띄운다. 실패하면 프로세스 출력(`.cache/e2e/processes.log`)의 끝부분을 보여 준다.
 
@@ -43,6 +44,8 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - `compose.yaml`: 개발 인프라(PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth). 포트는 127.0.0.1에만 열고, 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit SMTP 21025·웹 28025, 모의 OAuth 28080). `app` 프로필은 이미지로 migrate, api(8000), worker, scheduler를 띄운다.
 - `tools/`: 하네스 도구. `cli.py`가 poe 명령의 입구이고, `infra.py`가 인프라 준비, `dev.py`·`e2e.py`가 `processes.py`(프로세스 묶음)로 프로세스를 띄우고, `check/`가 check 실행기, `checks/`에 검사, `hooks/`에 Claude Code hook이 있다.
 - `.claude/settings.json`: Claude Code의 hook(exec form으로 `tools.hooks.<이름>`을 부른다)과 권한.
+- `.claude/skills/fastapi/`, `.agents/skills/fastapi/`: FastAPI 공식 skill 사본(생성물). FastAPI를 쓸 때 먼저 읽는다.
+- `lefthook.yml`, `.betterleaks.toml`: git hook과 비밀 스캔 설정. Betterleaks는 `tools/binaries.py`가 받아 `.cache/tools/`에 둔다.
 - `openapi.json`: 앱이 내보낸 OpenAPI 문서(생성물, `uv run poe gen`).
 - `api-style/lint.mjs`: 저장소가 넣는 API 스타일 룰셋 번들의 사본이다.
 - `docs/recipes/`: 작업 절차.
@@ -64,7 +67,8 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - 커밋된 마이그레이션(`migrations/versions/`)은 고치거나 지우지 않는다. 바꿀 것이 있으면 새 리비전을 만든다.
 - 테스트는 대상 코드 옆의 `tests/`에 둔다: `src/app/tests/`(앱 조립), `src/app/core/tests/`, `src/app/modules/<이름>/tests/`, `tools/tests/`.
 - 테스트는 자기 인프라(DB, Valkey, 스토리지, 메일)를 모킹하지 않는다. 테스트 DB는 `app_test`, Valkey는 DB 15다. DB는 `db` fixture(테스트마다 롤백), Valkey는 `redis` fixture(테스트마다 비움)로 쓴다.
-- 생성물은 직접 고치지 않는다: `openapi.json`(`uv run poe gen`), `uv.lock`(`uv add`, `uv lock`), `api-style/lint.mjs`(저장소의 `pnpm sync`). 라우트나 문서 모델을 바꾸면 `uv run poe gen`을 돌린다. Claude Code 권한도 이 파일들의 수정과 `.env`, `.env.local` 읽기를 막는다(설정의 예시는 `.env.example`).
+- 생성물은 직접 고치지 않는다: `openapi.json`(`uv run poe gen`), `uv.lock`(`uv add`, `uv lock`), `api-style/lint.mjs`(저장소의 `pnpm sync`), FastAPI skill 사본(`uv run poe setup`). 라우트나 문서 모델을 바꾸면 `uv run poe gen`을 돌린다. Claude Code 권한도 이 파일들의 수정과 `.env`, `.env.local` 읽기를 막는다(설정의 예시는 `.env.example`).
 - Claude Code hook이 규칙을 지킨다. `.py`를 고치면 그 파일만 포맷하고 자동 수정한 뒤 남은 린트 오류를 알린다. 끝낼 때 `check --fast`가 실패하면 끝나지 않는다. 강제 푸시, `--no-verify`, 이 PC가 아닌 DB 주소가 든 명령, 커밋된 마이그레이션을 지우거나 고치는 것은 막힌다. 세션을 시작하면 인프라, 마이그레이션, `openapi.json` 상태를 알린다.
+- 테스트에 가짜 비밀 값을 써야 하면 그 줄 끝에 `betterleaks:allow` 주석을 단다.
 - 문서, 주석, 도구 메시지는 한국어로, 식별자는 영어로 쓴다.
 - 작업을 끝내기 전에 `uv run poe check`를 통과시킨다.

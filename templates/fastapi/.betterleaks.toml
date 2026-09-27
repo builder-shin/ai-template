@@ -1,0 +1,15 @@
+# 비밀 스캔(Betterleaks) 설정. 기본 규칙을 그대로 쓰되, 비밀 값이 들어갈 수 없는 생성물은 검사하지 않는다.
+# - uv.lock: 패키지 이름, 주소, 해시뿐이다.
+# - openapi.json: 앱이 내보낸 API 문서(필드 이름과 스키마)다.
+# - api-style/lint.mjs: 룰셋 번들(제3자 라이브러리를 묶어 압축한 생성물)이다.
+# 테스트의 가짜 값은 줄 끝에 `betterleaks:allow` 주석을 달아 하나씩 허용한다.
+prefilter = '''
+filter.matchesAny(attributes["path"], [
+  `^uv\.lock$`,
+  `^openapi\.json$`,
+  `^api-style/lint\.mjs$`,
+])
+'''
+
+[extend]
+useDefault = true

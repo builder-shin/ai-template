@@ -1,7 +1,8 @@
-"""하네스 검사의 입구: python -m tools.checks <architecture|harness>
+"""하네스 검사의 입구: python -m tools.checks <architecture|harness|skills>
 
 - architecture: import-linter 계약(pyproject.toml)과 모듈 경계
 - harness: 파일 크기, 억제 주석, 메일 템플릿, 지침 파일, .env.example
+- skills: FastAPI 공식 skill 사본이 설치된 fastapi 패키지와 같은지
 문제마다 `파일:줄 규칙 — 고치는 방법` 한 줄을 찍고, 문제가 있으면 종료 코드 1로 끝난다.
 """
 
@@ -20,6 +21,7 @@ from tools.checks import (
     env_example,
     file_size,
     mail_templates,
+    skills,
     suppressions,
 )
 
@@ -33,6 +35,7 @@ GROUPS: dict[str, tuple[Callable[[Path], list[Problem]], ...]] = {
         agents_md.check,
         env_example.check,
     ),
+    "skills": (skills.check,),
 }
 
 

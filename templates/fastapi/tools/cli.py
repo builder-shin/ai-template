@@ -13,6 +13,7 @@ from tools.check.runner import run
 from tools.check.steps import STEPS
 
 ROOT = Path(__file__).resolve().parent.parent
+LIBRARY_SKILLS = "0.0.19"  # FastAPI 공식 skill을 복사하는 도구(uvx로 부른다)
 
 
 def _python(*args: str) -> int:
@@ -37,15 +38,43 @@ def _migrate_and_seed() -> None:
         raise SystemExit(code)
 
 
+def _copy_skills() -> None:
+    """FastAPI 공식 skill 사본(.claude/skills/fastapi/, .agents/skills/fastapi/)을 맞춘다.
+
+    library-skills는 복사 모드로 만든 사본을 손으로 쓴 것으로 보고 다시 쓰지 않는다. 그래서 사본이
+    설치된 fastapi와 다를 때만 지우고 새로 복사한다.
+    """
+    from tools.checks import skills
+
+    if not skills.check(ROOT):
+        print("FastAPI skill 사본: 설치된 fastapi와 같다.")
+        return
+    for copy in skills.COPIES:
+        shutil.rmtree(ROOT / copy, ignore_errors=True)
+    tool = f"library-skills=={LIBRARY_SKILLS}"
+    command = ["uvx", tool, "--claude", "--copy", "--yes", "--skill", "fastapi"]
+    result = subprocess.run(
+        command, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False
+    )
+    if result.returncode != 0 or skills.check(ROOT):
+        raise SystemExit(f"FastAPI skill 사본을 만들지 못했다.\n{result.stdout}{result.stderr}")
+    print("FastAPI skill 사본: 설치된 fastapi에서 새로 복사했다.")
+
+
 def setup() -> None:
     """개발 환경을 준비한다. 여러 번 실행해도 안전하다.
 
-    .env → 인프라(compose) → 버킷과 CORS → DB(개발, 테스트, E2E) → 마이그레이션 → 시드
+    .env → Betterleaks → git hook → 인프라(compose) → 버킷과 CORS → DB(개발, 테스트, E2E)
+    → 마이그레이션 → 시드 → FastAPI skill 사본
     """
     # boto3 등 무거운 라이브러리는 이 명령에서만 import한다(check와 fix가 느려지지 않게).
-    from tools import infra
+    from tools import githooks, infra
+    from tools.binaries import BETTERLEAKS, ensure_tool
 
     _ensure_env()
+    betterleaks = ensure_tool(BETTERLEAKS).relative_to(ROOT).as_posix()
+    print(f"Betterleaks {BETTERLEAKS.version}: {betterleaks}")
+    print(githooks.install())
     sys.stdout.flush()
     infra.up()
     settings = load_settings()
@@ -56,6 +85,7 @@ def setup() -> None:
     new = ", ".join(infra.ensure_databases(settings)) or "없음"
     print(f"DB {names}: 새로 만든 것 {new}.")
     _migrate_and_seed()
+    _copy_skills()
     print("setup 완료.")
 
 
