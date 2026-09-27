@@ -89,7 +89,11 @@ interface AuditLogs {
 
     @query("filter[action]") filterAction?: AuditLogAction,
     @query("filter[targetType]") filterTargetType?: AuditLogTargetType,
+
+    /** 이 시각부터(포함) 기록된 것. */
     @query("filter[createdFrom]") filterCreatedFrom?: utcDateTime,
+
+    /** 이 시각 전까지(포함하지 않는다) 기록된 것. */
     @query("filter[createdTo]") filterCreatedTo?: utcDateTime,
   ): JsonApi.Ok<AuditLogCollectionDocument> | AuthErrors | CommonErrors;
 

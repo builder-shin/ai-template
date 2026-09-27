@@ -91,6 +91,7 @@ paths:
         - name: filter[createdFrom]
           in: query
           required: false
+          description: 이 시각부터(포함) 기록된 것.
           schema:
             type: string
             format: date-time
@@ -98,6 +99,7 @@ paths:
         - name: filter[createdTo]
           in: query
           required: false
+          description: 이 시각 전까지(포함하지 않는다) 기록된 것.
           schema:
             type: string
             format: date-time

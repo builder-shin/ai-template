@@ -8,9 +8,10 @@
 """
 
 import uuid
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,12 +21,17 @@ from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
 from app.core.clients import Client
 from app.core.db import utc_now
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
+from app.core.jsonapi.models import ErrorCode, ToOne
 from app.core.jsonapi.query import Page, SortField
 from app.core.permissions import PermissionRegistry
 from app.core.security import hash_password
 from app.modules import roles
 from app.modules.users.models import Locale, User, UserStatus
+from app.modules.users.schemas import (
+    UserPublicAttributes,
+    UserPublicRelationships,
+    UserPublicResource,
+)
 
 
 class Closure(StrEnum):
@@ -125,6 +131,23 @@ def mark_email_verified(user: User, now: datetime) -> bool:
 
 def set_password(user: User, password: str) -> None:
     user.password_hash = hash_password(password)
+
+
+def public_user_resource(user: User) -> UserPublicResource:
+    """다른 사람에게 보이는 공개 표현(이름과 아바타). 아바타는 files 모듈(M3)이 채운다."""
+    return UserPublicResource(
+        type="users",
+        id=str(user.id),
+        attributes=UserPublicAttributes(name=user.name),
+        relationships=UserPublicRelationships(avatar=ToOne[Literal["files"]](data=None)),
+    )
+
+
+async def public_users(
+    session: AsyncSession, user_ids: Iterable[uuid.UUID]
+) -> list[UserPublicResource]:
+    """사용자들의 공개 표현. 다른 모듈이 included(글의 작성자, 감사 로그의 행위자)에 쓴다."""
+    return [public_user_resource(user) for user in await repository.get_many(session, user_ids)]
 
 
 async def require_user(session: AsyncSession, user_id: uuid.UUID) -> User:

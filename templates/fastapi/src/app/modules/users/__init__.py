@@ -3,6 +3,7 @@
 from app.modules.users.models import Locale, User, UserStatus
 from app.modules.users.permissions import PERMISSIONS, USERS_MANAGE, USERS_READ
 from app.modules.users.router import me, users
+from app.modules.users.schemas import UserPublicResource
 from app.modules.users.service import (
     Closure,
     create_account,
@@ -12,6 +13,7 @@ from app.modules.users.service import (
     mark_email_verified,
     normalize_email,
     on_account_closed,
+    public_users,
     set_password,
 )
 
@@ -25,6 +27,7 @@ __all__ = [
     "Closure",
     "Locale",
     "User",
+    "UserPublicResource",
     "UserStatus",
     "create_account",
     "find_account",
@@ -33,5 +36,6 @@ __all__ = [
     "mark_email_verified",
     "normalize_email",
     "on_account_closed",
+    "public_users",
     "set_password",
 ]

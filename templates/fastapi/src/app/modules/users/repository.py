@@ -1,7 +1,7 @@
 """사용자의 DB 접근. commit하지 않는다(트랜잭션은 service가 정한다)."""
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,12 @@ DEFAULT_SORT = (SortField(name="createdAt", descending=True),)
 
 async def get(session: AsyncSession, user_id: uuid.UUID) -> User | None:
     return await session.get(User, user_id)
+
+
+async def get_many(session: AsyncSession, user_ids: Iterable[uuid.UUID]) -> list[User]:
+    """id로 찾은 사용자(id 순). 없는 id는 빠진다."""
+    query = select(User).where(User.id.in_(list(user_ids))).order_by(User.id)
+    return list(await session.scalars(query))
 
 
 async def find_by_email(session: AsyncSession, email: str) -> User | None:

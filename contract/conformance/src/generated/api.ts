@@ -1366,7 +1366,9 @@ export interface operations {
                 "filter[actor]"?: string;
                 "filter[action]"?: components["schemas"]["AuditLogAction"];
                 "filter[targetType]"?: components["schemas"]["AuditLogTargetType"];
+                /** @description 이 시각부터(포함) 기록된 것. */
                 "filter[createdFrom]"?: string;
+                /** @description 이 시각 전까지(포함하지 않는다) 기록된 것. */
                 "filter[createdTo]"?: string;
             };
             header?: never;
