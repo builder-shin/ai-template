@@ -1,9 +1,14 @@
-"""Taskiq scheduler. 반드시 하나만 띄운다: taskiq scheduler app.scheduler:create_scheduler
+"""Taskiq scheduler. 반드시 하나만 띄운다:
+taskiq scheduler app.scheduler:create_scheduler --no-configure-logging --update-interval=10
 
 - 주기 작업은 잡에 schedule 라벨로 선언한다(LabelScheduleSource). scheduler의 broker에 등록한 잡만
   읽는다. 예: @broker.task(schedule=[{"cron": "0 * * * *"}])
 - 지연 재시도와 일회성 예약은 worker와 같은 Valkey 스케줄 소스에서 꺼내 때가 되면 보낸다.
-  scheduler는 스케줄을 1분마다 다시 읽으므로, 그 사이에 들어온 예약은 최대 1분 늦게 나간다.
+  scheduler는 스케줄을 10초마다 다시 읽으므로(--update-interval=10), 그 사이에 들어온 예약은 최대
+  10초 늦게 나간다. 기본값(1분)이면 5초 뒤의 첫 재시도가 1분 가까이 늦는다.
+- 예약은 분 단위 목록에 들어간다. 이미 읽은 분에 나중에 들어온 예약은 다음에 읽을 때 "지난 분의
+  예약"으로 함께 읽힌다(taskiq-redis 1.2.3의 ListRedisScheduleSource). 키 접두사에 콜론을 넣으면
+  지난 분을 찾지 못한다(app.worker.SCHEDULE_PREFIX).
 - 여러 개를 띄우면 같은 주기 작업을 여러 번 보낸다(taskiq는 중복을 막지 않는다).
 """
 

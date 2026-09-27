@@ -145,6 +145,25 @@ async def test_scheduler_reads_label_schedules_and_the_retry_source(
     assert [task.schedule_id for task in await schedules_of(retries)] == [retry.schedule_id]
 
 
+async def test_retries_in_a_minute_already_read_are_still_sent(
+    infra: Settings, redis: Redis
+) -> None:
+    """scheduler가 그 분의 목록을 읽은 뒤에 들어온 재시도도 다음에 읽을 때 지난 예약으로 읽힌다.
+
+    taskiq-redis 1.2.3의 동작에 기댄다. 업그레이드해서 이 테스트가 깨지면 재시도가 사라진다.
+    """
+    earlier = ScheduledTask(
+        task_name="tests.fail",
+        labels={},
+        args=[],
+        kwargs={},
+        time=datetime.now(UTC) - timedelta(minutes=2),
+    )
+    source = create_schedule_source(infra)
+    await source.add_schedule(earlier)
+    assert [task.schedule_id for task in await source.get_schedules()] == [earlier.schedule_id]
+
+
 def test_create_broker_without_settings_configures_logging_once(
     monkeypatch: pytest.MonkeyPatch, settings: Settings
 ) -> None:

@@ -87,6 +87,9 @@ services:
 
   mailpit:
     image: axllent/mailpit:v1.31.2
+    environment:
+      # E2E가 SMTP 오류를 일부러 내서 메일 잡의 재시도를 본다(tools/mailpit.py의 fail_senders).
+      MP_ENABLE_CHAOS: "true"
     ports:
       - "127.0.0.1:21025:1025" # SMTP
       - "127.0.0.1:28025:8025" # 웹 화면과 API
@@ -155,7 +158,12 @@ services:
   scheduler:
     <<: *app
     # 반드시 하나만 띄운다(여러 개면 같은 주기 작업을 여러 번 보낸다).
-    command: ["taskiq", "scheduler", "app.scheduler:create_scheduler", "--no-configure-logging"]
+    command:
+      - taskiq
+      - scheduler
+      - app.scheduler:create_scheduler
+      - --no-configure-logging
+      - --update-interval=10
     healthcheck:
       disable: true
     depends_on:

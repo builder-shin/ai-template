@@ -25,6 +25,7 @@ SCHEDULER = Command(
         "scheduler",
         "app.scheduler:create_scheduler",
         "--no-configure-logging",
+        "--update-interval=10",
     ),
 )
 
