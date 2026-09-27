@@ -10,6 +10,8 @@ from app.core.config import Settings
 from app.core.storage import create_client
 from tools.infra import (
     INFRA_DOWN,
+    RATE_LIMIT_FIELDS,
+    TEST_RATE_LIMIT,
     ensure_bucket,
     is_local,
     isolated_settings,
@@ -35,6 +37,7 @@ def test_isolated_settings_use_their_own_database_and_valkey_number(
     assert settings.app_env == "test"
     assert settings.database_url == f"postgresql+psycopg://127.0.0.1:25432/{database}"
     assert settings.redis_url == f"redis://127.0.0.1:26379/{number}"
+    assert {getattr(settings, name) for name in RATE_LIMIT_FIELDS} == {TEST_RATE_LIMIT}
 
 
 @pytest.mark.parametrize(

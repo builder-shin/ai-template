@@ -46,3 +46,19 @@ def test_reports_each_bad_variable_on_its_own_line(
         "(String should match pattern '^postgresql\\+psycopg://').",
         "설정 오류: REDIS_URL — 값이 없다. .env나 환경 변수에 적는다(예시는 .env.example).",
     ]
+
+
+def test_rejects_a_short_jwt_secret_and_an_unknown_mail_scheme(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    write_dotenv(tmp_path)
+    monkeypatch.setenv("JWT_SECRET", "too-short")
+    monkeypatch.setenv("SMTP_URL", "http://127.0.0.1:21025")
+    with pytest.raises(SystemExit) as caught:
+        load_settings()
+    assert str(caught.value).splitlines() == [
+        "설정 오류: JWT_SECRET — 값이 틀렸다"
+        "(Value should have at least 32 items after validation, not 9).",
+        "설정 오류: SMTP_URL — 값이 틀렸다"
+        "(String should match pattern '^(smtp|smtp\\+starttls|smtps)://').",
+    ]

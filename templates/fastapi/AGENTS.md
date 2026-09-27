@@ -21,6 +21,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 | `uv run poe db:reset`               | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                                                                |
 
 - `setup`은 여러 번 돌려도 안전하다. Docker가 켜져 있어야 한다. git hook은 이 폴더가 git 저장소의 최상위일 때만 건다.
+- `.env`가 있으면 적힌 값은 그대로 두고, 설정에 새로 생긴 키만 `.env.example`의 값으로 더한다. 설정 오류로 멈추면 `uv run poe setup`을 다시 돌린다.
 - 테스트가 "인프라가 꺼져 있다"로 멈추면 `uv run poe setup`을 돌린다.
 - `dev`는 출력 앞에 프로세스 이름을 붙이고, 하나가 끝나거나 Ctrl+C를 누르면 모두 내린다.
 - `test:e2e`는 개발 인프라에 DB `app_e2e`, Valkey DB 14, api 포트 18000으로 띄운다. 실패하면 프로세스 출력(`.cache/e2e/processes.log`)의 끝부분을 보여 준다.

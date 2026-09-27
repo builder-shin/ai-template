@@ -23,12 +23,15 @@ def _python(*args: str) -> int:
 
 
 def _ensure_env() -> None:
-    env = ROOT / ".env"
-    if env.exists():
+    from tools.envfile import prepare
+
+    added = prepare(ROOT / ".env", ROOT / ".env.example")
+    if added is None:
+        print(".env.example을 복사해 .env를 만들었다.")
+    elif added:
+        print(f".env에 없던 키를 .env.example의 값으로 더했다: {', '.join(added)}")
+    else:
         print(".env가 이미 있다. 그대로 둔다.")
-        return
-    shutil.copyfile(ROOT / ".env.example", env)
-    print(".env.example을 복사해 .env를 만들었다.")
 
 
 def _migrate_and_seed() -> None:

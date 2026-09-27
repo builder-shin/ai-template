@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 NonEmpty = Annotated[str, Field(min_length=1)]
 HttpUrl = Annotated[str, Field(pattern=r"^https?://")]
+# 레이트 리밋 한도: 한 윈도(분이나 시간) 동안 받는 요청 수
+Limit = Annotated[int, Field(ge=1)]
 
 
 class Settings(BaseSettings):
@@ -28,6 +30,23 @@ class Settings(BaseSettings):
     s3_access_key_id: NonEmpty
     s3_secret_access_key: SecretStr
     s3_bucket: NonEmpty
+    # access token(JWT, HS256)의 서명 키. 32자 이상
+    jwt_secret: Annotated[SecretStr, Field(min_length=32)]
+    # 메일 서버. smtp://(평문), smtp+starttls://(STARTTLS), smtps://(TLS). 계정은 주소에 넣는다
+    smtp_url: Annotated[str, Field(pattern=r"^(smtp|smtp\+starttls|smtps)://")]
+    mail_from: NonEmpty
+    # 메일 링크의 프론트 주소. 인증·재설정 링크는 여기에 경로와 ?token=을 붙인다
+    frontend_url: HttpUrl
+    # 시드(python -m app.seed)가 만드는 관리자 계정
+    seed_admin_email: NonEmpty
+    seed_admin_password: Annotated[SecretStr, Field(min_length=8)]
+    # 레이트 리밋. 전역과 로그인은 분당, 가입과 메일 요청(인증 메일 재발송, 재설정 요청)은 시간당
+    rate_limit_global: Limit
+    rate_limit_login_ip: Limit
+    rate_limit_login_identifier: Limit
+    rate_limit_registration_ip: Limit
+    rate_limit_mail_ip: Limit
+    rate_limit_mail_email: Limit
 
     def __init__(self) -> None:
         # 값은 환경 변수와 .env에서 온다. 인자 없는 생성자를 선언해 두면 타입 검사기가

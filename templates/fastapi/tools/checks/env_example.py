@@ -1,15 +1,14 @@
 """`.env.example`의 키와 설정 스키마(Settings)의 필드가 같은지 본다."""
 
-import re
 from collections.abc import Collection
 from pathlib import Path
 
 from app.core.config import Settings
 from tools.checks import Problem
+from tools.envfile import KEY
 
 RULE = "env-example"
 FILE = ".env.example"
-_KEY = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=")
 
 
 def settings_keys() -> set[str]:
@@ -27,7 +26,7 @@ def check(root: Path, keys: Collection[str] | None = None) -> list[Problem]:
     lines = path.read_text(encoding="utf-8").splitlines()
     found: dict[str, int] = {}
     for number, line in enumerate(lines, start=1):
-        match = _KEY.match(line)
+        match = KEY.match(line)
         if match is not None:
             found.setdefault(match.group(1), number)
     problems = [

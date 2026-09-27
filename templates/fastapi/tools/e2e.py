@@ -17,7 +17,7 @@ import redis
 
 from app.core.config import Settings, load_settings
 from tools.dev import SCHEDULER, WORKER, api
-from tools.infra import isolated_settings, preflight
+from tools.infra import RATE_LIMIT_FIELDS, isolated_settings, preflight
 from tools.processes import ProcessGroup
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -29,12 +29,12 @@ TAIL = 40  # 실패했을 때 보여 줄 로그 줄 수
 
 
 def overrides(settings: Settings) -> dict[str, str]:
-    """E2E 설정을 자식 프로세스에 넘기는 환경 변수. 환경 변수는 .env보다 앞선다."""
-    return {
-        "APP_ENV": settings.app_env,
-        "DATABASE_URL": settings.database_url,
-        "REDIS_URL": settings.redis_url,
-    }
+    """E2E 설정을 자식 프로세스에 넘기는 환경 변수. 환경 변수는 .env보다 앞선다.
+
+    isolated_settings가 바꾸는 필드(환경, DB, Valkey 번호, 레이트 리밋)를 넘긴다.
+    """
+    names = ("app_env", "database_url", "redis_url", *RATE_LIMIT_FIELDS)
+    return {name.upper(): str(getattr(settings, name)) for name in names}
 
 
 def prepare(settings: Settings) -> None:

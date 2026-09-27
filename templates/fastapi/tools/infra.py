@@ -28,6 +28,10 @@ type Target = Literal["test", "e2e"]
 # 테스트와 E2E는 개발 데이터를 건드리지 않도록 DB 이름에 접미사를 붙이고 Valkey DB 번호를 따로 쓴다.
 TARGETS: dict[Target, tuple[str, int]] = {"test": ("_test", 15), "e2e": ("_e2e", 14)}
 
+# 테스트와 E2E는 레이트 리밋에 걸리지 않게 한도를 크게 둔다. 한도 자체를 보는 테스트만 낮춘다.
+TEST_RATE_LIMIT = 1_000_000
+RATE_LIMIT_FIELDS = tuple(name for name in Settings.model_fields if name.startswith("rate_limit_"))
+
 # 브라우저가 presigned URL로 스토리지에 직접 올릴 때의 개발용 프론트 출처(웹과 관리자).
 CORS_ORIGINS = ("http://localhost:3000", "http://localhost:3001")
 
@@ -48,7 +52,10 @@ def up() -> None:
 
 
 def isolated_settings(settings: Settings, target: Target) -> Settings:
-    """테스트(test)나 E2E(e2e)용 설정. DB 이름에 접미사를 붙이고 Valkey DB 번호를 바꾼다."""
+    """테스트(test)나 E2E(e2e)용 설정. DB 이름에 접미사를 붙이고 Valkey DB 번호를 바꾼다.
+
+    레이트 리밋 한도는 TEST_RATE_LIMIT로 올린다.
+    """
     suffix, number = TARGETS[target]
     url = make_url(settings.database_url)
     database = url.set(database=f"{url.database}{suffix}")
@@ -58,6 +65,7 @@ def isolated_settings(settings: Settings, target: Target) -> Settings:
             "app_env": "test",
             "database_url": database.render_as_string(hide_password=False),
             "redis_url": urlunsplit(valkey),
+            **dict.fromkeys(RATE_LIMIT_FIELDS, TEST_RATE_LIMIT),
         }
     )
 
