@@ -100,6 +100,6 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 
 ### 하네스
 
-- Claude Code hook: `.py`를 고치면 그 파일만 포맷하고 자동 수정한 뒤 남은 린트 오류를 알린다. 끝낼 때 `check --fast`가 실패하면 끝나지 않는다. 강제 푸시, `--no-verify`, 이 PC가 아닌 DB 주소가 든 명령, 커밋된 마이그레이션을 지우거나 고치는 것은 막힌다. 세션을 시작하면 인프라, 마이그레이션, `openapi.json` 상태를 알린다.
+- Claude Code hook: `.py`를 고치면 그 파일만 포맷하고 자동 수정한 뒤 남은 린트 오류를 알린다. 끝낼 때 `check --fast`가 실패하면 끝나지 않는다. 강제 푸시, `--no-verify`와 git hook 끄기(`LEFTHOOK=0`, `core.hooksPath`), 이 PC가 아닌 DB를 가리키는 명령(주소, `psql -h`), 커밋된 마이그레이션을 지우거나 고치는 것, 셸로 `.env`를 읽는 것은 막힌다. `bash -c "..."`처럼 감싼 명령도 같은 규칙으로 본다. 세션을 시작하면 인프라, 마이그레이션, `openapi.json` 상태를 알린다.
 - Claude Code 권한은 생성물의 수정과 `.env`, `.env.local` 읽기를 막는다(설정의 예시는 `.env.example`).
 - git hook(`lefthook.yml`): 커밋 전에는 스테이징한 `.py`의 포맷(고친 결과를 다시 스테이징)과 린트, 비밀 스캔(Betterleaks)을, 푸시 전에는 `uv run poe check`를 돈다.

@@ -1,4 +1,5 @@
-"""PreToolUse(Bash|PowerShell): 강제 푸시, --no-verify, 다른 PC의 DB, 커밋된 마이그레이션 삭제."""
+"""PreToolUse(Bash|PowerShell): 강제 푸시, hook 건너뛰기와 끄기, 다른 PC의 DB, 커밋된 마이그레이션
+삭제, .env 읽기, 셸에 문자열로 넘긴 명령."""
 
 import subprocess
 from pathlib import Path
@@ -6,7 +7,15 @@ from pathlib import Path
 import pytest
 
 from tools import infra
-from tools.hooks.pre_bash import FORCE_PUSH, LOCAL_HOSTS, NO_VERIFY, problem
+from tools.hooks.pre_bash import (
+    ENCODED,
+    ENV_READ,
+    FORCE_PUSH,
+    HOOKS_OFF,
+    LOCAL_HOSTS,
+    NO_VERIFY,
+    problem,
+)
 from tools.tests.hooks import ROOT, fixture, run_hook
 
 INIT = "migrations/versions/2026_09_26_0000-abc123_init.py"
@@ -59,6 +68,74 @@ def test_skipping_git_hooks_is_denied(command: str) -> None:
 
 
 @pytest.mark.parametrize(
+    ("command", "powershell"),
+    [
+        ("LEFTHOOK=0 git commit -m wip", False),
+        ("LEFTHOOK=false git push", False),
+        ("env LEFTHOOK=0 git commit -m wip", False),
+        ("export LEFTHOOK=0", False),
+        ("LEFTHOOK_EXCLUDE=secrets git commit -m wip", False),
+        ("git -c core.hooksPath=/dev/null commit -m wip", False),
+        ("git -c core.hookspath= push", False),
+        ("git config core.hooksPath .nohooks", False),
+        ("git config --local core.hooksPath x", False),
+        ("lefthook uninstall", False),
+        ("uv run lefthook uninstall", False),
+        ("$env:LEFTHOOK=0; git commit -m wip", True),
+        ("$env:LEFTHOOK = '0'", True),
+        ('$Env:lefthook="false"', True),
+    ],
+)
+def test_turning_git_hooks_off_is_denied(command: str, powershell: bool) -> None:
+    assert problem(command, cwd=str(ROOT), powershell=powershell) == HOOKS_OFF
+
+
+@pytest.mark.parametrize(
+    ("command", "powershell", "reason"),
+    [
+        ("bash -c 'git push --force'", False, FORCE_PUSH),
+        ('sh -lc "git commit --no-verify -m wip"', False, NO_VERIFY),
+        ("bash --login -c 'LEFTHOOK=0 git commit -m wip'", False, HOOKS_OFF),
+        ("bash -c \"bash -c 'git push -f'\"", False, FORCE_PUSH),
+        ("eval 'git push --force'", False, FORCE_PUSH),
+        ("powershell -c 'git push --force'", False, FORCE_PUSH),
+        ('pwsh -NoProfile -Command "git push -f"', True, FORCE_PUSH),
+        ('cmd /c "git push --force"', True, FORCE_PUSH),
+        ("iex 'git push --force'", True, FORCE_PUSH),
+        ("pwsh -EncodedCommand ZwBpAHQA", True, ENCODED),
+        ("powershell -enc ZwBpAHQA", False, ENCODED),
+    ],
+)
+def test_commands_passed_to_a_shell_are_checked(
+    command: str, powershell: bool, reason: str
+) -> None:
+    assert problem(command, cwd=str(ROOT), powershell=powershell) == reason
+
+
+@pytest.mark.parametrize(
+    ("command", "powershell"),
+    [
+        ("cat .env", False),
+        ("cat ./.env.local", False),
+        ("head -n 3 .env", False),
+        ("grep SECRET .env", False),
+        ("grep --file=.env pattern", False),
+        ("source .env", False),
+        (". .env", False),
+        ("cat .env*", False),
+        ("wc -l < .env", False),
+        ("cat C:/work/app/.env", False),
+        ("bash -c 'cat .env'", False),
+        ("Get-Content .env", True),
+        (r"gc .\.env.local", True),
+        ("type .env", True),
+    ],
+)
+def test_reading_env_files_through_the_shell_is_denied(command: str, powershell: bool) -> None:
+    assert problem(command, cwd=str(ROOT), powershell=powershell) == ENV_READ
+
+
+@pytest.mark.parametrize(
     "command",
     [
         "git push origin main",
@@ -70,7 +147,20 @@ def test_skipping_git_hooks_is_denied(command: str) -> None:
         "psql postgresql://127.0.0.1:25432/app",
         "psql postgresql://localhost/app",
         "psql postgresql:///app",
+        "psql -h 127.0.0.1 -p 25432 app",
+        "psql -h /var/run/postgresql app",
+        "grep -h pattern notes.txt",
         "uv run poe check",
+        'git commit -m "LEFTHOOK=0과 core.hooksPath는 쓰지 않는다"',
+        "LEFTHOOK=1 git commit -m wip",
+        "git config --get core.hooksPath",
+        "lefthook install",
+        "cat .env.example",
+        "cp .env.example .env",
+        "cat *",
+        "echo .env",
+        "bash scripts/setup.sh",
+        "pwsh -ExecutionPolicy Bypass -File tools/setup.ps1",
     ],
 )
 def test_ordinary_commands_pass(command: str) -> None:
@@ -86,6 +176,14 @@ def test_ordinary_commands_pass(command: str) -> None:
             "db.example.com",
         ),
         ("psql 'postgres://10.0.0.5/app'", "10.0.0.5"),
+        ("psql -h db.example.com -U app", "db.example.com"),
+        ("psql -hdb.example.com app", "db.example.com"),
+        ("pg_dump --host=10.0.0.5 app", "10.0.0.5"),
+        ("psql --host db.example.com", "db.example.com"),
+        ('psql "host=db.example.com dbname=app"', "db.example.com"),
+        ("PGHOST=db.example.com psql app", "db.example.com"),
+        ("docker compose exec postgres psql -h db.example.com", "db.example.com"),
+        ("bash -c 'psql -h db.example.com'", "db.example.com"),
     ],
 )
 def test_database_outside_this_machine_is_denied(command: str, host: str) -> None:
