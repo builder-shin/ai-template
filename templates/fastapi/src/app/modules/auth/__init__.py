@@ -4,7 +4,12 @@ from app.modules.auth.jobs import JOBS
 from app.modules.auth.router.accounts import registrations, verification_requests, verifications
 from app.modules.auth.router.passwords import changes, reset_requests, resets
 from app.modules.auth.router.sessions import revocations, sessions
-from app.modules.auth.service.credentials import IssuedTokens, authenticate, open_session
+from app.modules.auth.service.credentials import (
+    IssuedTokens,
+    authenticate,
+    close_credentials,
+    open_session,
+)
 
 ROUTERS = (
     registrations,
@@ -17,4 +22,4 @@ ROUTERS = (
     changes,
 )
 
-__all__ = ["JOBS", "ROUTERS", "IssuedTokens", "authenticate", "open_session"]
+__all__ = ["JOBS", "ROUTERS", "IssuedTokens", "authenticate", "close_credentials", "open_session"]

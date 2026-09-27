@@ -3,7 +3,7 @@
 import uuid
 from collections.abc import Iterable, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jsonapi.query import Page, SortField
@@ -55,5 +55,25 @@ async def page(
     return await fetch_page(session, query.order_by(*order), window)
 
 
-async def delete(session: AsyncSession, role: Role) -> None:
+async def remove(session: AsyncSession, role: Role) -> None:
     await session.delete(role)
+
+
+async def roles_of_users(
+    session: AsyncSession, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, list[Role]]:
+    """사용자마다 가진 역할(이름순). 역할이 없는 사용자는 빈 목록이다."""
+    found: dict[uuid.UUID, list[Role]] = {user_id: [] for user_id in user_ids}
+    query = (
+        select(UserRole.user_id, Role)
+        .join(Role, Role.id == UserRole.role_id)
+        .where(UserRole.user_id.in_(list(user_ids)))
+        .order_by(Role.name)
+    )
+    for user_id, role in (await session.execute(query)).tuples():
+        found[user_id].append(role)
+    return found
+
+
+async def clear(session: AsyncSession, user_id: uuid.UUID) -> None:
+    await session.execute(delete(UserRole).where(UserRole.user_id == user_id))

@@ -88,6 +88,18 @@ async def assign_roles(session: AsyncSession, user_id: uuid.UUID, names: Iterabl
     repository.assign(session, user_id, roles)
 
 
+async def roles_by_user(
+    session: AsyncSession, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, list[Role]]:
+    """사용자마다 가진 역할(이름순)."""
+    return await repository.roles_of_users(session, user_ids)
+
+
+async def clear_roles(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """사용자의 역할을 모두 뺀다(탈퇴). commit하지 않는다."""
+    await repository.clear(session, user_id)
+
+
 def role_resource(role: Role, registry: PermissionRegistry) -> RoleResource:
     return RoleResource(
         type="roles",
@@ -219,7 +231,7 @@ async def delete_role(
     if role.is_system:
         raise _protected("System roles cannot be deleted.")
     _require_within(role_permissions(role, registry), actor)
-    await repository.delete(session, role)
+    await repository.remove(session, role)
     await record_audit(
         session,
         AuditLogAction.ROLE_DELETED,

@@ -11,14 +11,15 @@ from app.core.db import Base, utc_now
 
 
 class UserStatus(StrEnum):
+    """deleted는 탈퇴해 개인정보를 지운 계정이다."""
+
     ACTIVE = "active"
     DEACTIVATED = "deactivated"
-    DELETED = "deleted"  # 탈퇴해 개인정보를 지운 계정
+    DELETED = "deleted"
 
 
+# 메일을 쓸 언어(계약의 Locale). 계약에 설명이 없어 docstring을 두지 않는다.
 class Locale(StrEnum):
-    """메일을 쓸 언어. 계약의 Locale이다."""
-
     KO = "ko"
     EN = "en"
 

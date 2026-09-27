@@ -1,0 +1,153 @@
+"""내 정보: 조회(역할, 권한, 포함 리소스), 수정(이름, 로케일, 아바타), 탈퇴(익명화와 계정 닫기)."""
+
+from typing import Any
+
+import httpx
+import pytest
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.core.audit import AuditLog
+from app.modules.roles import Role, UserRole
+from app.modules.users import User, UserStatus
+from app.tests.accounts import Accounts
+from app.tests.requests import error_codes, error_sources, jsonapi_body
+
+pytestmark = pytest.mark.anyio
+
+ME = "/api/v1/me"
+
+
+def me_update(user_id: object, **data: Any) -> dict[str, Any]:
+    return {"data": {"type": "users", "id": str(user_id), **data}}
+
+
+async def test_me_shows_my_account_roles_and_permissions(
+    api: httpx.AsyncClient, accounts: Accounts
+) -> None:
+    user = await accounts.create(name="에이다")
+    headers = await accounts.sign_in(user)
+    body = (await api.get(ME, params={"include": "roles,avatar"}, headers=headers)).json()
+    data = body["data"]
+    assert (data["id"], data["attributes"]["email"], data["attributes"]["name"]) == (
+        str(user.id),
+        user.email,
+        "에이다",
+    )
+    assert data["attributes"]["status"] == "active"
+    assert data["relationships"]["avatar"] == {"data": None}
+    [member] = data["relationships"]["roles"]["data"]
+    assert [resource["id"] for resource in body["included"]] == [member["id"]]
+    assert body["included"][0]["attributes"]["name"] == "member"
+    assert body["meta"] == {"permissions": ["posts:create"]}
+
+
+async def test_me_needs_a_login(api: httpx.AsyncClient) -> None:
+    response = await api.get(ME)
+    assert (response.status_code, error_codes(response)) == (401, ["auth.unauthenticated"])
+
+
+async def test_sparse_fields(api: httpx.AsyncClient, accounts: Accounts) -> None:
+    headers = await accounts.sign_in(await accounts.create())
+    data = (await api.get(ME, params={"fields[users]": "name"}, headers=headers)).json()["data"]
+    assert list(data["attributes"]) == ["name"]
+    assert data["relationships"] == {}
+
+
+async def test_update_changes_name_and_locale(api: httpx.AsyncClient, accounts: Accounts) -> None:
+    user = await accounts.create()
+    headers = await accounts.sign_in(user)
+    document = me_update(user.id, attributes={"name": " 그레이스 ", "locale": "en"})
+    response = await api.patch(ME, **jsonapi_body(document, headers))
+    assert response.status_code == 200, response.text
+    attributes = response.json()["data"]["attributes"]
+    assert (attributes["name"], attributes["locale"]) == ("그레이스", "en")
+    assert response.json()["meta"] == {"permissions": ["posts:create"]}
+
+
+@pytest.mark.parametrize(
+    ("data", "status", "code", "pointer"),
+    [
+        ({"id": "01920000-0000-7000-8000-000000000000"}, 409, "resource.conflict", "/data/id"),
+        ({"type": "roles"}, 409, "resource.conflict", "/data/type"),
+        ({"attributes": {"name": ""}}, 422, "validation.too_short", "/data/attributes/name"),
+        (
+            {
+                "relationships": {
+                    "avatar": {
+                        "data": {"type": "files", "id": "01920000-0000-7000-8000-000000000001"}
+                    }
+                }
+            },
+            404,
+            "resource.not_found",
+            "/data/relationships/avatar/data",
+        ),
+    ],
+)
+async def test_update_rejects(
+    api: httpx.AsyncClient,
+    accounts: Accounts,
+    data: dict[str, Any],
+    status: int,
+    code: str,
+    pointer: str,
+) -> None:
+    user = await accounts.create()
+    headers = await accounts.sign_in(user)
+    document = me_update(user.id)
+    document["data"].update(data)
+    response = await api.patch(ME, **jsonapi_body(document, headers))
+    assert (response.status_code, error_codes(response)) == (status, [code])
+    assert error_sources(response) == [{"pointer": pointer}]
+
+
+async def test_clearing_the_avatar_is_allowed(api: httpx.AsyncClient, accounts: Accounts) -> None:
+    user = await accounts.create()
+    headers = await accounts.sign_in(user)
+    document = me_update(user.id, relationships={"avatar": {"data": None}})
+    assert (await api.patch(ME, **jsonapi_body(document, headers))).status_code == 200
+
+
+async def test_deleting_anonymizes_and_closes_the_account(
+    api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession]
+) -> None:
+    user = await accounts.create()
+    email = user.email
+    headers = await accounts.sign_in(user)
+    assert (await api.delete(ME, headers=headers)).status_code == 204
+    assert (await api.get(ME, headers=headers)).status_code == 401
+    async with db() as session:
+        stored = await session.get(User, user.id)
+        assert stored is not None
+        assert (stored.email, stored.name, stored.password_hash, stored.status) == (
+            None,
+            None,
+            None,
+            UserStatus.DELETED,
+        )
+        held = select(func.count()).where(UserRole.user_id == user.id)
+        assert await session.scalar(held) == 0
+        assert list(await session.scalars(select(AuditLog.action))) == ["user.deleted"]
+    assert email is not None
+    again = await accounts.create(email=email)
+    assert again.email == email
+
+
+async def test_the_last_admin_cannot_leave(
+    api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession]
+) -> None:
+    admin = await accounts.admin()
+    headers = await accounts.sign_in(admin)
+    response = await api.delete(ME, headers=headers)
+    assert (response.status_code, error_codes(response)) == (422, ["role.last_admin_protected"])
+    await accounts.admin()
+    assert (await api.delete(ME, headers=headers)).status_code == 204
+    async with db() as session:
+        admins = await session.scalar(
+            select(func.count())
+            .select_from(UserRole)
+            .join(Role, Role.id == UserRole.role_id)
+            .where(Role.name == "admin")
+        )
+    assert admins == 1

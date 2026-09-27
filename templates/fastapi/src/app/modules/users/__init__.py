@@ -2,20 +2,27 @@
 
 from app.modules.users.models import Locale, User, UserStatus
 from app.modules.users.permissions import PERMISSIONS, USERS_MANAGE, USERS_READ
+from app.modules.users.router import me
 from app.modules.users.service import (
+    Closure,
     create_account,
     find_account,
     get_account,
     locale_from,
     mark_email_verified,
     normalize_email,
+    on_account_closed,
     set_password,
 )
 
+ROUTERS = (me,)
+
 __all__ = [
     "PERMISSIONS",
+    "ROUTERS",
     "USERS_MANAGE",
     "USERS_READ",
+    "Closure",
     "Locale",
     "User",
     "UserStatus",
@@ -25,5 +32,6 @@ __all__ = [
     "locale_from",
     "mark_email_verified",
     "normalize_email",
+    "on_account_closed",
     "set_password",
 ]
