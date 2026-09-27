@@ -7,7 +7,7 @@ import httpx
 import pytest
 from fastapi import Response
 
-from app.core.access import OptionalPrincipalDep, PrincipalDep
+from app.core.access import Auth, OptionalPrincipalDep, PrincipalDep
 from app.core.jsonapi.operation import COMMON_ERRORS, JsonApiRouter, Operation
 from app.core.jsonapi.tests.sample import ADA, MANAGER_TOKEN, MEMBER_TOKEN, sample_app
 from app.core.permissions import Permission, PermissionRegistry
@@ -92,11 +92,10 @@ async def test_optional_access_checks_a_token_only_when_given(
         assert response.json() == body
 
 
-def test_permission_without_login_is_a_declaration_error() -> None:
+@pytest.mark.parametrize("auth", ["none", "optional"])
+def test_permission_without_login_is_a_declaration_error(auth: Auth) -> None:
     gadgets = JsonApiRouter(prefix="/gadgets", tag="gadgets", interface="Gadgets")
-    declared = Operation(
-        name="open", auth="none", permission="widgets:manage", errors=COMMON_ERRORS
-    )
+    declared = Operation(name="open", auth=auth, permission="widgets:manage", errors=COMMON_ERRORS)
     with pytest.raises(ValueError, match="permission이 있으면 auth는 required다"):
 
         @gadgets.route("GET", "/open", declared, response_model=None)

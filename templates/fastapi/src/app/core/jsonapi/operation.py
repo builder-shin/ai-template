@@ -243,10 +243,14 @@ class CollectionOperation[FilterT: FilterModel](Operation):
 
 
 def _access(operation: Operation) -> list[Any]:
-    """인증·권한 검사 의존성. 쿼리를 파싱하기 전에 돈다(401·403이 쿼리 400보다 먼저다)."""
+    """인증·권한 검사 의존성. 쿼리를 파싱하기 전에 돈다(401·403이 쿼리 400보다 먼저다).
+
+    permission이 있으면 auth는 반드시 required다. optional은 토큰이 없는 요청을 익명으로
+    통과시켜 권한 검사 자체를 건너뛰므로, 선언한 권한이 강제되지 않는 구멍이 생긴다.
+    """
+    if operation.permission is not None and operation.auth != "required":
+        raise ValueError(f"{operation.name}: permission이 있으면 auth는 required다.")
     if operation.auth == "none":
-        if operation.permission is not None:
-            raise ValueError(f"{operation.name}: permission이 있으면 auth는 required다.")
         return []
     return [Depends(access_guard(operation.auth, operation.permission))]
 
