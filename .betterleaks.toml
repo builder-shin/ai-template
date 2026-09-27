@@ -15,3 +15,12 @@ filter.matchesAny(attributes["path"], [
 
 [extend]
 useDefault = true
+
+# 계획 문서(docs/superpowers/plans)는 템플릿과 적합성 스위트의 코드를 그대로 옮겨 적는다. 마크다운 안의
+# 타입 선언과 테스트 상수(`password: Password`, `password: PASSWORD`)를 generic-password 규칙이 비밀번호로
+# 오탐하므로, 계획 문서에서만 이 규칙을 끈다. 다른 규칙(키, 토큰)은 계획 문서도 그대로 본다.
+# 옮겨 적은 원본 파일은 커밋할 때 이 규칙으로 스캔된다.
+[[allowlists]]
+description = "계획 문서에 옮겨 적은 코드의 비밀번호 필드와 테스트 상수"
+targetRules = ["generic-password"]
+paths = ['''^docs/superpowers/plans/.+\.md$''']
