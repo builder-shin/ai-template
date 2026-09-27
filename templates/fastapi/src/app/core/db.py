@@ -5,12 +5,13 @@
 - 드라이버는 psycopg다. 같은 URL로 비동기(앱)와 동기(Alembic) 연결을 모두 만든다.
 """
 
+import enum
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Annotated, ClassVar
 
 from fastapi import Depends, Request
-from sqlalchemy import DateTime, MetaData
+from sqlalchemy import DateTime, Enum, MetaData
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -35,11 +36,23 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def _enum_values(enum_class: type[enum.Enum]) -> list[str]:
+    return [str(member.value) for member in enum_class]
+
+
 class Base(DeclarativeBase):
-    """모든 SQLAlchemy 모델의 기반. 모듈의 models.py가 상속한다. 시각은 늘 시간대를 담는다."""
+    """모든 SQLAlchemy 모델의 기반. 모듈의 models.py가 상속한다.
+
+    - 시각은 늘 시간대를 담는다.
+    - `Mapped[<StrEnum>]`은 값(예: "active")을 VARCHAR(32)로 저장한다. PostgreSQL enum 타입을 만들지
+      않으므로, 값을 더해도 마이그레이션이 필요 없다.
+    """
 
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
-    type_annotation_map: ClassVar = {datetime: DateTime(timezone=True)}
+    type_annotation_map: ClassVar = {
+        datetime: DateTime(timezone=True),
+        enum.Enum: Enum(enum.Enum, native_enum=False, values_callable=_enum_values, length=32),
+    }
 
 
 def create_engine(url: str) -> AsyncEngine:

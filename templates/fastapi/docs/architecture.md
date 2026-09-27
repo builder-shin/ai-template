@@ -7,19 +7,20 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 - `src/app/core/`: 도메인을 모르는 기반이다. 설정, 로그, DB, Valkey, 스토리지, JSON:API 공통 계층이 있다. `app.modules`를 import하지 않는다(import-linter 계약 `core-knows-no-modules`). core가 모듈의 기능을 불러야 하면 core에 등록 지점(콜백, 레지스트리)을 두고 모듈이 등록한다.
 - `src/app/modules/<이름>/`: 도메인 모듈이다. 쓰는 파일만 만든다. 골든 모듈 `posts`가 모든 파일을 갖춘 정답 예시다(M3에서 채운다).
 
-| 파일            | 하는 일                                                                  |
-| --------------- | ------------------------------------------------------------------------ |
-| `__init__.py`   | 공개 인터페이스. 다른 모듈은 여기서 내보낸 이름만 쓴다                   |
-| `router.py`     | 라우트, 권한 선언, 쿼리 허용 목록, 응답 문서 조립                        |
-| `schemas.py`    | JSON:API 문서 모델(계약과 같은 이름)                                     |
-| `service.py`    | 유스케이스, 트랜잭션 경계(commit), 이벤트 발행, 감사 기록                |
-| `repository.py` | DB 접근                                                                  |
-| `models.py`     | SQLAlchemy 모델(`app.core.db.Base`를 상속)                               |
-| `policies.py`   | 소유권 같은 권한 판정(순수 함수)                                         |
-| `events.py`     | 이 모듈의 실시간 이벤트와 페이로드                                       |
-| `jobs.py`       | 이 모듈의 잡                                                             |
-| `templates/`    | 이 모듈이 보내는 메일 템플릿(`<ko\|en>/<메일>.subject.txt, .txt, .html`) |
-| `tests/`        | 이 모듈의 테스트                                                         |
+| 파일             | 하는 일                                                                  |
+| ---------------- | ------------------------------------------------------------------------ |
+| `__init__.py`    | 공개 인터페이스. 다른 모듈은 여기서 내보낸 이름만 쓴다                   |
+| `router.py`      | 라우트, 권한 선언, 쿼리 허용 목록, 응답 문서 조립                        |
+| `schemas.py`     | JSON:API 문서 모델(계약과 같은 이름)                                     |
+| `service.py`     | 유스케이스, 트랜잭션 경계(commit), 이벤트 발행, 감사 기록                |
+| `repository.py`  | DB 접근                                                                  |
+| `models.py`      | SQLAlchemy 모델(`app.core.db.Base`를 상속)                               |
+| `policies.py`    | 소유권 같은 권한 판정(순수 함수)                                         |
+| `permissions.py` | 이 모듈의 권한 상수(`Permission`)와 `PERMISSIONS`                        |
+| `events.py`      | 이 모듈의 실시간 이벤트와 페이로드                                       |
+| `jobs.py`        | 이 모듈의 잡                                                             |
+| `templates/`     | 이 모듈이 보내는 메일 템플릿(`<ko\|en>/<메일>.subject.txt, .txt, .html`) |
+| `tests/`         | 이 모듈의 테스트                                                         |
 
 - 모듈 안의 방향은 `router → service → repository → models` 하나다. `schemas`는 router와 service가, `policies`와 `events`는 service가 쓴다. 아래 계층은 위 계층을 import하지 않는다(import-linter 계약 `module-layers`).
 - 다른 모듈은 `app.modules.<이름>` 패키지만 import한다. 내부 파일(`app.modules.users.repository` 등)은 import하지 않는다(`tools/checks/boundaries.py`). 모듈 사이의 순환 import는 basedpyright의 `reportImportCycles`가 막는다.

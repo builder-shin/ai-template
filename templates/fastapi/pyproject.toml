@@ -89,6 +89,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC", "S", "PT", "PGH"
 # 감사 행위(USER_PASSWORD_CHANGED 등)를 오탐한다.
 "src/app/core/jsonapi/models.py" = ["S105"]
 "src/app/core/audit.py" = ["S105"]
+"src/app/modules/auth/models.py" = ["S105"]
 
 [tool.basedpyright]
 typeCheckingMode = "strict"
