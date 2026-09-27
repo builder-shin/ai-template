@@ -28,19 +28,81 @@ export function operationKeys(spec: OpenApiLike): Set<string> {
   return keys;
 }
 
+const SCHEMA_REF_PREFIX = "#/components/schemas/";
+
+/** 계약에서 구현에 있는 operation만 남긴다. 부분 비교(구현 도중)에 쓴다. components는 그대로 둔다. */
+export function restrictToImplemented(
+  contract: OpenApiLike,
+  implementation: OpenApiLike,
+): OpenApiLike {
+  const implemented = operationKeys(implementation);
+  const paths: Record<string, Record<string, unknown>> = {};
+  for (const [path, item] of Object.entries(contract.paths ?? {})) {
+    const kept = Object.fromEntries(
+      Object.entries(item).filter(
+        ([key]) =>
+          !METHODS.has(key) || implemented.has(`${key.toUpperCase()} ${normalizePath(path)}`),
+      ),
+    );
+    if (Object.keys(kept).some((key) => METHODS.has(key))) paths[path] = kept;
+  }
+  return { ...contract, paths };
+}
+
+/** paths에서 `$ref`로 닿는 컴포넌트 스키마 이름. 스키마가 다시 참조하는 것도 따라간다. */
+export function reachableSchemas(spec: OpenApiLike): Set<string> {
+  const schemas = spec.components?.schemas ?? {};
+  const found = new Set<string>();
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item);
+      return;
+    }
+    if (typeof node !== "object" || node === null) return;
+    for (const [key, value] of Object.entries(node)) {
+      if (key === "$ref" && typeof value === "string" && value.startsWith(SCHEMA_REF_PREFIX)) {
+        const name = value.slice(SCHEMA_REF_PREFIX.length);
+        if (!found.has(name)) {
+          found.add(name);
+          visit(schemas[name]);
+        }
+      } else {
+        visit(value);
+      }
+    }
+  };
+  visit(spec.paths);
+  return found;
+}
+
+export interface CompareOptions {
+  /** 구현에 있는 operation만 비교한다(구현 도중). 스키마는 그 operation에서 닿는 것만 요구한다. */
+  readonly subset?: boolean;
+}
+
 /**
  * 계약의 스키마 이름은 모두 구현에 있어야 한다(구현의 보조 스키마가 더 있는 것은 괜찮다).
  * operation 집합은 정확히 같아야 한다. 경로 파라미터 이름은 달라도 된다.
+ * 부분 모드는 구현에 있는 operation만 남긴 계약과 비교한다. 계약에 없는 operation은 여전히 문제다.
  */
-export function compareSpecs(contract: OpenApiLike, implementation: OpenApiLike): Comparison {
+export function compareSpecs(
+  contract: OpenApiLike,
+  implementation: OpenApiLike,
+  options: CompareOptions = {},
+): Comparison {
+  const target =
+    options.subset === true ? restrictToImplemented(contract, implementation) : contract;
+  const expectedSchemas =
+    options.subset === true
+      ? [...reachableSchemas(target)]
+      : Object.keys(contract.components?.schemas ?? {});
   const implementedSchemas = new Set(Object.keys(implementation.components?.schemas ?? {}));
   const contractOperations = operationKeys(contract);
+  const targetOperations = operationKeys(target);
   const implementedOperations = operationKeys(implementation);
   return {
-    missingSchemas: Object.keys(contract.components?.schemas ?? {})
-      .filter((name) => !implementedSchemas.has(name))
-      .sort(),
-    missingOperations: [...contractOperations]
+    missingSchemas: expectedSchemas.filter((name) => !implementedSchemas.has(name)).sort(),
+    missingOperations: [...targetOperations]
       .filter((key) => !implementedOperations.has(key))
       .sort(),
     extraOperations: [...implementedOperations]

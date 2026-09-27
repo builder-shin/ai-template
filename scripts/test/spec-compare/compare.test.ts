@@ -4,6 +4,8 @@ import {
   describeComparison,
   normalizePath,
   type OpenApiLike,
+  reachableSchemas,
+  restrictToImplemented,
 } from "../../src/spec-compare/compare.ts";
 
 const contract: OpenApiLike = {
@@ -51,5 +53,64 @@ describe("compareSpecs", () => {
 describe("normalizePath", () => {
   it("경로 파라미터 이름을 지운다", () => {
     expect(normalizePath("/api/v1/oauth/{provider}/callback")).toBe("/api/v1/oauth/{}/callback");
+  });
+});
+
+describe("부분 비교(--subset)", () => {
+  const referenced: OpenApiLike = {
+    paths: {
+      "/health/live": {
+        get: { responses: { "200": { $ref: "#/components/schemas/HealthReport" } } },
+      },
+      "/api/v1/posts": {
+        get: { responses: { "200": { $ref: "#/components/schemas/PostCollectionDocument" } } },
+      },
+    },
+    components: {
+      schemas: {
+        HealthReport: { properties: { checks: { $ref: "#/components/schemas/HealthCheck" } } },
+        HealthCheck: {},
+        PostCollectionDocument: {},
+        ErrorCode: {},
+      },
+    },
+  };
+
+  it("구현에 있는 operation만 남기고, 그 operation에서 닿는 스키마만 요구한다", () => {
+    const implementation: OpenApiLike = {
+      paths: { "/health/live": { get: {} } },
+      components: { schemas: { HealthReport: {} } },
+    };
+    expect(Object.keys(restrictToImplemented(referenced, implementation).paths ?? {})).toEqual([
+      "/health/live",
+    ]);
+    expect([...reachableSchemas(restrictToImplemented(referenced, implementation))].sort()).toEqual(
+      ["HealthCheck", "HealthReport"],
+    );
+    expect(compareSpecs(referenced, implementation, { subset: true })).toEqual({
+      missingSchemas: ["HealthCheck"],
+      missingOperations: [],
+      extraOperations: [],
+    });
+  });
+
+  it("부분 모드에서도 계약에 없는 operation은 잡는다", () => {
+    const implementation: OpenApiLike = {
+      paths: { "/health/live": { get: {} }, "/api/v1/widgets": { get: {} } },
+      components: { schemas: { HealthReport: {}, HealthCheck: {} } },
+    };
+    expect(compareSpecs(referenced, implementation, { subset: true }).extraOperations).toEqual([
+      "GET /api/v1/widgets",
+    ]);
+  });
+
+  it("전체 모드는 지금처럼 모든 operation과 스키마를 요구한다", () => {
+    const implementation: OpenApiLike = {
+      paths: { "/health/live": { get: {} } },
+      components: { schemas: { HealthReport: {}, HealthCheck: {} } },
+    };
+    const result = compareSpecs(referenced, implementation);
+    expect(result.missingOperations).toEqual(["GET /api/v1/posts"]);
+    expect(result.missingSchemas).toEqual(["ErrorCode", "PostCollectionDocument"]);
   });
 });
