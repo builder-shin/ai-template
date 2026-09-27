@@ -124,6 +124,7 @@ interface Registrations {
   @post
   create(...JsonApi.Body<RegistrationCreateDocument>):
     | JsonApi.Created<RegistrationDocument>
+    | CreateErrors
     | BodyErrors
     | CommonErrors;
 }
@@ -135,6 +136,7 @@ interface EmailVerificationRequests {
   @post
   create(...JsonApi.Body<EmailVerificationRequestCreateDocument>):
     | JsonApi.Accepted
+    | CreateErrors
     | BodyErrors
     | CommonErrors;
 }
@@ -146,6 +148,7 @@ interface EmailVerifications {
   @post
   create(...JsonApi.Body<EmailVerificationCreateDocument>):
     | JsonApi.Created<EmailVerificationDocument>
+    | CreateErrors
     | BodyErrors
     | CommonErrors;
 }
@@ -157,6 +160,7 @@ interface PasswordResetRequests {
   @post
   create(...JsonApi.Body<PasswordResetRequestCreateDocument>):
     | JsonApi.Accepted
+    | CreateErrors
     | BodyErrors
     | CommonErrors;
 }
@@ -168,6 +172,7 @@ interface PasswordResets {
   @post
   create(...JsonApi.Body<PasswordResetCreateDocument>):
     | JsonApi.Created<PasswordResetDocument>
+    | CreateErrors
     | BodyErrors
     | CommonErrors;
 }
@@ -181,6 +186,7 @@ interface PasswordChanges {
   create(...JsonApi.Body<PasswordChangeCreateDocument>):
     | JsonApi.Created<PasswordChangeDocument>
     | AuthErrors
+    | Conflict
     | BodyErrors
     | CommonErrors;
 }

@@ -274,8 +274,20 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
           content:
             application/vnd.api+json:
               schema:
@@ -342,8 +354,20 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
           content:
             application/vnd.api+json:
               schema:
@@ -424,6 +448,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
           content:
             application/vnd.api+json:
               schema:
@@ -844,6 +874,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
           content:
@@ -1124,6 +1160,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -1184,8 +1226,20 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
           content:
             application/vnd.api+json:
               schema:
@@ -1252,8 +1306,20 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
           content:
             application/vnd.api+json:
               schema:
@@ -1570,8 +1636,20 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
           content:
             application/vnd.api+json:
               schema:
@@ -1932,6 +2010,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -1996,8 +2080,20 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
           content:
             application/vnd.api+json:
               schema:
@@ -2182,6 +2278,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
           content:
             application/vnd.api+json:
               schema:
@@ -2528,6 +2630,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -2606,6 +2714,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '406':
           description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '409':
+          description: The request conflicts with the current state of the server.
           content:
             application/vnd.api+json:
               schema:

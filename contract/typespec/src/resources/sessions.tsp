@@ -126,6 +126,7 @@ interface Sessions {
   create(...JsonApi.Body<SessionCreateDocument>):
     | JsonApi.Created<SessionWithTokensDocument>
     | AuthErrors
+    | Conflict
     | BodyErrors
     | CommonErrors;
 
@@ -165,6 +166,7 @@ interface SessionRevocations {
   create(...JsonApi.Body<SessionRevocationCreateDocument>):
     | JsonApi.Created<SessionRevocationDocument>
     | AuthErrors
+    | Conflict
     | BodyErrors
     | CommonErrors;
 }
@@ -178,6 +180,7 @@ interface RealtimeTickets {
   create(...JsonApi.Body<RealtimeTicketCreateDocument>):
     | JsonApi.Created<RealtimeTicketDocument>
     | AuthErrors
+    | Conflict
     | BodyErrors
     | CommonErrors;
 }

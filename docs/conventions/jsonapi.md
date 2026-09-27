@@ -47,6 +47,11 @@
 | `filter[...]`                | 리소스마다 명시한 필터만 받는다. 검색은 `filter[q]`. 모르는 필터는 400 `jsonapi.invalid_query`                                                                               |
 
 - `totalPages`는 `ceil(total / size)`다. 결과가 없으면 0이다.
+- 페이지 링크는 요청 경로에 쿼리를 붙인 상대 경로다.
+  - 쿼리는 `application/x-www-form-urlencoded` 규칙으로 인코딩한다. 대괄호는 `%5B`, `%5D`이고 공백은 `+`다.
+  - 원래 요청의 파라미터를 받은 순서대로 두고, `page[number]`만 빼서 맨 뒤에 붙인다.
+  - 예: `GET /api/v1/users?filter[q]=kim&page[size]=10&page[number]=2`의 `next`는 `/api/v1/users?filter%5Bq%5D=kim&page%5Bsize%5D=10&page%5Bnumber%5D=3`이다.
+- `filter[이름]`의 이름은 속성 이름과 같은 camelCase만 받는다. `filter[created_from]`처럼 다른 표기는 모르는 필터(400)다. `filter[`로 시작하지만 `]`로 끝나지 않는 파라미터도 400이다.
 - 계약의 스키마는 필드를 모두 담은 기본 표현이다. `fields[type]`을 요청한 응답은 그 표현에서 요청한 필드만 남긴 투영이다. 적합성 테스트는 이 경우 `assertSparseFieldset`으로 검사한다.
 - 포함 리소스는 문서 안의 어떤 관계에서든 참조되어야 한다(full linkage). 같은 리소스를 두 번 담지 않는다.
 - 다른 리소스의 `included`에 들어가는 `users`는 보는 사람과 관계없이 항상 공개 형태(`UserPublicResource`)다(§4.10).
@@ -55,9 +60,27 @@
 
 - 에러 응답은 `{ "errors": [...], "meta": { "traceId": "..." } }`이다.
 - 에러 객체는 `status`(문자열), `code`, `title`, `detail`, `source.pointer` 또는 `source.parameter`, `meta.params`를 담는다.
+- `source.pointer`는 RFC 6901 JSON Pointer다. 요청 문서 전체는 빈 문자열 `""`이다(`"/"`는 이름이 빈 문자열인 멤버를 가리킨다).
 - 필드 검증 오류는 필드마다 에러 객체 하나를 만들어 422로 응답한다.
-- 요청 본문의 `type`이 엔드포인트의 리소스와 다르면: POST는 400 `jsonapi.invalid_document`다. JSON:API 1.1은 이때 서버가 409를 반드시(MUST) 응답해야 한다고 하지만, 계약(`contract/openapi.yaml`)은 POST operation에 409 응답을 선언하지 않으므로 문서 구조 오류(400)로 다룬다. PATCH는 `type`이나 `id`가 경로의 리소스와 달라도 409 `resource.conflict`다(계약이 모든 PATCH operation에 409를 선언한다).
+- JSON:API 1.1이 반드시(MUST) 쓰라는 상태를 따른다.
+  - 요청 본문의 `type`이 엔드포인트의 리소스와 다르면 409 `resource.conflict`다(POST와 PATCH 모두). PATCH는 `id`가 경로의 리소스와 달라도 409다. `/api/v1/me`는 로그인한 사용자의 id가 경로의 리소스다.
+  - 생성 요청(POST)에 클라이언트가 만든 `id`가 있으면 403 `permission.denied`다. 클라이언트가 만든 id는 받지 않는다.
+  - 관계가 가리키는 리소스가 없으면 404 `resource.not_found`이고, `source.pointer`가 그 식별자를 가리킨다(예: `/data/relationships/roles/data/1`).
+  - 그래서 계약의 모든 POST는 403과 409를, 관계를 함께 보내는 요청은 404를 선언한다. 로그인 없이 부르는 POST에는 `CreateErrors`(403, 409)를, 로그인이 필요한 POST에는 `Conflict`를 더한다(`AuthErrors`에 403이 있다).
 - 코드 목록은 [error-codes.md](error-codes.md)에 있다.
+
+### 에러 우선순위
+
+한 요청에 문제가 여럿이면 먼저 걸린 단계의 에러만 돌려준다. 두 백엔드 모두 이 순서를 따른다.
+
+1. 429 `rate_limit.exceeded`: IP별 전역 요청 한도
+2. 415, 406: 콘텐츠 협상
+3. 400 `jsonapi.invalid_document`: 본문이 JSON이 아니다
+4. 401, 403: 인증과 권한(operation의 `security`, `x-permission`)
+5. 400: 쿼리 파라미터(`jsonapi.invalid_query`, `jsonapi.unsupported_include`, `jsonapi.unsupported_sort`)
+6. 본문과 경로 검증: 문서 구조 400, `type` 불일치 409, 클라이언트가 만든 `id` 403, 필드 422, 경로의 id 형식 404. 이 단계에서 상태가 둘 이상 섞이면 가장 일반적인 400으로 응답하고, 에러 객체는 모두 담는다.
+7. 엄격한 요청 한도(로그인, 가입, 메일 발송 요청)의 429
+8. 도메인 에러: 없는 리소스 404, 상태 충돌 409, 도메인 규칙 422 등
 
 ### 상태 코드 → 에러 코드
 

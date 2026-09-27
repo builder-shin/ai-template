@@ -124,6 +124,7 @@ interface Me {
   update(...JsonApi.Body<UserMeUpdateDocument>):
     | JsonApi.Ok<UserMeDocument>
     | AuthErrors
+    | NotFound
     | Conflict
     | BodyErrors
     | CommonErrors;

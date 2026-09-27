@@ -80,6 +80,7 @@ interface Roles {
   create(...JsonApi.Body<RoleCreateDocument>):
     | JsonApi.Created<RoleDocument>
     | AuthErrors
+    | Conflict
     | BodyErrors
     | CommonErrors;
 

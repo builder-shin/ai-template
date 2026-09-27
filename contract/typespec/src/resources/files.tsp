@@ -79,6 +79,7 @@ interface Files {
   create(...JsonApi.Body<FileCreateDocument>):
     | JsonApi.Created<FileDocument>
     | AuthErrors
+    | Conflict
     | BodyErrors
     | CommonErrors;
 

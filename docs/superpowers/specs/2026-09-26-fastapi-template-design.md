@@ -189,6 +189,7 @@ src/app/modules/posts/
   - 도메인 예외는 코드, 상태, 영어 detail, `source`, `meta.params`를 담는 예외 클래스 하나로 표현한다.
   - Pydantic 검증 오류는 필드마다 에러 객체를 만들어 422로 돌려준다. `source.pointer`(예: `/data/attributes/title`)를 채우고, 오류 종류를 `validation.required`, `validation.too_short` 등으로 바꾼다.
   - JSON이 아니거나 문서 구조가 틀리면 400 `jsonapi.invalid_document`다.
+  - JSON:API 1.1이 반드시 쓰라는 상태를 따른다: 본문의 `type` 불일치는 409 `resource.conflict`, 생성 요청의 클라이언트가 만든 `id`는 403 `permission.denied`, 관계가 가리키는 리소스가 없으면 404 `resource.not_found`다. 요청 문서 전체를 가리키는 pointer는 `""`다.
   - 예상하지 못한 예외는 500 `internal.unexpected`다. 원인은 로그에만 남긴다.
 
 ### 5.3 쿼리 파라미터
@@ -620,11 +621,12 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 
 M1의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
 
-- M2를 시작하기 전(NestJS가 따라 하기 전에 정한다)
-  - POST 본문의 `type` 불일치: JSON:API 1.1은 409를 요구한다(MUST). 지금 계약의 POST에는 409가 없어서 400으로 둔다. POST 오류 묶음에 409를 더할지 정한다. 클라이언트가 만든 `id`를 받지 않을 때의 403도 함께 정한다.
-  - 에러 문서의 루트 pointer는 RFC 6901대로 `""`로 바꾼다. 지금은 `"/"`다.
-  - 에러 우선순위(415·406 → 본문 JSON 400 → 쿼리 400 → 필드 422)와 페이지 링크의 인코딩을 `docs/conventions/jsonapi.md`에 적는다.
-  - `filter[`로 시작하지만 `]`로 끝나지 않는 파라미터를 400으로 막는다. filter는 별칭(camelCase)으로만 받는다(`validate_by_name` 끄기).
+- M2를 시작하기 전(NestJS가 따라 하기 전에 정한다). M2 계획의 Task 1~2에서 다음과 같이 정했다.
+  - POST 본문의 `type` 불일치는 409 `resource.conflict`, 클라이언트가 만든 `id`는 403 `permission.denied`다(JSON:API 1.1 MUST). 계약의 모든 POST가 403과 409를 선언한다. 로그인 없이 부르는 POST에는 `CreateErrors`(403, 409)를, 로그인이 필요한 POST에는 `Conflict`를 더한다(같은 상태를 두 번 넣으면 응답 스키마가 `anyOf`로 겹친다).
+  - 같은 절의 MUST인 "관계가 가리키는 리소스가 없으면 404"도 빠져 있어, 관계를 함께 보내는 요청 가운데 404가 없던 `POST /posts`와 `PATCH /me`에 404를 더했다.
+  - 에러 문서의 루트 pointer는 RFC 6901대로 `""`다.
+  - 에러 우선순위(전역 429 → 415·406 → 본문 JSON 400 → 인증 401·403 → 쿼리 400 → 본문과 경로 검증 → 엄격한 429 → 도메인 에러)와 페이지 링크의 인코딩을 `docs/conventions/jsonapi.md`에 적었다.
+  - `filter[`로 시작하지만 `]`로 끝나지 않는 파라미터는 400이다. filter는 별칭(camelCase)으로만 받는다.
 - M2
   - 잡 모듈은 `create_broker` 안에서 안정된 `task_name`으로 등록한다. api도 잡을 보내려면 자기 broker가 있어야 한다.
   - 잡이 한 번 실패한 뒤 scheduler가 다시 보내는지 E2E로 확인한다. 재시도가 taskiq-redis 1.2.3의 동작에 기대기 때문이다.

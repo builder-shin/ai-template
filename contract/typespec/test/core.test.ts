@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { operation, refName, responseRef, schema, spec, statuses } from "./spec.ts";
+import {
+  type Operation,
+  operation,
+  refName,
+  requestRef,
+  responseRef,
+  schema,
+  spec,
+  statuses,
+} from "./spec.ts";
 
 const ERROR_CODES = [
   "jsonapi.unsupported_media_type",
@@ -61,6 +70,55 @@ describe("계약 기본", () => {
     expect(error.required).toEqual(["status", "code", "title"]);
     expect(refName(error.properties?.code)).toBe("ErrorCode");
     expect(refName(error.properties?.source)).toBe("ErrorSource");
+  });
+});
+
+/** 계약의 모든 operation을 `메서드 경로`와 함께 돌려준다. */
+function operations(): { key: string; method: string; op: Operation }[] {
+  return Object.entries(spec.paths).flatMap(([path, item]) =>
+    Object.entries(item).map(([method, op]) => ({
+      key: `${method.toUpperCase()} ${path}`,
+      method,
+      op,
+    })),
+  );
+}
+
+/** 요청 문서의 data에 relationships가 있는가(관계를 함께 보내는 생성·수정). */
+function sendsRelationships(op: Operation): boolean {
+  const name = requestRef(op);
+  if (name === undefined) return false;
+  return schema(name).properties?.data?.properties?.relationships !== undefined;
+}
+
+describe("생성·수정 응답 (JSON:API 1.1)", () => {
+  it("모든 POST는 403(클라이언트가 만든 id)과 409(type 불일치)를 선언한다", () => {
+    const missing = operations()
+      .filter(({ method }) => method === "post")
+      .filter(({ op }) => !("403" in op.responses && "409" in op.responses))
+      .map(({ key }) => key);
+    expect(missing).toEqual([]);
+  });
+
+  it("관계를 함께 보내는 요청은 404(관계가 가리키는 리소스가 없다)를 선언한다", () => {
+    const missing = operations()
+      .filter(({ op }) => sendsRelationships(op) && !("404" in op.responses))
+      .map(({ key }) => key);
+    expect(missing).toEqual([]);
+  });
+
+  it("같은 상태의 에러 응답을 두 번 선언하지 않는다", () => {
+    // AuthErrors와 CreateErrors처럼 같은 상태를 두 번 넣으면 TypeSpec이 anyOf로 겹친다.
+    const doubled = operations().flatMap(({ key, op }) =>
+      Object.entries(op.responses)
+        .filter(([, response]) =>
+          Object.values(response.content ?? {}).some(
+            (media) => (media.schema?.anyOf?.length ?? 0) > 1,
+          ),
+        )
+        .map(([status]) => `${key} ${status}`),
+    );
+    expect(doubled).toEqual([]);
   });
 });
 

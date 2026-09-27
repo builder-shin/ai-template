@@ -108,6 +108,8 @@ interface Posts {
   create(...JsonApi.Body<PostCreateDocument>):
     | JsonApi.Created<PostDocument>
     | AuthErrors
+    | NotFound
+    | Conflict
     | BodyErrors
     | CommonErrors;
 

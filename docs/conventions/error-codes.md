@@ -32,11 +32,11 @@ API 에러 객체의 `code` 값 목록이다. 원본은 `contract/typespec/src/e
 | `auth.email_not_verified`         | 403        | 이메일 인증을 마치지 않았다                                                                        |
 | `auth.account_deactivated`        | 403        | 비활성화된 계정이다                                                                                |
 | `auth.verification_token_invalid` | 422        | 인증·재설정 토큰이 틀렸거나 만료됐다                                                               |
-| `permission.denied`               | 403        | 권한이 없다                                                                                        |
+| `permission.denied`               | 403        | 권한이 없다. 생성 요청에 클라이언트가 만든 `id`가 있을 때도 쓴다                                   |
 | `role.system_role_protected`      | 422        | 시스템 역할은 지울 수 없고, admin의 권한은 고칠 수 없다                                            |
 | `role.last_admin_protected`       | 422        | 마지막 활성 admin의 admin 역할 회수, 비활성화, 탈퇴는 할 수 없다                                   |
-| `resource.not_found`              | 404        | 리소스가 없다                                                                                      |
-| `resource.conflict`               | 409        | 요청이 현재 상태와 충돌한다(예: 본문 id 불일치)                                                    |
+| `resource.not_found`              | 404        | 리소스가 없다. 관계가 가리키는 리소스가 없을 때도 쓴다                                             |
+| `resource.conflict`               | 409        | 요청이 현재 상태와 충돌한다(예: 본문의 `type`이나 `id`가 엔드포인트와 다르다)                      |
 | `post.invalid_transition`         | 422        | 허용되지 않는 글 상태 전이다                                                                       |
 | `file.too_large`                  | 422        | 파일이 너무 크다(`meta.params.max`)                                                                |
 | `file.type_not_allowed`           | 422        | 허용하지 않는 MIME 타입이다                                                                        |

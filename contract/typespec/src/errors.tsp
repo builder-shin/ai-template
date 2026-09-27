@@ -154,3 +154,9 @@ alias BodyErrors = UnsupportedMediaType | UnprocessableEntity;
 
 /** 로그인이 필요한 엔드포인트에 더해지는 에러. */
 alias AuthErrors = Unauthorized | Forbidden;
+
+/**
+ * 로그인 없이 부르는 생성(POST)에 더해지는 에러. 클라이언트가 만든 id를 보내면 403, 본문의 type이 엔드포인트와 다르면 409다(JSON:API 1.1).
+ * 로그인이 필요한 POST는 AuthErrors에 403이 있으므로 Conflict만 더한다. 같은 상태를 두 번 넣으면 응답 스키마가 anyOf로 겹친다.
+ */
+alias CreateErrors = Forbidden | Conflict;
