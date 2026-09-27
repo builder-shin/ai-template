@@ -10,6 +10,8 @@
 - `jsonvalue.py`: JSON 값 좁히기(`is_object`, `is_array`).
 - `security.py`: 비밀번호 해시(Argon2id), access token(JWT) 발급과 검증, 1회용 토큰과 SHA-256(`digest`).
 - `permissions.py`: 권한(`Permission`)과 레지스트리(`PermissionRegistry`). 권한은 모듈이 내보내고 `app.modules.registry`가 모은다.
+- `clients.py`: 요청을 보낸 쪽(IP, User-Agent). `ClientDep`으로 받는다.
+- `ratelimit.py`: 레이트 리밋(Valkey 고정 윈도). 엄격한 한도는 service가 `enforce(redis, Limit(...), 대상)`로 걸고, IP별 전역 한도는 미들웨어가 건다.
 - `access.py`: 인증과 권한 검사. 인증기와 레지스트리는 `install_access`로 앱에 건다. 라우트 선언의 `auth`, `permission`을 라우터가 강제하고, 엔드포인트는 `PrincipalDep`, `OptionalPrincipalDep`으로 주체를 받는다.
 - `jsonapi/`: JSON:API 공통 계층(문서 모델, 에러, 협상, 라우트 선언, 쿼리 파서, 렌더링, OpenAPI 후처리). 쓰는 법은 `docs/architecture.md`, 예시는 `jsonapi/tests/sample.py`.
 

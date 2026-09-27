@@ -71,7 +71,7 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
         servers=SERVERS,
         lifespan=lifespan,
     )
-    install_jsonapi(app)
+    install_jsonapi(app, rate_limit=True)
     app.include_router(health.router)
     return app
 
