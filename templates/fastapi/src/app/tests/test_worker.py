@@ -160,6 +160,10 @@ async def test_retries_in_a_minute_already_read_are_still_sent(
         time=datetime.now(UTC) - timedelta(minutes=2),
     )
     source = create_schedule_source(infra)
+    # scheduler는 한 소스를 계속 다시 읽는다. 먼저 한 번 읽어서 아래 읽기가 첫 읽기가 아니게 한다.
+    # taskiq-redis의 주석은 지난 예약을 첫 실행에만 찾는다고 적었다.
+    # 그렇게 바뀌면 이 테스트가 깨진다.
+    assert await source.get_schedules() == []
     await source.add_schedule(earlier)
     assert [task.schedule_id for task in await source.get_schedules()] == [earlier.schedule_id]
 
