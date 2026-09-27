@@ -1,4 +1,4 @@
-"""지침 파일 검사: 저장소의 checkAgentsMd(scripts/src/agents-md/check.ts)와 같은 규칙이다."""
+"""지침 파일 검사: AGENTS.md와 CLAUDE.md가 규칙대로 짝지어 있는지 본다."""
 
 import subprocess
 

@@ -1,4 +1,4 @@
-"""지침 파일 검사. 저장소의 checkAgentsMd(scripts/src/agents-md/check.ts)와 같은 규칙이다.
+"""지침 파일 검사. AGENTS.md와 CLAUDE.md가 규칙대로 짝지어 있는지 본다.
 
 - AGENTS.md마다 `@AGENTS.md`로 시작하는 CLAUDE.md가 옆에 있어야 한다.
 - 하위 폴더의 CLAUDE.md는 그 한 줄만 담는다. 루트 CLAUDE.md만 Claude 전용 내용을 덧붙인다.

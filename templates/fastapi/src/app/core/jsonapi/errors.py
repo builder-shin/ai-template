@@ -161,8 +161,11 @@ def validation_error_objects(
 
     - JSON이 아니면 400 jsonapi.invalid_document
     - /data/attributes/*, /data/relationships/* 아래 오류는 필드마다 422 에러 객체
-    - 그 밖의 본문 오류(data 누락, POST에서 type이 다름 등)는 400 jsonapi.invalid_document
-      (JSON:API 1.1은 409를 권하지만 계약은 POST에 409가 없다. jsonapi.md 참고)
+    - 그 밖의 본문 오류(data 누락 등)는 400 jsonapi.invalid_document
+    - POST 본문의 data.type이 엔드포인트의 리소스와 다르면 400 jsonapi.invalid_document다.
+      JSON:API 1.1은 이때 409를 반드시(MUST) 쓰라고 하지만, 계약(contract)이 POST operation에
+      409 응답을 선언하지 않으므로 문서 구조 오류(400)로 다룬다. PATCH에서 data.type이나 id가
+      경로의 리소스와 다르면 409 resource.conflict다(계약이 모든 PATCH operation에 409를 선언한다)
     - 쿼리 오류는 400 jsonapi.invalid_query, 경로 오류는 404 resource.not_found
     - 둘 이상의 상태가 섞이면 JSON:API 권고대로 더 일반적인 400을 쓴다
     """

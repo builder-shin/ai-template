@@ -301,7 +301,8 @@ class UpdateDocumentWithRelationships[
 
 class ErrorCode(StrEnum):
     """기계가 읽는 에러 코드. 형식은 `<영역>.<snake_case 사유>`.
-    새 코드는 docs/conventions/error-codes.md에도 추가한다.
+    이 목록은 계약(contract)이 정의한 에러 코드와 정확히 같아야 한다. 코드를 추가하거나
+    바꿀 때는 계약을 먼저 고치고, 이 목록을 그 결과에 맞춘다.
     """
 
     JSONAPI_UNSUPPORTED_MEDIA_TYPE = "jsonapi.unsupported_media_type"
