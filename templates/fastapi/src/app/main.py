@@ -7,16 +7,20 @@ from typing import Any
 from fastapi import FastAPI
 
 from app import health
+from app.core.access import install_access
 from app.core.config import Settings, load_settings
 from app.core.db import create_engine, session_factory
 from app.core.jobs import JobQueue
 from app.core.jsonapi.install import install_jsonapi
 from app.core.jsonapi.openapi import JsonApiApp
 from app.core.logging import configure_logging
+from app.core.permissions import PermissionRegistry
 from app.core.redis import create_redis
 from app.core.storage import create_client
+from app.modules import registry
 from app.worker import create_broker
 
+API_PREFIX = "/api/v1"
 # 계약 루트 tags와 같은 순서. operation의 태그는 모두 여기 있어야 한다(룰 operation-tag-defined).
 TAGS = (
     "posts",
@@ -79,7 +83,10 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
         lifespan=lifespan,
     )
     install_jsonapi(app, rate_limit=True)
+    install_access(app, registry.AUTHENTICATOR, PermissionRegistry(registry.PERMISSIONS))
     app.include_router(health.router)
+    for router in registry.ROUTERS:
+        app.include_router(router.api, prefix=API_PREFIX)
     return app
 
 

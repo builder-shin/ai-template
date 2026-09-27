@@ -2,6 +2,12 @@
 
 from app.modules.roles.models import ADMIN_ROLE, MEMBER_ROLE, Role, UserRole
 from app.modules.roles.permissions import ADMIN_ACCESS, PERMISSIONS, ROLES_MANAGE, ROLES_READ
+from app.modules.roles.service import (
+    assign_roles,
+    effective_permissions,
+    ensure_system_roles,
+    role_permissions,
+)
 
 __all__ = [
     "ADMIN_ACCESS",
@@ -12,4 +18,8 @@ __all__ = [
     "ROLES_READ",
     "Role",
     "UserRole",
+    "assign_roles",
+    "effective_permissions",
+    "ensure_system_roles",
+    "role_permissions",
 ]

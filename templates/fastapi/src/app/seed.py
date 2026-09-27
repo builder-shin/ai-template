@@ -1,26 +1,49 @@
 """개발용 시드. setup과 db:reset이 마이그레이션 뒤에 실행한다(python -m app.seed).
 
-여러 번 실행해도 안전해야 한다(멱등): 이미 있는 데이터는 건드리지 않는다.
-M1에는 넣을 데이터가 없다. M2가 역할(admin, member)과 관리자 계정을, M3가 예제 글을 더한다.
+여러 번 실행해도 안전하다(멱등): 이미 있는 데이터는 건드리지 않는다.
+- 시스템 역할 admin, member
+- 관리자 계정: SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD. 이메일 인증을 마친 상태이고 admin 역할을
+  가진다.
+M3가 예제 글을 더한다.
 """
 
 import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.config import load_settings
+from app.core.config import Settings, load_settings
 from app.core.db import create_engine, session_factory
+from app.modules import roles, users
+
+ADMIN_NAME = "Admin"
 
 
-async def seed(sessions: async_sessionmaker[AsyncSession]) -> list[str]:
+async def seed(sessions: async_sessionmaker[AsyncSession], settings: Settings) -> list[str]:
     """시드를 넣고, 새로 넣은 것을 한 줄씩 설명해 돌려준다."""
-    return []
+    done: list[str] = []
+    async with sessions() as session:
+        done += [f"역할 {name}" for name in await roles.ensure_system_roles(session)]
+        email = users.normalize_email(settings.seed_admin_email)
+        if await users.find_account(session, email) is None:
+            await users.create_account(
+                session,
+                email=email,
+                password=settings.seed_admin_password.get_secret_value(),
+                name=ADMIN_NAME,
+                locale=users.Locale.KO,
+                verified=True,
+                role_names=(roles.ADMIN_ROLE,),
+            )
+            done.append(f"관리자 {email}")
+        await session.commit()
+    return done
 
 
 async def main() -> None:
-    engine = create_engine(load_settings().database_url)
+    settings = load_settings()
+    engine = create_engine(settings.database_url)
     try:
-        done = await seed(session_factory(engine))
+        done = await seed(session_factory(engine), settings)
     finally:
         await engine.dispose()
     print("\n".join(f"시드: {line}" for line in done) if done else "시드: 넣을 데이터가 없다.")

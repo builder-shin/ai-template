@@ -81,6 +81,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - 테스트는 대상 코드 옆의 `tests/`에 둔다: `src/app/tests/`(앱 조립), `src/app/core/tests/`, `src/app/modules/<이름>/tests/`, `tools/tests/`.
 - 자기 인프라(DB, Valkey, 스토리지, 메일)를 모킹하지 않는다. 테스트 DB는 `app_test`, Valkey는 DB 15다. DB는 `db` fixture(테스트마다 롤백), Valkey는 `redis` fixture(테스트마다 비움)로 쓴다.
 - 잡은 `create_broker(settings, in_memory=True)`로 그 자리에서 돌린다.
+- 모듈 API는 `api`(httpx 클라이언트)와 `accounts`(`app.tests.accounts.Accounts`)로 테스트한다. 계정은 `await accounts.create(permissions={"users:read"})`, 로그인 헤더는 `await accounts.sign_in(user)`로 만든다. 메일은 `mailbox`(Mailpit)로 읽는다.
 - 가짜 비밀 값을 써야 하면 그 줄 끝에 `betterleaks:allow` 주석을 단다.
 
 ### 설정과 DB

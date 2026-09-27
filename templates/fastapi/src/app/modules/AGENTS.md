@@ -5,6 +5,7 @@
 ## 규칙
 
 - 모듈 안의 방향은 `router → service → repository → models`다. `schemas`는 router와 service가, `policies`와 `events`는 service가 쓴다. 아래 계층은 위 계층을 import하지 않는다(import-linter 계약 `module-layers`).
+- 모듈 안의 다른 계층은 `import app.modules.<모듈>.<계층> as <계층>`(예: `import app.modules.users.repository as repository`)으로 import한다. `from app.modules.<모듈> import <계층>`은 공개 인터페이스(`__init__.py`)를 거쳐 순환 import가 된다(basedpyright `reportImportCycles`).
 - 다른 모듈은 `app.modules.<이름>` 패키지만 import한다. 필요한 이름은 그 모듈의 `__init__.py`가 내보낸다(하네스 검사 `module-boundary`).
 - 트랜잭션 경계(commit)는 service가 정한다. repository는 commit하지 않는다.
 - 보안·관리 행위는 service가 `app.core.audit.record_audit`로 행위와 같은 트랜잭션에서 남긴다. `metadata`에 이메일 같은 개인정보를 넣지 않는다(필요하면 `digest`로 해시).

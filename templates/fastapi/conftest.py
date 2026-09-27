@@ -6,12 +6,17 @@
   SAVEPOINT만 풀리고, 테스트가 끝나면 바깥 트랜잭션을 롤백하므로 다음 테스트에 남지 않는다.
 - redis: 테스트마다 비운(FLUSHDB) 테스트 전용 Valkey DB.
 - mailbox: 테스트마다 비운 Mailpit. 메일은 모킹하지 않고 실제로 보낸다.
+- app, api: 모듈 API 테스트용 앱과 httpx 클라이언트. lifespan 대신 위의 자원(db, redis)과
+  잡을 그 자리에서 실행하는 broker를 app.state에 둔다.
+- accounts: 역할과 권한을 골라 계정을 만들고 로그인 헤더를 만드는 도우미(app.tests.accounts).
 """
 
 import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+import httpx
 import pytest
 import structlog
 from alembic import command
@@ -25,6 +30,10 @@ from app.core.logging import PLAIN_TRACEBACK
 from app.core.redis import create_redis
 from tools.infra import isolated_settings, preflight
 from tools.mailpit import Mailpit
+
+if TYPE_CHECKING:
+    from app.core.jsonapi.openapi import JsonApiApp
+    from app.tests.accounts import Accounts
 
 ROOT = Path(__file__).resolve().parent
 
@@ -99,3 +108,51 @@ async def mailbox(infra: Settings) -> Mailpit:
     mailpit = Mailpit()
     await mailpit.clear()
     return mailpit
+
+
+@pytest.fixture
+async def app(
+    infra: Settings,
+    engine: AsyncEngine,
+    db: async_sessionmaker[AsyncSession],
+    redis: Redis,
+) -> AsyncIterator[JsonApiApp]:
+    """모듈 API 테스트용 앱. app.main.create_app의 lifespan이 두는 자원을 테스트용으로 둔다.
+
+    DB는 테스트마다 롤백되는 db, Valkey는 비운 redis, 잡은 그 자리에서 실행하는 InMemoryBroker다.
+    무거운 import(앱 전체)는 이 fixture를 쓰는 테스트에서만 한다.
+    """
+    from app.core.jobs import JobQueue
+    from app.core.storage import create_client
+    from app.main import create_app
+    from app.worker import create_broker
+
+    application = create_app(infra)
+    broker = create_broker(infra, in_memory=True, sessions=db)
+    await broker.startup()
+    application.state.settings = infra
+    application.state.engine = engine
+    application.state.sessions = db
+    application.state.redis = redis
+    application.state.storage = create_client(infra)
+    application.state.jobs = JobQueue(broker)
+    yield application
+    await broker.shutdown()
+
+
+@pytest.fixture
+async def api(app: JsonApiApp) -> AsyncIterator[httpx.AsyncClient]:
+    """app에 요청하는 클라이언트. JSON:API Accept를 늘 붙인다."""
+    transport = httpx.ASGITransport(app=app)
+    headers = {"accept": "application/vnd.api+json"}
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://test", headers=headers
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+def accounts(infra: Settings, db: async_sessionmaker[AsyncSession]) -> Accounts:
+    from app.tests.accounts import Accounts
+
+    return Accounts(db, infra)
