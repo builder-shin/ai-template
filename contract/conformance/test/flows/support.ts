@@ -17,6 +17,8 @@ export const admin = resolveAdmin(process.env);
 
 /** 흐름이 가입할 때 쓰는 비밀번호. */
 export const PASSWORD = "conformance-password"; // betterleaks:allow 적합성 흐름의 가짜 비밀번호
+/** 재설정과 변경으로 바꿀 비밀번호. */
+export const NEW_PASSWORD = "conformance-new-password"; // betterleaks:allow 적합성 흐름의 가짜 비밀번호
 
 /** 모든 응답을 계약으로 검증하는 클라이언트. accessToken을 주면 로그인한 요청이다. */
 export function api(accessToken?: string): ApiClient {
