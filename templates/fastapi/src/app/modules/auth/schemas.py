@@ -24,6 +24,13 @@ from app.modules.users import Locale
 UsersType = Literal["users"]
 
 
+# 계약에 설명이 없어 docstring을 두지 않는다. 제공자 구현은 providers/에 있다.
+class OAuthProvider(StrEnum):
+    GOOGLE = "google"
+    KAKAO = "kakao"
+    NAVER = "naver"
+
+
 def _strip(value: object) -> object:
     return value.strip() if isinstance(value, str) else value
 

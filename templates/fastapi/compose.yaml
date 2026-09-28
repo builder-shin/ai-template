@@ -31,6 +31,24 @@ x-app: &app
     MAIL_FROM: "AI Template <no-reply@example.com>"
     FRONTEND_URL: http://localhost:3000
     REALTIME_ALLOWED_ORIGINS: http://localhost:3000
+    # 소셜 로그인: 인가 주소는 호스트의 브라우저가, 토큰과 프로필 주소는 컨테이너가 부른다
+    API_URL: http://localhost:8000
+    OAUTH_REDIRECT_URIS: http://localhost:3000/oauth/callback
+    OAUTH_GOOGLE_CLIENT_ID: local-google-client
+    OAUTH_GOOGLE_CLIENT_SECRET: local-google-secret # betterleaks:allow
+    OAUTH_GOOGLE_AUTHORIZE_URL: http://127.0.0.1:28080/google/authorize
+    OAUTH_GOOGLE_TOKEN_URL: http://oauth:8080/google/token
+    OAUTH_GOOGLE_PROFILE_URL: http://oauth:8080/google/userinfo
+    OAUTH_KAKAO_CLIENT_ID: local-kakao-client
+    OAUTH_KAKAO_CLIENT_SECRET: local-kakao-secret # betterleaks:allow
+    OAUTH_KAKAO_AUTHORIZE_URL: http://127.0.0.1:28080/kakao/authorize
+    OAUTH_KAKAO_TOKEN_URL: http://oauth:8080/kakao/token
+    OAUTH_KAKAO_PROFILE_URL: http://oauth:8080/kakao/userinfo
+    OAUTH_NAVER_CLIENT_ID: local-naver-client
+    OAUTH_NAVER_CLIENT_SECRET: local-naver-secret # betterleaks:allow
+    OAUTH_NAVER_AUTHORIZE_URL: http://127.0.0.1:28080/naver/authorize
+    OAUTH_NAVER_TOKEN_URL: http://oauth:8080/naver/token
+    OAUTH_NAVER_PROFILE_URL: http://oauth:8080/naver/userinfo
     # 적합성 스위트가 이 계정으로 관리자 흐름을 돈다(저장소의 scripts/src/conformance/targets.ts와 같은 값).
     SEED_ADMIN_EMAIL: admin@example.com
     SEED_ADMIN_PASSWORD: admin-password # betterleaks:allow

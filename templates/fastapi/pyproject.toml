@@ -21,6 +21,8 @@ dependencies = [
     "jinja2==3.1.6",
     "email-validator==2.3.0",
     "python-socketio==5.17.0",
+    "httpx==0.28.1",
+    "httpx-oauth==0.17.0",
 ]
 
 [dependency-groups]
@@ -31,7 +33,6 @@ dev = [
     "import-linter==2.15",
     "pytest==9.1.1",
     "anyio==4.15.1",
-    "httpx==0.28.1",
     "lefthook==2.1.14",
     "nodejs-wheel-binaries==24.19.0",
     "types-boto3-lite[s3]==1.43.93",

@@ -27,6 +27,8 @@ FastAPI의 공식 skill은 `.claude/skills/fastapi/SKILL.md`에 있다. FastAPI 
 | `jinja2` | 3.1.6 | 메일 템플릿(`app.core.mail`) | https://jinja.palletsprojects.com/en/stable/ |
 | `pwdlib` | 0.3.1 | 비밀번호 해시(Argon2id, `app.core.security`) | https://frankie567.github.io/pwdlib/ |
 | `pyjwt` | 2.15.0 | access token(JWT, `app.core.security`) | https://pyjwt.readthedocs.io/en/2.15.0/ |
+| `httpx` | 0.28.1 | HTTP 클라이언트(소셜 로그인 제공자 호출, 테스트의 `ASGITransport`) | https://www.python-httpx.org/ |
+| `httpx-oauth` | 0.17.0 | 소셜 로그인의 인가 URL과 코드 교환(`auth/providers`) | https://frankie567.github.io/httpx-oauth/ |
 | `python-socketio` | 5.17.0 | 실시간 서버와 발행기(`app.core.realtime`). 타입 스텁은 `typings/socketio/` | https://python-socketio.readthedocs.io/en/stable/ |
 
 ## 개발 도구
@@ -39,7 +41,6 @@ FastAPI의 공식 skill은 `.claude/skills/fastapi/SKILL.md`에 있다. FastAPI 
 | `import-linter`         | 2.15    | 아키텍처 계약(`[tool.importlinter]`) | https://import-linter.readthedocs.io/en/v2.15/ |
 | `pytest`                | 9.1.1   | 테스트                               | https://docs.pytest.org/en/stable/             |
 | `anyio`                 | 4.15.1  | 비동기 테스트(pytest 플러그인)       | https://anyio.readthedocs.io/en/stable/        |
-| `httpx`                 | 0.28.1  | 테스트 클라이언트(`ASGITransport`)   | https://www.python-httpx.org/                  |
 | `lefthook`              | 2.1.14  | git hook(`lefthook.yml`)             | https://lefthook.dev/                          |
 | `nodejs-wheel-binaries` | 24.19.0 | 계약 린트를 돌리는 Node              | https://github.com/njzjz/nodejs-wheel          |
 | `types-boto3-lite`      | 1.43.93 | boto3의 S3 타입                      | https://youtype.github.io/types_boto3_docs/    |

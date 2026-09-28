@@ -55,6 +55,29 @@ class Settings(BaseSettings):
     frontend_url: HttpUrl
     # Socket.IO 연결을 받을 브라우저 Origin(쉼표로 구분). 예: http://localhost:3000
     realtime_allowed_origins: CommaSeparated
+    # 브라우저가 보는 이 API의 주소. 소셜 로그인 제공자가
+    # <API_URL>/api/v1/oauth/<제공자>/callback으로 돌아온다. 제공자 콘솔에 이 콜백 주소를 등록한다
+    api_url: HttpUrl
+    # 소셜 로그인 뒤 돌아갈 프론트 콜백 주소(쉼표로 구분). authorize의 redirectUri가 이 중
+    # 하나와 같아야 한다
+    oauth_redirect_uris: CommaSeparated
+    # 소셜 로그인 제공자(google, kakao, naver)마다 클라이언트와 주소. 인가 주소는 브라우저가, 토큰과
+    # 프로필 주소는 서버가 부른다. 운영 주소는 .env.example의 주석에 있다
+    oauth_google_client_id: NonEmpty
+    oauth_google_client_secret: SecretStr
+    oauth_google_authorize_url: HttpUrl
+    oauth_google_token_url: HttpUrl
+    oauth_google_profile_url: HttpUrl
+    oauth_kakao_client_id: NonEmpty
+    oauth_kakao_client_secret: SecretStr
+    oauth_kakao_authorize_url: HttpUrl
+    oauth_kakao_token_url: HttpUrl
+    oauth_kakao_profile_url: HttpUrl
+    oauth_naver_client_id: NonEmpty
+    oauth_naver_client_secret: SecretStr
+    oauth_naver_authorize_url: HttpUrl
+    oauth_naver_token_url: HttpUrl
+    oauth_naver_profile_url: HttpUrl
     # 시드(python -m app.seed)가 만드는 관리자 계정
     seed_admin_email: NonEmpty
     seed_admin_password: Annotated[SecretStr, Field(min_length=8)]
