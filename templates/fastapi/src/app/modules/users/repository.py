@@ -87,3 +87,9 @@ async def is_avatar(session: AsyncSession, file_id: uuid.UUID) -> bool:
     """어떤 사용자의 아바타인가."""
     found = await session.scalar(select(exists().where(User.avatar_id == file_id)))
     return bool(found)
+
+
+async def avatar_ids_among(session: AsyncSession, file_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """file_ids 중 어떤 사용자의 아바타인 것."""
+    query = select(User.avatar_id).where(User.avatar_id.in_(list(file_ids)))
+    return {file_id for file_id in await session.scalars(query) if file_id is not None}

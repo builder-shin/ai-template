@@ -7,6 +7,7 @@ from app.modules.users.schemas import UserPublicResource
 from app.modules.users.service.accounts import (
     Closure,
     avatar_readable,
+    avatar_references,
     create_account,
     find_account,
     get_account,
@@ -31,6 +32,7 @@ __all__ = [
     "UserPublicResource",
     "UserStatus",
     "avatar_readable",
+    "avatar_references",
     "create_account",
     "find_account",
     "get_account",

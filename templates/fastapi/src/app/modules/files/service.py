@@ -12,11 +12,14 @@
   (attachable_file). 남의 파일을 걸면 그 리소스를 보는 모든 사람에게 파일이 공개되기 때문이다.
 - 객체는 행을 지운 트랜잭션을 commit한 뒤에 지운다. 지우지 못하면 경고만 남긴다(행이 없는 객체는
   URL을 받을 방법이 없다).
+- 24시간이 넘도록 pending인 파일은 잡(files.purge_pending, 매시간)이 지운다.
+- 탈퇴한 사용자의 파일 중 다른 리소스가 가리키지 않는 것은 지운다(remove_unreferenced).
+  무엇이 파일을 가리키는지는 다른 모듈이 등록한 참조 확인(add_reference_check)으로 안다.
 """
 
 import uuid
-from collections.abc import Awaitable, Callable, Iterable
-from datetime import timedelta
+from collections.abc import Awaitable, Callable, Iterable, Sequence
+from datetime import datetime, timedelta
 from typing import Literal
 
 import structlog
@@ -44,6 +47,7 @@ logger = structlog.get_logger(__name__)
 
 UPLOAD_EXPIRES = timedelta(minutes=15)
 DOWNLOAD_EXPIRES = timedelta(minutes=10)
+PENDING_TTL = timedelta(hours=24)  # 이보다 오래 pending인 파일은 정리 잡이 지운다
 
 # 소유자가 아닌 사람(비로그인이면 None)이 이 파일을 읽어도 되는가.
 # 파일을 가리키는 리소스를 그 사람이 볼 수 있으면 True다.
@@ -51,10 +55,21 @@ type ReadRule = Callable[[AsyncSession, uuid.UUID, Principal | None], Awaitable[
 _read_rules: list[ReadRule] = []
 
 
+# 주어진 파일 중 이 모듈의 리소스가 가리키는 것의 id(예: 글의 커버 이미지).
+type ReferenceCheck = Callable[[AsyncSession, Sequence[uuid.UUID]], Awaitable[set[uuid.UUID]]]
+_reference_checks: list[ReferenceCheck] = []
+
+
 def add_read_rule(rule: ReadRule) -> None:
     """파일 읽기 규칙을 등록한다. 같은 규칙을 두 번 등록해도 한 번만 부른다."""
     if rule not in _read_rules:
         _read_rules.append(rule)
+
+
+def add_reference_check(check: ReferenceCheck) -> None:
+    """파일 참조 확인을 등록한다. 같은 확인을 두 번 등록해도 한 번만 부른다."""
+    if check not in _reference_checks:
+        _reference_checks.append(check)
 
 
 async def can_read(session: AsyncSession, file: File, viewer: Principal | None) -> bool:
@@ -242,3 +257,27 @@ async def delete_file(
     await repository.remove(session, file)
     await session.commit()
     await delete_objects(storage, [key])
+
+
+async def remove_unreferenced(session: AsyncSession, owner_id: uuid.UUID) -> list[str]:
+    """소유자의 파일 중 어떤 리소스도 가리키지 않는 것의 행을 지우고 객체 키를 돌려준다.
+
+    commit하지 않는다. commit한 뒤에 delete_objects로 객체를 지운다(탈퇴).
+    """
+    owned = await repository.owned_by(session, owner_id)
+    ids = [file.id for file in owned]
+    referenced: set[uuid.UUID] = set()
+    for check in _reference_checks:
+        referenced |= await check(session, ids)
+    unreferenced = [file for file in owned if file.id not in referenced]
+    await repository.remove_many(session, [file.id for file in unreferenced])
+    return [file.key for file in unreferenced]
+
+
+async def purge_pending(session: AsyncSession, storage: Storage, now: datetime) -> int:
+    """PENDING_TTL보다 오래 pending인 파일(행을 commit한 뒤 객체)을 지우고 그 수를 돌려준다."""
+    stale = await repository.pending_before(session, now - PENDING_TTL)
+    await repository.remove_many(session, [file.id for file in stale])
+    await session.commit()
+    await delete_objects(storage, [file.key for file in stale])
+    return len(stale)

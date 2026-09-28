@@ -182,3 +182,8 @@ async def protect_last_admin(session: AsyncSession, user: User) -> None:
     if await repository.active_admins_besides(session, user.id) == 0:
         detail = "The last active admin must keep the admin role and stay active."
         raise ApiError(422, ErrorCode.ROLE_LAST_ADMIN_PROTECTED, detail)
+
+
+async def avatar_references(session: AsyncSession, file_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """파일 참조 확인: 사용자의 아바타인 파일."""
+    return await repository.avatar_ids_among(session, file_ids)

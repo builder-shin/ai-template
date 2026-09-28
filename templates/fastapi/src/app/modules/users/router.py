@@ -191,8 +191,10 @@ async def update_me(
 
 
 @me.route("DELETE", "", DELETE_ME, response_model=None)
-async def delete_me(session: SessionDep, actor: PrincipalDep, client: ClientDep) -> Response:
-    await profile.delete_me(session, actor, client)
+async def delete_me(
+    session: SessionDep, storage: StorageDep, actor: PrincipalDep, client: ClientDep
+) -> Response:
+    await profile.delete_me(session, storage, actor, client)
     return Response(status_code=204)
 
 

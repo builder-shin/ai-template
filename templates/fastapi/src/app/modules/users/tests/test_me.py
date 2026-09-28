@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.audit import AuditLog
+from app.core.storage import Storage
 from app.modules.files import File, FileStatus
 from app.modules.roles import Role, UserRole
 from app.modules.users import User, UserStatus
@@ -186,6 +187,26 @@ async def test_deleting_anonymizes_and_closes_the_account(
     assert email is not None
     again = await accounts.create(email=email)
     assert again.email == email
+
+
+async def test_leaving_removes_my_avatar_and_other_files(
+    api: httpx.AsyncClient,
+    accounts: Accounts,
+    db: async_sessionmaker[AsyncSession],
+    storage: Storage,
+) -> None:
+    user = await accounts.create()
+    headers = await accounts.sign_in(user)
+    avatar = await upload_file(api, headers)
+    loose = await upload_file(api, headers, ready=False)
+    await api.patch(ME, **jsonapi_body(avatar_update(user.id, avatar["id"]), headers))
+    assert (await api.delete(ME, headers=headers)).status_code == 204
+    async with db() as session:
+        left = await session.scalar(select(func.count()).where(File.owner_id == user.id))
+        gone = await session.get(User, user.id)
+    assert (left, gone.avatar_id if gone else "missing") == (0, None)
+    for file_id in (avatar["id"], loose["id"]):
+        assert await storage.size(f"files/{file_id}") is None
 
 
 async def test_the_last_admin_cannot_leave(
