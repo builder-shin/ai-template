@@ -117,6 +117,7 @@ class RedisPublisher:
     """쓰기 전용 발행기(worker, scheduler). pub/sub으로 소켓 서버들에 보낸다.
 
     channel은 소켓 서버와 같아야 한다. 없으면 URL의 DB 번호로 정한다(pubsub_channel).
+    다 쓰면 close로 닫는다.
     """
 
     def __init__(self, redis_url: str, *, channel: str | None = None) -> None:
@@ -129,6 +130,15 @@ class RedisPublisher:
         if not event.rooms:
             return
         await self.manager.emit(event.name, dict(event.payload), room=list(event.rooms))
+
+    async def close(self) -> None:
+        """발행하면서 만든 Redis 클라이언트를 닫는다. 발행한 적이 없으면 할 일이 없다.
+
+        python-socketio 5.17.0에는 쓰기 전용 관리자의 연결(redis)을 닫는 공개 API가 없다.
+        """
+        redis = getattr(self.manager, "redis", None)
+        if redis is not None:
+            await redis.aclose()
 
 
 @dataclass(slots=True)
@@ -217,6 +227,7 @@ class Realtime:
             listener.cancel()
             with contextlib.suppress(BaseException):
                 await listener
+        # 첫 연결 전의 발행이 만든 클라이언트는 열린 채 남을 수 있다(수신 태스크가 새것으로 바꾼다).
         redis = getattr(manager, "redis", None)
         if redis is not None:
             await redis.aclose()

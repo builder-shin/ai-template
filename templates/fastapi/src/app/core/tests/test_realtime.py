@@ -1,6 +1,7 @@
 """실시간 서버: WebSocket만 받고 Origin을 본다, 룸으로 보낸다, 쓰기 전용 발행기, commit 뒤 발행."""
 
 import logging
+from collections.abc import AsyncIterator
 from typing import override
 
 import httpx
@@ -23,6 +24,14 @@ from app.tests.sockets import connected, serving
 pytestmark = pytest.mark.anyio
 
 EVENT = Event(name="thing.happened", rooms=("a", "b", "c"), payload={"meta": {"n": 1}})
+
+
+@pytest.fixture
+async def worker(realtime: Realtime, infra: Settings) -> AsyncIterator[RedisPublisher]:
+    """소켓 서버와 같은 채널의 쓰기 전용 발행기(worker의 것). 테스트가 끝나면 닫는다."""
+    publisher = RedisPublisher(infra.redis_url, channel=realtime.channel)
+    yield publisher
+    await publisher.close()
 
 
 def test_the_pubsub_channel_carries_the_db_number() -> None:
@@ -63,9 +72,8 @@ async def test_an_event_reaches_each_client_in_its_rooms_once(
 
 
 async def test_a_write_only_publisher_reaches_the_server(
-    app: JsonApiApp, realtime: Realtime, infra: Settings
+    app: JsonApiApp, realtime: Realtime, worker: RedisPublisher
 ) -> None:
-    worker = RedisPublisher(infra.redis_url, channel=realtime.channel)
     async with serving(app) as url, connected(url) as member:
         await realtime.server.enter_room(member.sid, "a")
         # 서버는 첫 연결 뒤에 pub/sub을 구독한다. 구독이 끝나기 전의 발행은 사라지므로 다시 보낸다.
@@ -81,10 +89,9 @@ async def test_a_write_only_publisher_reaches_the_server(
 
 
 async def test_an_event_without_rooms_reaches_no_one(
-    app: JsonApiApp, realtime: Realtime, infra: Settings
+    app: JsonApiApp, realtime: Realtime, worker: RedisPublisher
 ) -> None:
     empty = Event(name="thing.happened", rooms=(), payload={"meta": {"n": 1}})
-    worker = RedisPublisher(infra.redis_url, channel=realtime.channel)
     async with serving(app) as url, connected(url) as bystander:
         await realtime.publisher.publish(empty)
         assert await bystander.nothing(EVENT.name)

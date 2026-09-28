@@ -78,17 +78,22 @@ def attach_context(
     storage: Storage | None = None,
     publisher: Publisher | None = None,
 ) -> None:
-    """worker로 시작할 때 JobContext를 만들고, 내릴 때 엔진을 닫는다.
+    """worker로 시작할 때 JobContext를 만들고, 내릴 때 여기서 만든 엔진과 발행기를 닫는다.
 
     sessions를 주면 그 팩토리를 쓴다(테스트가 롤백되는 세션을 넘긴다). 없으면 엔진을 새로 만든다.
     storage를 주면 그것을 쓴다(테스트가 테스트마다 다른 prefix를 넘긴다). 없으면 설정으로 만든다.
-    publisher를 주면 그것을 쓴다(테스트가 보낸 이벤트를 모은다). 없으면 쓰기 전용 발행기다.
+    publisher를 주면 그것을 쓰고 닫지 않는다(테스트가 보낸 이벤트를 모은다). 없으면 쓰기 전용
+    발행기를 만든다.
     api와 scheduler는 잡을 실행하지 않으므로 이 처리가 돌지 않는다.
     """
     engines: list[AsyncEngine] = []
+    publishers: list[RedisPublisher] = []
 
     async def start(state: TaskiqState) -> None:
-        realtime = publisher or RedisPublisher(settings.redis_url)
+        realtime = publisher
+        if realtime is None:
+            realtime = RedisPublisher(settings.redis_url)
+            publishers.append(realtime)
         factory = sessions
         if factory is None:
             engine = create_engine(settings.database_url)
@@ -105,6 +110,8 @@ def attach_context(
     async def stop(state: TaskiqState) -> None:
         while engines:
             await engines.pop().dispose()
+        while publishers:
+            await publishers.pop().close()
 
     broker.add_event_handler(TaskiqEvents.WORKER_STARTUP, start)
     broker.add_event_handler(TaskiqEvents.WORKER_SHUTDOWN, stop)

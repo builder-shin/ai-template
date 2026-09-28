@@ -36,18 +36,22 @@ async def test_a_published_post_reaches_a_subscriber(api: httpx.AsyncClient) -> 
 async def test_an_event_from_a_write_only_publisher_reaches_the_server() -> None:
     worker = RedisPublisher(isolated_settings(load_settings(), "e2e").redis_url)
     event = Event("post.published", ("posts",), {"data": {"type": "posts", "id": "from-worker"}})
-    async with connected(BASE_URL) as socket:
-        assert await socket.call("subscribe", {"channel": "posts"}) == {"ok": True}
-        # api는 첫 연결 뒤에 pub/sub을 구독한다. 구독이 끝나기 전의 발행은 사라지므로 다시 보낸다.
-        for _ in range(20):
-            await worker.publish(event)
-            try:
-                assert await socket.next("post.published", within=0.25) == event.payload
-                break
-            except TimeoutError:
-                continue
-        else:
-            pytest.fail("쓰기 전용 발행기의 이벤트가 오지 않았다.")
+    try:
+        async with connected(BASE_URL) as socket:
+            assert await socket.call("subscribe", {"channel": "posts"}) == {"ok": True}
+            # api는 첫 연결 뒤에 pub/sub을 구독한다. 구독이 끝나기 전의 발행은 사라지므로
+            # 다시 보낸다.
+            for _ in range(20):
+                await worker.publish(event)
+                try:
+                    assert await socket.next("post.published", within=0.25) == event.payload
+                    break
+                except TimeoutError:
+                    continue
+            else:
+                pytest.fail("쓰기 전용 발행기의 이벤트가 오지 않았다.")
+    finally:
+        await worker.close()
 
 
 async def test_a_ticket_joins_the_user_room(api: httpx.AsyncClient) -> None:

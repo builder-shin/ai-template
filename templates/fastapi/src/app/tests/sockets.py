@@ -58,13 +58,19 @@ class SocketClient:
         self, url: str, *, auth: Mapping[str, Any] | None = None, origin: str = ORIGIN
     ) -> None:
         """WebSocket으로 붙는다. 거부되면 socketio.exceptions.ConnectionError다."""
-        await self.client.connect(
-            url,
-            headers={"Origin": origin},
-            auth=None if auth is None else dict(auth),
-            transports=["websocket"],
-            wait_timeout=WAIT,
-        )
+        try:
+            await self.client.connect(
+                url,
+                headers={"Origin": origin},
+                auth=None if auth is None else dict(auth),
+                transports=["websocket"],
+                wait_timeout=WAIT,
+            )
+        except BaseException:
+            # 핸드셰이크가 거부되면(예: Origin) python-socketio가 Engine.IO 클라이언트의 HTTP
+            # 세션을 닫지 않는다. disconnect는 붙기 전이어도 그 세션을 닫는다.
+            await self.client.disconnect()
+            raise
 
     @property
     def sid(self) -> str:
