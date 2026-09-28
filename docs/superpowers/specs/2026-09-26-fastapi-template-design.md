@@ -5,7 +5,7 @@
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 1로 미룬 결정을 내리고, `templates/fastapi`와 이번 사이클의 저장소 변경을 설계한다.
   - 기반 설계의 규칙은 그대로 따른다: 플랫폼 기능(§4), API 규약(§5), 하네스(§6), 인프라(§7). 이 문서는 그 규칙을 구현하는 방법과 계약 변경을 정한다.
-  - 기반 설계와 달라진 것은 PKCE를 지원하는 제공자에만 쓴다는 점(F13)과 §7의 계약 변경뿐이다. 기반 설계의 해당 문장은 이 문서와 함께 고쳤다.
+  - 기반 설계와 달라진 것은 §7의 계약 변경뿐이다.
 - 다음 단계: 승인되면 마일스톤 M1의 구현 계획을 쓴다. M2~M4의 계획은 앞 마일스톤이 끝난 뒤 차례로 쓴다.
 
 ## 1. 목표와 범위
@@ -441,7 +441,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | 실시간       | `SessionRevokedReason`에 `password_changed`, `refresh_token_reused`, `account_deleted`를 더한다                                            |
 | 페이지 링크  | 링크 형식을 `url`에서 URI-reference 문자열로 바꾼다(F20)                                                                                     |
 | 에러 코드    | `role.last_admin_protected`(422)를 더한다. `auth.oauth_denied`, `auth.oauth_failed`를 더한다(콜백 리다이렉트의 `error` 값으로만 쓴다)       |
-| OAuth 설명   | 콜백의 에러 리다이렉트 규칙(§6.2)과 "PKCE는 지원하는 제공자에만"을 operation 설명에 적는다                                                   |
+| OAuth 설명   | 콜백의 에러 리다이렉트 규칙(§6.2)을 operation 설명에 적는다. PKCE와 `codeChallenge`를 적는 문장은 §12.1 M4를 따른다                          |
 
 - `x-realtime-messages`의 형식: `[{ "name": "subscribe", "payload": "RealtimeSubscription", "ack": "RealtimeAck" }, { "name": "unsubscribe", ... }]`
 - 룰셋의 공용 스키마 이름 목록에 `RealtimeChannel`, `RealtimeSubscription`, `RealtimeAck`를 더한다. 이 스키마들은 리소스에 속하지 않는다.
