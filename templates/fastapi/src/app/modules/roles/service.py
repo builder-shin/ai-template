@@ -244,9 +244,11 @@ async def update_role(
             _require_within(permissions, actor)
             role.permissions = permissions
             changed.append("permissions")
-            await _notify_members(session, role)
     if changed:
         await _flush_named(session, role.name)
+        # 멤버 조회는 autoflush한다. 이름 중복이 422가 되도록 _flush_named가 성공한 뒤에 부른다.
+        if "permissions" in changed:
+            await _notify_members(session, role)
         await record_audit(
             session,
             AuditLogAction.ROLE_UPDATED,

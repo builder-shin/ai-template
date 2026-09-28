@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.audit import AuditLog
+from app.core.realtime import RecordingPublisher
 from app.modules.roles.models import ADMIN_ROLE, MEMBER_ROLE, Role
 from app.modules.roles.schemas import PermissionCode
 from app.tests.accounts import Accounts
@@ -146,6 +147,20 @@ async def test_update_renames_and_records(
     assert response.status_code == 200, response.text
     assert response.json()["data"]["attributes"]["name"] == "chief-editor"
     assert await actions(db) == ["role.created", "role.updated"]
+
+
+async def test_rename_to_a_taken_name_with_new_permissions_is_rejected(
+    api: httpx.AsyncClient, accounts: Accounts, publisher: RecordingPublisher
+) -> None:
+    auth = await signed_in(accounts, MANAGER)
+    await create(api, auth, "taken", [])
+    role_id = await create(api, auth, "editor", ["users:read"])
+    await accounts.create(role_names=("editor",))  # 권한이 바뀌면 me.updated를 받을 사람
+    document = update_document(role_id, name="taken", permissions=[])
+    response = await api.patch(f"{ROLES}/{role_id}", **jsonapi_body(document, auth))
+    assert (response.status_code, error_codes(response)) == (422, ["validation.already_taken"])
+    assert error_sources(response) == [{"pointer": "/data/attributes/name"}]
+    assert publisher.named("me.updated") == []
 
 
 @pytest.mark.parametrize(
