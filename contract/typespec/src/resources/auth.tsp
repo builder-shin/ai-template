@@ -195,7 +195,7 @@ interface PasswordChanges {
 @route("/api/v1/oauth/{provider}")
 @tag("oauth")
 interface OAuth {
-  /** 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state를 붙이고, PKCE를 지원하는 제공자(google)에는 PKCE도 붙인다. */
+  /** 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state와 PKCE(S256)를 붙인다. 세 제공자 모두 PKCE를 지원한다. */
   @get
   @route("authorize")
   authorize(@path provider: OAuthProvider, @query redirectUri: url):

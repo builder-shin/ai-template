@@ -43,13 +43,13 @@ model SessionAttributes {
   current: boolean;
 }
 
-/** POST /sessions의 201 응답에만 담기는 토큰. */
-model SessionTokens {
+/** POST /sessions의 201 응답에만 담기는 토큰. alias라 스키마 이름이 따로 생기지 않는다. */
+alias SessionTokens = {
   accessToken: string;
   accessTokenExpiresAt: utcDateTime;
   refreshToken: string;
   refreshTokenExpiresAt: utcDateTime;
-}
+};
 
 model SessionWithTokensAttributes {
   ...SessionAttributes;

@@ -1004,7 +1004,7 @@ paths:
   /api/v1/oauth/{provider}/authorize:
     get:
       operationId: OAuth_authorize
-      description: 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state를 붙이고, PKCE를 지원하는 제공자(google)에는 PKCE도 붙인다.
+      description: 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state와 PKCE(S256)를 붙인다. 세 제공자 모두 PKCE를 지원한다.
       parameters:
         - name: provider
           in: path
@@ -5015,25 +5015,6 @@ components:
         - password_changed
         - refresh_token_reused
         - account_deleted
-    SessionTokens:
-      type: object
-      required:
-        - accessToken
-        - accessTokenExpiresAt
-        - refreshToken
-        - refreshTokenExpiresAt
-      properties:
-        accessToken:
-          type: string
-        accessTokenExpiresAt:
-          type: string
-          format: date-time
-        refreshToken:
-          type: string
-        refreshTokenExpiresAt:
-          type: string
-          format: date-time
-      description: POST /sessions의 201 응답에만 담기는 토큰.
     SessionWithTokensAttributes:
       type: object
       required:

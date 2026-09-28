@@ -129,7 +129,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state를 붙이고, PKCE를 지원하는 제공자(google)에는 PKCE도 붙인다. */
+        /** @description 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state와 PKCE(S256)를 붙인다. 세 제공자 모두 PKCE를 지원한다. */
         get: operations["OAuth_authorize"];
         put?: never;
         post?: never;
@@ -1165,15 +1165,6 @@ export interface components {
         };
         /** @enum {string} */
         SessionRevokedReason: "logout" | "password_reset" | "account_deactivated" | "revoked" | "password_changed" | "refresh_token_reused" | "account_deleted";
-        /** @description POST /sessions의 201 응답에만 담기는 토큰. */
-        SessionTokens: {
-            accessToken: string;
-            /** Format: date-time */
-            accessTokenExpiresAt: string;
-            refreshToken: string;
-            /** Format: date-time */
-            refreshTokenExpiresAt: string;
-        };
         SessionWithTokensAttributes: {
             userAgent: string | null;
             /** Format: date-time */
