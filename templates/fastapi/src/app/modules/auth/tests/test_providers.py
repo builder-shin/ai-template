@@ -21,6 +21,7 @@ GOOGLE_PROFILE: dict[str, Any] = {
     "sub": "10769150350006150715113082367",
     "email": "jsmith@example.com",
     "email_verified": True,
+    "hd": "example.com",
     "name": "John Smith",
     "picture": "https://example.com/p.png",
 }
@@ -48,6 +49,17 @@ def test_google_trusts_email_verified() -> None:
     assert parse(GOOGLE_PROFILE) == expected
     unverified = parse({**GOOGLE_PROFILE, "email_verified": "true"})
     assert unverified.email_verified is False
+
+
+def test_google_needs_gmail_or_a_workspace_hd() -> None:
+    parse = PROVIDERS[OAuthProvider.GOOGLE].parse
+    # 예전에 확인한 다른 도메인 주소는 주인이 바뀌었을 수 있어, hd(Workspace) 없이는 못 믿는다.
+    no_hd = {**GOOGLE_PROFILE, "hd": None}
+    assert parse(no_hd).email_verified is False
+    gmail = {**no_hd, "email": "jsmith@gmail.com"}
+    assert parse(gmail).email_verified is True
+    unverified_workspace = {**GOOGLE_PROFILE, "email_verified": False}
+    assert parse(unverified_workspace).email_verified is False
 
 
 def test_kakao_needs_a_valid_and_verified_email() -> None:

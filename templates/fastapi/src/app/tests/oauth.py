@@ -28,7 +28,11 @@ def claims(
         return {"id": subject, "kakao_account": account}
     if provider == "naver":
         return {"response": {"id": subject, "email": email, "name": name}}
-    return {"email": email, "email_verified": verified, "name": name}
+    # google: gmail.com이 아니면 hd(Workspace)가 있어야 검증된 이메일로 읽힌다.
+    result: dict[str, Any] = {"email": email, "email_verified": verified, "name": name}
+    if verified and email is not None and not email.lower().endswith("@gmail.com"):
+        result["hd"] = email.rsplit("@", 1)[-1]
+    return result
 
 
 async def sign_in_at_provider(location: str, subject: str, found: dict[str, Any]) -> dict[str, str]:
