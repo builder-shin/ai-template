@@ -158,11 +158,19 @@ async def test_read_rules_let_others_read_but_not_change(
     url = f"{FILES}/{file_id}"
     anonymous = await api.get(url)
     assert "downloadUrl" in anonymous.json()["data"]["meta"]
+    # 고칠 속성이 없는 PATCH도 소유자만 한다(속성을 보기 전에 소유자인지 본다).
+    no_attributes: dict[str, Any] = {"data": {"type": "files", "id": file_id}}
+    empty_attributes: dict[str, Any] = {"data": {"type": "files", "id": file_id, "attributes": {}}}
     changes = [
         await api.patch(url, **jsonapi_body(ready_document(file_id), other)),
+        await api.patch(url, **jsonapi_body(no_attributes, other)),
+        await api.patch(url, **jsonapi_body(empty_attributes, other)),
         await api.delete(url, headers=other),
     ]
-    assert [response.status_code for response in changes] == [403, 403]
+    assert [response.status_code for response in changes] == [403, 403, 403, 403]
+    assert error_codes(changes[1]) == ["permission.denied"]
+    mine = await api.patch(url, **jsonapi_body(no_attributes, owner))
+    assert mine.json()["data"]["attributes"]["status"] == "ready"
 
 
 async def test_delete_removes_the_row_and_the_object(

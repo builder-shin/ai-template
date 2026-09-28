@@ -6,7 +6,8 @@
 - 읽기: 소유자, 또는 다른 모듈이 등록한 읽기 규칙 하나라도 허용하는 사람(예: 볼 수 있는 글의 커버
   이미지, 사용자의 아바타). 그 밖에는 파일이 있는지도 알리지 않고 404다. 규칙은 등록부
   (app.modules.registry)가 건다. files가 다른 모듈을 import하면 순환이 되므로 등록으로 뒤집는다.
-- 쓰기(완료 확인, 삭제)는 소유자만 한다. 읽을 수 있지만 소유자가 아니면 403, 읽을 수 없으면 404다.
+- 쓰기(PATCH, 삭제)는 소유자만 한다. 읽을 수 있지만 소유자가 아니면 403, 읽을 수 없으면 404다.
+  고칠 속성이 없는 PATCH도 같다.
 - ready 파일은 meta.downloadUrl에 presigned GET(10분)을 담는다. 포함 리소스(included)에도 채운다.
 - 다른 리소스에 거는 파일(아바타, 커버 이미지)은 요청한 사람 소유의 ready 이미지여야 한다
   (attachable_file). 남의 파일을 걸면 그 리소스를 보는 모든 사람에게 파일이 공개되기 때문이다.
@@ -220,12 +221,16 @@ async def _owned_file(session: AsyncSession, file_id: uuid.UUID, actor: Principa
     return file
 
 
-async def complete_upload(
-    session: AsyncSession, storage: Storage, actor: Principal, file_id: uuid.UUID
+async def update_file(
+    session: AsyncSession, storage: Storage, actor: Principal, file_id: uuid.UUID, *, ready: bool
 ) -> File:
-    """업로드를 확인하고 ready로 바꾼다. 이미 ready면 그대로 돌려준다."""
+    """파일을 고친다(PATCH). 속성을 보기 전에 소유자인지 본다(_owned_file).
+
+    그래서 읽을 수 있는 남의 파일은 고칠 속성이 없어도 403이다. ready면 업로드를 확인하고
+    ready로 바꾼다. 이미 ready면 그대로 돌려준다.
+    """
     file = await _owned_file(session, file_id, actor)
-    if file.status == FileStatus.READY:
+    if not ready or file.status == FileStatus.READY:
         return file
     size = await storage.size(file.key)
     if size != file.size:

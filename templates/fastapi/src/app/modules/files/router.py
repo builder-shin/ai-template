@@ -97,10 +97,8 @@ async def update_file(
 ) -> Response:
     require_matching_id(document.data.id, file_id)
     attributes = document.data.attributes
-    if attributes is not MISSING and attributes.status is not MISSING:
-        file = await service.complete_upload(session, storage, actor, file_id)
-    else:
-        file = await service.readable_file(session, file_id, actor)
+    ready = attributes is not MISSING and attributes.status is not MISSING
+    file = await service.update_file(session, storage, actor, file_id, ready=ready)
     return render(FileDocument(data=service.file_resource(file, storage)))
 
 
