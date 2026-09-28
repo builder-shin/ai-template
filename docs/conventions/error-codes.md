@@ -24,9 +24,9 @@ API 에러 객체의 `code` 값 목록이다. 원본은 `contract/typespec/src/e
 | `auth.unauthenticated`            | 401        | 로그인이 필요하다                                                                                  |
 | `auth.invalid_credentials`        | 401        | 이메일이나 비밀번호가 틀렸다                                                                       |
 | `auth.token_expired`              | 401        | access token이 만료됐다                                                                            |
-| `auth.token_invalid`              | 401        | 토큰이 올바르지 않다                                                                               |
+| `auth.token_invalid`              | 401        | 토큰이 올바르지 않다. 실시간 티켓이 틀렸거나 만료됐으면 연결 거부(`connect_error`)의 message다     |
 | `auth.refresh_token_reused`       | 401        | 이미 쓴 refresh token이다. 세션 계열을 폐기했다                                                    |
-| `auth.oauth_code_invalid`         | 401        | 소셜 로그인 1회용 코드가 틀렸거나 만료됐다                                                         |
+| `auth.oauth_code_invalid`         | 401        | 소셜 로그인 1회용 코드가 틀렸거나 만료됐다. `codeVerifier`가 일치하지 않을 때도 쓴다               |
 | `auth.oauth_denied`               | 리다이렉트 | 사용자가 제공자 화면에서 로그인을 거부했다. 소셜 로그인 콜백이 프론트 콜백 주소의 `error`로 보낸다 |
 | `auth.oauth_failed`               | 리다이렉트 | 소셜 로그인의 코드 교환이나 신원 조회에 실패했다. 콜백이 `error`로 보낸다                          |
 | `auth.email_not_verified`         | 403        | 이메일 인증을 마치지 않았다                                                                        |

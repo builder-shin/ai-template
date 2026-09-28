@@ -6,7 +6,7 @@
 
 - `/api/v1` 아래의 모든 요청·응답 본문은 JSON:API 문서다. 미디어 타입은 `application/vnd.api+json` 하나만 쓴다.
 - 예외는 두 가지다.
-  - OAuth 리다이렉트(`/api/v1/oauth/{provider}/authorize`, `/callback`): 본문 없이 302로 응답한다.
+  - OAuth 리다이렉트(`/api/v1/oauth/{provider}/authorize`, `/callback`): 본문 없이 302로 응답한다. 허용하지 않은 `redirectUri`, 없거나 형식이 틀린 `codeChallenge`, 없거나 만료된 `state`는 400 `jsonapi.invalid_query`(`source.parameter`)다. `POST /sessions`의 `oauthCode` grant는 `codeVerifier`가 있어야 한다. 콜백은 제공자가 덧붙이는 쿼리 파라미터를 받아들인다.
   - 헬스체크(`/health/live`, `/health/ready`): API 밖에 있고 `application/json`으로 응답한다.
 - 확장(Atomic Operations 등)과 프로필은 쓰지 않는다.
 
@@ -109,7 +109,9 @@
 - OpenAPI 루트의 `x-realtime-channels`가 구독 가능한 채널과 필요한 권한을, `x-realtime-events`가 이벤트 이름·받는 곳·페이로드 스키마를 적는다.
 - `x-realtime-events`의 `rooms`는 그 이벤트를 늘 받는 룸이다. `user:{userId}`와 `user:{authorId}`는 해당 사용자(글 이벤트는 작성자)의 `user:{id}` 룸이다. `conditionalRooms`는 조건이 맞을 때만 받는 룸이고 `{ room, when }` 꼴이다. `when`은 `published`(바뀐 뒤 글이 발행 상태)와 `wasPublished`(지우기 전 글이 발행 상태였음) 둘 중 하나다.
 - 페이로드도 JSON:API 문서이고 `components.schemas`에 있다. 그래서 프론트엔드는 같은 생성 과정으로 이벤트 타입을 얻는다.
-- 클라이언트가 보내는 메시지는 `x-realtime-messages`에 적는다. `subscribe`와 `unsubscribe`는 페이로드 `RealtimeSubscription`(`{ channel }`)을 보내고, 서버는 ack `RealtimeAck`로 답한다. 성공이면 `{ ok: true }`, 실패면 `{ ok: false, error }`이고 `error`는 에러 객체다(권한 없음 `permission.denied`, 모르는 채널 `validation.invalid_choice`).
+- 클라이언트가 보내는 메시지는 `x-realtime-messages`에 적는다. `subscribe`와 `unsubscribe`는 페이로드 `RealtimeSubscription`(`{ channel }`)을 보내고, 서버는 ack `RealtimeAck`로 답한다. 성공이면 `{ ok: true }`, 실패면 `{ ok: false, error }`이고 `error`는 에러 객체다(권한 없음 403 `permission.denied`, 모르는 채널이나 틀린 페이로드 422 `validation.invalid_choice`, `source.pointer`는 `/channel`).
+- 연결: 전송은 WebSocket만 받는다. 브라우저 연결의 Origin은 허용 목록으로 본다. 로그인한 연결은 `auth.ticket`에 티켓(`POST /realtime-tickets`, 30초, 1회용)을 넣는다. 티켓이 틀렸거나 만료됐거나 세션이 끝났으면 연결을 거부하고, `connect_error`의 message는 `auth.token_invalid`, data는 에러 객체(`status` "401")다. 티켓이 없으면 익명 연결이다.
+- 이벤트는 쓰기가 commit된 뒤에 나간다. 한 연결이 여러 룸에 있어도 한 번 받는다. `session.revoked`는 그 사용자의 모든 연결이 받으므로(페이로드에 세션 id가 없다) 클라이언트는 자기 세션이 살아 있는지 확인한다. `me.updated`의 `changed`는 `roles`(역할을 받거나 잃음, 가진 역할의 권한이 바뀌거나 역할이 지워짐), `status`(관리자가 상태를 바꿈), `profile`(이름, 로케일, 아바타)이다.
 
 ## 메일 링크
 

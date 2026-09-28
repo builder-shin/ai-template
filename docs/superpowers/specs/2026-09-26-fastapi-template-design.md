@@ -53,7 +53,7 @@
 | F10 | 로컬 S3             | SeaweedFS(`weed mini` 단일 컨테이너)                                                                                                                           | Apache-2.0이다. S3 API로 CORS를 설정하는 기능, presigned 요청, 체크섬 헤더 처리를 소스로 확인했다. RustFS는 1.0이 나온 지 열흘이고 Garage는 AGPL이다                             |
 | F11 | Redis 이미지        | Valkey 9.1. 클라이언트는 redis-py                                                                                                                              | Redis 8은 AGPL·SSPL·RSAL 삼중 라이선스다. 템플릿 사용자에게 라이선스 부담을 넘기지 않는다                                                                                        |
 | F12 | 모의 OAuth          | navikt/mock-oauth2-server 6.0.3 하나에 발급자 셋(google, kakao, naver)을 둔다                                                                                  | 가볍고, 다중 발급자, PKCE, 발급자별 클레임을 지원한다                                                                                                                            |
-| F13 | OAuth 클라이언트    | httpx-oauth. PKCE는 구글에만 쓴다                                                                                                                              | 구글·카카오·네이버 클라이언트를 한 인터페이스로 제공한다. 카카오는 PKCE를 지원하지 않고, 네이버는 문서에 PKCE가 없다                                                             |
+| F13 | OAuth 클라이언트    | httpx-oauth의 OAuth2 클라이언트(주소는 설정)로 인가 URL과 코드 교환을 한다. 세 제공자 모두 OIDC 인가(scope에 openid)와 PKCE(S256)를 쓴다 | 구글·카카오·네이버의 OIDC discovery가 모두 S256을 알린다(M4에서 확인, §14). 처음에는 카카오가 PKCE를 지원하지 않고 네이버 문서에 PKCE가 없다고 보아 구글에만 쓰려 했다. 제공자별 클라이언트는 주소를 바꿀 수 없고 프로필을 POST로 읽어 쓰지 않는다 |
 | F14 | 업로드              | 계약대로 presigned PUT이다. `Content-Type`과 `Content-Length`를 서명에 넣는다                                                                                  | 선언한 크기와 정확히 같은 크기만 올라간다. 완료 확인의 HEAD 검사가 한 번 더 막으므로 계약을 바꿀 필요가 없다                                                                     |
 | F15 | 파일 전달           | ready 파일은 모두 presigned GET(10분)으로 준다. `included`에 들어간 파일에도 `meta.downloadUrl`을 채운다                                                       | 공개 이미지도 같은 경로로 전달해 규칙을 하나로 둔다. 공개 버킷과 CDN은 운영 선택이라 전환 방법만 문서로 남긴다                                                                   |
 | F16 | Node 기반 도구      | PyPI의 `nodejs-wheel-binaries`(Node 24)를 `python -m nodejs_wheel`로 실행하고(명령 셸이 없다), API 스타일 룰셋은 설정까지 담은 한 파일짜리 번들로 넣는다                                                                | 시스템 Node 없이 uv만으로 셋업한다. 번들이면 템플릿 안에서 npm을 설치할 필요가 없다                                                                                              |
@@ -252,29 +252,30 @@ src/app/modules/posts/
 ### 6.2 소셜 로그인
 
 - 제공자 인터페이스: 인가 URL 만들기, 코드 교환, 신원 조회(`subject`, `email`, `emailVerified`, `name`). 제공자마다 파일 하나로 구현하고 레지스트리에 등록한다.
-- httpx-oauth의 클라이언트를 쓴다. 제공자의 엔드포인트는 설정으로 바꿀 수 있어서, 테스트에서는 모의 OAuth 서버를 가리킨다.
+- httpx-oauth의 OAuth2 클라이언트로 인가 URL을 만들고 코드를 교환한다. 신원은 설정의 프로필 주소를 GET으로 읽는다. 제공자의 주소(인가, 토큰, 프로필)는 설정이라, 개발과 테스트에서는 모의 OAuth 서버를 가리킨다.
 - 제공자별 신원 판정
 
 | 제공자 | 이메일 검증 판정                                     | PKCE |
 | ------ | ---------------------------------------------------- | ---- |
-| google | `email_verified`가 참                                | 쓴다 |
-| kakao  | `kakao_account.is_email_valid`와 `is_email_verified`가 모두 참 | 없음 |
-| naver  | 검증 플래그가 없으므로 항상 미검증                   | 없음 |
+| google | `email_verified`가 참이고 `gmail.com` 주소이거나 `hd`가 있음 | 쓴다 |
+| kakao  | `kakao_account.is_email_valid`와 `is_email_verified`가 모두 참 | 쓴다 |
+| naver  | 검증 플래그가 없으므로 항상 미검증                   | 쓴다(OIDC 경로 `/oauth2/authorize`, `/oauth2/token`) |
 
 - `authorize`
-  - `redirectUri`를 설정의 허용 목록으로 검사한다. 목록에 없으면 400이다.
-  - state, PKCE verifier, `redirectUri`, 제공자를 Valkey에 10분 두고 제공자로 302 리다이렉트한다.
+  - `redirectUri`를 설정의 허용 목록으로 검사한다. 목록에 없으면 400 `jsonapi.invalid_query`(`source.parameter`: `redirectUri`)다.
+  - BFF가 로그인 시도마다 만든 code verifier의 S256인 `codeChallenge`(base64url 43자)를 함께 받는다. 없거나 형식이 틀리면 400 `jsonapi.invalid_query`(`source.parameter`: `codeChallenge`)다.
+  - state, 제공자와 주고받을 자신의 PKCE verifier, 받은 `codeChallenge`, `redirectUri`, 제공자를 Valkey에 10분 두고 제공자로 302 리다이렉트한다.
 - `callback`
-  - state가 없거나 만료됐으면 돌려보낼 곳을 모르므로 400 `ErrorDocument`다.
+  - state가 없거나 만료됐거나 다른 제공자의 것이면 돌려보낼 곳을 모르므로 400 `jsonapi.invalid_query`(`source.parameter`: `state`)다. 제공자가 덧붙이는 쿼리 파라미터(scope 등)는 받아들인다.
   - 사용자가 제공자 화면에서 거부했으면 `redirectUri?error=auth.oauth_denied`로 보낸다.
   - 코드 교환이나 신원 조회에 실패하면 `redirectUri?error=auth.oauth_failed`로 보낸다.
   - 비활성 계정이면 `redirectUri?error=auth.account_deactivated`로 보낸다.
 - 계정 연결 순서(F4)
   1. (제공자, subject)로 연결된 계정이 있으면 그 계정이다.
-  2. 없고 이메일이 검증됐으면, 같은 이메일의 계정에 연결한다. 그런 계정도 없으면 이메일 인증을 마친 새 계정을 만든다.
+  2. 없고 이메일이 검증됐으면, 같은 이메일의 계정에 연결한다. 그 계정이 이메일 인증 전이면(누군가 먼저 가입해 두었을 수 있다) 비밀번호를 지우고 인증을 마친 것으로 둔다. 그런 계정도 없으면 이메일 인증을 마친 새 계정을 만든다.
   3. 이메일이 검증되지 않았거나 없으면, 이메일 없는 새 계정을 만든다. 미검증 이메일은 저장하지 않는다.
 - 새 계정의 `name`은 제공자가 준 이름이고, 없으면 null이다. 역할은 `member`다.
-- 성공하면 1회용 코드(60초, Valkey)를 붙여 `redirectUri?code=...`로 보낸다. BFF가 `POST /sessions`의 `oauthCode` grant로 토큰을 받는다. 코드가 틀리거나 만료됐으면 `auth.oauth_code_invalid`다.
+- 성공하면 1회용 코드(60초, Valkey)에 `codeChallenge`를 실어 `redirectUri?code=...`로 보낸다. BFF가 `POST /sessions`의 `oauthCode` grant에 `code`와 `codeVerifier`를 보내 토큰을 받는다. `codeVerifier`가 `codeChallenge`를 만들지 못하면 코드를 소비하고 `auth.oauth_code_invalid`다. BFF는 자기가 verifier를 쥐지 않은 콜백 `code`를 거부해야 한다(로그인 CSRF 방지, RFC 6749 §10.12).
 
 ### 6.3 RBAC
 
@@ -288,7 +289,7 @@ src/app/modules/posts/
   - 자기보다 권한이 큰 사용자(그 사용자의 실제 권한이 내 권한의 부분집합이 아닌 경우)의 역할과 상태를 바꾸지 못한다.
   - 자기 자신의 역할과 상태는 바꾸지 못한다.
 - 마지막 활성 admin의 admin 역할 회수, 비활성화, 탈퇴는 새 코드 `role.last_admin_protected`(422)로 막는다.
-- 역할이 바뀐 사용자에게는 `me.updated`(`meta.changed`: `roles`, `permissions`)를 보낸다.
+- 역할이 바뀐 사용자에게는 `me.updated`(`meta.changed`: `roles`)를 보낸다. 역할의 권한이 바뀌거나 역할이 지워지면 그 역할을 가진 사용자에게도 보낸다(계약의 `changed`에는 `permissions`가 없다).
 - 비활성화하면 그 사용자의 세션을 모두 폐기한다(`account_deactivated`).
 - 실제 권한은 요청마다 사용자의 역할에서 계산한다. 캐시하지 않는다.
 
@@ -373,13 +374,16 @@ src/app/modules/posts/
 
 - Socket.IO 서버는 `/socket.io/`에 있고 WebSocket 전송만 허용한다. 연결의 Origin은 설정의 허용 목록으로 검사한다.
 - 티켓(`POST /realtime-tickets`)은 Valkey에 30초 두는 1회용 값이고, 사용자 id와 세션 id를 담는다.
-- 접속할 때 `auth.ticket`이 있으면 티켓을 꺼내 지우고, 그 연결을 `user:{id}` 룸에 넣는다. 티켓이 없으면 익명 연결이다. 티켓이 틀리면 연결을 거부한다.
+- 접속할 때 `auth.ticket`이 있으면 티켓을 꺼내 지우고, 세션이 살아 있으면 그 연결을 `user:{id}` 룸에 넣는다. 티켓이 없으면 익명 연결이다. 티켓이 틀렸거나 만료됐거나 세션이 끝났으면 연결을 거부한다. `connect_error`의 message는 `auth.token_invalid`, data는 에러 객체다.
 - 클라이언트 메시지(F22)
   - `subscribe`와 `unsubscribe`, 페이로드는 `RealtimeSubscription`(`{ "channel": "posts" }`)이다.
   - ack는 `RealtimeAck`로, 성공이면 `{ "ok": true }`다. 실패면 `{ "ok": false, "error": ErrorObject }`이고, 권한이 없으면 `permission.denied`, 모르는 채널이면 `validation.invalid_choice`다.
-  - 익명 연결은 `posts`만 구독할 수 있다. `posts:all`에는 `posts:manage`가 필요하다.
+  - 익명 연결은 `posts`만 구독할 수 있다. `posts:all`에는 `posts:manage`가 필요하다. 권한은 구독할 때 DB에서 계산한다.
+  - ack의 에러 객체는 권한 없음 403, 모르는 채널이나 틀린 페이로드 422이고 `source.pointer`는 `/channel`이다.
 - api는 `AsyncRedisManager`로 인스턴스 사이에 이벤트를 전파한다. worker와 scheduler는 쓰기 전용 매니저로 이벤트를 보낸다.
 - 이벤트 페이로드는 모듈의 직렬화 함수로 만든 JSON:API 문서다.
+- 이벤트는 쓰기가 commit된 뒤에 나간다. 모듈이 트랜잭션에 넣고(`queue`) 세션이 commit한 뒤에 페이로드를 만들어 보낸다. 한 연결이 여러 룸에 있어도 한 번 받는다.
+- `session.revoked`는 그 사용자의 모든 연결이 받는다(페이로드에 세션 id가 없다). 클라이언트는 자기 세션이 살아 있는지 확인한다.
 - python-socketio에는 OpenTelemetry 계측이 없으므로, 연결과 메시지 처리에 로그와 수동 span을 둔다.
 
 ### 6.9 잡, 메일, 스케줄러
@@ -615,7 +619,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 - CI(`.github/workflows/ci.yml`)에 잡을 더한다. action은 커밋 SHA로 고정한다.
   - `fastapi`: uv 설치 → `uv run poe setup` → `check` → `test:e2e` → Docker 이미지 빌드
   - `conformance-fastapi`: `pnpm conformance fastapi`
-  - 구조 비교: M1부터 `check` 잡에서 `pnpm spec-compare --subset contract/openapi.yaml templates/fastapi/openapi.json`(구현한 operation만 비교)을 돌리고, M4에서 `--subset`을 뗀다
+  - 구조 비교: M1부터 `check` 잡에서 `pnpm spec-compare --subset contract/openapi.yaml templates/fastapi/openapi.json`(구현한 operation만 비교)을 돌리고, M4에서 `--subset`을 뗐다. M4부터 구조 비교는 실시간 선언(`x-realtime-*`)도 계약과 같은지 본다
 - 루트 `pnpm check`는 Python과 Docker 없이 돌도록 지금 범위를 유지한다. 템플릿 자체 검사는 CI 잡이 맡는다.
 
 ## 12. 마일스톤
@@ -633,9 +637,9 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | M3  | files(업로드, 완료 확인, 다운로드, 읽기 규칙, 정리 잡), posts(필터, 정렬, include, fields, 페이지, 캐시, 감사), `gen:module`, 레시피와 skill                                                                                  | 해당 적합성 흐름 통과. `gen:module`로 만든 모듈이 `check`를 통과                                               |
 | M4  | realtime(티켓, Socket.IO, 구독, 이벤트), 소셜 로그인, OpenTelemetry, `test:e2e`, 구조 비교에서 `--subset` 떼기                                                                                                                | §1.2의 사이클 완료 조건                                                                                       |
 
-### 12.1 M1~M3에서 넘긴 일
+### 12.1 마일스톤 사이에 넘긴 일
 
-M1~M3의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
+M1~M4의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
 
 - M2를 시작하기 전(NestJS가 따라 하기 전에 정한다). M2 계획의 Task 1~2에서 다음과 같이 정했다.
   - POST 본문의 `type` 불일치는 409 `resource.conflict`, 클라이언트가 만든 `id`는 403 `permission.denied`다(JSON:API 1.1 MUST). 계약의 모든 POST가 403과 409를 선언한다. 로그인 없이 부르는 POST에는 `CreateErrors`(403, 409)를, 로그인이 필요한 POST에는 `Conflict`를 더한다(같은 상태를 두 번 넣으면 응답 스키마가 `anyOf`로 겹친다).
@@ -662,9 +666,17 @@ M1~M3의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는
   - 공개 목록 캐시는 `include` 말고 다른 쿼리가 없는 요청만 캐시한다. 키는 검증을 마친 `include` 경로를 정렬한 값이다. 쿼리 문자열을 키로 쓰면 검증하지 않는 `fields` 값만 바꿔 키를 끝없이 만들 수 있다(§6.6, 최종 리뷰).
   - `migrate_disposable`은 이 PC에 있고 이름이 `_test`나 `_e2e`로 끝나는 DB만 비운다(최종 리뷰).
   - `PATCH /files/{id}`는 속성과 상관없이 소유자만 한다. 속성이 없는 PATCH도 소유자가 아니면 403이다(최종 리뷰).
-- M4: 골든 모듈의 실시간 이벤트(`events.py`)와 이벤트 이름 바꾸기(`gen:module`), 레시피 "실시간 이벤트 추가"와 그 skill.
-- M4: 세션 폐기와 역할 변경의 실시간 이벤트(`session.revoked`, `me.updated`). `SessionTokens`는 계약에서 참조하지 않는 스키마라 구조 비교에서 `--subset`을 떼면 드러난다.
-- M4: `Operation`이 JSON:API 밖의 쿼리 파라미터(`redirectUri`, `state`, `code`, `error`)를 선언하고, 제공자가 덧붙이는 파라미터를 받아들이는 콜백 모드가 있어야 한다.
+- M4. M4 계획에서 다음과 같이 했다.
+  - 계약의 `SessionTokens`를 alias로 바꿔 스키마 이름이 따로 생기지 않게 했다. `OAuth_authorize` 설명은 세 제공자 모두 PKCE다.
+  - 구글 이메일은 `email_verified`가 참이고 `gmail.com` 주소이거나 `hd`(구글 워크스페이스)가 있어야 검증된 것으로 본다(§14, 구글 가이드). 그 밖의 주소는 구글이 보증하지 않아 메일함 주인이 바뀐 뒤에도 `email_verified`가 참으로 남을 수 있다. 카카오는 그대로 `is_email_valid`와 `is_email_verified`가 모두 필요하고, 네이버는 항상 미검증이다.
+  - 소셜 로그인은 BFF가 쥔 PKCE 쌍에 묶는다(로그인 CSRF 방지, RFC 6749 §10.12). BFF가 로그인 시도마다 code verifier를 만들어 시작한 브라우저에 연결해 두고(예: httpOnly 쿠키), `authorize`에 `codeChallenge`(verifier의 S256, base64url 43자)를 필수로 보낸다. 백엔드는 이 challenge를 state(10분), 1회용 코드(60초)와 함께 둔다. BFF는 `POST /sessions`의 `oauthCode` grant에 `codeVerifier`를 함께 보내고, 일치하지 않으면 `auth.oauth_code_invalid`이며 코드는 그걸로 소비된다. BFF는 자기가 verifier를 쥐지 않은 프론트 콜백 `code`를 거부해야 한다(그러지 않으면 공격자가 완성된 콜백 URL을 피해자에게 넘길 수 있다). 백엔드는 여전히 쿠키를 모른다(기반 설계: `Authorization: Bearer`만 안다).
+  - 실시간 서버는 api 앱이 `/socket.io`에 붙인다(lifespan에서 만든다). 모듈은 이벤트를 트랜잭션에 넣고(`queue`) 세션이 commit한 뒤에 보낸다. 훅 안(계정 닫기)에서 넣은 이벤트도 부른 쪽의 commit 뒤에 나간다. pub/sub 채널 이름에 Valkey DB 번호를 넣어 개발·테스트·E2E를 나눈다.
+  - 골든 모듈 posts에 실시간 이벤트(`events.py`)가 있고, `gen:module`이 이벤트와 채널 이름을 바꾸고 등록부의 `CHANNELS`, `EVENTS`에 더한다. 레시피 "실시간 이벤트 추가"와 그 skill을 더했다.
+  - `session.revoked`와 `me.updated`를 보낸다. 역할의 권한이 바뀌거나 역할이 지워지면 roles가 멤버를 훅(`roles.on_members_changed`)으로 넘기고 users가 보낸다.
+  - `RedirectOperation`이 JSON:API 밖의 쿼리 파라미터(`redirectUri`, `state`, `code`, `error`)를 선언하고, 콜백 모드는 제공자가 덧붙이는 파라미터를 받아들인다. 3xx 응답에는 본문 스키마를 두지 않는다.
+  - 구조 비교에서 `--subset`을 떼고, 실시간 선언(`x-realtime-*`)도 계약과 같은지 본다.
+  - python-socketio에는 타입 정보가 없어 쓰는 API만 담은 스텁(`typings/socketio/`)을 두었다.
+  - `gen:module`의 테이블 검사는 소스를 바이트로 읽는다(BOM이 있는 파일, M3 최종 재리뷰).
 - 나중. M2의 최종 리뷰가 남긴, 아직 정하지 않은 결정이다.
   - `DELETE /me`에 다시 인증 요구하기
   - `POST /password-changes`에 엄격한 레이트 리밋 걸기
@@ -723,10 +735,17 @@ M1~M3의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는
 | boto3·botocore 1.43.103. aioboto3는 2025년 10월 이후 릴리스가 없다                                                                | https://pypi.org/project/boto3/ , https://pypi.org/project/aioboto3/                                                                                         |
 | navikt/mock-oauth2-server 6.0.3: 다중 발급자, PKCE, 발급자별 클레임                                                              | https://github.com/navikt/mock-oauth2-server/releases , https://github.com/navikt/mock-oauth2-server/pull/130                                                |
 | 구글은 OIDC와 PKCE, `email_verified`를 제공한다                                                                                  | https://accounts.google.com/.well-known/openid-configuration , https://developers.google.com/identity/openid-connect/openid-connect                          |
-| 카카오는 PKCE를 지원하지 않고, `is_email_valid`와 `is_email_verified`를 제공하며, 이메일이 없을 수 있다                           | https://developers.kakao.com/docs/latest/en/kakaologin/rest-api                                                                                              |
+| 카카오는 `is_email_valid`와 `is_email_verified`를 제공하며, 이메일이 없을 수 있다. PKCE 지원은 아래 (M4) 줄을 본다          | https://developers.kakao.com/docs/latest/en/kakaologin/rest-api                                                                                              |
 | 네이버 프로필 응답에는 이메일 검증 플래그가 없다                                                                                 | https://github.com/naver/naver-openapi-guide/blob/master/ko/apilist.md                                                                                       |
 | httpx-oauth 0.17.0은 구글·카카오·네이버 클라이언트와 PKCE 매개변수를 제공한다                                                    | https://github.com/frankie567/httpx-oauth/releases/tag/v0.17.0 , https://github.com/frankie567/httpx-oauth/blob/master/httpx_oauth/oauth2.py                 |
 | (M2) structlog의 rich 예외 출력이 Python 3.14.7(Windows)에서 접근 위반으로 프로세스를 죽인다. 로그와 테스트는 `structlog.dev.plain_traceback`을 쓴다 | 직접 확인(rich `pretty.py`의 `_traverse`)                                                                                                                  |
 | (M2) taskiq-redis 1.2.3의 `ListRedisScheduleSource`는 스케줄을 읽을 때마다 지난 분의 예약을 SCAN으로 다시 찾는다. 키 접두사에 콜론이 있으면 지난 분을 찾지 못한다 | `taskiq_redis/list_schedule_source.py`(`get_schedules`, `_parse_time_key`)                                                                                  |
 | (M2) Mailpit 1.31.2는 `MP_ENABLE_CHAOS=true`로 띄우면 `PUT /api/v1/chaos`로 SMTP 발신을 일부러 거절한다(`{}`는 되돌린다)          | 직접 확인(E2E)                                                                                                                                              |
 | (M3) SeaweedFS 4.47(`weed mini`)에서 boto3의 기본 presign은 SigV2 쿼리 서명이라 `Content-Length`가 서명에 들어가지 않는다(크기가 달라도 PUT이 성공한다). `signature_version="s3v4"`면 `content-length;content-type;host`를 서명하고, 크기나 타입이 다른 PUT은 403이다. S3 API로 건 CORS는 프론트 출처의 preflight를 허용하고 다른 출처는 거절한다 | 직접 확인(스파이크, `src/app/core/tests/test_storage.py`) |
+| (M4) 구글·카카오·네이버의 OIDC discovery가 모두 `code_challenge_methods_supported`에 S256을 알린다. 네이버의 PKCE는 OIDC 경로(`/oauth2/authorize`, `/oauth2/token`, scope `openid` 필수)에 있다 | https://accounts.google.com/.well-known/openid-configuration , https://kauth.kakao.com/.well-known/openid-configuration , https://nid.naver.com/.well-known/openid-configuration , https://developers.naver.com/docs/login/devguide/devguide.md (3.5) |
+| (M4) 구글의 ID 토큰 검증 가이드는 `email_verified`만으로는 이메일 소유를 보증하지 않는다고 안내한다. `hd`(구글 워크스페이스)가 있거나 주소가 `gmail.com`이어야 신뢰할 수 있다 | https://developers.google.com/identity/gsi/web/guides/verify-google-id-token |
+| (M4) httpx-oauth 0.17.0의 카카오·네이버 클라이언트는 주소를 모듈 상수로 고정하고 프로필을 POST로 읽는다. 일반 `OAuth2` 클라이언트는 주소를 받고 PKCE 매개변수를 넘긴다 | `httpx_oauth/clients/kakao.py`, `naver.py`, `oauth2.py` |
+| (M4) mock-oauth2-server 6.0.3은 경로로 발급자를 정하고(설정 없이 `/google`, `/kakao`, `/naver`), 인가 주소의 로그인 폼(username, claims)을 받으면 claims를 토큰과 userinfo에 그대로 담는다(중첩 객체도). userinfo는 GET만 받는다. scope에 openid가 없으면 거절한다. 비ASCII 클레임 값은 깨진다. 거부(access_denied)는 만들지 못한다 | 직접 확인(스파이크, `src/app/modules/auth/tests/test_providers.py`) |
+| (M4) python-engineio 4.14.0의 `ASGIApp`은 `on_startup`·`on_shutdown`이 없으면 lifespan을 감싼 앱에 넘긴다. python-socketio 5.17.0의 pub/sub 매니저는 이 인스턴스의 연결에 먼저 보내고 Valkey로 다른 인스턴스에 알린다. 수신 태스크는 `shutdown()`으로 멈추지 않는다. 클라이언트의 `sid`는 engine.io의 id이고 서버가 부르는 id는 `get_sid()`다. `ConnectionRefusedError(message, data)`가 `connect_error`의 message와 data가 된다 | `engineio/async_drivers/asgi.py`, `socketio/async_pubsub_manager.py`, `socketio/exceptions.py`, 직접 확인(`src/app/core/tests/test_realtime.py`) |
+| (M4) taskiq 0.12.6은 `taskiq[opentelemetry]`로 `OpenTelemetryMiddleware`를 준다. opentelemetry-instrumentation-sqlalchemy 0.66b0에는 타입 정보가 없다 | `taskiq/middlewares/opentelemetry_middleware.py`, 직접 확인(basedpyright) |
+| (M4) Ruff는 원소가 하나인 튜플을 끝 쉼표가 있어도 한 줄로 접는다(magic trailing comma가 아니다). 원소 위에 주석을 두면 여러 줄로 남는다 | 직접 확인(`src/app/modules/registry.py`의 `CHANNELS`) |
