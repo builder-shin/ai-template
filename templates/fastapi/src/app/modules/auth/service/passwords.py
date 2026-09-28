@@ -13,6 +13,7 @@ from datetime import datetime
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.modules.auth.events as events
 import app.modules.auth.repository as repository
 import app.modules.auth.service.mails as mails
 import app.modules.auth.service.tokens as tokens
@@ -28,6 +29,7 @@ from app.core.mail import SEND_MAIL
 from app.core.security import check_password_async
 from app.modules import users
 from app.modules.auth.models import TokenPurpose
+from app.modules.auth.schemas import SessionRevokedReason
 from app.modules.auth.service.accounts import mail_request_limits
 
 
@@ -59,7 +61,8 @@ async def reset_password(
         raise tokens.invalid_token()
     await users.set_password(user, password)
     users.mark_email_verified(user, now)
-    await repository.revoke_sessions(session, user.id, now)
+    if await repository.revoke_sessions(session, user.id, now):
+        events.session_revoked(session, user.id, SessionRevokedReason.PASSWORD_RESET)
     await record_audit(
         session,
         AuditLogAction.USER_PASSWORD_RESET,
@@ -83,7 +86,8 @@ async def change_password(
         raise ApiError(401, ErrorCode.AUTH_INVALID_CREDENTIALS, detail, pointer=pointer)
     now = utc_now()
     await users.set_password(user, new)
-    await repository.revoke_sessions(session, user.id, now, keep=actor.session_id)
+    if await repository.revoke_sessions(session, user.id, now, keep=actor.session_id):
+        events.session_revoked(session, user.id, SessionRevokedReason.PASSWORD_CHANGED)
     await record_audit(
         session,
         AuditLogAction.USER_PASSWORD_CHANGED,

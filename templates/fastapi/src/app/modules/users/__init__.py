@@ -1,5 +1,6 @@
 """users 모듈의 공개 인터페이스. 다른 모듈은 여기서 내보낸 이름만 쓴다."""
 
+from app.modules.users.events import EVENTS, roles_changed
 from app.modules.users.models import Locale, User, UserStatus
 from app.modules.users.permissions import PERMISSIONS, USERS_MANAGE, USERS_READ
 from app.modules.users.router import me, users
@@ -22,6 +23,7 @@ from app.modules.users.service.accounts import (
 ROUTERS = (me, users)
 
 __all__ = [
+    "EVENTS",
     "PERMISSIONS",
     "ROUTERS",
     "USERS_MANAGE",
@@ -41,5 +43,6 @@ __all__ = [
     "normalize_email",
     "on_account_closed",
     "public_users",
+    "roles_changed",
     "set_password",
 ]

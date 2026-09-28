@@ -7621,6 +7621,37 @@
           "all"
         ]
       },
+      "SessionRevokedEventDocument": {
+        "properties": {
+          "meta": {
+            "properties": {
+              "reason": {
+                "$ref": "#/components/schemas/SessionRevokedReason"
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "meta"
+        ],
+        "type": "object"
+      },
+      "SessionRevokedReason": {
+        "enum": [
+          "logout",
+          "password_reset",
+          "account_deactivated",
+          "revoked",
+          "password_changed",
+          "refresh_token_reused",
+          "account_deleted"
+        ],
+        "type": "string"
+      },
       "SessionWithTokensAttributes": {
         "properties": {
           "userAgent": {
@@ -7958,6 +7989,34 @@
             "description": "단수 관계. 대상이 없으면 data가 null이다."
           }
         },
+        "type": "object"
+      },
+      "UserMeUpdatedEventDocument": {
+        "description": "클라이언트는 이 이벤트를 받으면 GET /me를 다시 부른다.",
+        "properties": {
+          "meta": {
+            "properties": {
+              "changed": {
+                "items": {
+                  "enum": [
+                    "roles",
+                    "status",
+                    "profile"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "changed"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "meta"
+        ],
         "type": "object"
       },
       "UserPublicAttributes": {
@@ -8303,6 +8362,20 @@
     }
   ],
   "x-realtime-events": [
+    {
+      "name": "session.revoked",
+      "rooms": [
+        "user:{userId}"
+      ],
+      "payload": "SessionRevokedEventDocument"
+    },
+    {
+      "name": "me.updated",
+      "rooms": [
+        "user:{userId}"
+      ],
+      "payload": "UserMeUpdatedEventDocument"
+    },
     {
       "name": "post.created",
       "rooms": [

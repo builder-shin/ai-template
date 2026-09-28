@@ -15,6 +15,7 @@ from collections.abc import Sequence
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.modules.auth.events as events
 import app.modules.auth.repository as repository
 from app.core.access import Principal
 from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
@@ -33,6 +34,7 @@ from app.modules.auth.schemas import (
     SessionOAuthCodeGrant,
     SessionPasswordGrant,
     SessionRevocationScope,
+    SessionRevokedReason,
 )
 from app.modules.auth.service.credentials import (
     IssuedTokens,
@@ -109,6 +111,7 @@ async def _refresh(session: AsyncSession, settings: Settings, refresh_token: str
         raise invalid
     if row.used_at is not None:
         login.revoked_at = now
+        events.session_revoked(session, login.user_id, SessionRevokedReason.REFRESH_TOKEN_REUSED)
         await session.commit()
         detail = "The refresh token was already used. The session is revoked."
         raise _unauthorized(ErrorCode.AUTH_REFRESH_TOKEN_REUSED, detail)
@@ -142,11 +145,17 @@ async def list_sessions(
 
 
 async def revoke_session(session: AsyncSession, actor: Principal, session_id: uuid.UUID) -> None:
-    """내 세션 하나를 폐기한다. 없거나 남의 세션이면 404다."""
+    """내 세션 하나를 폐기한다. 없거나 남의 세션이면 404다.
+
+    현재 세션이면 사유가 logout, 다른 세션이면 revoked다.
+    """
     login = await repository.live_session(session, actor.user_id, session_id, utc_now())
     if login is None:
         raise ApiError(404, ErrorCode.RESOURCE_NOT_FOUND, f"Session {session_id} does not exist.")
     login.revoked_at = utc_now()
+    current = session_id == actor.session_id
+    reason = SessionRevokedReason.LOGOUT if current else SessionRevokedReason.REVOKED
+    events.session_revoked(session, actor.user_id, reason)
     await session.commit()
 
 
@@ -156,6 +165,8 @@ async def revoke_sessions(
     """others는 현재 세션을 뺀 나머지를, all은 전부 폐기한다. 폐기한 개수를 돌려준다."""
     keep = actor.session_id if scope is SessionRevocationScope.OTHERS else None
     revoked = await repository.revoke_sessions(session, actor.user_id, utc_now(), keep)
+    if revoked:
+        events.session_revoked(session, actor.user_id, SessionRevokedReason.REVOKED)
     if scope is SessionRevocationScope.ALL:
         await record_audit(
             session,

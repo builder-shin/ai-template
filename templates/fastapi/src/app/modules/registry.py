@@ -43,7 +43,7 @@ PERMISSIONS: tuple[Permission, ...] = (
 JOBS: tuple[Job[...], ...] = (SEND_MAIL, *auth.JOBS, *files.JOBS)
 AUTHENTICATOR: Authenticator = auth.authenticate
 CHANNELS: tuple[Channel, ...] = (*posts.CHANNELS,)
-EVENTS: tuple[EventSpec, ...] = (*posts.EVENTS,)
+EVENTS: tuple[EventSpec, ...] = (*auth.EVENTS, *users.EVENTS, *posts.EVENTS)
 MESSAGES: tuple[MessageSpec, ...] = realtime.MESSAGES
 
 
@@ -57,6 +57,8 @@ def attach_realtime(server: socketio.AsyncServer, state: State) -> None:
 
 # 계정을 닫을 때(비활성화, 탈퇴) auth가 세션을 폐기하고 토큰을 지운다.
 users.on_account_closed(auth.close_credentials)
+# 역할의 권한이 바뀌거나 역할이 지워지면 users가 그 역할을 가진 사용자에게 me.updated를 보낸다.
+roles.on_members_changed(users.roles_changed)
 # 소유자가 아닌 사람도 읽는 파일: 사용자의 아바타(공개 표현에 들어간다).
 files.add_read_rule(users.avatar_readable)
 # 볼 수 있는 글의 커버 이미지.

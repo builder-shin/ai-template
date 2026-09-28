@@ -11,6 +11,7 @@ from app.core.jsonapi.models import (
     CollectionDocument,
     CreateDocument,
     Document,
+    InlineModel,
     Int32,
     JsonApiModel,
     Omittable,
@@ -271,3 +272,22 @@ class PasswordChangeCreateDocument(
     CreateDocument[PasswordChangeType, PasswordChangeCreateAttributes]
 ):
     """생성 요청 문서."""
+
+
+# 실시간 이벤트의 페이로드(계약의 realtime.tsp). 보내는 곳은 events.py다.
+class SessionRevokedReason(StrEnum):
+    LOGOUT = "logout"
+    PASSWORD_RESET = "password_reset"
+    ACCOUNT_DEACTIVATED = "account_deactivated"
+    REVOKED = "revoked"
+    PASSWORD_CHANGED = "password_changed"
+    REFRESH_TOKEN_REUSED = "refresh_token_reused"
+    ACCOUNT_DELETED = "account_deleted"
+
+
+class SessionRevokedEventMeta(InlineModel):
+    reason: SessionRevokedReason
+
+
+class SessionRevokedEventDocument(JsonApiModel):
+    meta: SessionRevokedEventMeta

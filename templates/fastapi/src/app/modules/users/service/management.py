@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.modules.users.events as events
 import app.modules.users.repository as repository
 import app.modules.users.service.accounts as accounts
 from app.core.access import Principal
@@ -129,7 +130,9 @@ async def update_user(
     if deactivating or any(role.is_admin for role in removed):
         await accounts.protect_last_admin(session, user)
     target = (AuditLogTargetType.USERS, user.id)
+    changed: list[events.Change] = []
     if added or removed:
+        changed.append("roles")
         await roles.change_roles(session, user.id, added, removed)
         changes = {
             "added": sorted(role.name for role in added),
@@ -144,6 +147,7 @@ async def update_user(
             metadata=changes,
         )
     if status is not None and status != user.status:
+        changed.append("status")
         user.status = status
         action = AuditLogAction.USER_REACTIVATED
         if status == UserStatus.DEACTIVATED:
@@ -152,5 +156,6 @@ async def update_user(
         await record_audit(
             session, action, actor_id=actor.user_id, ip_address=client.ip, target=target
         )
+    events.me_updated(session, [user.id], changed)
     await session.commit()
     return user

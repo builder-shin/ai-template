@@ -134,3 +134,14 @@ class UserFilter(FilterModel):
     q: Omittable[str] = MISSING
     status: Omittable[UserStatus] = MISSING
     role: Omittable[uuid.UUID] = MISSING
+
+
+# 실시간 이벤트의 페이로드(계약의 realtime.tsp). 보내는 곳은 events.py다.
+class UserMeUpdatedEventMeta(InlineModel):
+    changed: list[Literal["roles", "status", "profile"]]
+
+
+class UserMeUpdatedEventDocument(JsonApiModel):
+    """클라이언트는 이 이벤트를 받으면 GET /me를 다시 부른다."""
+
+    meta: UserMeUpdatedEventMeta

@@ -67,6 +67,12 @@ async def page(
     return await fetch_page(session, query.order_by(*order), window)
 
 
+async def member_ids(session: AsyncSession, role_id: uuid.UUID) -> list[uuid.UUID]:
+    """역할을 가진 사용자의 id."""
+    found = await session.scalars(select(UserRole.user_id).where(UserRole.role_id == role_id))
+    return list(found)
+
+
 async def remove(session: AsyncSession, role: Role) -> None:
     await session.delete(role)
 

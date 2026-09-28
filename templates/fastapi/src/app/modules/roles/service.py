@@ -7,7 +7,7 @@
 """
 
 import uuid
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 
 from pydantic.experimental.missing_sentinel import MISSING
 from sqlalchemy.exc import IntegrityError
@@ -198,6 +198,25 @@ async def create_role(
     return role
 
 
+type MembersChanged = Callable[[AsyncSession, Sequence[uuid.UUID]], None]
+_members_changed: list[MembersChanged] = []
+
+
+def on_members_changed(hook: MembersChanged) -> None:
+    """역할의 권한이 바뀌거나 역할이 지워질 때 그 역할을 가진 사용자로 부를 처리를 등록한다.
+
+    users가 me.updated를 보낸다(app.modules.registry). roles가 users를 import하면 순환이다.
+    """
+    if hook not in _members_changed:
+        _members_changed.append(hook)
+
+
+async def _notify_members(session: AsyncSession, role: Role) -> None:
+    members = await repository.member_ids(session, role.id)
+    for hook in _members_changed:
+        hook(session, members)
+
+
 async def update_role(
     session: AsyncSession,
     registry: PermissionRegistry,
@@ -225,6 +244,7 @@ async def update_role(
             _require_within(permissions, actor)
             role.permissions = permissions
             changed.append("permissions")
+            await _notify_members(session, role)
     if changed:
         await _flush_named(session, role.name)
         await record_audit(
@@ -249,6 +269,7 @@ async def delete_role(
     if role.is_system:
         raise _protected("System roles cannot be deleted.")
     _require_within(role_permissions(role, registry), actor)
+    await _notify_members(session, role)
     await repository.remove(session, role)
     await record_audit(
         session,

@@ -6,6 +6,7 @@
 from pydantic.experimental.missing_sentinel import MISSING
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.modules.users.events as events
 import app.modules.users.service.accounts as accounts
 from app.core.access import Principal
 from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
@@ -30,6 +31,7 @@ async def update_me(
     avatar는 파일 id이고, None이면 아바타를 뺀다.
     """
     user = await accounts.require_user(session, actor.user_id)
+    before = (user.name, user.locale, user.avatar_id)
     if avatar is not MISSING:
         if avatar is None:
             user.avatar_id = None
@@ -40,6 +42,8 @@ async def update_me(
         user.name = name
     if locale is not None:
         user.locale = locale
+    if (user.name, user.locale, user.avatar_id) != before:
+        events.me_updated(session, [user.id], ["profile"])
     await session.commit()
     return user
 

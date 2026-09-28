@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.modules.auth.events as events
 import app.modules.auth.repository as repository
 from app.core.access import Principal
 from app.core.config import Settings
@@ -30,6 +31,7 @@ from app.core.security import (
 )
 from app.modules import roles, users
 from app.modules.auth.models import LoginSession, RefreshToken
+from app.modules.auth.schemas import SessionRevokedReason
 
 REFRESH_TOKEN_TTL = timedelta(days=30)
 
@@ -128,8 +130,15 @@ async def close_credentials(
     """계정을 닫을 때(users.close_account) 부른다.
 
     세션을 모두 폐기하고, 탈퇴면 남은 1회용 토큰도 지운다. commit하지 않는다. 부른 쪽(users)의
-    트랜잭션에 들어간다.
+    트랜잭션에 들어가고, session.revoked도 그 commit 뒤에 나간다.
     """
-    await repository.revoke_sessions(session, user_id, utc_now())
-    if closure is users.Closure.DELETED:
+    deleted = closure is users.Closure.DELETED
+    if await repository.revoke_sessions(session, user_id, utc_now()):
+        reason = (
+            SessionRevokedReason.ACCOUNT_DELETED
+            if deleted
+            else SessionRevokedReason.ACCOUNT_DEACTIVATED
+        )
+        events.session_revoked(session, user_id, reason)
+    if deleted:
         await repository.delete_account_tokens(session, user_id)

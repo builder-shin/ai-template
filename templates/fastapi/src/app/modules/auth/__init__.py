@@ -1,5 +1,6 @@
 """auth 모듈의 공개 인터페이스. 다른 모듈은 여기서 내보낸 이름만 쓴다."""
 
+from app.modules.auth.events import EVENTS
 from app.modules.auth.jobs import JOBS
 from app.modules.auth.router.accounts import registrations, verification_requests, verifications
 from app.modules.auth.router.passwords import changes, reset_requests, resets
@@ -24,6 +25,7 @@ ROUTERS = (
 )
 
 __all__ = [
+    "EVENTS",
     "JOBS",
     "ROUTERS",
     "IssuedTokens",
