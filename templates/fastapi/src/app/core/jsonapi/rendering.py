@@ -37,9 +37,20 @@ def render(
     if not fields:
         body = document.model_dump_json()
         return Response(body, status_code=status_code, media_type=JSONAPI_MEDIA_TYPE)
+    return JsonApiResponse(document_content(document, fields), status_code=status_code)
+
+
+def document_content(
+    document: JsonApiModel, fields: Mapping[str, frozenset[str]] | None = None
+) -> dict[str, Any]:
+    """문서를 응답 본문(JSON 값)으로 만든다. fields가 있으면 sparse fieldset을 적용한다.
+
+    본문을 캐시에 넣을 때 쓴다(캐시에서 꺼낸 본문은 JsonApiResponse로 돌려준다).
+    """
     content = document.model_dump(mode="json")
-    _apply_sparse_fieldsets(content, fields)
-    return JsonApiResponse(content, status_code=status_code)
+    if fields:
+        _apply_sparse_fieldsets(content, fields)
+    return content
 
 
 def _resource_objects(content: dict[str, Any]) -> list[dict[str, Any]]:

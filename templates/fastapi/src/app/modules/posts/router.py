@@ -2,18 +2,20 @@
 
 import uuid
 from collections.abc import Sequence
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
+from urllib.parse import urlencode
 
 from fastapi import Depends, Path, Request, Response
 from pydantic.experimental.missing_sentinel import MISSING
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.modules.posts.policies as policies
 import app.modules.posts.service as service
-from app.core.access import OptionalPrincipalDep, PrincipalDep
+from app.core.access import OptionalPrincipalDep, Principal, PrincipalDep
 from app.core.clients import ClientDep
 from app.core.db import SessionDep
 from app.core.jsonapi.errors import require_matching_id
-from app.core.jsonapi.media import JsonApiBody
+from app.core.jsonapi.media import JsonApiBody, JsonApiResponse
 from app.core.jsonapi.models import CollectionMeta, ResourceIdentifier, ToOne
 from app.core.jsonapi.operation import (
     AUTH_ERRORS,
@@ -27,7 +29,8 @@ from app.core.jsonapi.operation import (
     Operation,
 )
 from app.core.jsonapi.query import CollectionQuery, ResourceQuery
-from app.core.jsonapi.rendering import load_included, pagination, render
+from app.core.jsonapi.rendering import document_content, load_included, pagination, render
+from app.core.redis import RedisDep
 from app.core.storage import Storage, StorageDep
 from app.modules import files, users
 from app.modules.posts.models import Post, PostStatus
@@ -90,6 +93,19 @@ DELETE = Operation(
 )
 PostId = Annotated[uuid.UUID, Path(alias="id")]
 Included = users.UserPublicResource | files.FileResource
+# 공개 목록의 첫 페이지로 캐시할 수 있는 요청의 쿼리 파라미터(포함 리소스와 필드만 고를 수 있다)
+_PUBLIC_PARAMETERS = frozenset({"include", *(f"fields[{kind}]" for kind in POST_FIELDS)})
+
+
+def public_page_key(request: Request, viewer: Principal | None) -> str | None:
+    """발행된 글의 첫 페이지(필터 없음, 기본 정렬, 기본 크기)를 보는 요청이면 캐시 키, 아니면 None.
+
+    초안이 보이는 사람(posts:manage)은 공개 목록을 보지 않으므로 캐시하지 않는다. 링크와 포함
+    리소스가 쿼리에 따라 달라지므로 쿼리 문자열이 키에 들어간다.
+    """
+    if not set(request.query_params) <= _PUBLIC_PARAMETERS or policies.manages(viewer):
+        return None
+    return f"public?{urlencode(sorted(request.query_params.multi_items()))}"
 
 
 def post_resource(post: Post) -> PostResource:
@@ -135,27 +151,37 @@ async def list_posts(
     request: Request,
     session: SessionDep,
     storage: StorageDep,
+    redis: RedisDep,
     viewer: OptionalPrincipalDep,
     query: Annotated[CollectionQuery[PostFilter], Depends(LIST)],
 ) -> Response:
-    wanted = query.filter
-    found, total = await service.list_posts(
-        session,
-        viewer,
-        status=None if wanted.status is MISSING else wanted.status,
-        author=None if wanted.author is MISSING else wanted.author,
-        q=None if wanted.q is MISSING else wanted.q,
-        sort=query.sort,
-        window=query.page,
-    )
-    links, page = pagination(request, query.page, total)
-    document = PostCollectionDocument(
-        data=[post_resource(post) for post in found],
-        included=await included_for(session, storage, query.include, found),
-        links=links,
-        meta=CollectionMeta(page=page),
-    )
-    return render(document, fields=query.fields)
+    async def build() -> PostCollectionDocument:
+        wanted = query.filter
+        found, total = await service.list_posts(
+            session,
+            viewer,
+            status=None if wanted.status is MISSING else wanted.status,
+            author=None if wanted.author is MISSING else wanted.author,
+            q=None if wanted.q is MISSING else wanted.q,
+            sort=query.sort,
+            window=query.page,
+        )
+        links, page = pagination(request, query.page, total)
+        return PostCollectionDocument(
+            data=[post_resource(post) for post in found],
+            included=await included_for(session, storage, query.include, found),
+            links=links,
+            meta=CollectionMeta(page=page),
+        )
+
+    async def build_content() -> dict[str, Any]:
+        return document_content(await build(), query.fields)
+
+    key = public_page_key(request, viewer)
+    if key is None:
+        return render(await build(), fields=query.fields)
+    cache = service.posts_cache(redis)
+    return JsonApiResponse(await cache.get_or_set(key, service.PUBLIC_CACHE_TTL, build_content))
 
 
 @posts.route("GET", "/{id}", GET, response_model=PostDocument)
@@ -173,7 +199,10 @@ async def get_post(
 
 @posts.route("POST", "", CREATE, response_model=PostDocument)
 async def create_post(
-    session: SessionDep, actor: PrincipalDep, document: JsonApiBody[PostCreateDocument]
+    session: SessionDep,
+    redis: RedisDep,
+    actor: PrincipalDep,
+    document: JsonApiBody[PostCreateDocument],
 ) -> Response:
     data = document.data
     attributes = data.attributes
@@ -183,6 +212,7 @@ async def create_post(
         cover = None if identifier is None else identifier.id
     post = await service.create_post(
         session,
+        service.posts_cache(redis),
         actor,
         title=attributes.title,
         body=attributes.body,
@@ -196,6 +226,7 @@ async def create_post(
 async def update_post(
     post_id: PostId,
     session: SessionDep,
+    redis: RedisDep,
     actor: PrincipalDep,
     document: JsonApiBody[PostUpdateDocument],
 ) -> Response:
@@ -211,14 +242,25 @@ async def update_post(
         body = None if data.attributes.body is MISSING else data.attributes.body
         status = None if data.attributes.status is MISSING else data.attributes.status
     post = await service.update_post(
-        session, actor, post_id, title=title, body=body, status=status, cover=cover
+        session,
+        service.posts_cache(redis),
+        actor,
+        post_id,
+        title=title,
+        body=body,
+        status=status,
+        cover=cover,
     )
     return render(PostDocument(data=post_resource(post)))
 
 
 @posts.route("DELETE", "/{id}", DELETE, response_model=None)
 async def delete_post(
-    post_id: PostId, session: SessionDep, actor: PrincipalDep, client: ClientDep
+    post_id: PostId,
+    session: SessionDep,
+    redis: RedisDep,
+    actor: PrincipalDep,
+    client: ClientDep,
 ) -> Response:
-    await service.delete_post(session, actor, client, post_id)
+    await service.delete_post(session, service.posts_cache(redis), actor, client, post_id)
     return Response(status_code=204)

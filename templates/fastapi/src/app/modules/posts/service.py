@@ -8,18 +8,24 @@
 - 발행하면 publishedAt을 채우고, 발행을 취소하면 null로 되돌린다.
 - 커버 이미지는 요청한 사람이 올린 ready 이미지여야 한다(files.attachable_file).
 - 관리자(작성자가 아닌 posts:manage)가 글을 지우면 감사 로그 post.deleted_by_admin을 남긴다.
+- 공개 목록의 첫 페이지는 60초 캐시한다(posts_cache). 글을 쓰면 commit한 뒤에 캐시를 지운다.
+  다른 모듈의 변경(작성자 이름, 커버 파일 삭제)은 캐시가 끝나면 반영된다. 캐시 수명은 포함
+  리소스의 presigned URL 수명(10분)보다 짧다.
 """
 
 import uuid
 from collections.abc import Sequence
+from datetime import timedelta
 
 from pydantic.experimental.missing_sentinel import MISSING
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.posts.policies as policies
 import app.modules.posts.repository as repository
 from app.core.access import Principal
 from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
+from app.core.cache import Cache
 from app.core.clients import Client
 from app.core.db import utc_now
 from app.core.jsonapi.errors import ApiError
@@ -29,6 +35,12 @@ from app.modules import files
 from app.modules.posts.models import Post, PostStatus
 
 COVER_POINTER = "/data/relationships/coverImage/data"
+PUBLIC_CACHE_TTL = timedelta(seconds=60)
+
+
+def posts_cache(redis: Redis) -> Cache:
+    """글의 캐시(공개 목록의 첫 페이지)."""
+    return Cache(redis, "posts")
 
 
 def _not_found(post_id: uuid.UUID) -> ApiError:
@@ -83,6 +95,7 @@ async def _cover_id(session: AsyncSession, actor: Principal, cover: str | None) 
 
 async def create_post(
     session: AsyncSession,
+    cache: Cache,
     actor: Principal,
     *,
     title: str,
@@ -102,6 +115,7 @@ async def create_post(
     )
     repository.add(session, post)
     await session.commit()
+    await cache.clear()
     return post
 
 
@@ -115,6 +129,7 @@ async def _editable_post(session: AsyncSession, post_id: uuid.UUID, actor: Princ
 
 async def update_post(
     session: AsyncSession,
+    cache: Cache,
     actor: Principal,
     post_id: uuid.UUID,
     *,
@@ -144,11 +159,12 @@ async def update_post(
     if cover is not MISSING:
         post.cover_image_id = await _cover_id(session, actor, cover)
     await session.commit()
+    await cache.clear()
     return post
 
 
 async def delete_post(
-    session: AsyncSession, actor: Principal, client: Client, post_id: uuid.UUID
+    session: AsyncSession, cache: Cache, actor: Principal, client: Client, post_id: uuid.UUID
 ) -> None:
     post = await _editable_post(session, post_id, actor)
     await repository.remove(session, post)
@@ -162,3 +178,4 @@ async def delete_post(
             metadata={"author": str(post.author_id)},
         )
     await session.commit()
+    await cache.clear()
