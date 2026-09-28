@@ -27,6 +27,7 @@ FastAPI의 공식 skill은 `.claude/skills/fastapi/SKILL.md`에 있다. FastAPI 
 | `jinja2` | 3.1.6 | 메일 템플릿(`app.core.mail`) | https://jinja.palletsprojects.com/en/stable/ |
 | `pwdlib` | 0.3.1 | 비밀번호 해시(Argon2id, `app.core.security`) | https://frankie567.github.io/pwdlib/ |
 | `pyjwt` | 2.15.0 | access token(JWT, `app.core.security`) | https://pyjwt.readthedocs.io/en/2.15.0/ |
+| `python-socketio` | 5.17.0 | 실시간 서버와 발행기(`app.core.realtime`). 타입 스텁은 `typings/socketio/` | https://python-socketio.readthedocs.io/en/stable/ |
 
 ## 개발 도구
 
@@ -42,6 +43,7 @@ FastAPI의 공식 skill은 `.claude/skills/fastapi/SKILL.md`에 있다. FastAPI 
 | `lefthook`              | 2.1.14  | git hook(`lefthook.yml`)             | https://lefthook.dev/                          |
 | `nodejs-wheel-binaries` | 24.19.0 | 계약 린트를 돌리는 Node              | https://github.com/njzjz/nodejs-wheel          |
 | `types-boto3-lite`      | 1.43.93 | boto3의 S3 타입                      | https://youtype.github.io/types_boto3_docs/    |
+| `aiohttp` | 3.14.3 | 테스트의 Socket.IO 클라이언트(`app.tests.sockets`) | https://docs.aiohttp.org/en/v3.14.3/ |
 
 ## 이미지와 바이너리
 

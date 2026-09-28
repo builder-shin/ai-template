@@ -21,6 +21,8 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
+from app.core.realtime import PUBLISHER_KEY, EventSession, Publisher
+
 # 제약 이름 규칙. 마이그레이션이 어느 DB에서나 같은 이름을 만들어, 이름으로 고치거나 지울 수 있다.
 NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
@@ -61,9 +63,16 @@ def create_engine(url: str) -> AsyncEngine:
     return create_async_engine(url, pool_pre_ping=True)
 
 
-def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
-    """세션 팩토리. commit 뒤에도 읽은 값을 그대로 쓸 수 있게 만료시키지 않는다."""
-    return async_sessionmaker(engine, expire_on_commit=False)
+def session_factory(
+    engine: AsyncEngine, publisher: Publisher | None = None
+) -> async_sessionmaker[AsyncSession]:
+    """세션 팩토리. commit 뒤에도 읽은 값을 그대로 쓸 수 있게 만료시키지 않는다.
+
+    세션은 commit이 성공한 뒤 queue한 실시간 이벤트를 publisher로 보낸다(app.core.realtime).
+    publisher가 없으면 이벤트를 보내지 않는다(alembic, 시드 같은 도구).
+    """
+    info = {} if publisher is None else {PUBLISHER_KEY: publisher}
+    return async_sessionmaker(engine, class_=EventSession, expire_on_commit=False, info=info)
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:

@@ -5,7 +5,7 @@
   이름은 `<모듈>.<동사구>`(예: `mail.send`)로 직접 정한다. 함수를 옮겨도 큐에 남은 잡이 길을
   잃지 않는다.
 - 잡 함수의 인자는 JSON으로 오갈 수 있는 값(원시 값, Pydantic 모델)이다. worker가 타입 힌트대로
-  다시 만든다. 설정, DB 세션, 스토리지는 인자로 넘기지 않고 `JobContext`로 받는다:
+  다시 만든다. 설정, DB 세션, 스토리지, 실시간 발행기는 인자로 넘기지 않고 `JobContext`로 받는다:
   `async def run(..., context: JobContext = JOB_CONTEXT) -> None`
 - api는 요청에서 `JobsDep`(JobQueue)로 잡을 보낸다. 테스트의 JobQueue는 잡을 그 자리에서 실행한다.
 - 주기 작업은 `cron`(UTC 기준 cron 식)을 적는다. scheduler가 때가 되면 보낸다.
@@ -21,6 +21,7 @@ from taskiq import AsyncBroker, Context, TaskiqDepends, TaskiqEvents, TaskiqStat
 
 from app.core.config import Settings
 from app.core.db import create_engine, session_factory
+from app.core.realtime import Publisher, RedisPublisher
 from app.core.storage import Storage
 
 
@@ -35,11 +36,16 @@ class Job[**P]:
 
 @dataclass(frozen=True, slots=True)
 class JobContext:
-    """잡이 쓰는 설정, DB 세션 팩토리, 스토리지. worker가 시작할 때 만든다."""
+    """잡이 쓰는 설정, DB 세션 팩토리, 스토리지, 실시간 발행기. worker가 시작할 때 만든다.
+
+    worker는 소켓 서버가 아니므로 발행기는 쓰기 전용(Valkey pub/sub)이다. 세션도 commit한 뒤
+    queue한 이벤트를 이 발행기로 보낸다.
+    """
 
     settings: Settings
     sessions: async_sessionmaker[AsyncSession]
     storage: Storage
+    realtime: Publisher
 
 
 _TASKIQ_CONTEXT: Context = TaskiqDepends()
@@ -69,23 +75,29 @@ def attach_context(
     settings: Settings,
     sessions: async_sessionmaker[AsyncSession] | None = None,
     storage: Storage | None = None,
+    publisher: Publisher | None = None,
 ) -> None:
     """worker로 시작할 때 JobContext를 만들고, 내릴 때 엔진을 닫는다.
 
     sessions를 주면 그 팩토리를 쓴다(테스트가 롤백되는 세션을 넘긴다). 없으면 엔진을 새로 만든다.
     storage를 주면 그것을 쓴다(테스트가 테스트마다 다른 prefix를 넘긴다). 없으면 설정으로 만든다.
+    publisher를 주면 그것을 쓴다(테스트가 보낸 이벤트를 모은다). 없으면 쓰기 전용 발행기다.
     api와 scheduler는 잡을 실행하지 않으므로 이 처리가 돌지 않는다.
     """
     engines: list[AsyncEngine] = []
 
     async def start(state: TaskiqState) -> None:
+        realtime = publisher or RedisPublisher(settings.redis_url)
         factory = sessions
         if factory is None:
             engine = create_engine(settings.database_url)
             engines.append(engine)
-            factory = session_factory(engine)
+            factory = session_factory(engine, realtime)
         state.job_context = JobContext(
-            settings=settings, sessions=factory, storage=storage or Storage(settings)
+            settings=settings,
+            sessions=factory,
+            storage=storage or Storage(settings),
+            realtime=realtime,
         )
 
     async def stop(state: TaskiqState) -> None:

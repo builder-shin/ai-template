@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     mail_from: NonEmpty
     # 메일 링크의 프론트 주소. 인증·재설정 링크는 여기에 경로와 ?token=을 붙인다
     frontend_url: HttpUrl
+    # Socket.IO 연결을 받을 브라우저 Origin(쉼표로 구분). 예: http://localhost:3000
+    realtime_allowed_origins: CommaSeparated
     # 시드(python -m app.seed)가 만드는 관리자 계정
     seed_admin_email: NonEmpty
     seed_admin_password: Annotated[SecretStr, Field(min_length=8)]

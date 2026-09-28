@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.audit import AuditLog
 from app.core.config import Settings
 from app.core.jobs import JobContext
+from app.core.realtime import RecordingPublisher
 from app.core.security import digest
 from app.core.storage import Storage
 from app.modules.auth.jobs import purge_credentials
@@ -132,7 +133,11 @@ async def test_accounts_without_a_password_cannot_change_it(
 
 
 async def test_purge_removes_only_expired_tokens_and_ended_sessions(
-    infra: Settings, db: async_sessionmaker[AsyncSession], storage: Storage, accounts: Accounts
+    infra: Settings,
+    db: async_sessionmaker[AsyncSession],
+    storage: Storage,
+    accounts: Accounts,
+    publisher: RecordingPublisher,
 ) -> None:
     user = await accounts.create()
     now = datetime.now(UTC)
@@ -161,7 +166,9 @@ async def test_purge_removes_only_expired_tokens_and_ended_sessions(
             ]
         )
         await session.commit()
-    await purge_credentials(JobContext(settings=infra, sessions=db, storage=storage))
+    await purge_credentials(
+        JobContext(settings=infra, sessions=db, storage=storage, realtime=publisher)
+    )
     async with db() as session:
         counts = [
             await session.scalar(select(func.count()).select_from(model))

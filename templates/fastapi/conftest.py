@@ -3,14 +3,18 @@
 - settings: .env를 읽어 DB를 app_test로, Valkey를 DB 15로 바꾼 설정. 연결하지 않는다.
 - infra: 인프라에 접속해 보고(꺼져 있으면 세션을 바로 멈춘다) app_test를 head까지 마이그레이션한다.
   app_test가 지금 없는 리비전에 있으면 스키마를 비우고 다시 한다(tools.infra.migrate_disposable).
+- publisher: 세션이 commit한 뒤 보낸 실시간 이벤트를 모으는 발행기(RecordingPublisher).
 - db: 테스트마다 롤백되는 세션 팩토리. 앱의 app.state.sessions 자리에 넣는다. 앱이 commit해도
   SAVEPOINT만 풀리고, 테스트가 끝나면 바깥 트랜잭션을 롤백하므로 다음 테스트에 남지 않는다.
+  commit한 뒤 queue한 이벤트를 publisher로 보낸다.
+- realtime: 테스트마다 다른 pub/sub 채널을 쓰는 소켓 서버(테스트 Valkey).
 - redis: 테스트마다 비운(FLUSHDB) 테스트 전용 Valkey DB.
 - mailbox: 테스트마다 비운 Mailpit. 메일은 모킹하지 않고 실제로 보낸다.
 - storage: 테스트마다 다른 키 prefix(tests/<uuid>/)를 쓰는 스토리지. 테스트가 끝나면 그 아래를
   지운다.
-- app, api: 모듈 API 테스트용 앱과 httpx 클라이언트. lifespan 대신 위의 자원(db, redis, storage)과
-  잡을 그 자리에서 실행하는 broker를 app.state에 둔다.
+- app, api: 모듈 API 테스트용 앱과 httpx 클라이언트. lifespan 대신 위의 자원(db, redis, storage,
+  realtime)과 잡을 그 자리에서 실행하는 broker를 app.state에 둔다. publisher는 모은 이벤트를
+  realtime의 서버로도 보낸다(소켓으로 받는 테스트는 app.tests.sockets).
 - accounts: 역할과 권한을 골라 계정을 만들고 로그인 헤더를 만드는 도우미(app.tests.accounts).
 """
 
@@ -34,6 +38,7 @@ from tools.mailpit import Mailpit
 
 if TYPE_CHECKING:
     from app.core.jsonapi.openapi import JsonApiApp
+    from app.core.realtime import Realtime, RecordingPublisher
     from app.core.storage import Storage
     from app.tests.accounts import Accounts
 
@@ -78,11 +83,26 @@ async def engine(infra: Settings) -> AsyncIterator[AsyncEngine]:
 
 
 @pytest.fixture
-async def db(engine: AsyncEngine) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+def publisher() -> RecordingPublisher:
+    from app.core.realtime import RecordingPublisher
+
+    return RecordingPublisher()
+
+
+@pytest.fixture
+async def db(
+    engine: AsyncEngine, publisher: RecordingPublisher
+) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    from app.core.realtime import PUBLISHER_KEY, EventSession
+
     async with engine.connect() as connection:
         transaction = await connection.begin()
         yield async_sessionmaker(
-            connection, expire_on_commit=False, join_transaction_mode="create_savepoint"
+            connection,
+            class_=EventSession,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+            info={PUBLISHER_KEY: publisher},
         )
         await transaction.rollback()
 
@@ -122,17 +142,33 @@ async def storage(infra: Settings) -> AsyncIterator[Storage]:
 
 
 @pytest.fixture
+async def realtime(infra: Settings) -> AsyncIterator[Realtime]:
+    """테스트마다 다른 pub/sub 채널을 쓰는 소켓 서버.
+
+    다른 테스트와 개발 서버의 이벤트가 섞이지 않는다.
+    """
+    from app.core.realtime import create_realtime
+
+    server = create_realtime(infra, channel=f"socketio-test-{uuid.uuid4().hex}")
+    yield server
+    await server.close()
+
+
+@pytest.fixture
 async def app(
     infra: Settings,
     engine: AsyncEngine,
     db: async_sessionmaker[AsyncSession],
     redis: Redis,
     storage: Storage,
+    publisher: RecordingPublisher,
+    realtime: Realtime,
 ) -> AsyncIterator[JsonApiApp]:
     """모듈 API 테스트용 앱. app.main.create_app의 lifespan이 두는 자원을 테스트용으로 둔다.
 
     DB는 테스트마다 롤백되는 db, Valkey는 비운 redis, 스토리지는 테스트 prefix의 storage, 잡은 그
-    자리에서 실행하는 InMemoryBroker다.
+    자리에서 실행하는 InMemoryBroker, 소켓 서버는 realtime이다. 세션과 잡이 보낸 이벤트는
+    publisher가 모으고 realtime으로도 보낸다.
     시드처럼 시스템 역할(admin, member)을 테스트 트랜잭션 안에 만든다.
     무거운 import(앱 전체)는 이 fixture를 쓰는 테스트에서만 한다.
     """
@@ -145,8 +181,9 @@ async def app(
         await roles.ensure_system_roles(session)
         await session.commit()
 
+    publisher.forward = realtime.publisher
     application = create_app(infra)
-    broker = create_broker(infra, in_memory=True, sessions=db, storage=storage)
+    broker = create_broker(infra, in_memory=True, sessions=db, storage=storage, publisher=publisher)
     await broker.startup()
     application.state.settings = infra
     application.state.engine = engine
@@ -154,6 +191,7 @@ async def app(
     application.state.redis = redis
     application.state.storage = storage
     application.state.jobs = JobQueue(broker)
+    application.state.realtime = realtime
     yield application
     await broker.shutdown()
 

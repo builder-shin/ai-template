@@ -30,6 +30,7 @@ x-app: &app
     SMTP_URL: smtp://mailpit:1025
     MAIL_FROM: "AI Template <no-reply@example.com>"
     FRONTEND_URL: http://localhost:3000
+    REALTIME_ALLOWED_ORIGINS: http://localhost:3000
     # 적합성 스위트가 이 계정으로 관리자 흐름을 돈다(저장소의 scripts/src/conformance/targets.ts와 같은 값).
     SEED_ADMIN_EMAIL: admin@example.com
     SEED_ADMIN_PASSWORD: admin-password # betterleaks:allow

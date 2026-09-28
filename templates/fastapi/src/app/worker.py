@@ -32,6 +32,7 @@ from taskiq_redis import ListRedisScheduleSource, RedisStreamBroker
 from app.core.config import Settings, load_settings
 from app.core.jobs import attach_context, register
 from app.core.logging import configure_logging
+from app.core.realtime import Publisher
 from app.core.storage import Storage
 from app.modules.registry import JOBS
 
@@ -79,6 +80,7 @@ def create_broker(
     in_memory: bool = False,
     sessions: async_sessionmaker[AsyncSession] | None = None,
     storage: Storage | None = None,
+    publisher: Publisher | None = None,
 ) -> AsyncBroker:
     """broker를 만들고 app.modules.registry.JOBS의 잡을 등록한다.
 
@@ -86,6 +88,7 @@ def create_broker(
     - in_memory면 잡을 그 자리에서 실행하는 InMemoryBroker다(테스트).
     - sessions를 주면 잡이 그 세션 팩토리를 쓴다(테스트가 롤백되는 세션을 넘긴다).
     - storage를 주면 잡이 그 스토리지를 쓴다(테스트가 테스트마다 다른 prefix를 넘긴다).
+    - publisher를 주면 잡이 그 실시간 발행기를 쓴다(테스트가 보낸 이벤트를 모은다).
     """
     current = settings
     if current is None:
@@ -105,7 +108,7 @@ def create_broker(
         )
         stream = DeleteOnAckStreamBroker(current.redis_url, queue_name=QUEUE)
         broker = stream.with_middlewares(retry)
-    attach_context(broker, current, sessions, storage)
+    attach_context(broker, current, sessions, storage, publisher)
     register(broker, JOBS)
     return broker
 

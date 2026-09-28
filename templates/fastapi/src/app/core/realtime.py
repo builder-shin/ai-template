@@ -1,0 +1,185 @@
+"""실시간(Socket.IO) 서버와 이벤트 발행.
+
+- 서버는 python-socketio의 AsyncServer다. WebSocket 전송만 받고, 브라우저 연결의 Origin은 설정의
+  허용 목록(REALTIME_ALLOWED_ORIGINS)으로 본다. 앱이 시작할 때(lifespan) create_realtime으로 만들어
+  app.state.realtime에 두고, 앱이 /socket.io 아래를 그 서버로 넘긴다(RealtimeEndpoint).
+- 인스턴스 사이의 전파는 Valkey pub/sub(AsyncRedisManager)이다. pub/sub 채널은 DB 번호와 상관없이
+  서버 전체에 하나라, 채널 이름에 DB 번호를 넣어 개발·테스트·E2E를 나눈다(pubsub_channel).
+- 이벤트는 모듈이 `queue(session, Event(...))`로 트랜잭션에 넣는다. commit이 성공한 뒤에
+  세션의 발행기가 보내고(EventSession), rollback하면 버린다. 발행에 실패해도 요청은 성공한다.
+- 소켓 서버가 아닌 프로세스(worker, scheduler)는 쓰기 전용 발행기(RedisPublisher)로 보낸다.
+- 구독할 수 있는 채널(Channel)은 모듈이 공개 인터페이스로 내보내고 app.modules.registry가 모은다.
+  연결과 구독은 realtime 모듈이 처리한다.
+"""
+
+import contextlib
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from typing import Any, Protocol, override
+from urllib.parse import urlparse
+
+import socketio
+import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.types import ASGIApp, Receive, Scope, Send
+
+from app.core.config import Settings
+
+logger = structlog.get_logger(__name__)
+
+EVENTS_KEY = "realtime_events"  # session.info: commit 뒤에 보낼 이벤트
+PUBLISHER_KEY = "realtime_publisher"  # session.info: 그 세션의 발행기
+
+
+@dataclass(frozen=True, slots=True)
+class Event:
+    """보낼 이벤트 하나. payload는 계약의 이벤트 문서를 JSON으로 바꾼 값이다."""
+
+    name: str
+    rooms: tuple[str, ...]
+    payload: Mapping[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class Channel:
+    """구독할 수 있는 채널. permission이 있으면 그 권한이 있어야 구독한다.
+
+    룸 이름은 채널 이름이다.
+    """
+
+    name: str
+    permission: str | None
+    description: str
+
+
+class Publisher(Protocol):
+    async def publish(self, event: Event) -> None: ...
+
+
+class ServerPublisher:
+    """소켓 서버(api)의 발행기. 이 인스턴스의 클라이언트에 보내고 pub/sub으로 다른 인스턴스에
+    알린다. 룸을 여러 개 주면 여러 룸에 든 클라이언트도 한 번만 받는다.
+    """
+
+    def __init__(self, server: socketio.AsyncServer) -> None:
+        self.server = server
+
+    async def publish(self, event: Event) -> None:
+        await self.server.emit(event.name, dict(event.payload), to=list(event.rooms))
+
+
+class RedisPublisher:
+    """쓰기 전용 발행기(worker, scheduler). pub/sub으로 소켓 서버들에 보낸다.
+
+    channel은 소켓 서버와 같아야 한다. 없으면 URL의 DB 번호로 정한다(pubsub_channel).
+    """
+
+    def __init__(self, redis_url: str, *, channel: str | None = None) -> None:
+        self.manager = socketio.AsyncRedisManager(
+            redis_url, channel=channel or pubsub_channel(redis_url), write_only=True
+        )
+
+    async def publish(self, event: Event) -> None:
+        await self.manager.emit(event.name, dict(event.payload), room=list(event.rooms))
+
+
+@dataclass(slots=True)
+class RecordingPublisher:
+    """보낸 이벤트를 모으는 발행기. 테스트가 쓴다. forward가 있으면 그 발행기로도 보낸다."""
+
+    events: list[Event] = field(default_factory=list[Event])
+    forward: Publisher | None = None
+
+    async def publish(self, event: Event) -> None:
+        self.events.append(event)
+        if self.forward is not None:
+            await self.forward.publish(event)
+
+    def named(self, name: str) -> list[Event]:
+        return [event for event in self.events if event.name == name]
+
+
+def pubsub_channel(redis_url: str) -> str:
+    """URL의 DB 번호를 넣은 pub/sub 채널 이름. 예: redis://localhost:6379/15 → socketio-15."""
+    number = urlparse(redis_url).path.strip("/") or "0"
+    return f"socketio-{number}"
+
+
+def queue(session: AsyncSession, event: Event) -> None:
+    """이벤트를 세션의 트랜잭션에 넣는다. commit이 성공하면 나가고 rollback하면 버려진다."""
+    events: list[Event] = session.info.setdefault(EVENTS_KEY, [])
+    events.append(event)
+
+
+class EventSession(AsyncSession):
+    """commit이 성공한 뒤에 queue한 이벤트를 보내는 세션(app.core.db.session_factory가 쓴다)."""
+
+    @override
+    async def commit(self) -> None:
+        await super().commit()
+        events: list[Event] = self.info.pop(EVENTS_KEY, [])
+        publisher: Publisher | None = self.info.get(PUBLISHER_KEY)
+        if publisher is None:
+            return
+        for event in events:
+            try:
+                await publisher.publish(event)
+            except Exception:
+                # 이벤트는 알림이다. 원본은 이미 commit했으므로 요청을 실패시키지 않는다.
+                logger.warning("realtime_publish_failed", realtime_event=event.name, exc_info=True)
+
+    @override
+    async def rollback(self) -> None:
+        self.info.pop(EVENTS_KEY, None)
+        await super().rollback()
+
+
+@dataclass(slots=True)
+class Realtime:
+    """api의 소켓 서버와 그 발행기. lifespan이 만들고 닫는다."""
+
+    server: socketio.AsyncServer
+    publisher: Publisher
+    asgi: ASGIApp
+    channel: str  # pub/sub 채널. 쓰기 전용 발행기(RedisPublisher)도 같은 채널을 쓴다.
+
+    async def close(self) -> None:
+        """연결을 끊고 pub/sub 수신을 멈춘다.
+
+        python-socketio 5.17.0에는 pub/sub 수신 태스크(thread)와 연결(redis)을 닫는 공개 API가 없다.
+        """
+        await self.server.shutdown()
+        manager = self.server.manager
+        listener = getattr(manager, "thread", None)
+        if listener is not None:
+            listener.cancel()
+            with contextlib.suppress(BaseException):
+                await listener
+        redis = getattr(manager, "redis", None)
+        if redis is not None:
+            await redis.aclose()
+
+
+def create_realtime(settings: Settings, *, channel: str | None = None) -> Realtime:
+    """소켓 서버를 만든다. channel을 주면 그 pub/sub 채널을 쓴다(테스트가 테스트마다 나눈다)."""
+    channel = channel or pubsub_channel(settings.redis_url)
+    manager = socketio.AsyncRedisManager(settings.redis_url, channel=channel)
+    server = socketio.AsyncServer(
+        async_mode="asgi",
+        client_manager=manager,
+        cors_allowed_origins=sorted(settings.realtime_allowed_origins),
+        transports=["websocket"],
+        logger=False,
+        engineio_logger=False,
+    )
+    # 앱이 /socket.io 아래만 넘기므로 경로를 가리지 않는다("" → 모든 경로).
+    asgi = socketio.ASGIApp(server, socketio_path="")
+    return Realtime(server=server, publisher=ServerPublisher(server), asgi=asgi, channel=channel)
+
+
+class RealtimeEndpoint:
+    """/socket.io 아래 요청을 앱의 소켓 서버(app.state.realtime)로 넘기는 ASGI 앱."""
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        realtime: Realtime = scope["app"].state.realtime
+        await realtime.asgi(scope, receive, send)
