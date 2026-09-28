@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.audit import AuditLog
 from app.modules.roles.models import ADMIN_ROLE, MEMBER_ROLE, Role
+from app.modules.roles.schemas import PermissionCode
 from app.tests.accounts import Accounts
 from app.tests.requests import error_codes, error_sources, jsonapi_body
 
@@ -17,6 +18,8 @@ pytestmark = pytest.mark.anyio
 
 ROLES = "/api/v1/roles"
 MANAGER = {"roles:read", "roles:manage", "users:read"}
+# 등록된 모든 권한. PermissionCode가 등록된 권한과 같은지는 app/tests/test_registry.py가 본다.
+EVERY_PERMISSION = sorted(code.value for code in PermissionCode)
 
 
 def role_document(name: str, permissions: list[str], **extra: Any) -> dict[str, Any]:
@@ -128,7 +131,7 @@ async def test_admin_role_always_shows_every_permission(
     auth = await signed_in(accounts, {"roles:read"})
     admin = await role_named(db, ADMIN_ROLE)
     body = (await api.get(f"{ROLES}/{admin.id}", headers=auth)).json()
-    assert len(body["data"]["attributes"]["permissions"]) == 8
+    assert sorted(body["data"]["attributes"]["permissions"]) == EVERY_PERMISSION
     missing = await api.get(f"{ROLES}/{uuid.uuid7()}", headers=auth)
     assert (missing.status_code, error_codes(missing)) == (404, ["resource.not_found"])
 
@@ -206,8 +209,7 @@ async def test_permissions_are_listed_by_code(api: httpx.AsyncClient, accounts: 
     auth = await signed_in(accounts, {"roles:read"})
     body = (await api.get("/api/v1/permissions", headers=auth)).json()
     codes = [permission["id"] for permission in body["data"]]
-    assert codes == sorted(codes)
-    assert len(codes) == 8
+    assert codes == EVERY_PERMISSION
     assert body["data"][0]["attributes"] == {
         "description": "Sign in to the admin app.",
         "group": "admin",
