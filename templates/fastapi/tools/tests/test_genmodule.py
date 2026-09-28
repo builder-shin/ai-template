@@ -215,6 +215,8 @@ def test_generate_copies_registers_and_chains_a_migration(project: Path) -> None
     for line in (
         "    *sample_gadget_probes.ROUTERS,\n",
         "    *sample_gadget_probes.PERMISSIONS,\n",
+        "    *sample_gadget_probes.CHANNELS,\n",
+        "    *sample_gadget_probes.EVENTS,\n",
         "files.add_read_rule(sample_gadget_probes.cover_image_readable)\n",
         "files.add_reference_check(sample_gadget_probes.cover_image_references)\n",
     ):
@@ -404,3 +406,22 @@ def test_the_revision_folder_follows_the_alembic_config(project: Path) -> None:
     assert generated.migration.parent == project / "db/versions"
     (head,) = ScriptDirectory(str(project / "db")).get_heads()
     assert head in generated.migration.name
+
+
+def test_the_generated_module_announces_its_own_events(project: Path) -> None:
+    generated = generate(names_for(LONGEST), root=project, now=NOW)
+    events = read(generated.module / "events.py")
+    for text in (
+        '"sample-gadget-probes"',
+        '"sample-gadget-probes:all"',
+        '"sample-gadget-probe.created"',
+        '"sample-gadget-probe.published"',
+    ):
+        assert text in events
+    assert '"post.' not in events
+
+
+def test_a_source_file_with_a_bom_is_read_like_python_reads_it(project: Path) -> None:
+    extra = project / "src/app/bom_example.py"
+    extra.write_bytes(b"\xef\xbb\xbf" + '"""BOM으로 시작하는 파일."""\n'.encode())
+    generate(names_for(LONGEST), root=project, now=NOW)

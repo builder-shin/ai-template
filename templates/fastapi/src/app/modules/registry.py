@@ -42,8 +42,15 @@ PERMISSIONS: tuple[Permission, ...] = (
 )
 JOBS: tuple[Job[...], ...] = (SEND_MAIL, *auth.JOBS, *files.JOBS)
 AUTHENTICATOR: Authenticator = auth.authenticate
-CHANNELS: tuple[Channel, ...] = (*posts.CHANNELS,)
-EVENTS: tuple[EventSpec, ...] = (*auth.EVENTS, *users.EVENTS, *posts.EVENTS)
+CHANNELS: tuple[Channel, ...] = (
+    # 모듈이 내보낸 실시간 채널. gen:module이 새 모듈을 이 아래에 더한다.
+    *posts.CHANNELS,
+)
+EVENTS: tuple[EventSpec, ...] = (
+    *auth.EVENTS,
+    *users.EVENTS,
+    *posts.EVENTS,
+)
 MESSAGES: tuple[MessageSpec, ...] = realtime.MESSAGES
 
 

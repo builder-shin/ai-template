@@ -73,7 +73,8 @@ def _tables(root: Path) -> dict[str, str]:
     for path in sorted((root / "src/app").rglob("*.py")):
         where = path.relative_to(root).as_posix()
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"))
+            # 바이트로 읽는다. BOM이 있거나 인코딩 선언이 다른 파일도 파이썬과 똑같이 푼다.
+            tree = ast.parse(path.read_bytes(), filename=where)
         except SyntaxError as error:
             detail = f"{where}: 문법 오류라 읽지 못했다. 고친 뒤 다시 만든다."
             raise GenerateError(detail) from error
@@ -127,6 +128,8 @@ def _registrations(root: Path, names: Names) -> dict[Path, str]:
     for anchor in (
         "    *posts.ROUTERS,\n",
         "    *posts.PERMISSIONS,\n",
+        "    *posts.CHANNELS,\n",
+        "    *posts.EVENTS,\n",
         "files.add_read_rule(posts.cover_image_readable)\n",
         "files.add_reference_check(posts.cover_image_references)\n",
     ):
@@ -241,6 +244,7 @@ NEXT_STEPS = """
 다음을 새 모듈에 맞게 고친다(골든 모듈 posts를 그대로 복사했다).
 - models.py와 schemas.py: 속성과 관계(title, body, status, author, coverImage는 posts의 것이다)
 - policies.py와 service.py: 보기·고치기 규칙, 상태와 전이 표, 캐시 예시
+- events.py: 실시간 채널과 이벤트(이름, 받는 룸, 보내는 때). 이 모듈의 이벤트는 계약에 없다
 - 문서, 주석, API 설명: 골든 모듈은 글을 설명한다
 - 에러 코드와 감사 행위: 새 값을 계약에 더한 뒤 바꾼다(지금은 posts의 값을 쓴다)
 - 가입한 사람(member)이 쓰게 하려면 권한을 roles의 시스템 역할에 더한다(admin은 모든 권한을 가진다)
