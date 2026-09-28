@@ -70,6 +70,14 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 - 주기 작업은 잡에 `schedule` 라벨로 선언하고 scheduler가 보낸다(`src/app/scheduler.py`).
 - 메일은 보내는 모듈의 템플릿(`templates/<ko|en>/<메일>.subject.txt, .txt, .html`)으로 만들고(`app.core.mail.MailTemplates`), 잡 `mail.send`(`SEND_MAIL`)가 SMTP로 보낸다. 요청은 SMTP를 기다리지 않고, 실패하면 worker가 재시도한다. 개발과 테스트의 메일은 Mailpit(http://127.0.0.1:28025)이 받는다.
 
+### 프록시 뒤에서 운영할 때
+
+레이트 리밋의 IP별 한도와 감사 로그의 `ipAddress`는 클라이언트 IP(`app.core.clients`)를 쓴다. uvicorn은 `FORWARDED_ALLOW_IPS`에 있는 주소(기본값 `127.0.0.1,::1`)가 보낸 `X-Forwarded-For`만 믿는다.
+
+- 로드 밸런서 뒤에서 이 값을 두지 않으면 모든 클라이언트가 로드 밸런서의 주소로 보인다. IP별 한도가 사이트 전체의 한도가 되고(가입은 사이트 전체에 시간당 10회, 로그인은 분당 10회), 감사 로그에는 로드 밸런서의 주소가 남는다.
+- api 프로세스의 환경 변수 `FORWARDED_ALLOW_IPS`에 로드 밸런서의 주소나 대역을 쉼표로 적는다(예: `10.0.0.0/8`). uvicorn이 환경 변수에서 읽는 값이라 설정 스키마에 없고, `.env`에 적어도 전해지지 않는다.
+- `*`(모두 믿기)는 쓰지 않는다. 클라이언트가 보낸 `X-Forwarded-For`의 첫 주소를 믿게 되어, 주소를 바꿔 가며 IP별 한도를 피할 수 있다.
+
 ## JSON:API 공통 계층 쓰는 법
 
 라우트 선언 하나에서 operationId, 에러 응답, 쿼리 파라미터(OpenAPI)와 쿼리 파서가 함께 나온다. 전체 예시는 테스트 전용 샘플 `src/app/core/jsonapi/tests/sample.py`다.
