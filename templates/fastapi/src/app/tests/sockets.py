@@ -37,15 +37,34 @@ async def serving(app: ASGIApp) -> AsyncGenerator[str]:
 
 
 class SocketClient:
-    """받은 이벤트를 이름별로 모으는 클라이언트."""
+    """받은 이벤트를 이름별로 모으는 클라이언트.
+
+    연결이 거부되면 그 데이터는 connect_error로 온다.
+    """
 
     def __init__(self) -> None:
         self.client = socketio.AsyncClient(reconnection=False)
         self.received: defaultdict[str, asyncio.Queue[Any]] = defaultdict(asyncio.Queue)
         self.client.on("*", self._receive)
+        self.client.on("connect_error", self._refused)
 
     async def _receive(self, event: str, data: Any) -> None:
         self.received[event].put_nowait(data)
+
+    async def _refused(self, data: Any) -> None:
+        self.received["connect_error"].put_nowait(data)
+
+    async def open(
+        self, url: str, *, auth: Mapping[str, Any] | None = None, origin: str = ORIGIN
+    ) -> None:
+        """WebSocket으로 붙는다. 거부되면 socketio.exceptions.ConnectionError다."""
+        await self.client.connect(
+            url,
+            headers={"Origin": origin},
+            auth=None if auth is None else dict(auth),
+            transports=["websocket"],
+            wait_timeout=WAIT,
+        )
 
     @property
     def sid(self) -> str:
@@ -79,13 +98,7 @@ async def connected(
 ) -> AsyncGenerator[SocketClient]:
     """WebSocket으로 붙은 클라이언트. 나갈 때 끊는다."""
     socket = SocketClient()
-    await socket.client.connect(
-        url,
-        headers={"Origin": origin},
-        auth=None if auth is None else dict(auth),
-        transports=["websocket"],
-        wait_timeout=WAIT,
-    )
+    await socket.open(url, auth=auth, origin=origin)
     try:
         yield socket
     finally:

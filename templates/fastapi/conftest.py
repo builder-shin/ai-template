@@ -174,7 +174,7 @@ async def app(
     """
     from app.core.jobs import JobQueue
     from app.main import create_app
-    from app.modules import roles
+    from app.modules import registry, roles
     from app.worker import create_broker
 
     async with db() as session:
@@ -192,6 +192,7 @@ async def app(
     application.state.storage = storage
     application.state.jobs = JobQueue(broker)
     application.state.realtime = realtime
+    registry.attach_realtime(realtime.server, application.state)
     yield application
     await broker.shutdown()
 

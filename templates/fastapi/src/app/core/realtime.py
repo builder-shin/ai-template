@@ -106,6 +106,11 @@ class RecordingPublisher:
         return [event for event in self.events if event.name == name]
 
 
+def user_room(user_id: object) -> str:
+    """사용자의 룸(user:{id}). 로그인한 연결이 들어가고, 그 사용자에게 보낼 이벤트가 쓴다."""
+    return f"user:{user_id}"
+
+
 def pubsub_channel(redis_url: str) -> str:
     """URL의 DB 번호를 넣은 pub/sub 채널 이름. 예: redis://localhost:6379/15 → socketio-15."""
     number = urlparse(redis_url).path.strip("/") or "0"

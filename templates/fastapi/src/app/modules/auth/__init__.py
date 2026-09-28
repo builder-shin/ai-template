@@ -9,6 +9,7 @@ from app.modules.auth.service.credentials import (
     authenticate,
     close_credentials,
     open_session,
+    session_principal,
 )
 
 ROUTERS = (
@@ -22,4 +23,12 @@ ROUTERS = (
     changes,
 )
 
-__all__ = ["JOBS", "ROUTERS", "IssuedTokens", "authenticate", "close_credentials", "open_session"]
+__all__ = [
+    "JOBS",
+    "ROUTERS",
+    "IssuedTokens",
+    "authenticate",
+    "close_credentials",
+    "open_session",
+    "session_principal",
+]

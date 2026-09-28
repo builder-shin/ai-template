@@ -7,15 +7,21 @@
 - 모듈 사이의 등록: users가 계정을 닫을 때 부를 처리(auth의 세션 폐기)와, files가 파일을 읽게
   해 줄 규칙(사용자의 아바타는 공개)과 파일을 가리키는지 확인하는 처리(탈퇴 때 남길 파일)를 건다.
 - JOBS: 잡(`app.core.jobs.Job`). broker가 이름 그대로 등록하고, cron이 있으면 scheduler가 보낸다.
+- CHANNELS: 실시간 구독 채널(`app.core.realtime.Channel`). attach_realtime이 소켓 서버에 연결·구독
+  처리(realtime 모듈)를 걸 때 넘긴다.
 이 파일도 모듈의 공개 인터페이스만 import한다(check의 module-boundary 검사).
 """
+
+import socketio
+from starlette.datastructures import State
 
 from app.core.access import Authenticator
 from app.core.jobs import Job
 from app.core.jsonapi.operation import JsonApiRouter
 from app.core.mail import SEND_MAIL
 from app.core.permissions import Permission
-from app.modules import audit_logs, auth, files, posts, roles, users
+from app.core.realtime import Channel
+from app.modules import audit_logs, auth, files, posts, realtime, roles, users
 
 ROUTERS: tuple[JsonApiRouter, ...] = (
     *posts.ROUTERS,
@@ -24,6 +30,7 @@ ROUTERS: tuple[JsonApiRouter, ...] = (
     *auth.ROUTERS,
     *audit_logs.ROUTERS,
     *files.ROUTERS,
+    *realtime.ROUTERS,
 )
 
 PERMISSIONS: tuple[Permission, ...] = (
@@ -34,6 +41,16 @@ PERMISSIONS: tuple[Permission, ...] = (
 )
 JOBS: tuple[Job[...], ...] = (SEND_MAIL, *auth.JOBS, *files.JOBS)
 AUTHENTICATOR: Authenticator = auth.authenticate
+CHANNELS: tuple[Channel, ...] = (*posts.CHANNELS,)
+
+
+def attach_realtime(server: socketio.AsyncServer, state: State) -> None:
+    """소켓 서버에 연결·구독 처리를 건다.
+
+    앱이 시작할 때(app.main)와 테스트의 app fixture가 부른다.
+    """
+    realtime.attach(server, state, CHANNELS)
+
 
 # 계정을 닫을 때(비활성화, 탈퇴) auth가 세션을 폐기하고 토큰을 지운다.
 users.on_account_closed(auth.close_credentials)

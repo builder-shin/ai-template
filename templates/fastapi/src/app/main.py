@@ -72,6 +72,7 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
         app.state.storage = Storage(current)
         app.state.jobs = JobQueue(broker)
         app.state.realtime = realtime
+        registry.attach_realtime(realtime.server, app.state)
         try:
             yield
         finally:

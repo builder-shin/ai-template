@@ -2,6 +2,7 @@
 
 # 골든 모듈이다. 새 모듈은 이 구조를 따른다(gen:module이 복사한다). gen:module: 빼기
 
+from app.modules.posts.events import CHANNELS
 from app.modules.posts.models import Post, PostStatus
 from app.modules.posts.permissions import PERMISSIONS, POSTS_CREATE, POSTS_MANAGE
 from app.modules.posts.router import posts
@@ -14,6 +15,7 @@ from app.modules.posts.service import (
 ROUTERS = (posts,)
 
 __all__ = [
+    "CHANNELS",
     "PERMISSIONS",
     "POSTS_CREATE",
     "POSTS_MANAGE",

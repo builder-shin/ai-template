@@ -5102,6 +5102,151 @@
           }
         ]
       }
+    },
+    "/api/v1/realtime-tickets": {
+      "post": {
+        "tags": [
+          "realtime"
+        ],
+        "description": "BFF가 발급받아 브라우저에 넘긴다. 브라우저는 access token을 모른다.",
+        "operationId": "RealtimeTickets_create",
+        "requestBody": {
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RealtimeTicketCreateDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "201 Created.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealtimeTicketDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -6591,6 +6736,86 @@
           }
         },
         "type": "object"
+      },
+      "RealtimeTicketAttributes": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Socket.IO 연결의 auth.ticket에 넣는다. 30초 안에 한 번만 쓸 수 있다."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "expiresAt"
+        ]
+      },
+      "RealtimeTicketCreateAttributes": {
+        "properties": {},
+        "type": "object"
+      },
+      "RealtimeTicketCreateDocument": {
+        "properties": {
+          "data": {
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "realtime-tickets"
+                ]
+              },
+              "attributes": {
+                "$ref": "#/components/schemas/RealtimeTicketCreateAttributes"
+              }
+            },
+            "type": "object",
+            "required": [
+              "type",
+              "attributes"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ]
+      },
+      "RealtimeTicketDocument": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RealtimeTicketResource"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ]
+      },
+      "RealtimeTicketResource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "realtime-tickets"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/RealtimeTicketAttributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "attributes"
+        ]
       },
       "RegistrationAttributes": {
         "properties": {

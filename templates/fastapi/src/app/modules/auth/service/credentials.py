@@ -59,10 +59,26 @@ async def authenticate(request: Request, session: AsyncSession, token: str) -> P
         raise _unauthorized(ErrorCode.AUTH_TOKEN_EXPIRED, "The access token has expired.") from None
     except InvalidTokenError:
         raise _unauthorized(ErrorCode.AUTH_TOKEN_INVALID, "The access token is invalid.") from None
-    if await repository.active_session(session, claims.session_id, claims.user_id) is None:
+    principal = await session_principal(session, registry, claims.user_id, claims.session_id)
+    if principal is None:
         raise _unauthorized(ErrorCode.AUTH_TOKEN_INVALID, "The session has ended.")
-    permissions = await roles.effective_permissions(session, registry, claims.user_id)
-    return Principal(user_id=claims.user_id, session_id=claims.session_id, permissions=permissions)
+    return principal
+
+
+async def session_principal(
+    session: AsyncSession,
+    registry: PermissionRegistry,
+    user_id: uuid.UUID,
+    session_id: uuid.UUID,
+) -> Principal | None:
+    """살아 있는 세션의 Principal(실제 권한 포함). 세션이 끝났거나 사용자가 활성이 아니면 None이다.
+
+    인증기와 실시간 연결(티켓)이 같은 규칙으로 본다.
+    """
+    if await repository.active_session(session, session_id, user_id) is None:
+        return None
+    permissions = await roles.effective_permissions(session, registry, user_id)
+    return Principal(user_id=user_id, session_id=session_id, permissions=permissions)
 
 
 def refresh_token_row(login: LoginSession, now: datetime) -> tuple[str, RefreshToken]:
