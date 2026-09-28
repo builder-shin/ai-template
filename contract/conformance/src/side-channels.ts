@@ -31,9 +31,43 @@ export interface Mailbox {
   clear(): Promise<void>;
 }
 
-/** 소셜 로그인을 끝까지 진행해 프론트 콜백으로 넘어갈 1회용 코드를 얻는다. */
+/** 소셜 로그인 제공자가 알려 줄 사람. 모의 서버가 제공자마다 다른 모양의 신원 응답으로 흉내 낸다. */
+export interface OAuthPerson {
+  /** 제공자 안의 사용자 id. 같은 값이면 같은 사람이다. */
+  readonly subject: string;
+  readonly email?: string;
+  /** 제공자가 그 이메일의 주인임을 확인했는가(기본 false). 네이버는 백엔드가 늘 미검증으로 본다. */
+  readonly emailVerified?: boolean;
+  /** 이름. 모의 서버가 비ASCII 값을 깨뜨리므로 ASCII로 쓴다. */
+  readonly name?: string;
+}
+
+export interface OAuthStart {
+  /** authorize가 보낸 제공자 로그인 화면 주소. */
+  readonly providerUrl: string;
+  /** 그 주소에 붙은 state. */
+  readonly state: string;
+  /** 이 흐름을 위해 드라이버가 만든 PKCE code verifier. authorize에 보낸 codeChallenge는 이것의 S256이다. */
+  readonly codeVerifier: string;
+}
+
+/** signIn이 끝나고 돌아온 프론트 콜백의 쿼리(code 또는 error)와, 코드를 토큰으로 바꿀 code verifier. */
+export interface OAuthReturn {
+  readonly query: URLSearchParams;
+  readonly codeVerifier: string;
+}
+
+/** 브라우저 대신 소셜 로그인을 진행한다. 결과는 프론트 콜백 주소의 쿼리(code 또는 error)다. */
 export interface OAuthDriver {
-  authorize(provider: OAuthProvider, redirectUri: string): Promise<{ readonly code: string }>;
+  /** 백엔드 authorize를 불러 제공자 주소와 state를 얻는다. codeChallenge는 드라이버가 새로 만든다. */
+  start(provider: OAuthProvider, redirectUri: string): Promise<OAuthStart>;
+  /** 제공자에서 person으로 로그인하고 백엔드 콜백을 거친다. */
+  signIn(provider: OAuthProvider, redirectUri: string, person: OAuthPerson): Promise<OAuthReturn>;
+  /** 제공자가 돌려보낸 것처럼 백엔드 콜백을 직접 부른다(거부, 틀린 코드). */
+  callback(
+    provider: OAuthProvider,
+    params: Readonly<Record<string, string>>,
+  ): Promise<URLSearchParams>;
 }
 
 export interface SideChannels {

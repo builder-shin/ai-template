@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { type ApiClient, createApiClient } from "../../src/client.ts";
 import type { components } from "../../src/generated/api.ts";
 import { extractToken, MAIL_LINKS } from "../../src/side-channels.ts";
+import { createMockOAuthDriver } from "../../src/side-channels/oauth.ts";
 import { resolveAdmin, resolveMailbox, resolveTarget } from "../../src/targets.ts";
 
 export type ErrorDocument = components["schemas"]["ErrorDocument"];
@@ -16,6 +17,10 @@ export type FileResource = components["schemas"]["FileResource"];
 export const target = resolveTarget(process.env);
 export const mailbox = resolveMailbox(process.env);
 export const admin = resolveAdmin(process.env);
+/** 소셜 로그인을 브라우저 대신 진행한다. 대상 스택의 모의 OAuth 서버를 쓴다. */
+export const oauth = createMockOAuthDriver({ baseUrl: target.baseUrl });
+/** 소셜 로그인이 끝나고 돌아갈 프론트 콜백. 대상의 OAUTH_REDIRECT_URIS에 있어야 한다. */
+export const FRONT_CALLBACK = "http://localhost:3000/oauth/callback";
 
 /** 흐름이 가입할 때 쓰는 비밀번호. */
 export const PASSWORD = "conformance-password"; // betterleaks:allow 적합성 흐름의 가짜 비밀번호

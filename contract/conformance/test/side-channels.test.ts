@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { MAIL_LINKS } from "../src/side-channels.ts";
 import { createMailpitMailbox } from "../src/side-channels/mailpit.ts";
-import { createRedirectOAuthDriver } from "../src/side-channels/oauth.ts";
+import { createMockOAuthDriver, mockClaims } from "../src/side-channels/oauth.ts";
 
 function json(value: unknown): Response {
   return new Response(JSON.stringify(value), { headers: { "content-type": "application/json" } });
@@ -113,41 +114,65 @@ describe("Mailpit 메일함", () => {
   });
 });
 
-describe("리다이렉트 OAuth 드라이버", () => {
-  it("프론트 콜백 주소에 닿을 때까지 리다이렉트를 따라가 code를 꺼낸다", async () => {
-    const visited: string[] = [];
-    const fetchStub = (input: string | URL | Request) => {
+describe("모의 OAuth 드라이버", () => {
+  it("제공자의 로그인 폼에 신원을 보내고, 백엔드 콜백을 거쳐 프론트 콜백의 쿼리를 준다", async () => {
+    const posted: string[] = [];
+    let codeChallenge = "";
+    const fetchStub = (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input instanceof Request ? input.url : input);
-      visited.push(url);
-      if (url.startsWith("http://api.test/api/v1/oauth/google/authorize")) {
-        return Promise.resolve(redirect("http://idp.test/google/authorize?state=s"));
+      if (url.startsWith("http://api.test/api/v1/oauth/kakao/authorize")) {
+        codeChallenge = new URL(url).searchParams.get("codeChallenge") ?? "";
+        return Promise.resolve(redirect("http://idp.test/kakao/authorize?state=s&client_id=c"));
       }
       if (url.startsWith("http://idp.test/")) {
+        posted.push(init?.body instanceof URLSearchParams ? init.body.toString() : "");
         return Promise.resolve(
-          redirect("http://api.test/api/v1/oauth/google/callback?state=s&code=c"),
+          redirect("http://localhost:8000/api/v1/oauth/kakao/callback?state=s&code=c"),
         );
       }
-      return Promise.resolve(redirect("http://web.test/callback?code=one-time"));
+      if (url.startsWith("http://api.test/api/v1/oauth/kakao/callback?state=s&code=c")) {
+        return Promise.resolve(redirect("http://web.test/callback?code=one-time"));
+      }
+      return Promise.reject(new Error(`예상하지 못한 요청: ${url}`));
     };
-    const driver = createRedirectOAuthDriver({
-      baseUrl: "http://api.test",
-      fetch: fetchStub,
-    });
-    await expect(driver.authorize("google", "http://web.test/callback")).resolves.toEqual({
-      code: "one-time",
-    });
-    expect(visited).toHaveLength(3);
+    const driver = createMockOAuthDriver({ baseUrl: "http://api.test", fetch: fetchStub });
+    const person = { subject: "42", email: "a@example.com", emailVerified: true, name: "Ada" };
+    const back = await driver.signIn("kakao", "http://web.test/callback", person);
+    expect(back.query.get("code")).toBe("one-time");
+    expect(codeChallenge).toHaveLength(43);
+    expect(back.codeVerifier.length).toBeGreaterThanOrEqual(43);
+    expect(createHash("sha256").update(back.codeVerifier).digest("base64url")).toBe(codeChallenge);
+    const form = new URLSearchParams(posted[0]);
+    expect(form.get("username")).toBe("42");
+    expect(JSON.parse(form.get("claims") ?? "")).toEqual(mockClaims("kakao", person));
   });
 
-  it("콜백이 error를 붙여 돌아오면 그 코드로 던진다", async () => {
-    const fetchStub = () =>
-      Promise.resolve(redirect("http://web.test/callback?error=auth.oauth_denied"));
-    const driver = createRedirectOAuthDriver({
-      baseUrl: "http://api.test",
-      fetch: fetchStub,
+  it("제공자마다 프로필 응답의 모양을 흉내 낸다", () => {
+    const person = { subject: "7", email: "b@example.com", name: "Bo" };
+    expect(mockClaims("naver", person)).toEqual({
+      response: { id: "7", email: "b@example.com", name: "Bo" },
     });
-    await expect(driver.authorize("kakao", "http://web.test/callback")).rejects.toThrow(
-      "auth.oauth_denied",
-    );
+    expect(mockClaims("google", { ...person, emailVerified: true })).toEqual({
+      email: "b@example.com",
+      email_verified: true,
+      name: "Bo",
+      hd: "example.com",
+    });
+  });
+
+  it("백엔드가 302가 아니면 던진다", async () => {
+    const failure = {
+      errors: [{ status: "500", code: "internal.unexpected", title: "Internal Server Error" }],
+      meta: { traceId: "0".repeat(32) },
+    };
+    const fetchStub = () =>
+      Promise.resolve(
+        new Response(JSON.stringify(failure), {
+          status: 500,
+          headers: { "content-type": "application/vnd.api+json" },
+        }),
+      );
+    const driver = createMockOAuthDriver({ baseUrl: "http://api.test", fetch: fetchStub });
+    await expect(driver.start("google", "http://web.test/callback")).rejects.toThrow("302");
   });
 });

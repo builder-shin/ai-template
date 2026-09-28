@@ -55,6 +55,16 @@ export function validateSchema(name: string, value: unknown): string[] {
   return run(validate, value);
 }
 
+/** 실시간 이벤트의 페이로드를 계약의 x-realtime-events에 적힌 페이로드 스키마로 검증한다. */
+export function validateEvent(name: string, payload: unknown): string[] {
+  const events = Array.isArray(contract["x-realtime-events"]) ? contract["x-realtime-events"] : [];
+  const found: unknown = events.find((event: unknown) => isRecord(event) && event.name === name);
+  if (!isRecord(found) || typeof found.payload !== "string") {
+    return [`계약의 x-realtime-events에 ${name}이 없다.`];
+  }
+  return validateSchema(found.payload, payload).map((problem) => `${name}: ${problem}`);
+}
+
 const compiled = new Map<string, ValidateFunction>();
 
 function compile(key: string, schema: unknown): ValidateFunction {
