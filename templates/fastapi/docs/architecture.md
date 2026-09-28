@@ -29,14 +29,17 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 
 ## 플랫폼 모듈
 
-| 모듈         | 하는 일                                                                    | 쓰는 모듈    |
-| ------------ | -------------------------------------------------------------------------- | ------------ |
-| `roles`      | 역할과 권한 API, 실제 권한 계산, 권한 상승 판정(`within`)                  | 없음         |
-| `users`      | 내 정보, 탈퇴, 사용자 관리, 다른 리소스에 넣을 공개 사용자(`public_users`) | roles, files |
-| `auth`       | 가입, 이메일 인증, 세션, 비밀번호, 요청의 인증기(`authenticate`)           | users, roles |
-| `audit_logs` | 감사 로그 읽기. 기록은 각 모듈이 `app.core.audit.record_audit`로 한다      | users        |
+| 모듈         | 하는 일                                                                                    | 쓰는 모듈    |
+| ------------ | ------------------------------------------------------------------------------------------ | ------------ |
+| `roles`      | 역할과 권한 API, 실제 권한 계산, 권한 상승 판정(`within`)                                  | 없음         |
+| `users`      | 내 정보, 탈퇴, 사용자 관리, 다른 리소스에 넣을 공개 사용자(`public_users`)                 | roles, files |
+| `auth`       | 가입, 이메일 인증, 세션, 비밀번호, 요청의 인증기(`authenticate`)                           | users, roles |
+| `audit_logs` | 감사 로그 읽기. 기록은 각 모듈이 `app.core.audit.record_audit`로 한다                      | users        |
+| `files`      | 업로드(presigned PUT), 완료 확인, 다운로드 URL, 읽기 규칙과 참조 확인의 등록 지점, 정리 잡 | 없음         |
+| `posts`      | 골든 모듈. 글 목록·조회·쓰기, 전이 표, 공개 목록 캐시, 커버 이미지                         | users, files |
 
 - 의존은 한쪽으로만 흐른다. 반대 방향이 필요하면 등록으로 뒤집는다. 계정을 닫을 때(비활성화, 탈퇴) users가 부를 처리를 auth가 `users.on_account_closed`로 등록한다(등록은 `registry.py`).
+- files는 다른 모듈을 모른다. 소유자가 아닌 사람이 파일을 읽게 할 규칙(`files.add_read_rule`)과, 탈퇴 때 남길 파일을 가리는 참조 확인(`files.add_reference_check`)을 users와 posts가 등록한다.
 - 감사 로그 테이블과 기록 함수는 core(`app.core.audit`)에 있다. 여러 모듈이 기록하고, 읽기 API(audit_logs)가 users를 포함하기 때문이다.
 - 인증기는 요청마다 access token의 서명을 검증하고, 세션이 살아 있는지(`revoked_at`)와 사용자, 역할을 DB에서 읽는다. 그래서 폐기와 권한 변경이 곧바로 효과를 낸다.
 
@@ -91,6 +94,34 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 5. 응답: `render(document, fields=query.fields)`. 페이지 링크와 `meta.page`는 `pagination(request, query.page, total)`, 포함 리소스는 `load_included(query.include, {"author": load_authors})`로 만든다.
 6. 라우트나 문서 모델을 바꾸면 `uv run poe gen`으로 `openapi.json`을 다시 쓴다. check의 `generated` 단계가 최신인지, `contract` 단계가 계약 룰셋을 지키는지 본다.
 
-## 공개 파일 전달을 바꾸는 방법
+## 파일
 
-지금 규칙은 ready 상태의 파일을 모두 presigned GET(10분)으로 준다. 공개 버킷과 CDN으로 바꾸는 방법은 M3에서 files 모듈과 함께 이 자리에 적는다.
+브라우저가 스토리지(S3 호환, 개발은 SeaweedFS)에 직접 올리고 내려받는다. 앱은 presigned URL을 만들고 상태를 확인한다.
+
+1. 만들기(`POST /files`): 크기(`FILE_MAX_SIZE`)와 타입(`FILE_ALLOWED_TYPES`)을 검사하고 `pending` 행을 만든다. `meta.upload`에 presigned PUT(15분)을 담는다. 서명은 SigV4라 `Content-Type`과 `Content-Length`가 서명에 들어가고, 선언과 다른 크기나 타입의 본문은 스토리지가 403으로 거절한다.
+2. 올리기: 브라우저가 `meta.upload.url`에 `meta.upload.headers`(`Content-Type`)를 붙여 PUT한다. 스토리지의 CORS(개발 프론트 출처)는 `uv run poe setup`이 건다.
+3. 완료(`PATCH /files/{id}`, `status: "ready"`): 소유자만 한다. HEAD로 크기를 확인하고, 다르면 객체를 지우고 `file.upload_incomplete`다.
+4. 내려받기: ready 파일의 `meta.downloadUrl`은 presigned GET(10분)이다. 포함 리소스(아바타, 커버 이미지)에도 채운다. presign은 네트워크 호출 없이 계산만 한다.
+5. 정리: 24시간이 넘도록 pending인 파일은 잡 `files.purge_pending`(매시간 정각, UTC)이 지운다. 탈퇴하면 다른 리소스가 가리키지 않는 본인 파일을 지운다.
+
+- 읽기: 소유자는 읽는다. 그 밖에는 모듈이 등록한 규칙 중 하나가 허용하면 읽는다(아바타는 공개, 볼 수 있는 글의 커버). 볼 수 없으면 404, 볼 수 있지만 소유자가 아닌 사람이 고치거나 지우면 403이다.
+- 다른 리소스에 거는 파일(아바타, 커버)은 `files.attachable_file`로 검사한다. 요청한 사람 소유의 ready 이미지여야 한다.
+- 객체 키는 `files/<id>`다. 테스트는 테스트마다 다른 키 prefix(`tests/<uuid>/`)를 쓴다(`storage` fixture).
+
+### 공개 파일 전달로 바꾸는 방법
+
+지금은 ready 파일을 모두 presigned GET으로 준다. 누구나 읽는 파일(아바타, 커버)이 많아지면 공개 버킷이나 CDN으로 바꾼다.
+
+1. 공개할 파일을 공개 prefix(예: `public/<id>`)나 공개 버킷에 둔다. 걸 때(`attachable_file`) 복사하거나 옮긴다. 비공개 파일은 presigned GET을 그대로 쓴다.
+2. 공개 prefix를 버킷 정책으로 공개하거나, 원본 접근을 CDN만 하게 막고 CDN을 앞에 둔다.
+3. `files.service.file_resource`가 공개 파일에는 presign 대신 `<공개 주소>/<키>`를 `downloadUrl`로 주고 `downloadUrlExpiresAt`은 뺀다(계약에서 선택 필드다). 공개 주소는 설정에 더하고 `.env.example`도 고친다.
+4. 공개 URL은 만료되지 않으므로 캐시 수명을 URL 수명에 맞출 필요가 없다. 반대로 한번 새면 되돌릴 수 없으므로 공개해도 되는 파일만 옮긴다.
+
+## 캐시
+
+`app.core.cache.Cache(redis, 이름공간)`은 Valkey 위의 cache-aside다.
+
+- `get_or_set(키, 수명, 만들기)`는 캐시에 있으면 그 값을, 없으면 만들어 넣은 값을 돌려준다. `clear()`는 이름공간의 키를 모두 지운다. 값은 JSON으로 오갈 수 있는 것이다.
+- Valkey에 닿지 못하면 캐시 없이 만들기를 부르고 경고만 남긴다.
+- 예시는 posts의 공개 목록 첫 페이지(60초)다. 초안이 보이지 않는 요청의 기본 첫 페이지만 캐시하고, 키는 정렬한 쿼리 문자열이다(`include`와 `fields`만 다를 수 있다). 글을 쓰면 commit한 뒤에 캐시를 지운다.
+- 캐시한 문서에 presigned URL이 들어 있으면 캐시 수명을 URL 수명(10분)보다 짧게 둔다.

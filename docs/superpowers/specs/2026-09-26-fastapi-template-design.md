@@ -137,7 +137,7 @@ src/app/modules/posts/
 └── tests/         # 이 모듈의 단위·통합 테스트
 ```
 
-- 쓰지 않는 파일은 만들지 않는다. 골든 모듈 `posts`는 모든 파일을 갖춘 정답 예시다.
+- 쓰지 않는 파일은 만들지 않는다. 골든 모듈 `posts`는 모듈의 계층(router부터 models까지), policies, permissions, 테스트를 모두 갖춘 정답 예시다. 잡(`jobs.py`)의 예는 files와 auth에, 메일 템플릿(`templates/`)의 예는 auth에 있고, 실시간 이벤트(`events.py`)는 M4에서 더한다.
 - 모듈 등록은 `src/app/modules/registry.py` 한 곳에서 한다. 라우터, 이벤트, 잡, 파일 참조 판정기(§6.5)를 여기서 모은다.
 
 ### 4.3 계층과 경계
@@ -313,17 +313,21 @@ src/app/modules/posts/
   - 위반하면 `file.too_large` 또는 `file.type_not_allowed`다.
   - `pending` 파일을 만들고, 객체 키는 `files/{id}`로 한다.
   - `meta.upload`에 presigned PUT(15분)을 담는다. `Content-Type`과 `Content-Length`를 서명에 넣고, 브라우저가 붙일 헤더는 `Content-Type`뿐이다.
+  - 서명은 SigV4로 한다. 서명 버전을 정하지 않으면 boto3가 SigV2 쿼리 서명을 써서 크기가 서명에 들어가지 않는다(§14). 선언과 크기나 타입이 다른 PUT은 스토리지가 403으로 거절한다.
 - 완료 확인(`PATCH /files/{id}`, `status: "ready"`)은 소유자만 한다. HEAD로 객체가 있는지, 크기가 선언과 같은지 확인한다. 다르면 객체를 지우고 `file.upload_incomplete`다.
 - 읽기 규칙
   - 소유자는 읽는다.
   - 그 밖에는 모듈이 등록한 파일 참조 판정기에 묻는다. 하나라도 "이 파일을 참조하는 리소스를 이 사람이 볼 수 있다"고 답하면 읽는다.
-  - posts는 "볼 수 있는 글의 커버 이미지", users는 "사용자의 아바타는 공개"를 등록한다.
+  - posts는 "볼 수 있는 글의 커버 이미지", users는 "사용자의 아바타는 공개"를 등록한다(`files.add_read_rule`, 등록은 `registry.py`).
+  - 읽을 수 없으면 404다. 읽을 수 있지만 소유자가 아닌 사람의 완료 확인과 삭제는 403이다.
+- 다른 리소스에 거는 파일(아바타, 커버 이미지)은 요청한 사람 소유의 ready 이미지여야 한다(`files.attachable_file`). 없거나 남의 것이면 404(pointer `/data/relationships/<관계>/data`), pending이면 422 `file.upload_incomplete`, 이미지가 아니면 422 `file.type_not_allowed`다.
 - 전달(F15)
   - ready 파일의 `meta.downloadUrl`은 presigned GET(10분)이다.
   - `included`에 들어간 파일에도 채운다. presign은 네트워크 호출 없이 계산만 하므로 비용이 거의 없다.
   - 공개 버킷이나 CDN으로 바꾸는 방법은 `docs/architecture.md`에 적는다.
 - 삭제는 소유자만 한다. 객체와 행을 지우고, 참조하던 관계는 null이 된다.
-- 24시간이 넘은 `pending` 파일은 주기 잡이 지운다.
+- 24시간이 넘은 `pending` 파일은 주기 잡(`files.purge_pending`, 매시간 정각 UTC)이 지운다.
+- 탈퇴 때 남길 파일(다른 리소스가 가리키는 파일)은 모듈이 등록한 참조 확인(`files.add_reference_check`)으로 가린다. users는 아바타를, posts는 커버 이미지를 등록한다.
 - 스토리지 설정
   - boto3의 체크섬 기본값을 `when_required`로 낮춘다. S3 호환 서버와의 호환 때문이다.
   - presign에는 브라우저가 접근하는 공개 엔드포인트를 따로 쓴다. compose 안의 주소와 브라우저가 보는 주소가 다르기 때문이다.
@@ -335,7 +339,9 @@ src/app/modules/posts/
 
 - 상태 전이는 도메인 규칙의 전이 표(`draft ↔ published`)로 판정한다. 표에 없는 전이는 `post.invalid_transition`이다. 같은 상태로 PATCH하는 것은 전이가 아니므로 에러가 아니다.
 - 발행하면 `publishedAt`을 채우고, 발행을 취소하면 null로 되돌린다.
-- 공개 목록의 첫 페이지(필터 없음, 기본 정렬, 기본 크기)를 60초 캐시한다. 글이 생기거나 바뀌거나 지워지면 캐시를 지운다. 캐시 수명은 presigned URL 수명보다 짧다.
+- 목록은 발행된 글만 준다. 초안이 보이는 쿼리는 `filter[author]`가 보는 사람 자신이거나 보는 사람이 `posts:manage`일 때다. 그때 `filter[status]`가 없으면 모든 상태를 준다. 초안이 보이지 않는 쿼리의 `filter[status]=draft`는 빈 목록이다(에러가 아니다).
+- 조회는 발행된 글이면 누구나, 초안이면 작성자와 `posts:manage`만 한다. 볼 수 없으면 404, 볼 수 있지만 고칠 수 없으면 403이다.
+- 공개 목록의 첫 페이지(필터 없음, 기본 정렬, 기본 크기. `include`와 `fields`는 달라도 된다)를 60초 캐시한다. 키는 정렬한 쿼리 문자열이고, 초안이 보이는 사람(`posts:manage`)의 요청은 캐시하지 않는다. 글이 생기거나 바뀌거나 지워지면 commit한 뒤에 캐시를 지운다. 캐시 수명은 presigned URL 수명보다 짧다.
 - 관리자가 남의 글을 지우면 감사 로그 `post.deleted_by_admin`을 남긴다.
 - 실시간 이벤트는 계약의 `rooms`와 `conditionalRooms`대로 보낸다.
 - 테스트는 도메인 규칙 단위 테스트, API 통합 테스트, 권한 매트릭스 테스트로 나눈다.
@@ -401,7 +407,7 @@ src/app/modules/posts/
   - 한도는 설정 값이다. 기본값은 로그인 IP별 분당 10회와 식별자별 분당 5회, 가입 IP별 시간당 10회, 재설정 요청과 재발송 IP별 시간당 5회와 이메일별 시간당 3회, 전역 IP별 분당 600회다.
   - 초과하면 429, `Retry-After`, `rate_limit.exceeded`다.
   - 테스트 환경에서는 한도를 크게 두고, 레이트 리밋 자체를 확인하는 테스트만 한도를 낮춘다.
-- 캐시는 redis-py 위의 작은 cache-aside 도우미다. 키 이름공간과 JSON 직렬화를 담당한다. 예시는 posts의 공개 목록이다.
+- 캐시는 redis-py 위의 작은 cache-aside 도우미(`app.core.cache.Cache`)다. 키 이름공간과 JSON 직렬화를 담당한다. Valkey에 닿지 못하면 캐시 없이 동작한다(fail-open). 예시는 posts의 공개 목록이다.
 
 ### 6.11 관측성, 헬스체크, 설정
 
@@ -417,7 +423,7 @@ src/app/modules/posts/
 
 - 역할 `admin`, `member`
 - 관리자 계정: 이메일과 비밀번호는 `.env`의 `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`. 이메일 인증을 마친 상태이고 `admin` 역할을 가진다.
-- 예제 글 몇 개(발행과 초안)
+- 예제 글: 관리자가 쓴 글 셋(발행 둘, 초안 하나). 관리자에게 글이 하나도 없을 때만 만든다.
 
 ## 7. 계약 변경
 
@@ -533,10 +539,14 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
   - 모듈 레지스트리에 등록하고, 새 테이블의 마이그레이션 초안을 만든다.
   - posts만의 도메인 규칙(전이 표, 캐시 예시)은 표시한 자리에 남겨 두고, 고칠 곳을 목록으로 알려 준다.
   - 생성 직후 `check`가 통과해야 한다.
+  - 이름은 20자 이하다. 이름이 파이썬 예약어·내장 이름, 골든 모듈이 쓰는 이름(author, session 등), 이미 있는 태그와 겹치면 아무 파일도 쓰지 않는다. 검사를 모두 마친 뒤에만 쓴다.
+  - 골든 모듈은 표시 주석으로 생성기에 알린다: `# gen:module: 빼기`(복사하지 않는 줄), `빼기 시작`·`빼기 끝`(묶음), `그대로`(이름을 바꾸지 않는 줄), `고칠 곳 — 설명`(새 모듈에서 고칠 곳).
+  - 계약의 값(에러 코드 `post.invalid_transition`, 감사 행위 `post.deleted_by_admin`)은 새 모듈이 계약에 제 값을 더할 때까지 그대로 쓴다.
+  - 생성기 테스트가 가장 긴 이름으로 만든 모듈의 포맷과 린트를 확인한다. 골든 모듈에서 모듈 이름이 든 문자열과 주석은 그만큼 여유를 둔다.
 - 레시피(`docs/recipes/*.md`)
   - 모듈 추가, 엔드포인트 추가, 마이그레이션, 실시간 이벤트 추가, 잡 추가, 권한 추가, 메일 템플릿 추가
-  - 각 레시피는 "언제, 명령, 고칠 파일, 확인 방법" 순서로 쓴다.
-- skill: `.claude/skills/<이름>/SKILL.md`는 레시피를 불러오고 생성기를 부르고 `check`로 확인하는 얇은 포장이다. FastAPI 공식 skill은 `uvx library-skills --claude --copy --skill fastapi`로 넣는다. 복사 모드라 Windows에서도 동작한다.
+  - 각 레시피는 "언제, 명령, 고칠 파일, 확인 방법" 순서로 쓴다(`tools/tests/test_recipes.py`가 본다). 실시간 이벤트 추가는 M4에서 쓴다.
+- skill: `.claude/skills/add-<레시피>/SKILL.md`는 레시피를 불러오고 생성기를 부르고 `check`로 확인하는 얇은 포장이다. FastAPI 공식 skill은 `uvx library-skills --claude --copy --skill fastapi`로 넣는다. 복사 모드라 Windows에서도 동작한다.
   - `--all`은 fastapi-cli가 가져오는 typer의 skill까지 복사하므로 쓰지 않는다.
   - 사본은 커밋한다. `check`의 skill 사본 단계가 원본과 같은지 보고, Ruff는 마크다운 안의 코드 블록까지 포맷하므로 사본을 Ruff 검사에서 뺀다.
 
@@ -583,6 +593,8 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
   - OAuthDriver: 백엔드의 `authorize`부터 리다이렉트를 따라가 모의 OAuth 서버의 자동 로그인을 거친다. 가짜 프론트 콜백 주소에 닿으면 멈추고 `code`를 꺼낸다.
   - 카카오와 네이버의 신원 응답 형태를 모의 서버가 흉내 내지 못하면(§13), 적합성의 소셜 로그인 흐름은 구글로만 돌린다. 두 제공자는 템플릿의 단위 테스트가 맡는다.
 - 데이터: 테스트마다 무작위 이메일로 사용자를 새로 만든다. DB를 초기화하지 않고 몇 번이든 돌릴 수 있다. 관리자 흐름은 시드된 관리자를 쓰며, 자격 증명은 환경 변수(`CONFORMANCE_ADMIN_EMAIL`, `CONFORMANCE_ADMIN_PASSWORD`)로 받는다.
+- 파일: `uploadFile` 도우미가 브라우저처럼 `meta.upload`의 presigned PUT으로 스토리지에 올리고 완료를 알린다. 스토리지의 공개 주소(compose의 `S3_PUBLIC_ENDPOINT_URL`)에 흐름 테스트가 닿아야 한다.
+- 글 흐름은 목록을 다른 흐름과 함께 쓰므로 `filter[author]`로 좁혀 본다. 공개 목록 첫 페이지는 쓰기 직후의 반영만 본다.
 - 실행: 루트 `pnpm conformance fastapi`
   1. `templates/fastapi`의 compose를 `app` 프로필로 `--build --wait` 기동한다.
   2. 대상 설정과 부수 채널 주소를 환경 변수로 넘겨 Vitest를 돌린다.
@@ -621,9 +633,9 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | M3  | files(업로드, 완료 확인, 다운로드, 읽기 규칙, 정리 잡), posts(필터, 정렬, include, fields, 페이지, 캐시, 감사), `gen:module`, 레시피와 skill                                                                                  | 해당 적합성 흐름 통과. `gen:module`로 만든 모듈이 `check`를 통과                                               |
 | M4  | realtime(티켓, Socket.IO, 구독, 이벤트), 소셜 로그인, OpenTelemetry, `test:e2e`, 구조 비교에서 `--subset` 떼기                                                                                                                | §1.2의 사이클 완료 조건                                                                                       |
 
-### 12.1 M1과 M2에서 넘긴 일
+### 12.1 M1~M3에서 넘긴 일
 
-M1과 M2의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
+M1~M3의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
 
 - M2를 시작하기 전(NestJS가 따라 하기 전에 정한다). M2 계획의 Task 1~2에서 다음과 같이 정했다.
   - POST 본문의 `type` 불일치는 409 `resource.conflict`, 클라이언트가 만든 `id`는 403 `permission.denied`다(JSON:API 1.1 MUST). 계약의 모든 POST가 403과 409를 선언한다. 로그인 없이 부르는 POST에는 `CreateErrors`(403, 409)를, 로그인이 필요한 POST에는 `Conflict`를 더한다(같은 상태를 두 번 넣으면 응답 스키마가 `anyOf`로 겹친다).
@@ -638,10 +650,14 @@ M1과 M2의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣
   - boto3 클라이언트는 연결 2초, 읽기 5초, 모두 두 번까지 시도한다(Task 20).
   - `Mailbox.latest`에 `after`(메일함의 시각)와 `linkPath`(메일 링크 경로) 조건을 두었다. 제목은 백엔드마다 문구가 달라 쓰지 않는다(Task 22).
   - 모듈 경계 검사가 조립 파일(`src/app/modules/registry.py`, `src/app/main.py`)도 본다(Task 8).
-- M3: `PATCH /me`의 아바타 검사(본인 소유의 ready 이미지)와, 탈퇴 때 아바타와 참조되지 않는 본인 파일 정리(§6.4의 3단계). M2의 `PATCH /me`는 아바타가 null이 아니면 404다.
-- M3. M2의 최종 리뷰가 남긴 일이다.
-  - `gen:module`이 권한을 더하면 `PermissionCode`도 등록된 권한을 따라야 한다. 그러지 않으면 admin 역할의 문서(`role_resource`, `me_document`)가 모르는 코드에서 실패한다(`test_registry.py`가 먼저 실패한다). enum을 레지스트리에서 만들거나, 모르는 코드를 따로 다룬다.
-  - `users/service.py`(약 350줄)를 아바타 로직을 넣기 전에 나눈다.
+- M3. M3 계획에서 다음과 같이 했다.
+  - 스토리지 presign을 SigV4로 해 크기와 타입을 서명에 넣었다. §13의 SeaweedFS 확인 결과다(Task 1).
+  - `users/service.py`를 흐름별 패키지(`service/accounts.py`, `profile.py`, `management.py`)로 나눈 뒤 아바타를 넣었다(Task 4~5).
+  - `PATCH /me`의 아바타는 `files.attachable_file`로 검사한다. 탈퇴 때 아바타를 풀고, 참조 확인(`files.add_reference_check`)이 남기라고 하지 않은 본인 파일을 지운다(Task 5~6).
+  - `PermissionCode`는 정적 enum으로 두고 `test_registry.py`가 등록된 권한과 같은지 본다. `gen:module`이 enum에 코드를 더한다(Task 12, 15).
+  - 앱 테스트는 등록된 모듈 목록(권한 수, 태그 목록)에 기대지 않는다(Task 13). 테스트·E2E DB가 없는 리비전(지운 초안)에 있으면 스키마를 비우고 다시 한다(Task 14).
+  - 계약의 글 수정·삭제 설명을 줄였다. 골든 모듈의 문장이 가장 긴 모듈 이름(20자)으로 바뀌어도 한 줄(100자)에 들어가야 하기 때문이다(Task 15).
+- M4: 골든 모듈의 실시간 이벤트(`events.py`)와 이벤트 이름 바꾸기(`gen:module`), 레시피 "실시간 이벤트 추가"와 그 skill.
 - M4: 세션 폐기와 역할 변경의 실시간 이벤트(`session.revoked`, `me.updated`). `SessionTokens`는 계약에서 참조하지 않는 스키마라 구조 비교에서 `--subset`을 떼면 드러난다.
 - M4: `Operation`이 JSON:API 밖의 쿼리 파라미터(`redirectUri`, `state`, `code`, `error`)를 선언하고, 제공자가 덧붙이는 파라미터를 받아들이는 콜백 모드가 있어야 한다.
 - 나중. M2의 최종 리뷰가 남긴, 아직 정하지 않은 결정이다.
@@ -703,3 +719,4 @@ M1과 M2의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣
 | (M2) structlog의 rich 예외 출력이 Python 3.14.7(Windows)에서 접근 위반으로 프로세스를 죽인다. 로그와 테스트는 `structlog.dev.plain_traceback`을 쓴다 | 직접 확인(rich `pretty.py`의 `_traverse`)                                                                                                                  |
 | (M2) taskiq-redis 1.2.3의 `ListRedisScheduleSource`는 스케줄을 읽을 때마다 지난 분의 예약을 SCAN으로 다시 찾는다. 키 접두사에 콜론이 있으면 지난 분을 찾지 못한다 | `taskiq_redis/list_schedule_source.py`(`get_schedules`, `_parse_time_key`)                                                                                  |
 | (M2) Mailpit 1.31.2는 `MP_ENABLE_CHAOS=true`로 띄우면 `PUT /api/v1/chaos`로 SMTP 발신을 일부러 거절한다(`{}`는 되돌린다)          | 직접 확인(E2E)                                                                                                                                              |
+| (M3) SeaweedFS 4.47(`weed mini`)에서 boto3의 기본 presign은 SigV2 쿼리 서명이라 `Content-Length`가 서명에 들어가지 않는다(크기가 달라도 PUT이 성공한다). `signature_version="s3v4"`면 `content-length;content-type;host`를 서명하고, 크기나 타입이 다른 PUT은 403이다. S3 API로 건 CORS는 프론트 출처의 preflight를 허용하고 다른 출처는 거절한다 | 직접 확인(스파이크, `src/app/core/tests/test_storage.py`) |

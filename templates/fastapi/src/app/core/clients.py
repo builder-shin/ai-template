@@ -2,7 +2,7 @@
 
 프록시 뒤에서는 uvicorn의 `--forwarded-allow-ips`(환경 변수 FORWARDED_ALLOW_IPS)로 믿을 프록시를
 정한다. 그러면 uvicorn이 X-Forwarded-For의 주소를 클라이언트 주소(scope["client"])로 바꿔 둔다.
-기본값은 127.0.0.1만 믿는 것이다.
+기본값은 이 PC(127.0.0.1, ::1)만 믿는 것이다.
 """
 
 from dataclasses import dataclass

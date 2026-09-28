@@ -109,6 +109,7 @@
 
 - 골든 모듈 `posts`는 모든 계층, 테스트, 권한, 실시간, 다국어의 정답 예시다.
 - 생성기(`gen:module <name>` 등)는 골든 모듈을 복사해 이름을 바꾸고 등록 작업(라우터·모듈 등록, 권한 문자열, i18n 키, 마이그레이션 초안, 테스트)까지 처리한다.
+- 골든 모듈은 생성기가 읽는 표시를 주석으로 단다(복사하지 않을 줄, 이름을 바꾸지 않을 줄, 새 모듈에서 고칠 곳). 생성기는 만든 뒤 고칠 곳을 목록으로 알린다.
 - 절차의 원본은 `docs/recipes/*.md`다. Claude Code skill(`.claude/skills/<이름>/SKILL.md`)은 레시피를 불러오고 생성기를 호출하는 얇은 포장이다.
 - 공식 제공 skill이 있으면 넣는다(FastAPI 공식 에이전트 skill, Next.js `next-dev-loop`, Playwright CLI skill).
 
