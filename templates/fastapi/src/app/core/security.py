@@ -118,4 +118,5 @@ def new_token() -> str:
 
 def digest(value: str) -> str:
     """SHA-256 16진수. 토큰과 식별자(이메일)를 원문 대신 저장하거나 키로 쓸 때 쓴다."""
-    return hashlib.sha256(value.encode()).hexdigest()
+    # JSON은 짝 없는 서로게이트도 실어 온다(encode()는 실패한다). 보통 문자열의 결과는 같다.
+    return hashlib.sha256(value.encode("utf-8", "surrogatepass")).hexdigest()

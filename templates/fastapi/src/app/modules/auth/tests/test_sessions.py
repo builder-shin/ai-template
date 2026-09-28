@@ -137,6 +137,14 @@ async def test_refresh_rotates_and_reuse_revokes_the_session(
             "auth.oauth_code_invalid",
             None,
         ),
+        # JSON은 짝 없는 서로게이트(\ud800)도 실어 나른다. 500이 아니라 같은 401이다.
+        ({"grantType": "refreshToken", "refreshToken": "\ud800"}, 401, "auth.token_invalid", None),
+        (
+            {"grantType": "oauthCode", "code": "\ud800", "codeVerifier": "v" * 43},
+            401,
+            "auth.oauth_code_invalid",
+            None,
+        ),
         ({"email": "a@example.com"}, 422, "validation.required", "/data/attributes/grantType"),
         ({"grantType": "magic"}, 422, "validation.invalid_choice", "/data/attributes/grantType"),
         (
