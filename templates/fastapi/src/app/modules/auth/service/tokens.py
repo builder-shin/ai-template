@@ -30,12 +30,13 @@ def issue(session: AsyncSession, user_id: uuid.UUID, purpose: TokenPurpose, now:
 async def consume(
     session: AsyncSession, token: str, purpose: TokenPurpose, now: datetime
 ) -> AccountToken:
-    """맞고 만료되지 않은 토큰을 찾아 그 사용자의 같은 목적 토큰을 모두 지운다. 1회용이다.
+    """맞고 만료되지 않은 토큰을 지우며 가져오고, 그 사용자의 같은 목적 토큰도 모두 지운다.
 
+    1회용이다. 가져오기와 지우기가 한 문장이라, 같은 토큰으로 동시에 요청하면 한쪽만 성공한다.
     틀렸거나 만료됐으면 422 auth.verification_token_invalid다. commit하지 않는다.
     """
-    row = await repository.find_account_token(session, digest(token), purpose)
-    if row is None or row.expires_at <= now:
+    row = await repository.take_account_token(session, digest(token), purpose, now)
+    if row is None:
         raise invalid_token()
     await repository.delete_account_tokens(session, row.user_id, purpose)
     return row

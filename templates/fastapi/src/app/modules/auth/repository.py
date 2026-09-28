@@ -40,11 +40,21 @@ def add(session: AsyncSession, *rows: LoginSession | RefreshToken | AccountToken
     session.add_all(rows)
 
 
-async def find_account_token(
-    session: AsyncSession, token_hash: str, purpose: TokenPurpose
+async def take_account_token(
+    session: AsyncSession, token_hash: str, purpose: TokenPurpose, now: datetime
 ) -> AccountToken | None:
-    query = select(AccountToken).where(
-        AccountToken.token_hash == token_hash, AccountToken.purpose == purpose
+    """맞고 만료되지 않은 1회용 토큰을 지우고 돌려준다. 없으면 None이다.
+
+    한 문장(DELETE ... RETURNING)이라 같은 토큰으로 동시에 요청해도 한쪽만 토큰을 받는다.
+    """
+    query = (
+        delete(AccountToken)
+        .where(
+            AccountToken.token_hash == token_hash,
+            AccountToken.purpose == purpose,
+            AccountToken.expires_at > now,
+        )
+        .returning(AccountToken)
     )
     return await session.scalar(query)
 

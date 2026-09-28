@@ -9,8 +9,11 @@ import pytest
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+import app.modules.auth.service.tokens as tokens
+from app.core.jsonapi.errors import ApiError
+from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.openapi import JsonApiApp
-from app.modules.auth.models import AccountToken
+from app.modules.auth.models import AccountToken, TokenPurpose
 from app.modules.roles import Role, UserRole
 from app.modules.users import User
 from app.tests.accounts import PASSWORD, Accounts, new_email
@@ -148,6 +151,21 @@ async def test_expired_or_unknown_tokens_are_invalid(
             "/api/v1/email-verifications", **jsonapi_body(verification(attempt))
         )
         assert error_codes(response) == ["auth.verification_token_invalid"]
+
+
+async def test_a_token_is_consumed_only_once_in_one_session(
+    accounts: Accounts, db: async_sessionmaker[AsyncSession]
+) -> None:
+    user = await accounts.create(verified=False)
+    now = datetime.now(UTC)
+    purpose = TokenPurpose.EMAIL_VERIFICATION
+    async with db() as session:
+        token = tokens.issue(session, user.id, purpose, now)
+        await session.flush()
+        assert (await tokens.consume(session, token, purpose, now)).user_id == user.id
+        with pytest.raises(ApiError) as caught:
+            await tokens.consume(session, token, purpose, now)
+    assert caught.value.code == ErrorCode.AUTH_VERIFICATION_TOKEN_INVALID
 
 
 async def test_resending_answers_202_but_mails_only_unverified_accounts(
