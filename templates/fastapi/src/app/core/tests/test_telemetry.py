@@ -1,5 +1,6 @@
 """OpenTelemetry: 꺼져 있으면 아무것도 하지 않는다. 켜면 요청, DB, Valkey, 소켓에 span이 생기고
-에러 문서의 traceId가 요청 span의 trace id다. 잡의 계측은 app/tests/test_worker.py가 본다.
+에러 문서의 traceId가 요청 span의 trace id다. 헬스 체크 요청에는 span이 없다. 잡의 계측은
+app/tests/test_worker.py가 본다.
 
 전역 tracer provider는 프로세스에서 한 번만 정할 수 있어, 이 모듈이 메모리 exporter로 한 번 켜고
 모듈이 끝나면 계측을 푼다.
@@ -55,6 +56,18 @@ async def test_a_request_is_traced_with_its_db_and_valkey_calls(
     assert SpanKind.SERVER in kinds
     assert any(name.startswith("SELECT") for name in names), names
     assert any(span.attributes and span.attributes.get("db.system") == "redis" for span in mine)
+    # ASGI의 send와 receive마다 생기는 span은 만들지 않는다.
+    assert not [name for name in names if name.endswith(("http send", "http receive"))], names
+
+
+@pytest.mark.parametrize("path", ["/health/live", "/health/ready"])
+async def test_health_checks_make_no_request_span(
+    api: httpx.AsyncClient, spans: InMemorySpanExporter, path: str
+) -> None:
+    spans.clear()
+    assert (await api.get(path)).status_code == 200
+    server = [span.name for span in spans.get_finished_spans() if span.kind == SpanKind.SERVER]
+    assert server == []
 
 
 async def test_socket_handlers_make_spans(app: JsonApiApp, spans: InMemorySpanExporter) -> None:

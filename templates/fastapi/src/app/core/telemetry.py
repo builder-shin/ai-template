@@ -91,9 +91,19 @@ def configure_telemetry(
     return telemetry
 
 
+# span을 만들지 않는 요청(app.health). 전체 URL(scheme://host/path, 쿼리 없음)에 쓰는 정규식이다.
+_EXCLUDED_URLS = "/health/live$,/health/ready$"
+
+
 def instrument_app(app: FastAPI) -> None:
-    """요청마다 span을 만든다. 앱을 만들 때 늘 부른다(켜지 않으면 아무것도 하지 않는다)."""
-    FastAPIInstrumentor.instrument_app(app)
+    """요청마다 span을 만든다. 앱을 만들 때 늘 부른다(켜지 않으면 아무것도 하지 않는다).
+
+    헬스 체크 요청과 ASGI의 send, receive에는 span을 만들지 않는다(자주 와서 잡음이다).
+    제외할 URL을 직접 주므로 환경 변수 OTEL_PYTHON_FASTAPI_EXCLUDED_URLS는 쓰지 않는다.
+    """
+    FastAPIInstrumentor.instrument_app(
+        app, excluded_urls=_EXCLUDED_URLS, exclude_spans=["send", "receive"]
+    )
 
 
 def instrument_engine(engine: AsyncEngine) -> None:
