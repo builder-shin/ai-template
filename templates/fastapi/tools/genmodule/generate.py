@@ -1,5 +1,6 @@
 """모듈 만들기: 검사하고, 새 모듈과 마이그레이션 초안을 쓰고, 등록한다. poe 명령의 본체다."""
 
+import ast
 import builtins
 import keyword
 import re
@@ -10,6 +11,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+from alembic.script import ScriptDirectory
 
 from tools.genmodule.names import GenerateError, Names, names_for, rename
 from tools.genmodule.transform import bindings, directive, transform_python
@@ -55,15 +58,33 @@ def _insert_after(text: str, anchor: str, addition: str, where: str) -> str:
     return text.replace(anchor, anchor + addition, 1)
 
 
+def _add_module_import(text: str, module: str) -> str:
+    """`from app.modules import ...` 문에 모듈을 더한다.
+
+    ruff가 줄을 늘려 괄호로 감싸도(이전 gen:module이 이미 여럿을 더했으면 그렇다) `ast`로
+    문장의 시작·끝 줄을 찾아 통째로 한 줄로 다시 쓰므로, 줄 나눔 여부와 상관없이 읽는다.
+    """
+    found = next(
+        (
+            node
+            for node in ast.walk(ast.parse(text))
+            if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module == "app.modules"
+        ),
+        None,
+    )
+    if found is None:
+        raise GenerateError("registry.py에 `from app.modules import ...` 한 줄이 없다.")
+    imported = sorted({*(alias.name for alias in found.names), module})
+    lines = text.splitlines(keepends=True)
+    end = found.end_lineno or found.lineno
+    lines[found.lineno - 1 : end] = [f"from app.modules import {', '.join(imported)}\n"]
+    return "".join(lines)
+
+
 def _registrations(root: Path, names: Names) -> dict[Path, str]:
     """registry.py, main.py의 TAGS, roles의 PermissionCode에 새 모듈을 더한 내용."""
     registry = root / MODULES / "registry.py"
-    text = registry.read_text(encoding="utf-8")
-    found = re.search(r"^from app\.modules import (.+)$", text, re.MULTILINE)
-    if found is None:
-        raise GenerateError("registry.py에 `from app.modules import ...` 한 줄이 없다.")
-    modules = sorted({*(item.strip() for item in found.group(1).split(",")), names.snake})
-    text = text.replace(found.group(0), f"from app.modules import {', '.join(modules)}", 1)
+    text = _add_module_import(registry.read_text(encoding="utf-8"), names.snake)
     for anchor in (
         "    *posts.ROUTERS,\n",
         "    *posts.PERMISSIONS,\n",
@@ -102,9 +123,15 @@ def _migration(root: Path, names: Names, now: datetime) -> tuple[Path, str]:
         raise GenerateError(
             "posts 테이블을 만드는 마이그레이션이 없다. db:revision으로 초안을 만든다."
         )
-    revisions = {_revision(text, "revision") for text in texts.values()}
-    parents = {_revision(text, "down_revision") for text in texts.values()}
-    heads = sorted(revision for revision in revisions - parents if revision is not None)
+    # 문자열 정규식이 아니라 Alembic으로 head를 찾는다. merge 리비전은 down_revision이
+    # 튜플("a", "b")이라 정규식으로는 부모로 세지 못해 head가 아닌 것도 head로 잘못 본다.
+    # Alembic이 각 리비전 파일을 import해서 읽으므로, .pyc 캐시가 생기지 않게 잠깐 끈다
+    # (검사에 실패해도 아무것도 쓰지 않는다는 약속을 캐시 파일이 깨지 않게 한다).
+    previous_bytecode, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        heads = sorted(ScriptDirectory(str(root / "migrations")).get_heads())
+    finally:
+        sys.dont_write_bytecode = previous_bytecode
     if len(heads) != 1:
         raise GenerateError(f"마이그레이션 head가 하나가 아니다({heads}). 먼저 하나로 합친다.")
     old_revision, old_parent = _revision(golden, "revision"), _revision(golden, "down_revision")

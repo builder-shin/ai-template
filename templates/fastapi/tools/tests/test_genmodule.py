@@ -1,5 +1,6 @@
 """모듈 생성기(gen:module): 이름 규칙, 이름 바꾸기, 표시 처리, 프로젝트 사본에 만든 결과."""
 
+import ast
 import re
 import shutil
 import subprocess
@@ -136,6 +137,19 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def imported_modules(source: str) -> list[str]:
+    """registry.py의 `from app.modules import ...`가 들여오는 이름들.
+
+    ruff가 줄을 나눠도(괄호, 쉼표 끝) 읽을 수 있게 정규식이 아니라 ast로 본다.
+    """
+    found = next(
+        node
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.ImportFrom) and node.module == "app.modules"
+    )
+    return [alias.name for alias in found.names]
+
+
 def test_generate_copies_registers_and_chains_a_migration(project: Path) -> None:
     before = ScriptDirectory(str(project / "migrations")).get_heads()
     generated = generate(names_for(LONGEST), root=project, now=NOW)
@@ -145,9 +159,7 @@ def test_generate_copies_registers_and_chains_a_migration(project: Path) -> None
     made = sorted(path.relative_to(generated.module) for path in generated.module.rglob("*.py"))
     assert (generated.module, made) == (modules / "sample_gadget_probes", golden)
     registry = read(modules / "registry.py")
-    imported = re.search(r"^from app\.modules import (.+)$", registry, re.MULTILINE)
-    assert imported is not None
-    packages = imported.group(1).split(", ")
+    packages = imported_modules(registry)
     assert "sample_gadget_probes" in packages
     assert packages == sorted(packages)
     for line in (
@@ -182,6 +194,69 @@ def test_generate_copies_registers_and_chains_a_migration(project: Path) -> None
         if re.search("post", line, re.IGNORECASE) and not allowed.search(line)
     ]
     assert leftovers == []
+
+
+def test_generate_reads_an_already_wrapped_registry_import(project: Path) -> None:
+    """ruff가 이미 괄호로 감싸 여러 줄로 늘어놓은(쉼표 끝) import 문도 통째로 읽는다.
+
+    이전 gen:module이 이름을 여럿 더해 줄이 100칸을 넘으면 run()의 ruff format이 이렇게
+    바꾼다. 한 줄만 보는 정규식은 `from app.modules import (` 한 줄만 보고 깨뜨린다.
+    """
+    registry = project / "src/app/modules/registry.py"
+    names = imported_modules(read(registry))
+    wrapped = "from app.modules import (\n" + "".join(f"    {name},\n" for name in names) + ")"
+    text = re.sub(
+        r"^from app\.modules import .+$", lambda _: wrapped, read(registry), count=1, flags=re.M
+    )
+    registry.write_text(text, encoding="utf-8", newline="\n")
+
+    generate(names_for(SAMPLE), root=project, now=NOW)
+
+    new_text = read(registry)
+    ast.parse(new_text)  # 쉼표 하나만 남는 등으로 깨지면 여기서 SyntaxError다
+    assert "sample_widgets" in imported_modules(new_text)
+
+
+def write_revision(path: Path, revision: str, down: str | tuple[str, str]) -> None:
+    """head 계산만 확인하는 최소한의 마이그레이션 파일(빈 upgrade/downgrade)을 쓴다."""
+    path.write_text(
+        f'"""{revision}"""\n'
+        "\n"
+        "from collections.abc import Sequence\n"
+        "\n"
+        f'revision: str = "{revision}"\n'
+        f"down_revision: str | Sequence[str] | None = {down!r}\n"
+        "branch_labels: str | Sequence[str] | None = None\n"
+        "depends_on: str | Sequence[str] | None = None\n"
+        "\n\n"
+        "def upgrade() -> None: ...\n"
+        "\n\n"
+        "def downgrade() -> None: ...\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
+def test_generate_chains_after_a_merge_revision(project: Path) -> None:
+    """down_revision이 튜플인 merge 리비전 뒤에도 head 하나로 보고 새 리비전을 잇는다.
+
+    문자열 정규식으로 부모를 세면 튜플 down_revision을 세지 못해, merge로 만든 head를
+    head가 아닌 것으로 잘못 본다(alembic merge가 바로 이 모양을 만든다).
+    """
+    versions = project / "migrations/versions"
+    (head,) = ScriptDirectory(str(project / "migrations")).get_heads()
+    write_revision(versions / "branch_a.py", "branch0000a1", head)
+    write_revision(versions / "branch_b.py", "branch0000b1", head)
+    write_revision(versions / "merge_ab.py", "mergeab00001", ("branch0000a1", "branch0000b1"))
+
+    generated = generate(names_for(SAMPLE), root=project, now=NOW)
+
+    scripts = ScriptDirectory(str(project / "migrations"))
+    (new_head,) = scripts.get_heads()
+    assert new_head in generated.migration.name
+    revision = scripts.get_revision(new_head)
+    assert revision is not None
+    assert revision.down_revision == "mergeab00001"
 
 
 def test_generated_code_passes_format_and_lint(project: Path) -> None:
