@@ -312,7 +312,12 @@ class RedirectOperation(Operation):
 
 
 def _is_url(value: str) -> bool:
-    parts = urlparse(value)
+    # urlparse는 IPv6 호스트로 보이는 일부 잘못된 값(예: "http://[::1")에 ValueError를 던진다.
+    # 그런 값도 형식이 틀린 것일 뿐이니 400으로 돌린다.
+    try:
+        parts = urlparse(value)
+    except ValueError:
+        return False
     return parts.scheme in {"http", "https"} and bool(parts.netloc)
 
 

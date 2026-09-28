@@ -85,7 +85,14 @@ async def test_a_redirect_sends_302_with_the_location(browser: httpx.AsyncClient
 
 
 @pytest.mark.parametrize(
-    "params", [{}, {"to": "not-a-url"}, {"to": FRONT, "extra": "1"}, {"to": [FRONT, FRONT]}]
+    "params",
+    [
+        {},
+        {"to": "not-a-url"},
+        {"to": FRONT, "extra": "1"},
+        {"to": [FRONT, FRONT]},
+        {"to": "http://[::1"},
+    ],
 )
 async def test_redirect_parameters_are_checked(
     browser: httpx.AsyncClient, params: dict[str, Any]
