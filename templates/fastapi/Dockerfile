@@ -28,6 +28,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 USER app
 EXPOSE 8000
-HEALTHCHECK --interval=5s --timeout=3s --start-period=10s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
+# HEALTHCHECK는 두지 않는다. 같은 이미지가 worker, scheduler, migrate로도 뜨는데 헬스체크는 api에만
+# 맞기 때문이다. api의 헬스체크는 compose.yaml의 api 서비스와 배포 환경의 probe(/health/live,
+# /health/ready)에 둔다.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

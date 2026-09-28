@@ -126,8 +126,6 @@ services:
     <<: *app
     # 마이그레이션과 시드를 하고 끝난다. api, worker, scheduler는 이것이 성공해야 뜬다.
     command: ["sh", "-c", "alembic upgrade head && python -m app.seed"]
-    healthcheck:
-      disable: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,6 +134,19 @@ services:
     <<: *app
     ports:
       - "127.0.0.1:8000:8000"
+    # 헬스체크는 api에만 둔다(이미지에는 없다). worker, scheduler, migrate는 헬스체크가 없어서
+    # `up --wait`가 실행 중(migrate는 성공 종료)인지만 본다. healthcheck.disable은 쓰지 않는다:
+    # Compose v2의 --wait가 그것을 헬스체크가 있는 것으로 보고 "has no healthcheck configured"로 실패한다.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -147,8 +158,6 @@ services:
   worker:
     <<: *app
     command: ["taskiq", "worker", "app.worker:create_broker", "--no-configure-logging"]
-    healthcheck:
-      disable: true
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -164,8 +173,6 @@ services:
       - app.scheduler:create_scheduler
       - --no-configure-logging
       - --update-interval=10
-    healthcheck:
-      disable: true
     depends_on:
       migrate:
         condition: service_completed_successfully
