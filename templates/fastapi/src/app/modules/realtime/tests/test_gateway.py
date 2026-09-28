@@ -53,6 +53,17 @@ async def test_a_ticket_of_an_ended_session_is_refused(
             await socket.open(url, auth={"ticket": ticket})
 
 
+@pytest.mark.parametrize("ticket", ["\ud800", 123, ""], ids=["surrogate", "int", "empty"])
+async def test_a_malformed_ticket_is_refused(app: JsonApiApp, ticket: object) -> None:
+    async with serving(app) as url:
+        socket = SocketClient()
+        with pytest.raises(socketio.exceptions.ConnectionError):
+            await socket.open(url, auth={"ticket": ticket})
+        refused = await socket.next("connect_error")
+    assert refused["message"] == "auth.token_invalid"
+    assert (refused["data"]["status"], refused["data"]["code"]) == ("401", "auth.token_invalid")
+
+
 async def test_anyone_subscribes_to_published_posts_and_leaves(
     app: JsonApiApp, realtime: Realtime
 ) -> None:

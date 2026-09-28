@@ -38,6 +38,9 @@ async def issue_ticket(redis: Redis, actor: Principal) -> tuple[str, datetime]:
 
 async def consume_ticket(redis: Redis, token: str) -> Ticket | None:
     """티켓을 꺼내면서 지운다. 없거나 만료됐으면 None이다."""
+    if not token.isascii():
+        # new_token()은 ASCII만 낸다. ASCII가 아니면 발급한 적이 없는 값이다.
+        return None
     raw = await redis.getdel(_key(token))
     if raw is None:
         return None
