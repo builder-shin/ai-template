@@ -14,12 +14,16 @@ from app.core.security import (
     ExpiredTokenError,
     InvalidTokenError,
     check_password,
+    check_password_async,
     digest,
     hash_password,
+    hash_password_async,
     issue_access_token,
     new_token,
     read_access_token,
 )
+
+pytestmark = pytest.mark.anyio
 
 SECRET = SecretStr("s" * 32)
 USER = uuid.UUID("01920000-0000-7000-8000-000000000001")
@@ -41,6 +45,14 @@ def test_password_hash_is_argon2id_and_checks_only_the_right_password() -> None:
 
 def test_missing_hash_never_matches() -> None:
     assert check_password("anything", None) is False
+
+
+async def test_async_password_functions_hash_and_check_in_a_thread() -> None:
+    hashed = await hash_password_async("correct horse")
+    assert hashed.startswith("$argon2id$")
+    assert await check_password_async("correct horse", hashed) is True
+    assert await check_password_async("wrong horse", hashed) is False
+    assert await check_password_async("anything", None) is False
 
 
 def test_access_token_round_trip() -> None:

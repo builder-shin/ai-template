@@ -25,7 +25,7 @@ from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.query import Page, SortField
 from app.core.ratelimit import MINUTE, Limit, enforce
-from app.core.security import check_password, digest
+from app.core.security import check_password_async, digest
 from app.modules import users
 from app.modules.auth.models import LoginSession
 from app.modules.auth.schemas import (
@@ -75,10 +75,8 @@ async def _password(
         redis, Limit("login-identifier", settings.rate_limit_login_identifier, MINUTE), identifier
     )
     user = await users.find_account(session, grant.email)
-    if (
-        not check_password(grant.password, None if user is None else user.password_hash)
-        or user is None
-    ):
+    hashed = None if user is None else user.password_hash
+    if not await check_password_async(grant.password, hashed) or user is None:
         await _login_failed(session, client, user, identifier, "invalid_credentials")
         raise _unauthorized(ErrorCode.AUTH_INVALID_CREDENTIALS, "The email or password is wrong.")
     if user.status != users.UserStatus.ACTIVE:

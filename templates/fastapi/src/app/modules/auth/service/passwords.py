@@ -25,7 +25,7 @@ from app.core.jobs import JobQueue
 from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.models import ErrorCode
 from app.core.mail import SEND_MAIL
-from app.core.security import check_password
+from app.core.security import check_password_async
 from app.modules import users
 from app.modules.auth.models import TokenPurpose
 from app.modules.auth.service.accounts import mail_request_limits
@@ -57,7 +57,7 @@ async def reset_password(
     user = await users.get_account(session, row.user_id)
     if user is None or user.status != users.UserStatus.ACTIVE:
         raise tokens.invalid_token()
-    users.set_password(user, password)
+    await users.set_password(user, password)
     users.mark_email_verified(user, now)
     await repository.revoke_sessions(session, user.id, now)
     await record_audit(
@@ -77,12 +77,12 @@ async def change_password(
     """현재 비밀번호를 확인하고 바꾼다. 현재 세션을 뺀 나머지를 폐기한다."""
     user = await users.get_account(session, actor.user_id)
     hashed = None if user is None else user.password_hash
-    if not check_password(current, hashed) or user is None:
+    if not await check_password_async(current, hashed) or user is None:
         detail = "The current password is wrong."
         pointer = "/data/attributes/currentPassword"
         raise ApiError(401, ErrorCode.AUTH_INVALID_CREDENTIALS, detail, pointer=pointer)
     now = utc_now()
-    users.set_password(user, new)
+    await users.set_password(user, new)
     await repository.revoke_sessions(session, user.id, now, keep=actor.session_id)
     await record_audit(
         session,

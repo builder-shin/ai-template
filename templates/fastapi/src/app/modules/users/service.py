@@ -24,7 +24,7 @@ from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.models import ErrorCode, ToOne
 from app.core.jsonapi.query import Page, SortField
 from app.core.permissions import PermissionRegistry
-from app.core.security import hash_password
+from app.core.security import hash_password_async
 from app.modules import roles
 from app.modules.users.models import Locale, User, UserStatus
 from app.modules.users.schemas import (
@@ -81,7 +81,7 @@ async def create_account(
         name=name,
         locale=locale,
         status=UserStatus.ACTIVE,
-        password_hash=None if password is None else hash_password(password),
+        password_hash=None if password is None else await hash_password_async(password),
         email_verified_at=utc_now() if verified else None,
     )
     repository.add(session, user)
@@ -129,8 +129,8 @@ def mark_email_verified(user: User, now: datetime) -> bool:
     return True
 
 
-def set_password(user: User, password: str) -> None:
-    user.password_hash = hash_password(password)
+async def set_password(user: User, password: str) -> None:
+    user.password_hash = await hash_password_async(password)
 
 
 def public_user_resource(user: User) -> UserPublicResource:

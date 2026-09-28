@@ -8,7 +8,7 @@
 - `redis.py`: Valkey 클라이언트와 요청 의존성 `RedisDep`.
 - `storage.py`: S3 클라이언트(`create_client`)와 버킷 확인(`check_bucket`).
 - `jsonvalue.py`: JSON 값 좁히기(`is_object`, `is_array`).
-- `security.py`: 비밀번호 해시(Argon2id), access token(JWT) 발급과 검증, 1회용 토큰과 SHA-256(`digest`).
+- `security.py`: 비밀번호 해시(Argon2id), access token(JWT) 발급과 검증, 1회용 토큰과 SHA-256(`digest`). async 코드는 비밀번호를 스레드에서 도는 `hash_password_async`, `check_password_async`로 다룬다.
 - `permissions.py`: 권한(`Permission`)과 레지스트리(`PermissionRegistry`). 권한은 모듈이 내보내고 `app.modules.registry`가 모은다.
 - `clients.py`: 요청을 보낸 쪽(IP, User-Agent). `ClientDep`으로 받는다.
 - `ratelimit.py`: 레이트 리밋(Valkey 고정 윈도). 엄격한 한도는 service가 `enforce(redis, Limit(...), 대상)`로 걸고, IP별 전역 한도는 미들웨어가 건다.

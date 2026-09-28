@@ -1,10 +1,13 @@
 """비밀번호, access token(JWT), 1회용 토큰. 도메인을 모르는 암호 도구다.
 
 - 비밀번호는 Argon2id로 해시한다(pwdlib 권장 설정). 해시 하나에 수십 밀리초가 걸린다.
+  async 코드는 스레드에서 도는 hash_password_async, check_password_async를 쓴다. 그동안
+  이벤트 루프는 다른 요청을 처리한다(argon2-cffi는 GIL을 푼다).
 - access token은 HS256 JWT이고 sub(사용자 id), sid(세션 id), iat, exp를 담는다. 수명은 15분이다.
 - refresh token, 인증·재설정 토큰은 32바이트 무작위 값(base64url 43자)이고, DB에는 SHA-256만 둔다.
 """
 
+import asyncio
 import hashlib
 import secrets
 import uuid
@@ -41,6 +44,11 @@ def hash_password(password: str) -> str:
     return _password_hash.hash(password)
 
 
+async def hash_password_async(password: str) -> str:
+    """hash_password를 스레드에서 돌린다. 이벤트 루프를 막지 않는다."""
+    return await asyncio.to_thread(hash_password, password)
+
+
 @cache
 def _dummy_hash() -> str:
     return _password_hash.hash(secrets.token_urlsafe(16))
@@ -56,6 +64,11 @@ def check_password(password: str, hashed: str | None) -> bool:
         _password_hash.verify(password, _dummy_hash())
         return False
     return _password_hash.verify(password, hashed)
+
+
+async def check_password_async(password: str, hashed: str | None) -> bool:
+    """check_password를 스레드에서 돌린다. 해시가 없을 때의 가짜 검증도 스레드에서 한다."""
+    return await asyncio.to_thread(check_password, password, hashed)
 
 
 def issue_access_token(
