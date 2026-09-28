@@ -9,7 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jsonapi.query import Page, SortField
 from app.core.listing import Sortable, fetch_page, ordering
-from app.modules.auth.models import AccountToken, LoginSession, RefreshToken, TokenPurpose
+from app.modules.auth.models import (
+    AccountToken,
+    LoginSession,
+    RefreshToken,
+    SocialAccount,
+    TokenPurpose,
+)
 from app.modules.users import User, UserStatus
 
 SESSION_SORT: dict[str, Sortable] = {
@@ -36,7 +42,22 @@ async def active_session(
     return await session.scalar(query)
 
 
-def add(session: AsyncSession, *rows: LoginSession | RefreshToken | AccountToken) -> None:
+async def social_account(
+    session: AsyncSession, provider: str, subject: str
+) -> SocialAccount | None:
+    query = select(SocialAccount).where(
+        SocialAccount.provider == provider, SocialAccount.subject == subject
+    )
+    return await session.scalar(query)
+
+
+async def delete_social_accounts(session: AsyncSession, user_id: uuid.UUID) -> None:
+    await session.execute(delete(SocialAccount).where(SocialAccount.user_id == user_id))
+
+
+def add(
+    session: AsyncSession, *rows: LoginSession | RefreshToken | AccountToken | SocialAccount
+) -> None:
     session.add_all(rows)
 
 

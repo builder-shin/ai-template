@@ -6,7 +6,8 @@
   감사 로그(session.login_failed, 입력한 이메일의 해시만)를 남긴다.
 - refreshToken grant: refresh token을 회전한다. 이미 쓴 토큰이 다시 오면 그 세션을 폐기하고
   401 auth.refresh_token_reused다.
-- oauthCode grant: 소셜 로그인(M4)이 코드를 만들기 전까지는 늘 401 auth.oauth_code_invalid다.
+- oauthCode grant: 소셜 로그인 콜백이 프론트로 넘긴 1회용 코드(60초)다. 틀렸거나 만료됐거나 이미
+  썼으면 401 auth.oauth_code_invalid, 그사이 비활성화된 계정은 403 auth.account_deactivated다.
 """
 
 import uuid
@@ -17,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.auth.events as events
 import app.modules.auth.repository as repository
+import app.modules.auth.service.oauth as oauth
 from app.core.access import Principal
 from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
 from app.core.clients import Client
@@ -126,14 +128,40 @@ async def _refresh(session: AsyncSession, settings: Settings, refresh_token: str
     return issued
 
 
+async def _oauth_code(
+    session: AsyncSession, redis: Redis, settings: Settings, client: Client, code: str
+) -> IssuedTokens:
+    invalid = _unauthorized(
+        ErrorCode.AUTH_OAUTH_CODE_INVALID, "The sign-in code is wrong or has expired."
+    )
+    found = await oauth.consume_code(redis, code)
+    if found is None:
+        raise invalid
+    user = await users.get_account(session, found.user_id)
+    if user is None or user.status == users.UserStatus.DELETED:
+        raise invalid
+    if user.status != users.UserStatus.ACTIVE:
+        raise ApiError(403, ErrorCode.AUTH_ACCOUNT_DEACTIVATED, "The account is deactivated.")
+    issued = await open_session(session, settings, user.id, client.user_agent, utc_now())
+    await record_audit(
+        session,
+        AuditLogAction.SESSION_LOGIN_SUCCEEDED,
+        actor_id=user.id,
+        ip_address=client.ip,
+        target=(AuditLogTargetType.USERS, user.id),
+        metadata={"method": "oauth", "provider": found.provider.value},
+    )
+    await session.commit()
+    return issued
+
+
 async def sign_in(
     session: AsyncSession, redis: Redis, settings: Settings, client: Client, grant: SessionGrant
 ) -> IssuedTokens:
     if isinstance(grant, SessionPasswordGrant):
         return await _password(session, redis, settings, client, grant)
     if isinstance(grant, SessionOAuthCodeGrant):
-        detail = "The sign-in code is wrong or has expired."
-        raise _unauthorized(ErrorCode.AUTH_OAUTH_CODE_INVALID, detail)
+        return await _oauth_code(session, redis, settings, client, grant.code)
     return await _refresh(session, settings, grant.refresh_token)
 
 

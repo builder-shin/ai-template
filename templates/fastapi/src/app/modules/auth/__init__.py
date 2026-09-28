@@ -3,6 +3,7 @@
 from app.modules.auth.events import EVENTS
 from app.modules.auth.jobs import JOBS
 from app.modules.auth.router.accounts import registrations, verification_requests, verifications
+from app.modules.auth.router.oauth import oauth
 from app.modules.auth.router.passwords import changes, reset_requests, resets
 from app.modules.auth.router.sessions import revocations, sessions
 from app.modules.auth.service.credentials import (
@@ -22,6 +23,7 @@ ROUTERS = (
     reset_requests,
     resets,
     changes,
+    oauth,
 )
 
 __all__ = [

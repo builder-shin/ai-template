@@ -129,7 +129,8 @@ async def close_credentials(
 ) -> None:
     """계정을 닫을 때(users.close_account) 부른다.
 
-    세션을 모두 폐기하고, 탈퇴면 남은 1회용 토큰도 지운다. commit하지 않는다. 부른 쪽(users)의
+    세션을 모두 폐기하고, 탈퇴면 남은 1회용 토큰과 소셜 로그인 연결도 지운다. commit하지 않는다.
+    부른 쪽(users)의
     트랜잭션에 들어가고, session.revoked도 그 commit 뒤에 나간다.
     """
     deleted = closure is users.Closure.DELETED
@@ -142,3 +143,4 @@ async def close_credentials(
         events.session_revoked(session, user_id, reason)
     if deleted:
         await repository.delete_account_tokens(session, user_id)
+        await repository.delete_social_accounts(session, user_id)

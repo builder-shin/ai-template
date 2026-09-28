@@ -4162,6 +4162,207 @@
         ]
       }
     },
+    "/api/v1/oauth/{provider}/authorize": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "description": "제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state와 PKCE(S256)를 붙인다. 세 제공자 모두 PKCE를 지원한다.",
+        "operationId": "OAuth_authorize",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OAuthProvider"
+            }
+          },
+          {
+            "name": "redirectUri",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirection",
+            "headers": {
+              "location": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/oauth/{provider}/callback": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "description": "제공자가 돌아오는 곳. 성공하면 1회용 코드(60초)를 code로 붙여 프론트 콜백으로 보낸다. 실패하면 code 대신 error(auth.oauth_denied, auth.oauth_failed, auth.account_deactivated)를 붙여 보낸다. state가 없거나 만료됐으면 돌려보낼 곳을 모르므로 400이다.",
+        "operationId": "OAuth_callback",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OAuthProvider"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirection",
+            "headers": {
+              "location": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit-logs": {
       "get": {
         "tags": [
@@ -6006,6 +6207,14 @@
         "enum": [
           "ko",
           "en"
+        ]
+      },
+      "OAuthProvider": {
+        "type": "string",
+        "enum": [
+          "google",
+          "kakao",
+          "naver"
         ]
       },
       "PageMeta": {
