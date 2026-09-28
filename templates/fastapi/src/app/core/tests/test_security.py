@@ -9,6 +9,7 @@ import pytest
 from pydantic import SecretStr
 
 from app.core.security import (
+    ACCESS_TOKEN_LEEWAY,
     ACCESS_TOKEN_TTL,
     AccessClaims,
     ExpiredTokenError,
@@ -62,8 +63,15 @@ def test_access_token_round_trip() -> None:
     assert read_access_token(SECRET, token) == AccessClaims(user_id=USER, session_id=SESSION)
 
 
+def test_access_token_from_a_clock_a_little_ahead_is_accepted() -> None:
+    """발급한 api의 시계가 몇 초 빠르면 iat가 미래다. 그래도 방금 발급한 토큰은 받는다."""
+    token, _ = issue_access_token(SECRET, USER, SESSION, datetime.now(UTC) + timedelta(seconds=5))
+    assert read_access_token(SECRET, token) == AccessClaims(user_id=USER, session_id=SESSION)
+
+
 def test_expired_access_token_is_reported_as_expired() -> None:
-    issued = datetime.now(UTC) - ACCESS_TOKEN_TTL - timedelta(seconds=5)
+    """봐주는 시간(ACCESS_TOKEN_LEEWAY)보다 더 지나 만료된 토큰은 만료로 알린다."""
+    issued = datetime.now(UTC) - ACCESS_TOKEN_TTL - ACCESS_TOKEN_LEEWAY - timedelta(seconds=5)
     token, _ = issue_access_token(SECRET, USER, SESSION, issued)
     with pytest.raises(ExpiredTokenError):
         read_access_token(SECRET, token)

@@ -12,7 +12,7 @@ from app.core.access import Principal
 from app.core.config import Settings
 from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.openapi import JsonApiApp
-from app.core.security import ACCESS_TOKEN_TTL, issue_access_token
+from app.core.security import ACCESS_TOKEN_LEEWAY, ACCESS_TOKEN_TTL, issue_access_token
 from app.modules.auth.models import LoginSession
 from app.modules.auth.service.credentials import authenticate
 from app.modules.users import User, UserStatus
@@ -84,7 +84,7 @@ async def test_inactive_user_is_rejected(
 async def test_expired_and_forged_tokens(
     app: JsonApiApp, db: async_sessionmaker[AsyncSession], infra: Settings
 ) -> None:
-    issued = datetime.now(UTC) - ACCESS_TOKEN_TTL - timedelta(seconds=5)
+    issued = datetime.now(UTC) - ACCESS_TOKEN_TTL - ACCESS_TOKEN_LEEWAY - timedelta(seconds=5)
     expired, _ = issue_access_token(infra.jwt_secret, uuid.uuid7(), uuid.uuid7(), issued)
     assert await code_of(app, db, expired) == "auth.token_expired"
     assert await code_of(app, db, "not-a-token") == "auth.token_invalid"

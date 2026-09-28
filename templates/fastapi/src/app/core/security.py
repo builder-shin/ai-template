@@ -21,6 +21,9 @@ from pwdlib import PasswordHash
 from pydantic import SecretStr
 
 ACCESS_TOKEN_TTL = timedelta(minutes=15)
+# 검증할 때 iat와 exp에 봐주는 시간. api 인스턴스끼리 시계가 조금 어긋나면 방금 발급한 토큰의
+# iat가 미래가 되는데, 봐주지 않으면 그 토큰이 auth.token_invalid로 거절된다.
+ACCESS_TOKEN_LEEWAY = timedelta(seconds=30)
 _ALGORITHM = "HS256"
 _REQUIRED_CLAIMS = ["exp", "iat", "sub", "sid"]
 _password_hash = PasswordHash.recommended()
@@ -88,14 +91,16 @@ def issue_access_token(
 
 
 def read_access_token(secret: SecretStr, token: str) -> AccessClaims:
-    """서명과 만료를 검증하고 클레임을 읽는다.
+    """서명과 만료를 검증하고 클레임을 읽는다. 시계 차이는 ACCESS_TOKEN_LEEWAY만큼 봐준다.
 
     만료면 ExpiredTokenError, 그 밖의 문제는 InvalidTokenError다.
     """
     key = secret.get_secret_value()
     options: Options = {"require": _REQUIRED_CLAIMS}
     try:
-        claims = jwt.decode(token, key, algorithms=[_ALGORITHM], options=options)  # pyright: ignore[reportUnknownMemberType]  # 사유: PyJWT의 키 타입이 설치하지 않은 cryptography를 참조한다(HS256만 쓴다)
+        claims = jwt.decode(  # pyright: ignore[reportUnknownMemberType]  # 사유: PyJWT의 키 타입이 설치하지 않은 cryptography를 참조한다(HS256만 쓴다)
+            token, key, algorithms=[_ALGORITHM], options=options, leeway=ACCESS_TOKEN_LEEWAY
+        )
     except jwt.ExpiredSignatureError as error:
         raise ExpiredTokenError from error
     except jwt.InvalidTokenError as error:
