@@ -120,6 +120,9 @@ describe(`소셜 로그인 (${target.name})`, () => {
       redirect: "manual",
     });
     expect(outside.response.status).toBe(400);
+    expect(outside.error?.errors.map((error) => [error.code, error.source?.parameter])).toEqual([
+      ["jsonapi.invalid_query", "redirectUri"],
+    ]);
     const unknown = await api().GET("/api/v1/oauth/{provider}/callback", {
       params: { path: { provider: "google" }, query: { state: randomUUID() } },
       redirect: "manual",
@@ -151,7 +154,9 @@ describe(`소셜 로그인 (${target.name})`, () => {
     }
 
     const back = await oauth.signIn("kakao", FRONT_CALLBACK, person());
+    expect(back.query.get("error")).toBeNull();
     const code = back.query.get("code");
+    expect(code).not.toBeNull();
     const wrongVerifier = await signInWith(code, `not-${back.codeVerifier}`);
     expect(wrongVerifier.response.status).toBe(401);
     expect(codes(wrongVerifier.error)).toEqual(["auth.oauth_code_invalid"]);

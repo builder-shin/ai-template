@@ -64,11 +64,16 @@ export class RealtimeClient {
     return new RealtimeClient(socket);
   }
 
+  /** 지금까지 모은 계약 위반을 비우면서 돌려준다. next·nothing·close가 같은 위반을 두 번 던지지 않는다. */
+  private takeViolations(): string[] {
+    return this.violations.splice(0);
+  }
+
   /** 조건에 맞는 이벤트의 페이로드. 이미 받은 것도 본다. 제한 시간 안에 오지 않으면 던진다. */
   async next(event: string, match: (payload: unknown) => boolean = () => true): Promise<unknown> {
     const deadline = Date.now() + WAIT_MS;
     while (Date.now() < deadline) {
-      if (this.violations.length > 0) throw new ContractViolation(this.violations);
+      if (this.violations.length > 0) throw new ContractViolation(this.takeViolations());
       const found = this.received.find((item) => item.event === event && match(item.payload));
       if (found !== undefined) return found.payload;
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -76,9 +81,10 @@ export class RealtimeClient {
     throw new Error(`${String(WAIT_MS)}ms 안에 ${event}를 받지 못했다.`);
   }
 
-  /** ms 동안 조건에 맞는 이벤트가 오지 않았는가. */
+  /** ms 동안 조건에 맞는 이벤트가 오지 않았는가. 그사이 모은 계약 위반이 있으면 던진다. */
   async nothing(event: string, match: (payload: unknown) => boolean, ms = 500): Promise<boolean> {
     await new Promise((resolve) => setTimeout(resolve, ms));
+    if (this.violations.length > 0) throw new ContractViolation(this.takeViolations());
     return !this.received.some((item) => item.event === event && match(item.payload));
   }
 
@@ -90,8 +96,10 @@ export class RealtimeClient {
     return ack as Ack;
   }
 
+  /** 연결을 끊는다. next·nothing이 아직 던지지 않은 계약 위반이 남아 있으면 끊은 뒤에 던진다. */
   close(): void {
     this.socket.disconnect();
+    if (this.violations.length > 0) throw new ContractViolation(this.takeViolations());
   }
 }
 

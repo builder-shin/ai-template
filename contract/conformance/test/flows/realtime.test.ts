@@ -91,8 +91,12 @@ describe(`실시간 (${target.name})`, () => {
         data: { type: "posts", id },
       });
     } finally {
-      everything.close();
-      everyone.close();
+      // close()는 남은 계약 위반이 있으면 던진다. 하나가 던져도 다른 하나는 꼭 끊는다.
+      try {
+        everything.close();
+      } finally {
+        everyone.close();
+      }
     }
   });
 

@@ -175,4 +175,22 @@ describe("모의 OAuth 드라이버", () => {
     const driver = createMockOAuthDriver({ baseUrl: "http://api.test", fetch: fetchStub });
     await expect(driver.start("google", "http://web.test/callback")).rejects.toThrow("302");
   });
+
+  it("리다이렉트 본문이 JSON이 아니어도(NestJS의 기본 안내 문구 등) 그대로 따라간다", async () => {
+    const fetchStub = () =>
+      Promise.resolve(
+        new Response("Found. Redirecting to http://idp.test/kakao/authorize?state=s", {
+          status: 302,
+          headers: {
+            location: "http://idp.test/kakao/authorize?state=s",
+            "content-type": "text/plain; charset=utf-8",
+          },
+        }),
+      );
+    const driver = createMockOAuthDriver({ baseUrl: "http://api.test", fetch: fetchStub });
+    await expect(driver.start("kakao", "http://web.test/callback")).resolves.toMatchObject({
+      providerUrl: "http://idp.test/kakao/authorize?state=s",
+      state: "s",
+    });
+  });
 });
