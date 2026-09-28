@@ -3,7 +3,8 @@
 - setup(tools/cli.py)이 up → ensure_bucket → ensure_databases 순서로 부른다.
 - 테스트는 conftest.py가 isolated_settings(..., "test")로 바꾼 설정으로 preflight를 부른다.
 - 테스트와 E2E DB는 migrate_disposable로 마이그레이션한다. 버려도 되는 DB라, 지금 없는
-  리비전에 있으면(지운 마이그레이션 초안, 다른 브랜치) 스키마를 비우고 다시 한다.
+  리비전에 있으면(지운 마이그레이션 초안, 다른 브랜치) 스키마를 비우고 다시 한다. 버려도 되는
+  DB는 이 PC에 있고 이름이 _test나 _e2e로 끝나는 DB뿐이다(is_disposable). 함수가 스스로 본다.
 """
 
 import subprocess
@@ -87,6 +88,16 @@ def is_local(database_url: str) -> bool:
     return make_url(database_url).host in LOCAL_HOSTS
 
 
+def is_disposable(database_url: str) -> bool:
+    """비워도 되는 DB인가: 이 PC에 있고, 이름이 테스트·E2E의 접미사(_test, _e2e)로 끝난다.
+
+    개발 DB(app)는 이 PC에 있어도 비우지 않는다.
+    """
+    database = make_url(database_url).database or ""
+    suffixes = tuple(suffix for suffix, _ in TARGETS.values())
+    return is_local(database_url) and database.endswith(suffixes)
+
+
 def _conninfo(url: URL, database: str) -> str:
     """psycopg의 접속 문자열. 같은 서버의 database로 접속한다."""
     return url.set(drivername="postgresql", database=database).render_as_string(hide_password=False)
@@ -123,15 +134,15 @@ def reset_database(settings: Settings) -> None:
 def migrate_disposable(settings: Settings) -> bool:
     """테스트나 E2E DB를 head까지 마이그레이션한다. 스키마를 비우고 처음부터 했으면 True다.
 
-    DB가 지금 없는 리비전에 있으면 public 스키마를 비우고 다시 한다. 이 PC의 DB가 아니면 비우지
-    않고 그대로 실패한다.
+    DB가 지금 없는 리비전에 있으면 public 스키마를 비우고 다시 한다. 비워도 되는 DB(is_disposable:
+    이 PC의 _test, _e2e DB)가 아니면 비우지 않고 원래 에러를 그대로 던진다.
     """
     config = Config(toml_file=ROOT / "pyproject.toml")
     config.attributes["database_url"] = settings.database_url
     try:
         command.upgrade(config, "head")
     except CommandError as error:
-        if UNKNOWN_REVISION not in str(error) or not is_local(settings.database_url):
+        if UNKNOWN_REVISION not in str(error) or not is_disposable(settings.database_url):
             raise
     else:
         return False
