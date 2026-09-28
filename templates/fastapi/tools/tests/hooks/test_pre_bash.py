@@ -234,7 +234,7 @@ def test_deleting_committed_migrations_is_denied(
 ) -> None:
     assert problem(command, cwd=str(repo / folder), root=repo, powershell=powershell) == (
         f"커밋된 마이그레이션({INIT})을 지우거나 옮기지 않는다. 어딘가에 이미 적용됐을 수 있다. "
-        '바꿀 것이 있으면 uv run poe db:revision "<무엇을 바꾸는지>"로 새 리비전을 만든다.'
+        '바꿀 것이 있으면 uv run poe db:revision "<message>"(영어)로 새 리비전을 만든다.'
     )
 
 

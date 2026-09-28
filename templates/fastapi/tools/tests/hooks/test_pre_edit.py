@@ -27,7 +27,7 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_committed_migration_is_denied(repo: Path) -> None:
     assert problem(str(repo / INIT), cwd=str(repo), root=repo) == (
         f"커밋된 마이그레이션({INIT})은 고치지 않는다. 어딘가에 이미 적용됐을 수 있다. "
-        '바꿀 것이 있으면 uv run poe db:revision "<무엇을 바꾸는지>"로 새 리비전을 만든다.'
+        '바꿀 것이 있으면 uv run poe db:revision "<message>"(영어)로 새 리비전을 만든다.'
     )
 
 

@@ -8,19 +8,19 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 
 ## 명령
 
-| 명령                                | 하는 일                                                                                                                      |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `uv run poe setup`                  | `.env`, Betterleaks, git hook, 인프라(compose), 버킷, DB(개발·테스트·E2E), 마이그레이션, 시드, FastAPI skill 사본을 준비한다 |
-| `uv run poe dev`                    | api(`http://127.0.0.1:8000`, 코드가 바뀌면 다시 시작), worker, scheduler를 함께 띄운다                                       |
-| `uv run poe check`                  | 완료 기준. 모든 검사를 차례로 돈다                                                                                           |
-| `uv run poe fix`                    | 포맷과 린트 자동 수정                                                                                                        |
-| `uv run poe test`                   | 테스트(`src`와 `tools`의 `tests/`, E2E 제외)                                                                                 |
-| `uv run poe test:e2e`               | api, worker, scheduler를 따로 띄우고 `tests/e2e`를 돌린 뒤 내린다                                                            |
-| `uv run poe gen`                    | 앱을 띄우지 않고 `openapi.json`을 다시 쓴다                                                                                  |
-| `uv run poe gen:module <이름>`      | 골든 모듈 posts를 복사해 새 모듈과 마이그레이션 초안을 만들고 등록한다. 이름은 영어 복수형 kebab-case다(예: `comments`)      |
-| `uv run poe db:migrate`             | 개발 DB에 마이그레이션을 적용한다                                                                                            |
-| `uv run poe db:revision "<메시지>"` | 모델과 개발 DB를 비교해 마이그레이션 초안을 만든다                                                                           |
-| `uv run poe db:reset`               | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                                                                |
+| 명령                                 | 하는 일                                                                                                                      |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `uv run poe setup`                   | `.env`, Betterleaks, git hook, 인프라(compose), 버킷, DB(개발·테스트·E2E), 마이그레이션, 시드, FastAPI skill 사본을 준비한다 |
+| `uv run poe dev`                     | api(`http://127.0.0.1:8000`, 코드가 바뀌면 다시 시작), worker, scheduler를 함께 띄운다                                       |
+| `uv run poe check`                   | 완료 기준. 모든 검사를 차례로 돈다                                                                                           |
+| `uv run poe fix`                     | 포맷과 린트 자동 수정                                                                                                        |
+| `uv run poe test`                    | 테스트(`src`와 `tools`의 `tests/`, E2E 제외)                                                                                 |
+| `uv run poe test:e2e`                | api, worker, scheduler를 따로 띄우고 `tests/e2e`를 돌린 뒤 내린다                                                            |
+| `uv run poe gen`                     | 앱을 띄우지 않고 `openapi.json`을 다시 쓴다                                                                                  |
+| `uv run poe gen:module <이름>`       | 골든 모듈 posts를 복사해 새 모듈과 마이그레이션 초안을 만들고 등록한다. 이름은 영어 복수형 kebab-case다(예: `comments`)      |
+| `uv run poe db:migrate`              | 개발 DB에 마이그레이션을 적용한다                                                                                            |
+| `uv run poe db:revision "<message>"` | 모델과 개발 DB를 비교해 마이그레이션 초안을 만든다                                                                           |
+| `uv run poe db:reset`                | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                                                                |
 
 - `setup`은 여러 번 돌려도 안전하다. Docker가 켜져 있어야 한다. git hook은 이 폴더가 git 저장소의 최상위일 때만 건다.
 - `.env`가 있으면 적힌 값은 그대로 두고, 설정에 새로 생긴 키만 `.env.example`의 값으로 더한다. 설정 오류로 멈추면 `uv run poe setup`을 다시 돌린다.

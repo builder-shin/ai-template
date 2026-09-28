@@ -18,7 +18,7 @@ from app.core.jsonvalue import is_object
 
 ROOT = Path(__file__).resolve().parents[2]
 MAX_LINES = 60  # Claude에게 돌려주는 출력의 최대 줄 수
-NEW_REVISION = '바꿀 것이 있으면 uv run poe db:revision "<무엇을 바꾸는지>"로 새 리비전을 만든다.'
+NEW_REVISION = '바꿀 것이 있으면 uv run poe db:revision "<message>"(영어)로 새 리비전을 만든다.'
 
 
 def read_input() -> dict[str, Any]:
