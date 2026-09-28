@@ -294,7 +294,7 @@ src/app/modules/posts/
 
 ### 6.4 사용자와 탈퇴
 
-- 이메일은 앞뒤 공백을 지우고 소문자로 저장한다. null이 아닌 이메일에만 유일 제약을 건다(부분 유일 인덱스).
+- 이메일은 앞뒤 공백을 지우고 소문자로 저장한다. 이메일에는 유일 제약(`uq_users_email`)을 건다. PostgreSQL은 NULL끼리 같다고 보지 않으므로, 이메일이 NULL인 탈퇴 계정끼리는 부딪치지 않는다.
 - 공개 속성(`UserPublicResource`)은 `name`과 아바타뿐이다. 본인과 `users:read` 권한자는 전체 속성을 본다. 다른 리소스의 `included`에는 늘 공개 형태로 들어간다.
 - `PATCH /me`로 이름, 로케일, 아바타를 바꾼다. 아바타는 본인 소유의 ready 이미지 파일이어야 한다.
 - 탈퇴(`DELETE /me`, F3)는 한 트랜잭션에서 다음을 한다.
@@ -621,9 +621,9 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | M3  | files(업로드, 완료 확인, 다운로드, 읽기 규칙, 정리 잡), posts(필터, 정렬, include, fields, 페이지, 캐시, 감사), `gen:module`, 레시피와 skill                                                                                  | 해당 적합성 흐름 통과. `gen:module`로 만든 모듈이 `check`를 통과                                               |
 | M4  | realtime(티켓, Socket.IO, 구독, 이벤트), 소셜 로그인, OpenTelemetry, `test:e2e`, 구조 비교에서 `--subset` 떼기                                                                                                                | §1.2의 사이클 완료 조건                                                                                       |
 
-### 12.1 M1에서 넘긴 일
+### 12.1 M1과 M2에서 넘긴 일
 
-M1의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
+M1과 M2의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
 
 - M2를 시작하기 전(NestJS가 따라 하기 전에 정한다). M2 계획의 Task 1~2에서 다음과 같이 정했다.
   - POST 본문의 `type` 불일치는 409 `resource.conflict`, 클라이언트가 만든 `id`는 403 `permission.denied`다(JSON:API 1.1 MUST). 계약의 모든 POST가 403과 409를 선언한다. 로그인 없이 부르는 POST에는 `CreateErrors`(403, 409)를, 로그인이 필요한 POST에는 `Conflict`를 더한다(같은 상태를 두 번 넣으면 응답 스키마가 `anyOf`로 겹친다).
@@ -639,8 +639,19 @@ M1의 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다
   - `Mailbox.latest`에 `after`(메일함의 시각)와 `linkPath`(메일 링크 경로) 조건을 두었다. 제목은 백엔드마다 문구가 달라 쓰지 않는다(Task 22).
   - 모듈 경계 검사가 조립 파일(`src/app/modules/registry.py`, `src/app/main.py`)도 본다(Task 8).
 - M3: `PATCH /me`의 아바타 검사(본인 소유의 ready 이미지)와, 탈퇴 때 아바타와 참조되지 않는 본인 파일 정리(§6.4의 3단계). M2의 `PATCH /me`는 아바타가 null이 아니면 404다.
+- M3. M2의 최종 리뷰가 남긴 일이다.
+  - `gen:module`이 권한을 더하면 `PermissionCode`도 등록된 권한을 따라야 한다. 그러지 않으면 admin 역할의 문서(`role_resource`, `me_document`)가 모르는 코드에서 실패한다(`test_registry.py`가 먼저 실패한다). enum을 레지스트리에서 만들거나, 모르는 코드를 따로 다룬다.
+  - `users/service.py`(약 350줄)를 아바타 로직을 넣기 전에 나눈다.
 - M4: 세션 폐기와 역할 변경의 실시간 이벤트(`session.revoked`, `me.updated`). `SessionTokens`는 계약에서 참조하지 않는 스키마라 구조 비교에서 `--subset`을 떼면 드러난다.
 - M4: `Operation`이 JSON:API 밖의 쿼리 파라미터(`redirectUri`, `state`, `code`, `error`)를 선언하고, 제공자가 덧붙이는 파라미터를 받아들이는 콜백 모드가 있어야 한다.
+- 나중. M2의 최종 리뷰가 남긴, 아직 정하지 않은 결정이다.
+  - `DELETE /me`에 다시 인증 요구하기
+  - `POST /password-changes`에 엄격한 레이트 리밋 걸기
+  - 비밀번호를 바꿀 때 남은 재설정 토큰 지우기
+  - `identifierHash`와 메일 레이트 리밋 키를 키가 있는 HMAC으로 만들기
+  - 자격 증명이 든 URL(`SMTP_URL`, `DATABASE_URL`)을 `SecretStr`로 받기
+  - 운영에서 예시 비밀(`.env.example`의 `SEED_ADMIN_PASSWORD`, `JWT_SECRET`)을 거부하는 장치
+  - 렌더한 메일 대신 id를 담고, 토큰은 잡 안에서 발급하는 메일 잡
 
 ## 13. 계획 단계에서 확인할 것
 
