@@ -24,7 +24,9 @@ PermissionType = Literal["permissions"]
 DESCRIPTION_MAX = 200
 
 
-# 계약의 PermissionCode. 등록된 권한(app.modules.registry.PERMISSIONS)과 같은 목록이어야 한다.
+# 계약의 PermissionCode. 등록된 권한(app.modules.registry.PERMISSIONS)과 같은 목록이어야 한다
+# (src/app/tests/test_registry.py가 확인한다). 모듈이 권한을 더하면 여기에도 더한다
+# (gen:module이 더한다).
 class PermissionCode(StrEnum):
     """코드에 정의된 권한. 역할은 이 값들의 묶음이다."""
 
