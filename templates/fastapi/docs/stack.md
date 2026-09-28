@@ -19,7 +19,7 @@ FastAPI의 공식 skill은 `.claude/skills/fastapi/SKILL.md`에 있다. FastAPI 
 | `alembic`           | 1.20.0  | 마이그레이션                              | https://alembic.sqlalchemy.org/en/latest/                                         |
 | `redis`             | 8.1.0   | Valkey 클라이언트(redis-py)               | https://redis.readthedocs.io/en/v8.1.0/                                           |
 | `structlog`         | 26.1.0  | 로그                                      | https://www.structlog.org/en/26.1.0/                                              |
-| `taskiq`            | 0.12.6  | 잡(broker, worker, scheduler, 재시도)     | https://taskiq-python.github.io/                                                  |
+| `taskiq`            | 0.12.6  | 잡(broker, worker, scheduler, 재시도). extra `opentelemetry` | https://taskiq-python.github.io/                                                  |
 | `taskiq-redis`      | 1.2.3   | Valkey 스트림 broker와 스케줄 소스        | https://github.com/taskiq-python/taskiq-redis                                     |
 | `boto3`             | 1.43.93 | S3 호환 스토리지 클라이언트               | https://boto3.amazonaws.com/v1/documentation/api/1.43.93/index.html               |
 | `aiosmtplib` | 5.1.3 | 메일 발송(SMTP, `app.core.mail`) | https://aiosmtplib.readthedocs.io/en/stable/ |
@@ -29,6 +29,14 @@ FastAPI의 공식 skill은 `.claude/skills/fastapi/SKILL.md`에 있다. FastAPI 
 | `pyjwt` | 2.15.0 | access token(JWT, `app.core.security`) | https://pyjwt.readthedocs.io/en/2.15.0/ |
 | `httpx` | 0.28.1 | HTTP 클라이언트(소셜 로그인 제공자 호출, 테스트의 `ASGITransport`) | https://www.python-httpx.org/ |
 | `httpx-oauth` | 0.17.0 | 소셜 로그인의 인가 URL과 코드 교환(`auth/providers`) | https://frankie567.github.io/httpx-oauth/ |
+| `opentelemetry-api` | 1.45.0 | 트레이스 API(`app.core.telemetry`, Socket.IO 수동 span) | https://opentelemetry-python.readthedocs.io/en/stable/ |
+| `opentelemetry-sdk` | 1.45.0 | tracer provider와 span 내보내기 | https://opentelemetry-python.readthedocs.io/en/stable/sdk/ |
+| `opentelemetry-exporter-otlp-proto-http` | 1.45.0 | OTLP(HTTP)로 내보내기 | https://opentelemetry-python.readthedocs.io/en/stable/exporter/otlp/otlp.html |
+| `opentelemetry-instrumentation-fastapi` | 0.66b0 | 요청 span | https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/fastapi/fastapi.html |
+| `opentelemetry-instrumentation-sqlalchemy` | 0.66b0 | SQLAlchemy 쿼리 span(엔진마다) | https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/sqlalchemy/sqlalchemy.html |
+| `opentelemetry-instrumentation-psycopg` | 0.66b0 | psycopg 쿼리 span | https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/psycopg/psycopg.html |
+| `opentelemetry-instrumentation-redis` | 0.66b0 | Valkey 명령 span | https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/redis/redis.html |
+| `opentelemetry-instrumentation-httpx` | 0.66b0 | httpx 요청 span(소셜 로그인 제공자) | https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/httpx/httpx.html |
 | `python-socketio` | 5.17.0 | 실시간 서버와 발행기(`app.core.realtime`). 타입 스텁은 `typings/socketio/` | https://python-socketio.readthedocs.io/en/stable/ |
 
 ## 개발 도구

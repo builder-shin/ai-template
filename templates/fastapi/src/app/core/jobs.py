@@ -23,6 +23,7 @@ from app.core.config import Settings
 from app.core.db import create_engine, session_factory
 from app.core.realtime import Publisher, RedisPublisher
 from app.core.storage import Storage
+from app.core.telemetry import instrument_engine
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +92,7 @@ def attach_context(
         factory = sessions
         if factory is None:
             engine = create_engine(settings.database_url)
+            instrument_engine(engine)
             engines.append(engine)
             factory = session_factory(engine, realtime)
         state.job_context = JobContext(

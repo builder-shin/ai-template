@@ -6,8 +6,7 @@
   (Windows)에서 rich가 트레이스백의 프레임을 훑다가 프로세스가 접근 위반으로 죽는다(확인함).
 - 표준 logging(uvicorn, SQLAlchemy 등)의 로그도 같은 형식으로 낸다.
 - 요청마다 trace id(32자리 16진수)를 만들어 그 요청의 로그와 에러 문서의 meta.traceId에
-  같은 값을 쓴다.
-  OpenTelemetry를 켜면 그 trace id로 바꾼다(M4).
+  같은 값을 쓴다. OpenTelemetry를 켜면 요청 span의 trace id를 쓴다(app.core.telemetry).
 - 이벤트 이름은 영어 snake_case다. 예: logger.info("widget_created", widget_id=...)
 """
 
@@ -17,6 +16,7 @@ import sys
 from typing import Any, TextIO
 
 import structlog
+from opentelemetry import trace
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import Settings
@@ -89,7 +89,8 @@ class TraceIdMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        trace_id = secrets.token_hex(16)
+        context = trace.get_current_span().get_span_context()
+        trace_id = format(context.trace_id, "032x") if context.is_valid else secrets.token_hex(16)
         scope.setdefault("state", {})[TRACE_ID_KEY] = trace_id
         with structlog.contextvars.bound_contextvars(trace_id=trace_id):
             await self.app(scope, receive, send)

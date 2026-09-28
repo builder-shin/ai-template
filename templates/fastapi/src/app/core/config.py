@@ -81,6 +81,11 @@ class Settings(BaseSettings):
     # 시드(python -m app.seed)가 만드는 관리자 계정
     seed_admin_email: NonEmpty
     seed_admin_password: Annotated[SecretStr, Field(min_length=8)]
+    # OpenTelemetry. 켜면 트레이스를 OTLP(HTTP)로 보낸다. 서비스 이름에는 역할(api, worker,
+    # scheduler)을 붙인다. 로컬 수집기는 compose의 observability 프로필(Grafana LGTM)이다
+    otel_enabled: bool
+    otel_service_name: NonEmpty
+    otel_exporter_otlp_endpoint: HttpUrl
     # 레이트 리밋. 전역과 로그인은 분당, 가입과 메일 요청(인증 메일 재발송, 재설정 요청)은 시간당
     rate_limit_global: Limit
     rate_limit_login_ip: Limit

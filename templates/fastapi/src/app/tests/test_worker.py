@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from redis.asyncio import Redis
 from taskiq import AckableMessage, AsyncBroker, BrokerMessage, ScheduledTask
+from taskiq.middlewares.opentelemetry_middleware import OpenTelemetryMiddleware
 from taskiq.receiver import Receiver
 from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListRedisScheduleSource
@@ -238,3 +239,11 @@ def test_create_scheduler_with_settings_does_not_configure_logging(
     monkeypatch.setattr(app_scheduler, "configure_logging", configured.append)
     app_scheduler.create_scheduler(settings)
     assert configured == []
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_the_broker_traces_jobs_only_when_telemetry_is_on(infra: Settings, enabled: bool) -> None:
+    settings = infra.model_copy(update={"otel_enabled": enabled})
+    broker = create_broker(settings, in_memory=True)
+    traced = [item for item in broker.middlewares if isinstance(item, OpenTelemetryMiddleware)]
+    assert len(traced) == (1 if enabled else 0)

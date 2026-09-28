@@ -18,6 +18,7 @@ from app.core.permissions import PermissionRegistry
 from app.core.realtime import RealtimeEndpoint, create_realtime, realtime_openapi
 from app.core.redis import create_redis
 from app.core.storage import Storage
+from app.core.telemetry import configure_telemetry, instrument_app, instrument_engine
 from app.modules import registry
 from app.worker import create_broker
 
@@ -60,7 +61,9 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         current = settings or load_settings()
         configure_logging(current)
+        telemetry = configure_telemetry(current, "api")
         engine = create_engine(current.database_url)
+        instrument_engine(engine)
         redis = create_redis(current.redis_url)
         broker = create_broker(current)
         await broker.startup()
@@ -80,6 +83,8 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
             await broker.shutdown()
             await redis.aclose()
             await engine.dispose()
+            if telemetry is not None:
+                telemetry.shutdown()
 
     app = JsonApiApp(
         title="AI Template Platform API",
@@ -90,6 +95,8 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
         lifespan=lifespan,
     )
     install_jsonapi(app, rate_limit=True)
+    # 가장 바깥 미들웨어로 둔다. 요청 span이 trace id(app.core.logging)보다 먼저 생긴다.
+    instrument_app(app)
     install_access(app, registry.AUTHENTICATOR, PermissionRegistry(registry.PERMISSIONS))
     app.include_router(health.router)
     for router in registry.ROUTERS:

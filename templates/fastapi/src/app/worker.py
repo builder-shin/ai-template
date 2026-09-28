@@ -26,6 +26,7 @@ from typing import override
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from taskiq import AsyncBroker, InMemoryBroker, SmartRetryMiddleware
+from taskiq.middlewares.opentelemetry_middleware import OpenTelemetryMiddleware
 from taskiq.receiver import Receiver
 from taskiq_redis import ListRedisScheduleSource, RedisStreamBroker
 
@@ -34,6 +35,7 @@ from app.core.jobs import attach_context, register
 from app.core.logging import configure_logging
 from app.core.realtime import Publisher
 from app.core.storage import Storage
+from app.core.telemetry import configure_telemetry
 from app.modules.registry import JOBS
 
 QUEUE = "taskiq"  # 잡을 담는 Valkey 스트림의 키
@@ -96,6 +98,7 @@ def create_broker(
         # 즉 운영 worker에서만 여기서 로그를 설정한다(테스트와 serve()는 settings를 직접 넘긴다).
         current = load_settings()
         configure_logging(current)
+        configure_telemetry(current, "worker")
     if in_memory:
         broker: AsyncBroker = InMemoryBroker(await_inplace=True)
     else:
@@ -108,6 +111,9 @@ def create_broker(
         )
         stream = DeleteOnAckStreamBroker(current.redis_url, queue_name=QUEUE)
         broker = stream.with_middlewares(retry)
+    if current.otel_enabled:
+        # 잡을 보내고 실행할 때 span을 만들고, 보낸 쪽의 trace를 잡에 이어 붙인다.
+        broker.add_middlewares(OpenTelemetryMiddleware())
     attach_context(broker, current, sessions, storage, publisher)
     register(broker, JOBS)
     return broker
@@ -117,6 +123,7 @@ async def serve() -> None:
     """이 프로세스에서 잡을 받아 실행한다. 취소될 때까지 돈다."""
     settings = load_settings()
     configure_logging(settings)
+    telemetry = configure_telemetry(settings, "worker")
     broker = create_broker(settings)
     broker.is_worker_process = True
     receiver = Receiver(broker, max_async_tasks=MAX_CONCURRENT_JOBS)
@@ -124,6 +131,8 @@ async def serve() -> None:
         await receiver.listen(asyncio.Event())
     finally:
         await broker.shutdown()
+        if telemetry is not None:
+            telemetry.shutdown()
 
 
 def main() -> None:

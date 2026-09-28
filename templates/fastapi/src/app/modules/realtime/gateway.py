@@ -26,10 +26,13 @@ from app.core.jsonapi.models import ErrorCode
 from app.core.jsonvalue import is_object
 from app.core.permissions import PermissionRegistry
 from app.core.realtime import Channel, user_room
+from app.core.telemetry import tracer
 from app.modules import auth
 from app.modules.realtime.schemas import RealtimeAck, RealtimeSubscription
 
 logger = structlog.get_logger(__name__)
+# python-socketio에는 OpenTelemetry 계측이 없어 연결과 메시지 처리에 수동 span을 둔다.
+spans = tracer(__name__)
 
 USER_KEY = "user_id"  # 소켓 세션에 둔 로그인한 사용자 id
 SESSION_KEY = "session_id"  # 소켓 세션에 둔 로그인 세션 id
@@ -65,6 +68,10 @@ class Gateway:
         return permissions
 
     async def connect(self, sid: str, environ: Mapping[str, Any], auth_data: object) -> None:
+        with spans.start_as_current_span("realtime.connect"):
+            await self._connect(sid, auth_data)
+
+    async def _connect(self, sid: str, auth_data: object) -> None:
         ticket = auth_data.get("ticket") if is_object(auth_data) else None
         if ticket is None:
             await self.server.save_session(sid, {})
@@ -111,6 +118,10 @@ class Gateway:
         return principal is not None and channel.permission in principal.permissions
 
     async def subscribe(self, sid: str, data: object = None) -> Any:
+        with spans.start_as_current_span("realtime.subscribe"):
+            return await self._subscribe(sid, data)
+
+    async def _subscribe(self, sid: str, data: object) -> Any:
         channel = self._channel(data)
         if channel is None:
             return _ack(False, ErrorCode.VALIDATION_INVALID_CHOICE, 422, "Unknown channel.")
@@ -121,6 +132,10 @@ class Gateway:
         return _ack(True)
 
     async def unsubscribe(self, sid: str, data: object = None) -> Any:
+        with spans.start_as_current_span("realtime.unsubscribe"):
+            return await self._unsubscribe(sid, data)
+
+    async def _unsubscribe(self, sid: str, data: object) -> Any:
         channel = self._channel(data)
         if channel is None:
             return _ack(False, ErrorCode.VALIDATION_INVALID_CHOICE, 422, "Unknown channel.")

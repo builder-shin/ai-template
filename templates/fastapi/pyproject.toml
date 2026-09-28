@@ -12,7 +12,7 @@ dependencies = [
     "alembic==1.20.0",
     "redis==8.1.0",
     "structlog==26.1.0",
-    "taskiq==0.12.6",
+    "taskiq[opentelemetry]==0.12.6",
     "taskiq-redis==1.2.3",
     "boto3==1.43.93",
     "pwdlib[argon2]==0.3.1",
@@ -23,6 +23,14 @@ dependencies = [
     "python-socketio==5.17.0",
     "httpx==0.28.1",
     "httpx-oauth==0.17.0",
+    "opentelemetry-api==1.45.0",
+    "opentelemetry-sdk==1.45.0",
+    "opentelemetry-exporter-otlp-proto-http==1.45.0",
+    "opentelemetry-instrumentation-fastapi==0.66b0",
+    "opentelemetry-instrumentation-sqlalchemy==0.66b0",
+    "opentelemetry-instrumentation-psycopg==0.66b0",
+    "opentelemetry-instrumentation-redis==0.66b0",
+    "opentelemetry-instrumentation-httpx==0.66b0",
 ]
 
 [dependency-groups]

@@ -17,6 +17,7 @@ from taskiq.schedule_sources import LabelScheduleSource
 
 from app.core.config import Settings, load_settings
 from app.core.logging import configure_logging
+from app.core.telemetry import configure_telemetry
 from app.worker import create_broker, create_schedule_source
 
 
@@ -29,6 +30,7 @@ def create_scheduler(settings: Settings | None = None) -> TaskiqScheduler:
         # 넘겨서 거기서는 다시 설정하지 않는다(settings가 있으면 create_broker도 건너뛴다).
         current = load_settings()
         configure_logging(current)
+        configure_telemetry(current, "scheduler")
     broker = create_broker(current)
     return TaskiqScheduler(
         broker, sources=[LabelScheduleSource(broker), create_schedule_source(current)]
