@@ -6,8 +6,9 @@
   화면 주소를 돌려준다.
 - callback: state를 꺼내면서 지운다. 없거나 만료됐거나 다른 제공자의 것이면 돌려보낼 곳을
   모르므로 400이다. 그 밖의 실패는 redirectUri에 error를 붙여 보낸다.
-  - 제공자가 error를 붙여 돌아왔다(사용자가 거부): auth.oauth_denied
-  - 코드 교환이나 신원 조회 실패: auth.oauth_failed
+  - 제공자가 error=access_denied를 붙여 돌아왔다(사용자가 거부): auth.oauth_denied
+  - 제공자의 다른 error(server_error, invalid_scope 등), 코드 교환이나 신원 조회 실패:
+    auth.oauth_failed
   - 비활성 계정: auth.account_deactivated
 - 계정 연결(F4). 한 트랜잭션이다.
   1. (제공자, subject)로 연결된 계정이 있으면 그 계정이다.
@@ -19,10 +20,11 @@
   새 계정의 이름은 제공자가 준 이름이고, 역할은 member다.
 - 성공하면 1회용 코드(60초)에 codeChallenge를 실어 redirectUri?code=로 보낸다. BFF가 POST
   /sessions의 oauthCode grant(code, codeVerifier)로 토큰을 받는다(consume_code). codeVerifier가
-  codeChallenge를 만들지 못하면(verifies) 401 auth.oauth_code_invalid다. 코드는 이미 꺼내면서
-  지웠으므로 다시 쓸 수 없다. 로그인 CSRF는 이렇게 막는다: 공격자가 자기 계정으로 받은 code를
-  피해자에게 보내도, 그 code는 공격자의 codeChallenge에 묶여 있어 피해자의 BFF가 가진
-  codeVerifier로는 풀리지 않는다. 로그인 성공 감사 로그는 그때 남긴다.
+  RFC 7636의 모양([A-Za-z0-9._~-] 43~128자)이 아니거나 codeChallenge를 만들지 못하면(verifies)
+  401 auth.oauth_code_invalid다. 코드는 이미 꺼내면서 지웠으므로 다시 쓸 수 없다. 로그인 CSRF는
+  이렇게 막는다: 공격자가 자기 계정으로 받은 code를 피해자에게 보내도, 그 code는 공격자의
+  codeChallenge에 묶여 있어 피해자의 BFF가 가진 codeVerifier로는 풀리지 않는다. 로그인 성공 감사
+  로그는 그때 남긴다.
 """
 
 import hmac
@@ -56,6 +58,8 @@ STATE_TTL = timedelta(minutes=10)
 CODE_TTL = timedelta(seconds=60)
 # PKCE S256 challenge(providers.base.challenge): SHA-256을 패딩 없는 base64url로 담아 늘 43자다.
 _CODE_CHALLENGE = re.compile(r"[A-Za-z0-9_-]{43}")
+# PKCE code verifier(RFC 7636 §4.1): unreserved 문자 43~128자.
+_CODE_VERIFIER = re.compile(r"[A-Za-z0-9._~-]{43,128}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,9 +173,9 @@ async def callback(
         detail = "The state is unknown or has expired."
         raise ApiError(400, ErrorCode.JSONAPI_INVALID_QUERY, detail, parameter="state")
     target: str = stored["redirectUri"]
-    if error is not None:
+    if error == "access_denied":
         return _with_query(target, error=ErrorCode.AUTH_OAUTH_DENIED.value)
-    if code is None:
+    if error is not None or code is None:
         return _with_query(target, error=ErrorCode.AUTH_OAUTH_FAILED.value)
     try:
         person = await providers.identity(
@@ -213,9 +217,10 @@ async def consume_code(redis: Redis, code: str) -> SignInCode | None:
 def verifies(code_challenge: str, code_verifier: str) -> bool:
     """code_verifier가 authorize에서 받은 code_challenge(PKCE S256)를 만드는가.
 
-    타이밍 공격을 피하려고 hmac.compare_digest로 비교한다. RFC 7636의 code verifier는
-    ASCII([A-Za-z0-9-._~])만 쓰므로, ASCII가 아니면 바로 False다.
+    RFC 7636의 모양([A-Za-z0-9._~-] 43~128자)이 아니면 바로 False다. challenge("")도 43자라
+    authorize의 형식 검사를 지나므로, verifier가 없는 BFF가 ""나 짧은 자리표시 값을 보내면
+    공격자의 코드가 풀린다. 타이밍 공격을 피하려고 hmac.compare_digest로 비교한다.
     """
-    if not code_verifier.isascii():
+    if not _CODE_VERIFIER.fullmatch(code_verifier):
         return False
     return hmac.compare_digest(providers.challenge(code_verifier), code_challenge)

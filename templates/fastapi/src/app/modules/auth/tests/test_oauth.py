@@ -25,9 +25,12 @@ def _query(url: str) -> dict[str, str]:
     return dict(parse_qsl(urlsplit(url).query))
 
 
-def _pkce() -> tuple[str, str]:
-    """(codeVerifier, codeChallenge). BFF가 authorize 앞에서 만들어 세션 생성까지 들고 있는 값."""
-    verifier = new_token()
+def _pkce(verifier: str | None = None) -> tuple[str, str]:
+    """(codeVerifier, codeChallenge). BFF가 authorize 앞에서 만들어 세션 생성까지 들고 있는 값.
+
+    verifier를 주면 그 값으로 challenge를 만든다.
+    """
+    verifier = new_token() if verifier is None else verifier
     return verifier, challenge(verifier)
 
 
@@ -55,13 +58,15 @@ async def _social(
     subject: str,
     email: str | None = None,
     verified: bool = False,
+    verifier: str | None = None,
 ) -> dict[str, str]:
     """제공자에서 로그인하고 프론트 콜백의 쿼리(code 또는 error)를 준다.
 
     code가 있으면(성공) 그 code를 만든 codeVerifier도 verifier로 더해 준다. 실패(error)는 원래
-    쿼리 그대로다(콜백이 실제로 돌려준 것과 정확히 같은지 보는 테스트가 있다).
+    쿼리 그대로다(콜백이 실제로 돌려준 것과 정확히 같은지 보는 테스트가 있다). verifier를 주면
+    만든 값 대신 그 값을 쓴다.
     """
-    verifier, code_challenge = _pkce()
+    verifier, code_challenge = _pkce(verifier)
     found = claims(provider, subject=subject, email=email, verified=verified, name="Social User")
     location = await _start(api, provider, code_challenge)
     returned = await sign_in_at_provider(location, subject, found)
@@ -135,6 +140,9 @@ async def test_failures_go_back_to_the_front_with_an_error(
     denied = await _come_back(api, "google", {"state": state, "error": "access_denied"})
     assert denied == {"error": "auth.oauth_denied"}
     state = _query(await _start(api, "google", _pkce()[1]))["state"]
+    broken = await _come_back(api, "google", {"state": state, "error": "server_error"})
+    assert broken == {"error": "auth.oauth_failed"}  # 거부(access_denied)만 auth.oauth_denied다
+    state = _query(await _start(api, "google", _pkce()[1]))["state"]
     failed = await _come_back(api, "google", {"state": state, "code": "wrong", "scope": "openid"})
     assert failed == {"error": "auth.oauth_failed"}
     admin = await accounts.sign_in(await accounts.admin())
@@ -189,6 +197,17 @@ async def test_a_code_only_becomes_a_session_with_its_own_verifier(
     assert (wrong.status_code, error_codes(wrong)) == (401, ["auth.oauth_code_invalid"])
     right = await _session(api, back["code"], back["verifier"])
     assert (right.status_code, error_codes(right)) == (401, ["auth.oauth_code_invalid"])
+
+
+async def test_a_verifier_must_have_the_rfc_7636_shape(api: httpx.AsyncClient) -> None:
+    """빈 verifier는 그 challenge와 맞아도 못 쓴다. verifier가 없는 BFF가 ""를 보내는 경우다."""
+    back = await _social(
+        api, "google", subject="g-empty", email=new_email(), verified=True, verifier=""
+    )
+    assert "code" in back, back
+    empty = await _session(api, back["code"], "")
+    assert empty.status_code == 401, empty.text
+    assert error_codes(empty) == ["auth.oauth_code_invalid"]
 
 
 async def test_a_code_signs_in_once_and_leaving_removes_the_link(
