@@ -43,7 +43,10 @@ class SocketClient:
     """
 
     def __init__(self) -> None:
-        self.client = socketio.AsyncClient(reconnection=False)
+        # handle_sigint를 켜 두면 Linux에서 engineio가 이벤트 루프에 SIGINT 처리기를 건다.
+        # 신호가 오면 루프의 모든 작업을 취소하므로, 테스트 프로세스가 받은 신호가
+        # 다른 테스트를 끊지 않게 끈다.
+        self.client = socketio.AsyncClient(reconnection=False, handle_sigint=False)
         self.received: defaultdict[str, asyncio.Queue[Any]] = defaultdict(asyncio.Queue)
         self.client.on("*", self._receive)
         self.client.on("connect_error", self._refused)
