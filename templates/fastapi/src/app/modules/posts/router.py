@@ -6,15 +6,13 @@
 import uuid
 from collections.abc import Sequence
 from typing import Annotated, Any, Literal
-from urllib.parse import urlencode
 
 from fastapi import Depends, Path, Request, Response
 from pydantic.experimental.missing_sentinel import MISSING
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import app.modules.posts.policies as policies
 import app.modules.posts.service as service
-from app.core.access import OptionalPrincipalDep, Principal, PrincipalDep
+from app.core.access import OptionalPrincipalDep, PrincipalDep
 from app.core.clients import ClientDep
 from app.core.db import SessionDep
 from app.core.jsonapi.errors import require_matching_id
@@ -93,19 +91,6 @@ DELETE = Operation(
 )
 PostId = Annotated[uuid.UUID, Path(alias="id")]
 Included = users.UserPublicResource | files.FileResource
-# 공개 목록의 첫 페이지로 캐시할 수 있는 요청의 쿼리 파라미터(포함 리소스와 필드만 고를 수 있다)
-_PUBLIC_PARAMETERS = frozenset({"include", *(f"fields[{kind}]" for kind in POST_FIELDS)})
-
-
-def public_page_key(request: Request, viewer: Principal | None) -> str | None:
-    """발행된 글의 첫 페이지(필터 없음, 기본 정렬, 기본 크기)를 보는 요청이면 캐시 키, 아니면 None.
-
-    초안이 보이는 사람(posts:manage)은 공개 목록을 보지 않으므로 캐시하지 않는다.
-    링크와 포함 리소스가 쿼리에 따라 달라지므로 쿼리 문자열이 키에 들어간다.
-    """
-    if not set(request.query_params) <= _PUBLIC_PARAMETERS or policies.manages(viewer):
-        return None
-    return f"public?{urlencode(sorted(request.query_params.multi_items()))}"
 
 
 def post_resource(post: Post) -> PostResource:
@@ -175,9 +160,14 @@ async def list_posts(
         )
 
     async def build_content() -> dict[str, Any]:
-        return document_content(await build(), query.fields)
+        return document_content(await build())
 
-    key = public_page_key(request, viewer)
+    # 공개 목록의 첫 페이지(include 말고는 쿼리가 없다: 필터·fields 없음, 기본 정렬과 크기)만
+    # 캐시한다. 키와 캐시를 쓸 사람은 service가 정한다. include의 순서나 반복만 다른 요청은
+    # 먼저 채운 문서를 함께 쓴다(링크에 남는 include의 순서만 다르고 뜻은 같다).
+    key = None
+    if set(request.query_params) <= {"include"}:
+        key = service.public_page_key(viewer, query.include)
     if key is None:
         return render(await build(), fields=query.fields)
     cache = service.posts_cache(redis)

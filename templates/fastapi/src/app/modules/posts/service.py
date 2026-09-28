@@ -11,9 +11,11 @@
 - 커버 이미지는 요청한 사람이 올린 ready 이미지여야 한다(files.attachable_file).
 - 관리자(작성자가 아닌 posts:manage)가 글을 지우면 감사 로그
   post.deleted_by_admin을 남긴다.
-- 공개 목록의 첫 페이지는 60초 캐시한다(posts_cache). 글을 쓰면 commit한 뒤에
-  캐시를 지운다. 다른 모듈의 변경(작성자 이름, 커버 파일 삭제)은 캐시가 끝나면 반영된다.
-  캐시 수명은 포함 리소스의 presigned URL 수명(10분)보다 짧다.
+- 공개 목록의 첫 페이지는 60초 캐시한다(posts_cache). 키는 검증을 마친 include
+  경로를 정렬한 값이다(public_page_key). 초안이 보이는 사람(posts:manage)은
+  캐시를 쓰지 않는다. 글을 쓰면 commit한 뒤에 캐시를 지운다. 다른 모듈의 변경(작성자
+  이름, 커버 파일 삭제)은 캐시가 끝나면 반영된다. 캐시 수명은 포함 리소스의 presigned
+  URL 수명(10분)보다 짧다.
 """
 
 import uuid
@@ -61,6 +63,19 @@ PUBLIC_CACHE_TTL = timedelta(seconds=60)
 def posts_cache(redis: Redis) -> Cache:
     """글의 캐시(공개 목록의 첫 페이지)."""
     return Cache(redis, "posts")
+
+
+def public_page_key(viewer: Principal | None, include: Sequence[str]) -> str | None:
+    """공개 목록 첫 페이지의 캐시 키. 캐시를 쓰지 않는 사람이면 None이다.
+
+    초안이 보이는 사람(posts:manage)은 캐시를 쓰지 않는다. include는 라우트 선언이
+    검증한 경로다. 정렬하고 중복을 없애 키로 쓰므로 키의 수가 include 조합의 수를 넘지
+    않는다. 값을 검증하지 않는 쿼리(fields 등)를 키에 넣으면 값만 바꾼 요청마다 새 키가
+    생기므로, 그런 요청은 router가 캐시하지 않는다.
+    """
+    if policies.manages(viewer):
+        return None
+    return "public?include=" + ",".join(sorted(set(include)))
 
 
 def _not_found(post_id: uuid.UUID) -> ApiError:
