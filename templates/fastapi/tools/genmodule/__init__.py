@@ -10,8 +10,10 @@
   - `고칠 곳 — 설명`: 바꾸되, 끝에 고칠 곳 목록으로 알린다.
 - 등록: registry.py(ROUTERS, PERMISSIONS, 파일 규칙), main.py의 TAGS, roles의 PermissionCode.
 - 마이그레이션 초안: posts 테이블을 만드는 리비전을 복사해 이름을 바꾸고 지금의 head 뒤에 잇는다.
-- 이름, 겹치는 식별자, 등록 위치, head를 먼저 모두 검사하고 문제가 없을 때만 파일을 쓴다. 쓴 뒤
-  ruff로 정리하고 openapi.json을 다시 쓴다. 만든 모듈은 고치지 않아도 `uv run poe check`를 통과한다.
+  리비전 폴더와 head는 Alembic이 pyproject.toml의 [tool.alembic] 설정으로 읽는다.
+- 이름, 겹치는 식별자와 테이블, 등록 위치, head를 먼저 모두 검사하고 문제가 없을 때만 파일을
+  쓴다. 쓴 뒤 ruff로 정리하고 openapi.json을 다시 쓴다. 만든 모듈은 고치지 않아도
+  `uv run poe check`를 통과한다. 만든 이름(단수형 포함)을 한 줄로 알린다.
 
 파일: names(이름 규칙과 바꾸기), transform(파이썬 소스와 표시), generate(검사, 쓰기, 등록, 명령).
 """

@@ -11,15 +11,17 @@ from pathlib import Path
 import pytest
 from alembic.script import ScriptDirectory
 
-from tools.genmodule.generate import generate, review_list
+from tools.genmodule.generate import generate, review_list, summary
 from tools.genmodule.names import MAX_NAME, GenerateError, Mode, Names, names_for, rename
 from tools.genmodule.transform import transform_python
 
 ROOT = Path(__file__).resolve().parents[2]
 NOW = datetime(2026, 9, 28, 12, 0)
 # 프로젝트에 있을 법하지 않은 이름을 쓴다. 사용자가 만든 모듈이 있어도 테스트가 같게 돈다.
-# LONGEST는 가장 긴 이름이다. 바꾼 문자열과 주석도 줄 길이(100)를 넘지 않아야 한다.
+# LONGEST는 가장 긴 이름이고, LONGEST_ONE은 단수형(--singular)이 가장 긴 이름이다. 바꾼 문자열과
+# 주석도 줄 길이(100)를 넘지 않아야 한다.
 LONGEST = "sample-gadget-probes"
+LONGEST_ONE = ("sample-gadget-people", "person")
 SAMPLE = "sample-widgets"
 
 
@@ -36,8 +38,15 @@ def test_names_come_from_the_plural_kebab_case_name() -> None:
     )
     singulars = {name: names_for(name).kebab_one for name in ("categories", "boxes", "comments")}
     assert singulars == {"categories": "category", "boxes": "box", "comments": "comment"}
-    assert names_for("statuses", "status").pascal_one == "Status"
-    assert len(LONGEST) == MAX_NAME
+    assert names_for("people", "person").pascal_one == "Person"
+    assert len(LONGEST) == len(names_for(*LONGEST_ONE).kebab_one) == MAX_NAME
+
+
+def test_summary_shows_the_singular_forms() -> None:
+    """규칙으로 만든 단수형이 틀리면(movies → movy) 생성 출력의 첫 줄에서 바로 보인다."""
+    line = summary(names_for("movies"))
+    assert "movy(Movy)" in line
+    assert "--singular" in line
 
 
 @pytest.mark.parametrize(
@@ -48,6 +57,7 @@ def test_names_come_from_the_plural_kebab_case_name() -> None:
         ("comment", None, "복수형"),
         ("news", "news", "복수형"),  # 단수형과 복수형이 같다
         ("a" * MAX_NAME + "s", None, f"{MAX_NAME}자 이하"),
+        ("sample-gadget-people", "personality", f"{MAX_NAME}자 이하"),  # 단수형이 25자
     ],
 )
 def test_names_that_do_not_fit_the_rules_are_refused(
@@ -125,11 +135,12 @@ def test_transform_renames_tokens_and_follows_the_markers() -> None:
 
 @pytest.fixture
 def project(tmp_path: Path) -> Path:
-    """생성기가 읽고 쓰는 부분(모듈, main.py, 마이그레이션)만 복사한 프로젝트."""
+    """생성기가 읽고 쓰는 부분(모듈, main.py, 마이그레이션과 그 설정)만 복사한 프로젝트."""
     ignore = shutil.ignore_patterns("__pycache__")
     shutil.copytree(ROOT / "src/app/modules", tmp_path / "src/app/modules", ignore=ignore)
     shutil.copy2(ROOT / "src/app/main.py", tmp_path / "src/app/main.py")
     shutil.copytree(ROOT / "migrations", tmp_path / "migrations", ignore=ignore)
+    shutil.copy2(ROOT / "pyproject.toml", tmp_path / "pyproject.toml")  # [tool.alembic]
     return tmp_path
 
 
@@ -137,17 +148,56 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def imported_modules(source: str) -> list[str]:
-    """registry.py의 `from app.modules import ...`가 들여오는 이름들.
+def files_in(project: Path) -> dict[Path, bytes]:
+    return {path: path.read_bytes() for path in project.rglob("*") if path.is_file()}
+
+
+def registry_import(source: str) -> ast.ImportFrom:
+    """registry.py의 `from app.modules import ...` 문.
 
     ruff가 줄을 나눠도(괄호, 쉼표 끝) 읽을 수 있게 정규식이 아니라 ast로 본다.
     """
-    found = next(
+    return next(
         node
         for node in ast.walk(ast.parse(source))
-        if isinstance(node, ast.ImportFrom) and node.module == "app.modules"
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module == "app.modules"
     )
-    return [alias.name for alias in found.names]
+
+
+def imported_modules(source: str) -> list[str]:
+    """registry.py의 `from app.modules import ...`가 들여오는 이름들."""
+    return [alias.name for alias in registry_import(source).names]
+
+
+def is_wrapped(source: str) -> bool:
+    found = registry_import(source)
+    return found.end_lineno != found.lineno
+
+
+def wrap_registry_import(registry: Path) -> None:
+    """registry.py의 import를 ruff가 감싼 모양(괄호 안에 한 줄에 하나, 쉼표 끝)으로 바꾼다.
+
+    한 줄만 보는 정규식은 이미 감싼 import의 첫 줄만 바꿔 나머지 줄을 남긴다(모듈이 많은
+    프로젝트에서 IndentationError). 그래서 ast로 문장의 줄 범위를 찾아 통째로 바꾸고, 이미
+    감싼 import는 그대로 둔다.
+    """
+    source = read(registry)
+    found = registry_import(source)
+    if is_wrapped(source):
+        return
+    names = "".join(f"    {alias.name},\n" for alias in found.names)
+    lines = source.splitlines(keepends=True)
+    lines[found.lineno - 1 : found.end_lineno] = [f"from app.modules import (\n{names})\n"]
+    registry.write_text("".join(lines), encoding="utf-8", newline="\n")
+
+
+def ruff_format(path: Path) -> None:
+    """run()처럼 ruff format으로 정리한다. 100칸을 넘는 import는 괄호로 감싼다."""
+    command = ("format", "--config", str(ROOT / "pyproject.toml"), str(path))
+    result = subprocess.run(
+        [sys.executable, "-m", "ruff", *command], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_generate_copies_registers_and_chains_a_migration(project: Path) -> None:
@@ -203,18 +253,35 @@ def test_generate_reads_an_already_wrapped_registry_import(project: Path) -> Non
     바꾼다. 한 줄만 보는 정규식은 `from app.modules import (` 한 줄만 보고 깨뜨린다.
     """
     registry = project / "src/app/modules/registry.py"
-    names = imported_modules(read(registry))
-    wrapped = "from app.modules import (\n" + "".join(f"    {name},\n" for name in names) + ")"
-    text = re.sub(
-        r"^from app\.modules import .+$", lambda _: wrapped, read(registry), count=1, flags=re.M
-    )
-    registry.write_text(text, encoding="utf-8", newline="\n")
+    wrap_registry_import(registry)
 
     generate(names_for(SAMPLE), root=project, now=NOW)
 
     new_text = read(registry)
     ast.parse(new_text)  # 쉼표 하나만 남는 등으로 깨지면 여기서 SyntaxError다
     assert "sample_widgets" in imported_modules(new_text)
+
+
+def test_generating_twice_after_ruff_wrapped_the_registry_import(project: Path) -> None:
+    """ruff가 감싼 registry에서 run()처럼 생성과 ruff format을 두 번 잇는다.
+
+    모듈이 많은 프로젝트의 모양이다. 감싸는 도우미도 이미 감싼 import를 그대로 둔다.
+    """
+    registry = project / "src/app/modules/registry.py"
+    wrap_registry_import(registry)
+    ruff_format(registry)  # 쉼표 끝이라 ruff도 감싼 채로 둔다
+    wrapped = read(registry)
+    assert is_wrapped(wrapped)
+    wrap_registry_import(registry)
+    assert read(registry) == wrapped
+
+    for name in (LONGEST, SAMPLE):
+        generate(names_for(name), root=project, now=NOW)
+        ruff_format(registry)
+
+    packages = imported_modules(read(registry))
+    assert {"sample_gadget_probes", "sample_widgets"} <= set(packages)
+    assert packages == sorted(packages)
 
 
 def write_revision(path: Path, revision: str, down: str | tuple[str, str]) -> None:
@@ -259,8 +326,11 @@ def test_generate_chains_after_a_merge_revision(project: Path) -> None:
     assert revision.down_revision == "mergeab00001"
 
 
-def test_generated_code_passes_format_and_lint(project: Path) -> None:
-    generated = generate(names_for(LONGEST), root=project, now=NOW)
+@pytest.mark.parametrize(("name", "singular"), [(LONGEST, None), LONGEST_ONE])
+def test_generated_code_passes_format_and_lint(
+    project: Path, name: str, singular: str | None
+) -> None:
+    generated = generate(names_for(name, singular), root=project, now=NOW)
     paths = [str(path) for path in (generated.module, generated.migration, *generated.registered)]
     config = ("--config", str(ROOT / "pyproject.toml"))
     # 테스트 폴더 예외(S101 등)는 프로젝트 안의 경로에만 맞으므로, 경로와 상관없는 규칙만 본다.
@@ -295,10 +365,38 @@ def test_review_list_points_at_the_marked_lines(project: Path) -> None:
         ("registrations", "TAGS"),  # auth 모듈의 태그와 경로
         ("lists", "내장 이름"),
         ("classes", "예약어"),
+        ("refresh-tokens", "테이블"),  # auth 모듈의 테이블
+        ("user-roles", "테이블"),  # roles 모듈의 테이블
     ],
 )
 def test_nothing_is_written_when_a_check_fails(project: Path, name: str, reason: str) -> None:
-    snapshot = {path: path.read_bytes() for path in project.rglob("*") if path.is_file()}
+    snapshot = files_in(project)
     with pytest.raises(GenerateError, match=reason):
         generate(names_for(name), root=project, now=NOW)
-    assert {path: path.read_bytes() for path in project.rglob("*") if path.is_file()} == snapshot
+    assert files_in(project) == snapshot
+
+
+def test_a_broken_revision_file_stops_before_writing(project: Path) -> None:
+    """Alembic이 읽지 못하는 리비전 파일은 트레이스백 대신 GenerateError다. 아무것도 쓰지 않는다."""
+    broken = project / "migrations/versions/broken.py"
+    broken.write_text('revision = "broken000001"\ndown_revision = (\n', encoding="utf-8")
+    snapshot = files_in(project)
+    with pytest.raises(GenerateError, match="마이그레이션을 읽지 못했다"):
+        generate(names_for(SAMPLE), root=project, now=NOW)
+    assert files_in(project) == snapshot
+
+
+def test_the_revision_folder_follows_the_alembic_config(project: Path) -> None:
+    """리비전 폴더는 경로를 박아 두지 않고 pyproject.toml의 [tool.alembic]에서 읽는다."""
+    (project / "migrations").rename(project / "db")
+    config = project / "pyproject.toml"
+    location = 'script_location = "%(here)s/migrations"'
+    assert location in read(config)
+    moved = read(config).replace(location, 'script_location = "%(here)s/db"')
+    config.write_text(moved, encoding="utf-8", newline="\n")
+
+    generated = generate(names_for(SAMPLE), root=project, now=NOW)
+
+    assert generated.migration.parent == project / "db/versions"
+    (head,) = ScriptDirectory(str(project / "db")).get_heads()
+    assert head in generated.migration.name

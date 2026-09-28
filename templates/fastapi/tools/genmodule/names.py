@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 # 이름이 길면 바꾼 문자열과 주석이 줄 길이(100)를 넘는다. 테스트가 이 길이의 이름으로 확인한다.
+# 단수형(--singular로 준 것 포함)도 이 길이를 넘지 않는다.
 MAX_NAME = 20
 _NAME = re.compile(r"[a-z][a-z0-9]*(?:-[a-z][a-z0-9]*)*")
 _WORD = re.compile(r"[a-z][a-z0-9]*")
@@ -62,6 +63,8 @@ def names_for(name: str, singular_form: str | None = None) -> Names:
             f"{name}: 복수형으로 쓴다. 단수형이 규칙과 다르면 --singular로 끝 단어의 단수형을 준다."
         )
     ones = [*words[:-1], last]
+    if len("-".join(ones)) > MAX_NAME:
+        raise GenerateError(f"{name}: 단수형({'-'.join(ones)})도 {MAX_NAME}자 이하로 쓴다.")
     return Names(
         kebab=name,
         kebab_one="-".join(ones),

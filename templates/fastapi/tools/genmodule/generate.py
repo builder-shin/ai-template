@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from alembic.config import Config
 from alembic.script import ScriptDirectory
 
 from tools.genmodule.names import GenerateError, Names, names_for, rename
@@ -20,7 +21,6 @@ from tools.genmodule.transform import bindings, directive, transform_python
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = "posts"
 MODULES = Path("src/app/modules")
-VERSIONS = Path("migrations/versions")
 RESERVED = frozenset({"tests"})
 _TO_REVIEW = ("그대로", "고칠 곳")
 
@@ -49,6 +49,45 @@ def _check_names(names: Names, golden: Iterable[str]) -> None:
         raise GenerateError(
             f"{names.kebab}: 골든 모듈이 이미 쓰는 이름({', '.join(clashes)})과 겹친다. "
             "다른 이름을 쓴다(예: 앞에 말을 붙인다)."
+        )
+
+
+def _table_name(node: ast.AST) -> str | None:
+    """노드가 `__tablename__ = "..."`(타입을 붙인 대입도)이면 그 테이블 이름."""
+    match node:
+        case ast.Assign(
+            targets=[ast.Name(id="__tablename__")], value=ast.Constant(value=str(name))
+        ):
+            return name
+        case ast.AnnAssign(
+            target=ast.Name(id="__tablename__"), value=ast.Constant(value=str(name))
+        ):
+            return name
+        case _:
+            return None
+
+
+def _tables(root: Path) -> dict[str, str]:
+    """src/app 아래 모델이 선언한 테이블 이름과 그 파일."""
+    tables: dict[str, str] = {}
+    for path in sorted((root / "src/app").rglob("*.py")):
+        where = path.relative_to(root).as_posix()
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except SyntaxError as error:
+            detail = f"{where}: 문법 오류라 읽지 못했다. 고친 뒤 다시 만든다."
+            raise GenerateError(detail) from error
+        for node in ast.walk(tree):
+            if (table := _table_name(node)) is not None:
+                tables.setdefault(table, where)
+    return tables
+
+
+def _check_table(root: Path, names: Names) -> None:
+    """새 테이블 이름(snake)이 이미 있으면 실패한다. 예: refresh-tokens는 auth의 테이블과 겹친다."""
+    if (where := _tables(root).get(names.snake)) is not None:
+        raise GenerateError(
+            f"{names.kebab}: {where}에 같은 이름의 테이블({names.snake})이 있다. 다른 이름을 쓴다."
         )
 
 
@@ -113,25 +152,36 @@ def _revision(text: str, field: str) -> str | None:
     return None if found is None else found.group(1)
 
 
+def _versions_and_heads(root: Path) -> tuple[Path, list[str]]:
+    """프로젝트의 Alembic 설정(pyproject.toml의 [tool.alembic])으로 리비전 폴더와 head를 읽는다.
+
+    문자열 정규식이 아니라 Alembic으로 head를 찾는다. merge 리비전은 down_revision이
+    튜플("a", "b")이라 정규식으로는 부모로 세지 못해 head가 아닌 것도 head로 잘못 본다.
+    Alembic이 각 리비전 파일을 import해서 읽으므로, .pyc 캐시가 생기지 않게 잠깐 끈다
+    (검사에 실패해도 아무것도 쓰지 않는다는 약속을 캐시 파일이 깨지 않게 한다).
+    깨진 리비전 파일처럼 Alembic이 읽지 못하면 트레이스백 대신 GenerateError로 알린다.
+    """
+    previous_bytecode, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        scripts = ScriptDirectory.from_config(Config(toml_file=root / "pyproject.toml"))
+        return Path(scripts.versions), sorted(scripts.get_heads())
+    except Exception as error:  # 리비전 파일은 import될 때 어떤 예외든 낼 수 있다
+        raise GenerateError(
+            f"마이그레이션을 읽지 못했다({type(error).__name__}: {error}). 고친 뒤 다시 만든다."
+        ) from error
+    finally:
+        sys.dont_write_bytecode = previous_bytecode
+
+
 def _migration(root: Path, names: Names, now: datetime) -> tuple[Path, str]:
     """posts 테이블을 만드는 리비전을 복사해, 새 테이블을 만드는 초안을 head 뒤에 잇는다."""
-    texts = {path: path.read_text(encoding="utf-8") for path in (root / VERSIONS).glob("*.py")}
-    golden = next(
-        (text for text in texts.values() if 'create_table(\n        "posts",' in text), None
-    )
+    versions, heads = _versions_and_heads(root)
+    texts = [path.read_text(encoding="utf-8") for path in sorted(versions.glob("*.py"))]
+    golden = next((text for text in texts if 'create_table(\n        "posts",' in text), None)
     if golden is None:
         raise GenerateError(
             "posts 테이블을 만드는 마이그레이션이 없다. db:revision으로 초안을 만든다."
         )
-    # 문자열 정규식이 아니라 Alembic으로 head를 찾는다. merge 리비전은 down_revision이
-    # 튜플("a", "b")이라 정규식으로는 부모로 세지 못해 head가 아닌 것도 head로 잘못 본다.
-    # Alembic이 각 리비전 파일을 import해서 읽으므로, .pyc 캐시가 생기지 않게 잠깐 끈다
-    # (검사에 실패해도 아무것도 쓰지 않는다는 약속을 캐시 파일이 깨지 않게 한다).
-    previous_bytecode, sys.dont_write_bytecode = sys.dont_write_bytecode, True
-    try:
-        heads = sorted(ScriptDirectory(str(root / "migrations")).get_heads())
-    finally:
-        sys.dont_write_bytecode = previous_bytecode
     if len(heads) != 1:
         raise GenerateError(f"마이그레이션 head가 하나가 아니다({heads}). 먼저 하나로 합친다.")
     old_revision, old_parent = _revision(golden, "revision"), _revision(golden, "down_revision")
@@ -144,7 +194,7 @@ def _migration(root: Path, names: Names, now: datetime) -> tuple[Path, str]:
         f"Revision ID: {revision}\nRevises: {heads[0]}\nCreate Date: {now:%Y-%m-%d %H:%M:%S}\n"
         '"""'
     )
-    path = root / VERSIONS / f"{now:%Y_%m_%d_%H%M}-{revision}_{names.snake}.py"
+    path = versions / f"{now:%Y_%m_%d_%H%M}-{revision}_{names.snake}.py"
     return path, header + body
 
 
@@ -160,6 +210,7 @@ def generate(names: Names, *, root: Path = ROOT, now: datetime | None = None) ->
         if "__pycache__" not in path.relative_to(source).parts
     }
     _check_names(names, golden.values())
+    _check_table(root, names)
     writes: dict[Path, str] = {}
     for relative, text in golden.items():
         out = target / Path(*(rename(part, names, "name") for part in relative.parts))
@@ -194,9 +245,17 @@ NEXT_STEPS = """
 - 에러 코드와 감사 행위: 새 값을 계약에 더한 뒤 바꾼다(지금은 posts의 값을 쓴다)
 - 가입한 사람(member)이 쓰게 하려면 권한을 roles의 시스템 역할에 더한다(admin은 모든 권한을 가진다)
 - registry.py: 커버 이미지를 쓰지 않으면 파일 읽기 규칙과 참조 확인을 지운다
-- 모델을 고친 뒤 마이그레이션 초안을 지우고 다시 만든다: uv run poe db:revision "<무엇을 바꾸는지>"
+- 모델을 고친 뒤 마이그레이션 초안을 지우고 다시 만든다: uv run poe db:revision "add {table} table"
 - 끝나면 uv run poe gen, uv run poe check
 """
+
+
+def summary(names: Names) -> str:
+    """만든 이름 한 줄. 규칙으로 만든 단수형이 틀렸으면(movies → movy) 바로 보이게 한다."""
+    return (
+        f"이름: {names.snake}({names.pascal}), 단수형 {names.snake_one}({names.pascal_one}). "
+        "단수형이 틀리면 되돌리고 --singular로 다시 만든다."
+    )
 
 
 def _python(*args: str) -> int:
@@ -207,12 +266,14 @@ def _python(*args: str) -> int:
 def run(name: str, singular_form: str | None = None) -> int:
     """poe gen:module의 본체. 만든 뒤 ruff로 정리하고 openapi.json을 다시 쓴다."""
     try:
-        generated = generate(names_for(name, singular_form))
+        names = names_for(name, singular_form)
+        generated = generate(names)
     except GenerateError as error:
         print(f"gen:module: {error}", file=sys.stderr)
         return 1
     written = [generated.module, generated.migration, *generated.registered]
     paths = [path.relative_to(ROOT).as_posix() for path in written]
+    print(summary(names))
     print(f"만들었다: {paths[0]}, {paths[1]}")
     print(f"등록했다: {', '.join(paths[2:])}")
     failed = (
@@ -223,7 +284,7 @@ def run(name: str, singular_form: str | None = None) -> int:
     if review := review_list(generated):
         print("\n골든 모듈이 표시한 고칠 곳:")
         print("\n".join(f"- {item}" for item in review))
-    print(NEXT_STEPS.rstrip())
+    print(NEXT_STEPS.format(table=names.snake).rstrip())
     if failed:
         print("\n정리(ruff, openapi.json)가 실패했다. 위 출력을 보고 고친다.", file=sys.stderr)
     return failed

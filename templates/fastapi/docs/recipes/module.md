@@ -6,13 +6,13 @@
 
 ## 명령
 
-1. `uv run poe gen:module <이름>`: 이름은 영어 복수형 kebab-case다(예: `comments`, `blog-posts`). 끝 단어의 단수형이 규칙(categories → category, boxes → box, comments → comment)과 다르면 `--singular <단수형>`을 붙인다.
+1. `uv run poe gen:module <이름>`: 이름은 영어 복수형 kebab-case다(예: `comments`, `blog-posts`). 끝 단어의 단수형이 규칙(categories → category, boxes → box, comments → comment)과 다르면 `--singular <단수형>`을 붙인다(예: `people --singular person`). 출력의 첫 줄이 만든 단수형을 알린다.
    - 골든 모듈 `posts`를 `src/app/modules/<이름>/`으로 복사하고 이름을 바꾼다. 식별자, 리소스 type, 경로, 권한(`<이름>:create`, `<이름>:manage`), 테이블, 테스트가 바뀐다.
    - 등록한다: `src/app/modules/registry.py`(라우터, 권한, 파일 읽기 규칙과 참조 확인), `src/app/main.py`의 `TAGS`, `roles/schemas.py`의 `PermissionCode`.
-   - `migrations/versions/`에 새 테이블의 초안을 만든다. posts 테이블을 복사한 것이다.
-   - 이름이 파이썬 예약어·내장 이름이나 골든 모듈이 쓰는 이름(author, session 등)과 겹치면 아무 파일도 쓰지 않고 멈춘다. 다른 이름을 쓴다.
+   - `migrations/versions/`에 새 테이블의 초안을 만든다. posts 테이블을 만든 리비전을 복사한 것이다. 뒤의 리비전으로 posts 스키마를 바꿨다면 초안이 모델과 다르므로, 초안을 지우고 `db:revision`으로 다시 만든다(아래 3번).
+   - 이름이 파이썬 예약어·내장 이름, 골든 모듈이 쓰는 이름(author, session 등), 이미 있는 테이블(refresh_tokens 등)과 겹치면 아무 파일도 쓰지 않고 멈춘다. 다른 이름을 쓴다.
 2. 출력 끝의 "고칠 곳" 목록과 다음 할 일을 따라 고친다(아래 "고칠 파일").
-3. 모델을 고쳤으면 마이그레이션 초안을 다시 만든다: 초안 파일을 지우고 `uv run poe db:revision "<이름> 테이블"`. 초안을 로컬 DB에 이미 적용했으면(`db:migrate`) 지우기 전에 `uv run alembic downgrade -1`로 내린다. [마이그레이션](migration.md)
+3. 모델을 고쳤으면 마이그레이션 초안을 다시 만든다: 초안 파일을 지우고 `uv run poe db:revision "add <name> table"`(메시지는 영어로 쓴다). 초안을 로컬 DB에 이미 적용했으면(`db:migrate`) 지우기 전에 `uv run alembic downgrade -1`로 내린다. [마이그레이션](migration.md)
 4. `uv run poe db:migrate`, `uv run poe gen`, `uv run poe check`.
 
 ## 고칠 파일
