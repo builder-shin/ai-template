@@ -18,6 +18,7 @@ from app.core.permissions import Permission
 from app.modules import audit_logs, auth, files, posts, roles, users
 
 ROUTERS: tuple[JsonApiRouter, ...] = (
+    *posts.ROUTERS,
     *users.ROUTERS,
     *roles.ROUTERS,
     *auth.ROUTERS,
@@ -38,5 +39,8 @@ AUTHENTICATOR: Authenticator = auth.authenticate
 users.on_account_closed(auth.close_credentials)
 # 소유자가 아닌 사람도 읽는 파일: 사용자의 아바타(공개 표현에 들어간다).
 files.add_read_rule(users.avatar_readable)
+# 볼 수 있는 글의 커버 이미지.
+files.add_read_rule(posts.cover_image_readable)
 # 탈퇴한 사용자의 파일 중 남는 것: 다른 리소스가 가리키는 파일.
 files.add_reference_check(users.avatar_references)
+files.add_reference_check(posts.cover_image_references)

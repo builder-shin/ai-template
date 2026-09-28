@@ -1,8 +1,19 @@
-"""골든 모듈 posts의 공개 인터페이스.
+"""골든 모듈 posts의 공개 인터페이스. 다른 모듈은 여기서 내보낸 이름만 쓴다.
 
-권한은 M2부터 둔다(member 역할이 posts:create를 받는다). 나머지 계층은 M3에서 채운다.
+새 모듈은 이 모듈의 구조를 따른다(uv run poe gen:module <이름>이 복사한다).
 """
 
 from app.modules.posts.permissions import PERMISSIONS, POSTS_CREATE, POSTS_MANAGE
+from app.modules.posts.router import posts
+from app.modules.posts.service import cover_image_readable, cover_image_references
 
-__all__ = ["PERMISSIONS", "POSTS_CREATE", "POSTS_MANAGE"]
+ROUTERS = (posts,)
+
+__all__ = [
+    "PERMISSIONS",
+    "POSTS_CREATE",
+    "POSTS_MANAGE",
+    "ROUTERS",
+    "cover_image_readable",
+    "cover_image_references",
+]

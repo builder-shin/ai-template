@@ -66,6 +66,390 @@
         }
       }
     },
+    "/api/v1/posts": {
+      "get": {
+        "tags": [
+          "posts"
+        ],
+        "description": "기본은 발행된 글만 돌려준다. 초안은 작성자 본인(filter[author]=본인 id)이거나 posts:manage 권한이 있을 때만 보인다.",
+        "operationId": "Posts_list",
+        "responses": {
+          "200": {
+            "description": "200 OK.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostCollectionDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "x-jsonapi-include": [
+          "author",
+          "coverImage"
+        ],
+        "x-jsonapi-sort": [
+          "createdAt",
+          "publishedAt",
+          "title"
+        ],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "description": "1부터 시작하는 페이지 번호.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "default": 1
+            },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "description": "페이지 크기. 최대 100.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "fields[posts]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "filter[status]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PostStatus"
+            },
+            "explode": false
+          },
+          {
+            "name": "filter[author]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "작성자(사용자) id.",
+              "format": "uuid",
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "filter[q]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {}
+        ]
+      }
+    },
+    "/api/v1/posts/{id}": {
+      "get": {
+        "tags": [
+          "posts"
+        ],
+        "operationId": "Posts_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "fields[posts]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 OK.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access is unauthorized.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Client error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "x-jsonapi-include": [
+          "author",
+          "coverImage"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {}
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -5413,6 +5797,225 @@
           "attributes"
         ],
         "description": "관계가 없는 리소스 객체."
+      },
+      "PostAttributes": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "description": "마크다운 본문."
+          },
+          "status": {
+            "$ref": "#/components/schemas/PostStatus"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "발행하면 채워지고, 발행을 취소하면 null이 된다."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "body",
+          "status",
+          "publishedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PostCollectionDocument": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PostResource"
+            },
+            "type": "array"
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CollectionMeta"
+          },
+          "included": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/UserPublicResource"
+                },
+                {
+                  "$ref": "#/components/schemas/FileResource"
+                }
+              ]
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "links",
+          "meta"
+        ],
+        "description": "컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다."
+      },
+      "PostDocument": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PostResource"
+          },
+          "included": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/UserPublicResource"
+                },
+                {
+                  "$ref": "#/components/schemas/FileResource"
+                }
+              ]
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."
+      },
+      "PostRelationships": {
+        "properties": {
+          "author": {
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "users"
+                        ]
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object",
+                    "required": [
+                      "type",
+                      "id"
+                    ],
+                    "description": "관계가 가리키는 리소스 식별자."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object",
+            "required": [
+              "data"
+            ],
+            "description": "단수 관계. 대상이 없으면 data가 null이다."
+          },
+          "coverImage": {
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "files"
+                        ]
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object",
+                    "required": [
+                      "type",
+                      "id"
+                    ],
+                    "description": "관계가 가리키는 리소스 식별자."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object",
+            "required": [
+              "data"
+            ],
+            "description": "단수 관계. 대상이 없으면 data가 null이다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "author",
+          "coverImage"
+        ]
+      },
+      "PostResource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "posts"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/PostAttributes"
+          },
+          "relationships": {
+            "$ref": "#/components/schemas/PostRelationships"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "attributes",
+          "relationships"
+        ],
+        "description": "관계가 있는 리소스 객체."
+      },
+      "PostStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "published"
+        ]
       },
       "RegistrationAttributes": {
         "properties": {
