@@ -14,9 +14,10 @@ from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.users.repository as repository
+from app.core.access import Principal
 from app.core.db import utc_now
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode, ToOne
+from app.core.jsonapi.models import ErrorCode, ResourceIdentifier, ToOne
 from app.core.security import hash_password_async
 from app.modules import roles
 from app.modules.users.models import Locale, User, UserStatus
@@ -125,14 +126,29 @@ async def set_password(user: User, password: str) -> None:
     user.password_hash = await hash_password_async(password)
 
 
+def avatar_of(user: User) -> ToOne[Literal["files"]]:
+    """사용자의 아바타 관계. 없으면 data가 null이다."""
+    if user.avatar_id is None:
+        return ToOne[Literal["files"]](data=None)
+    avatar = ResourceIdentifier[Literal["files"]](type="files", id=str(user.avatar_id))
+    return ToOne[Literal["files"]](data=avatar)
+
+
 def public_user_resource(user: User) -> UserPublicResource:
-    """다른 사람에게 보이는 공개 표현(이름과 아바타). 아바타는 files 모듈(M3)이 채운다."""
+    """다른 사람에게 보이는 공개 표현(이름과 아바타)."""
     return UserPublicResource(
         type="users",
         id=str(user.id),
         attributes=UserPublicAttributes(name=user.name),
-        relationships=UserPublicRelationships(avatar=ToOne[Literal["files"]](data=None)),
+        relationships=UserPublicRelationships(avatar=avatar_of(user)),
     )
+
+
+async def avatar_readable(
+    session: AsyncSession, file_id: uuid.UUID, _viewer: Principal | None
+) -> bool:
+    """파일 읽기 규칙: 사용자의 아바타는 누구나 읽는다(공개 표현에 들어간다)."""
+    return await repository.is_avatar(session, file_id)
 
 
 async def public_users(

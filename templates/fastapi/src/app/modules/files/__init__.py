@@ -3,7 +3,7 @@
 from app.modules.files.models import File, FileStatus
 from app.modules.files.router import files
 from app.modules.files.schemas import FileResource
-from app.modules.files.service import ReadRule, add_read_rule, file_resources
+from app.modules.files.service import ReadRule, add_read_rule, attachable_file, file_resources
 
 ROUTERS = (files,)
 
@@ -14,5 +14,6 @@ __all__ = [
     "FileStatus",
     "ReadRule",
     "add_read_rule",
+    "attachable_file",
     "file_resources",
 ]

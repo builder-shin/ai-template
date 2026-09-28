@@ -14,15 +14,9 @@ import app.modules.users.service.profile as profile
 from app.core.access import PermissionsDep, Principal, PrincipalDep
 from app.core.clients import ClientDep
 from app.core.db import SessionDep
-from app.core.jsonapi.errors import ApiError, require_matching_id
+from app.core.jsonapi.errors import require_matching_id
 from app.core.jsonapi.media import JsonApiBody
-from app.core.jsonapi.models import (
-    CollectionMeta,
-    ErrorCode,
-    ResourceIdentifier,
-    ToMany,
-    ToOne,
-)
+from app.core.jsonapi.models import CollectionMeta, ResourceIdentifier, ToMany
 from app.core.jsonapi.operation import (
     AUTH_ERRORS,
     BODY_ERRORS,
@@ -36,8 +30,8 @@ from app.core.jsonapi.operation import (
 from app.core.jsonapi.query import CollectionQuery, ResourceQuery
 from app.core.jsonapi.rendering import load_included, pagination, render
 from app.core.permissions import PermissionRegistry
-from app.modules import roles
-from app.modules.files import FileResource
+from app.core.storage import Storage, StorageDep
+from app.modules import files, roles
 from app.modules.users.models import User
 from app.modules.users.permissions import USERS_MANAGE, USERS_READ
 from app.modules.users.schemas import (
@@ -93,11 +87,11 @@ UPDATE = Operation(
     description="상태(비활성화)와 역할을 바꾼다.",
 )
 UserId = Annotated[uuid.UUID, Path(alias="id")]
-Included = roles.RoleResource | FileResource
+Included = roles.RoleResource | files.FileResource
 
 
 def user_resource(user: User, held: Sequence[roles.Role]) -> UserResource:
-    """전체 속성의 사용자 리소스. 아바타는 files 모듈(M3)이 채울 때까지 늘 null이다."""
+    """전체 속성의 사용자 리소스."""
     role_ids = [
         ResourceIdentifier[Literal["roles"]](type="roles", id=str(role.id)) for role in held
     ]
@@ -115,21 +109,27 @@ def user_resource(user: User, held: Sequence[roles.Role]) -> UserResource:
         ),
         relationships=UserRelationships(
             roles=ToMany[Literal["roles"]](data=role_ids),
-            avatar=ToOne[Literal["files"]](data=None),
+            avatar=accounts.avatar_of(user),
         ),
     )
 
 
 async def included_for(
-    include: Iterable[str], held: Iterable[roles.Role], registry: PermissionRegistry
+    session: AsyncSession,
+    storage: Storage,
+    registry: PermissionRegistry,
+    include: Iterable[str],
+    found: Iterable[User],
+    held: Iterable[roles.Role],
 ) -> list[Included]:
-    """include 경로마다 포함 리소스. 역할은 사용자들이 가진 것, 아바타는 M3부터 채운다."""
+    """include 경로마다 포함 리소스. 역할은 사용자들이 가진 것, 아바타는 사용자들의 아바타다."""
 
     async def role_resources() -> list[Included]:
         return [roles.role_resource(role, registry) for role in held]
 
     async def avatars() -> list[Included]:
-        return []
+        avatar_ids = [user.avatar_id for user in found if user.avatar_id is not None]
+        return list(await files.file_resources(session, storage, avatar_ids))
 
     loaders: dict[str, Callable[[], Awaitable[list[Included]]]] = {
         "roles": role_resources,
@@ -140,6 +140,7 @@ async def included_for(
 
 async def me_document(
     session: AsyncSession,
+    storage: Storage,
     registry: PermissionRegistry,
     actor: Principal,
     include: Sequence[str] = (),
@@ -149,7 +150,7 @@ async def me_document(
     permissions = [roles.PermissionCode(code) for code in sorted(actor.permissions)]
     return UserMeDocument(
         data=user_resource(user, held),
-        included=await included_for(include, held, registry),
+        included=await included_for(session, storage, registry, include, [user], held),
         meta=UserMeDocumentMeta(permissions=permissions),
     )
 
@@ -157,39 +158,36 @@ async def me_document(
 @me.route("GET", "", GET_ME, response_model=UserMeDocument)
 async def get_me(
     session: SessionDep,
+    storage: StorageDep,
     registry: PermissionsDep,
     actor: PrincipalDep,
     query: Annotated[ResourceQuery, Depends(GET_ME)],
 ) -> Response:
-    document = await me_document(session, registry, actor, query.include)
+    document = await me_document(session, storage, registry, actor, query.include)
     return render(document, fields=query.fields)
 
 
 @me.route("PATCH", "", UPDATE_ME, response_model=UserMeDocument)
 async def update_me(
     session: SessionDep,
+    storage: StorageDep,
     registry: PermissionsDep,
     actor: PrincipalDep,
     document: JsonApiBody[UserMeUpdateDocument],
 ) -> Response:
     data = document.data
     require_matching_id(data.id, actor.user_id)
+    avatar: str | MISSING | None = MISSING
     if data.relationships is not MISSING and data.relationships.avatar is not MISSING:
-        avatar = data.relationships.avatar.data
-        if avatar is not None:
-            # 아바타는 본인 소유의 ready 이미지 파일이어야 한다. 파일은 M3에서 생긴다.
-            detail = f"File {avatar.id} does not exist."
-            pointer = "/data/relationships/avatar/data"
-            raise ApiError(404, ErrorCode.RESOURCE_NOT_FOUND, detail, pointer=pointer)
+        identifier = data.relationships.avatar.data
+        avatar = None if identifier is None else identifier.id
     attributes = data.attributes
+    name = locale = None
     if attributes is not MISSING:
-        await profile.update_me(
-            session,
-            actor,
-            name=None if attributes.name is MISSING else attributes.name,
-            locale=None if attributes.locale is MISSING else attributes.locale,
-        )
-    return render(await me_document(session, registry, actor))
+        name = None if attributes.name is MISSING else attributes.name
+        locale = None if attributes.locale is MISSING else attributes.locale
+    await profile.update_me(session, actor, name=name, locale=locale, avatar=avatar)
+    return render(await me_document(session, storage, registry, actor))
 
 
 @me.route("DELETE", "", DELETE_ME, response_model=None)
@@ -199,18 +197,22 @@ async def delete_me(session: SessionDep, actor: PrincipalDep, client: ClientDep)
 
 
 async def user_document(
-    session: AsyncSession, registry: PermissionRegistry, user: User, include: Sequence[str] = ()
+    session: AsyncSession,
+    storage: Storage,
+    registry: PermissionRegistry,
+    user: User,
+    include: Sequence[str] = (),
 ) -> UserDocument:
     held = (await roles.roles_by_user(session, [user.id]))[user.id]
-    return UserDocument(
-        data=user_resource(user, held), included=await included_for(include, held, registry)
-    )
+    included = await included_for(session, storage, registry, include, [user], held)
+    return UserDocument(data=user_resource(user, held), included=included)
 
 
 @users.route("GET", "", LIST, response_model=UserCollectionDocument)
 async def list_users(
     request: Request,
     session: SessionDep,
+    storage: StorageDep,
     registry: PermissionsDep,
     query: Annotated[CollectionQuery[UserFilter], Depends(LIST)],
 ) -> Response:
@@ -228,7 +230,7 @@ async def list_users(
     every_role = [role for user in found for role in held[user.id]]
     document = UserCollectionDocument(
         data=[user_resource(user, held[user.id]) for user in found],
-        included=await included_for(query.include, every_role, registry),
+        included=await included_for(session, storage, registry, query.include, found, every_role),
         links=links,
         meta=CollectionMeta(page=page),
     )
@@ -239,11 +241,12 @@ async def list_users(
 async def get_user(
     user_id: UserId,
     session: SessionDep,
+    storage: StorageDep,
     registry: PermissionsDep,
     query: Annotated[ResourceQuery, Depends(GET)],
 ) -> Response:
     user = await accounts.require_user(session, user_id)
-    document = await user_document(session, registry, user, query.include)
+    document = await user_document(session, storage, registry, user, query.include)
     return render(document, fields=query.fields)
 
 
@@ -251,6 +254,7 @@ async def get_user(
 async def update_user(
     user_id: UserId,
     session: SessionDep,
+    storage: StorageDep,
     registry: PermissionsDep,
     actor: PrincipalDep,
     client: ClientDep,
@@ -267,4 +271,4 @@ async def update_user(
     user = await management.update_user(
         session, registry, actor, client, user_id, status=status, role_ids=role_ids
     )
-    return render(await user_document(session, registry, user))
+    return render(await user_document(session, storage, registry, user))

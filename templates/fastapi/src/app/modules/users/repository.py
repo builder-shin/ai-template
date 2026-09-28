@@ -3,7 +3,7 @@
 import uuid
 from collections.abc import Iterable, Sequence
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jsonapi.query import Page, SortField
@@ -81,3 +81,9 @@ async def active_admins_besides(session: AsyncSession, user_id: uuid.UUID) -> in
         )
     )
     return await session.scalar(query) or 0
+
+
+async def is_avatar(session: AsyncSession, file_id: uuid.UUID) -> bool:
+    """어떤 사용자의 아바타인가."""
+    found = await session.scalar(select(exists().where(User.avatar_id == file_id)))
+    return bool(found)

@@ -8,18 +8,26 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.audit import AuditLog
+from app.modules.files import File, FileStatus
 from app.modules.roles import Role, UserRole
 from app.modules.users import User, UserStatus
 from app.tests.accounts import Accounts
 from app.tests.requests import error_codes, error_sources, jsonapi_body
+from app.tests.uploads import upload_file
 
 pytestmark = pytest.mark.anyio
 
 ME = "/api/v1/me"
+AVATAR_POINTER = "/data/relationships/avatar/data"
 
 
 def me_update(user_id: object, **data: Any) -> dict[str, Any]:
     return {"data": {"type": "users", "id": str(user_id), **data}}
+
+
+def avatar_update(user_id: object, file_id: str | None) -> dict[str, Any]:
+    avatar = None if file_id is None else {"type": "files", "id": file_id}
+    return me_update(user_id, relationships={"avatar": {"data": avatar}})
 
 
 async def test_me_shows_my_account_roles_and_permissions(
@@ -102,11 +110,57 @@ async def test_update_rejects(
     assert error_sources(response) == [{"pointer": pointer}]
 
 
-async def test_clearing_the_avatar_is_allowed(api: httpx.AsyncClient, accounts: Accounts) -> None:
+async def test_my_uploaded_image_becomes_a_public_avatar(
+    api: httpx.AsyncClient, accounts: Accounts
+) -> None:
     user = await accounts.create()
     headers = await accounts.sign_in(user)
-    document = me_update(user.id, relationships={"avatar": {"data": None}})
-    assert (await api.patch(ME, **jsonapi_body(document, headers))).status_code == 200
+    image = await upload_file(api, headers)
+    response = await api.patch(ME, **jsonapi_body(avatar_update(user.id, image["id"]), headers))
+    assert response.status_code == 200, response.text
+    avatar = response.json()["data"]["relationships"]["avatar"]
+    assert avatar == {"data": {"type": "files", "id": image["id"]}}
+    body = (await api.get(ME, params={"include": "avatar"}, headers=headers)).json()
+    [included] = body["included"]
+    assert (included["id"], "downloadUrl" in included["meta"]) == (image["id"], True)
+    # 아바타는 공개 표현에 들어가므로 다른 사람과 비로그인 사용자도 읽는다.
+    other = await accounts.sign_in(await accounts.create())
+    url = f"/api/v1/files/{image['id']}"
+    assert [(await api.get(url, headers=other)).status_code, (await api.get(url)).status_code] == [
+        200,
+        200,
+    ]
+    cleared = await api.patch(ME, **jsonapi_body(avatar_update(user.id, None), headers))
+    assert cleared.json()["data"]["relationships"]["avatar"] == {"data": None}
+    assert (await api.get(url, headers=other)).status_code == 404
+
+
+async def test_an_avatar_must_be_my_uploaded_image(
+    api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession]
+) -> None:
+    user = await accounts.create()
+    headers = await accounts.sign_in(user)
+    others = await upload_file(api, await accounts.sign_in(await accounts.create()))
+    pending = await upload_file(api, headers, ready=False)
+    async with db() as session:
+        document = File(
+            owner_id=user.id,
+            filename="report.pdf",
+            content_type="application/pdf",
+            size=3,
+            status=FileStatus.READY,
+        )
+        session.add(document)
+        await session.commit()
+    cases = [
+        (others["id"], 404, "resource.not_found"),
+        (pending["id"], 422, "file.upload_incomplete"),
+        (str(document.id), 422, "file.type_not_allowed"),
+    ]
+    for file_id, status, code in cases:
+        response = await api.patch(ME, **jsonapi_body(avatar_update(user.id, file_id), headers))
+        assert (response.status_code, error_codes(response)) == (status, [code])
+        assert error_sources(response) == [{"pointer": AVATAR_POINTER}]
 
 
 async def test_deleting_anonymizes_and_closes_the_account(

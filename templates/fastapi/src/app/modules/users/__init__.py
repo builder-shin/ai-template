@@ -6,6 +6,7 @@ from app.modules.users.router import me, users
 from app.modules.users.schemas import UserPublicResource
 from app.modules.users.service.accounts import (
     Closure,
+    avatar_readable,
     create_account,
     find_account,
     get_account,
@@ -29,6 +30,7 @@ __all__ = [
     "User",
     "UserPublicResource",
     "UserStatus",
+    "avatar_readable",
     "create_account",
     "find_account",
     "get_account",

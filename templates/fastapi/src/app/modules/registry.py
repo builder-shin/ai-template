@@ -4,7 +4,8 @@
 - ROUTERS: 모듈의 라우터(`JsonApiRouter`). 앱이 /api/v1 아래에 붙인다.
 - PERMISSIONS: 권한. 앱의 권한 레지스트리가 되고, admin 역할은 이 전부를 가진다.
 - AUTHENTICATOR: Bearer 토큰을 검증하는 인증기(auth 모듈).
-- 모듈 사이의 등록: users가 계정을 닫을 때 부를 처리(auth의 세션 폐기)를 건다.
+- 모듈 사이의 등록: users가 계정을 닫을 때 부를 처리(auth의 세션 폐기)와, files가 파일을 읽게
+  해 줄 규칙(사용자의 아바타는 공개)을 건다.
 - JOBS: 잡(`app.core.jobs.Job`). broker가 이름 그대로 등록하고, cron이 있으면 scheduler가 보낸다.
 이 파일도 모듈의 공개 인터페이스만 import한다(check의 module-boundary 검사).
 """
@@ -35,3 +36,5 @@ AUTHENTICATOR: Authenticator = auth.authenticate
 
 # 계정을 닫을 때(비활성화, 탈퇴) auth가 세션을 폐기하고 토큰을 지운다.
 users.on_account_closed(auth.close_credentials)
+# 소유자가 아닌 사람도 읽는 파일: 사용자의 아바타(공개 표현에 들어간다).
+files.add_read_rule(users.avatar_readable)

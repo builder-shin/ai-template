@@ -8,6 +8,8 @@
   (app.modules.registry)가 건다. files가 다른 모듈을 import하면 순환이 되므로 등록으로 뒤집는다.
 - 쓰기(완료 확인, 삭제)는 소유자만 한다. 읽을 수 있지만 소유자가 아니면 403, 읽을 수 없으면 404다.
 - ready 파일은 meta.downloadUrl에 presigned GET(10분)을 담는다. 포함 리소스(included)에도 채운다.
+- 다른 리소스에 거는 파일(아바타, 커버 이미지)은 요청한 사람 소유의 ready 이미지여야 한다
+  (attachable_file). 남의 파일을 걸면 그 리소스를 보는 모든 사람에게 파일이 공개되기 때문이다.
 - 객체는 행을 지운 트랜잭션을 commit한 뒤에 지운다. 지우지 못하면 경고만 남긴다(행이 없는 객체는
   URL을 받을 방법이 없다).
 """
@@ -164,6 +166,35 @@ async def readable_file(
     file = await repository.get(session, file_id)
     if file is None or not await can_read(session, file, viewer):
         raise _not_found(file_id)
+    return file
+
+
+async def attachable_file(
+    session: AsyncSession, actor: Principal, file_id: str, *, pointer: str
+) -> File:
+    """다른 리소스에 걸 파일: 요청한 사람 소유의 ready 이미지. pointer는 관계의 data다.
+
+    없거나 남의 파일이면 404, 아직 올리지 않았으면 422 file.upload_incomplete, 이미지가 아니면
+    422 file.type_not_allowed다.
+    """
+    try:
+        file = await repository.get(session, uuid.UUID(file_id))
+    except ValueError:
+        file = None
+    if file is None or file.owner_id != actor.user_id:
+        detail = f"File {file_id} does not exist or is not yours."
+        raise ApiError(404, ErrorCode.RESOURCE_NOT_FOUND, detail, pointer=pointer)
+    if file.status != FileStatus.READY:
+        detail = "The file has not been uploaded yet."
+        raise ApiError(422, ErrorCode.FILE_UPLOAD_INCOMPLETE, detail, pointer=pointer)
+    if not file.content_type.startswith("image/"):
+        raise ApiError(
+            422,
+            ErrorCode.FILE_TYPE_NOT_ALLOWED,
+            "Only images can be used here.",
+            pointer=pointer,
+            params={"allowed": "image/*"},
+        )
     return file
 
 

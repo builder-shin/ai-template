@@ -1,13 +1,19 @@
-"""내 정보(/me)의 유스케이스: 이름·로케일 바꾸기와 탈퇴."""
+"""내 정보(/me)의 유스케이스: 이름·로케일·아바타 바꾸기와 탈퇴.
 
+- 아바타는 내가 올린 ready 이미지 파일이어야 한다(files.attachable_file). null이면 아바타를 뺀다.
+"""
+
+from pydantic.experimental.missing_sentinel import MISSING
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.users.service.accounts as accounts
 from app.core.access import Principal
 from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
 from app.core.clients import Client
-from app.modules import roles
+from app.modules import files, roles
 from app.modules.users.models import Locale, User, UserStatus
+
+AVATAR_POINTER = "/data/relationships/avatar/data"
 
 
 async def update_me(
@@ -16,9 +22,19 @@ async def update_me(
     *,
     name: str | None = None,
     locale: Locale | None = None,
+    avatar: str | MISSING | None = MISSING,
 ) -> User:
-    """내 이름과 로케일을 바꾼다. None인 값은 그대로 둔다."""
+    """내 이름, 로케일, 아바타를 바꾼다. None인 이름·로케일과 MISSING인 아바타는 그대로 둔다.
+
+    avatar는 파일 id이고, None이면 아바타를 뺀다.
+    """
     user = await accounts.require_user(session, actor.user_id)
+    if avatar is not MISSING:
+        if avatar is None:
+            user.avatar_id = None
+        else:
+            file = await files.attachable_file(session, actor, avatar, pointer=AVATAR_POINTER)
+            user.avatar_id = file.id
     if name is not None:
         user.name = name
     if locale is not None:
