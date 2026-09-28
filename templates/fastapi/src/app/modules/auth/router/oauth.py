@@ -27,10 +27,16 @@ oauth = JsonApiRouter(prefix="/oauth/{provider}", tag="oauth", interface="OAuth"
 AUTHORIZE = RedirectOperation(
     name="authorize",
     errors=REDIRECT_ERRORS,
-    query=(QueryParameter("redirectUri", required=True, format="uri"),),
+    query=(
+        QueryParameter("redirectUri", required=True, format="uri"),
+        QueryParameter("codeChallenge", required=True),
+    ),
     description=(
         "제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. "
-        "state와 PKCE(S256)를 붙인다. 세 제공자 모두 PKCE를 지원한다."
+        "state와 PKCE(S256)를 붙인다. 세 제공자 모두 PKCE를 지원한다. "
+        "codeChallenge는 BFF가 만든 code verifier의 S256 challenge(base64url, 43자)다. "
+        "콜백이 넘긴 1회용 코드는 같은 verifier(POST /sessions의 codeVerifier)로만 토큰으로 "
+        "바꿀 수 있다(로그인 CSRF 방지)."
     ),
 )
 CALLBACK = RedirectOperation(
@@ -55,7 +61,13 @@ async def authorize(
     query: Annotated[RedirectQuery, Depends(AUTHORIZE)],
 ) -> Response:
     settings: Settings = request.app.state.settings
-    location = await service.authorize(redis, settings, provider, query.values["redirectUri"])
+    location = await service.authorize(
+        redis,
+        settings,
+        provider,
+        query.values["redirectUri"],
+        query.values["codeChallenge"],
+    )
     return RedirectResponse(location, status_code=302)
 
 

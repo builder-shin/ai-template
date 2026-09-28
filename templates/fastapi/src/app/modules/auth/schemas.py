@@ -136,6 +136,9 @@ class SessionRefreshTokenGrant(JsonApiModel):
 class SessionOAuthCodeGrant(JsonApiModel):
     grant_type: Literal["oauthCode"]
     code: Annotated[str, Field(description="OAuth 콜백이 프론트로 넘긴 1회용 코드.")]
+    code_verifier: Annotated[
+        str, Field(description="authorize에 보낸 codeChallenge를 만든 code verifier.")
+    ]
 
 
 # PEP 695 type 별칭이라 스키마 이름이 SessionGrant인 컴포넌트가 된다(계약과 같다).

@@ -6,8 +6,10 @@
   감사 로그(session.login_failed, 입력한 이메일의 해시만)를 남긴다.
 - refreshToken grant: refresh token을 회전한다. 이미 쓴 토큰이 다시 오면 그 세션을 폐기하고
   401 auth.refresh_token_reused다.
-- oauthCode grant: 소셜 로그인 콜백이 프론트로 넘긴 1회용 코드(60초)다. 틀렸거나 만료됐거나 이미
-  썼으면 401 auth.oauth_code_invalid, 그사이 비활성화된 계정은 403 auth.account_deactivated다.
+- oauthCode grant: 소셜 로그인 콜백이 프론트로 넘긴 1회용 코드(60초)와, authorize에 보낸
+  codeChallenge를 만든 codeVerifier다. 코드가 틀렸거나 만료됐거나 이미 썼거나 codeVerifier가
+  codeChallenge를 만들지 못하면(로그인 CSRF 방지) 401 auth.oauth_code_invalid, 그사이
+  비활성화된 계정은 403 auth.account_deactivated다.
 """
 
 import uuid
@@ -129,13 +131,18 @@ async def _refresh(session: AsyncSession, settings: Settings, refresh_token: str
 
 
 async def _oauth_code(
-    session: AsyncSession, redis: Redis, settings: Settings, client: Client, code: str
+    session: AsyncSession,
+    redis: Redis,
+    settings: Settings,
+    client: Client,
+    code: str,
+    verifier: str,
 ) -> IssuedTokens:
     invalid = _unauthorized(
         ErrorCode.AUTH_OAUTH_CODE_INVALID, "The sign-in code is wrong or has expired."
     )
     found = await oauth.consume_code(redis, code)
-    if found is None:
+    if found is None or not oauth.verifies(found.code_challenge, verifier):
         raise invalid
     user = await users.get_account(session, found.user_id)
     if user is None or user.status == users.UserStatus.DELETED:
@@ -161,7 +168,7 @@ async def sign_in(
     if isinstance(grant, SessionPasswordGrant):
         return await _password(session, redis, settings, client, grant)
     if isinstance(grant, SessionOAuthCodeGrant):
-        return await _oauth_code(session, redis, settings, client, grant.code)
+        return await _oauth_code(session, redis, settings, client, grant.code, grant.code_verifier)
     return await _refresh(session, settings, grant.refresh_token)
 
 

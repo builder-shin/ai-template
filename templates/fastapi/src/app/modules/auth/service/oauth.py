@@ -1,7 +1,9 @@
 """소셜 로그인(스펙 §6.2): authorize, callback, 1회용 코드.
 
-- authorize: redirectUri를 설정의 허용 목록(OAUTH_REDIRECT_URIS)으로 검사한다(아니면 400). state,
-  PKCE verifier, redirectUri, 제공자를 Valkey에 10분 두고 제공자 로그인 화면 주소를 돌려준다.
+- authorize: redirectUri를 설정의 허용 목록(OAUTH_REDIRECT_URIS)으로 검사한다(아니면 400).
+  codeChallenge(BFF가 만든 code verifier의 S256, base64url 43자)도 형식을 검사한다(아니면 400).
+  state, PKCE verifier, redirectUri, codeChallenge, 제공자를 Valkey에 10분 두고 제공자 로그인
+  화면 주소를 돌려준다.
 - callback: state를 꺼내면서 지운다. 없거나 만료됐거나 다른 제공자의 것이면 돌려보낼 곳을
   모르므로 400이다. 그 밖의 실패는 redirectUri에 error를 붙여 보낸다.
   - 제공자가 error를 붙여 돌아왔다(사용자가 거부): auth.oauth_denied
@@ -15,11 +17,17 @@
   3. 이메일이 검증되지 않았거나 없으면 이메일 없는 새 계정을 만든다. 미검증 이메일은 저장하지
      않는다.
   새 계정의 이름은 제공자가 준 이름이고, 역할은 member다.
-- 성공하면 1회용 코드(60초)를 redirectUri?code=로 보낸다. BFF가 POST /sessions의 oauthCode
-  grant로 토큰을 받는다(consume_code). 로그인 성공 감사 로그는 그때 남긴다.
+- 성공하면 1회용 코드(60초)에 codeChallenge를 실어 redirectUri?code=로 보낸다. BFF가 POST
+  /sessions의 oauthCode grant(code, codeVerifier)로 토큰을 받는다(consume_code). codeVerifier가
+  codeChallenge를 만들지 못하면(verifies) 401 auth.oauth_code_invalid다. 코드는 이미 꺼내면서
+  지웠으므로 다시 쓸 수 없다. 로그인 CSRF는 이렇게 막는다: 공격자가 자기 계정으로 받은 code를
+  피해자에게 보내도, 그 code는 공격자의 codeChallenge에 묶여 있어 피해자의 BFF가 가진
+  codeVerifier로는 풀리지 않는다. 로그인 성공 감사 로그는 그때 남긴다.
 """
 
+import hmac
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import timedelta
@@ -46,6 +54,8 @@ logger = structlog.get_logger(__name__)
 
 STATE_TTL = timedelta(minutes=10)
 CODE_TTL = timedelta(seconds=60)
+# PKCE S256 challenge(providers.base.challenge): SHA-256을 패딩 없는 base64url로 담아 늘 43자다.
+_CODE_CHALLENGE = re.compile(r"[A-Za-z0-9_-]{43}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +64,7 @@ class SignInCode:
 
     user_id: uuid.UUID
     provider: OAuthProvider
+    code_challenge: str
 
 
 def callback_url(settings: Settings, provider: OAuthProvider) -> str:
@@ -68,13 +79,25 @@ def _with_query(url: str, **params: str) -> str:
 
 
 async def authorize(
-    redis: Redis, settings: Settings, provider: OAuthProvider, redirect_uri: str
+    redis: Redis,
+    settings: Settings,
+    provider: OAuthProvider,
+    redirect_uri: str,
+    code_challenge: str,
 ) -> str:
     if redirect_uri not in settings.oauth_redirect_uris:
         detail = "redirectUri is not one of the allowed front-end callbacks."
         raise ApiError(400, ErrorCode.JSONAPI_INVALID_QUERY, detail, parameter="redirectUri")
+    if not _CODE_CHALLENGE.fullmatch(code_challenge):
+        detail = "codeChallenge must be 43 base64url characters (PKCE S256)."
+        raise ApiError(400, ErrorCode.JSONAPI_INVALID_QUERY, detail, parameter="codeChallenge")
     state, verifier = new_token(), new_token()
-    stored = {"provider": provider.value, "redirectUri": redirect_uri, "verifier": verifier}
+    stored = {
+        "provider": provider.value,
+        "redirectUri": redirect_uri,
+        "verifier": verifier,
+        "codeChallenge": code_challenge,
+    }
     await redis.set(f"oauth-state:{state}", json.dumps(stored), ex=STATE_TTL)
     return await providers.authorization_url(
         PROVIDERS[provider],
@@ -165,7 +188,11 @@ async def callback(
     if user.status != users.UserStatus.ACTIVE:
         return _with_query(target, error=ErrorCode.AUTH_ACCOUNT_DEACTIVATED.value)
     one_time = new_token()
-    value = {"userId": str(user.id), "provider": provider.value}
+    value = {
+        "userId": str(user.id),
+        "provider": provider.value,
+        "codeChallenge": stored["codeChallenge"],
+    }
     await redis.set(f"oauth-code:{digest(one_time)}", json.dumps(value), ex=CODE_TTL)
     return _with_query(target, code=one_time)
 
@@ -176,4 +203,19 @@ async def consume_code(redis: Redis, code: str) -> SignInCode | None:
     if raw is None:
         return None
     value = json.loads(raw)
-    return SignInCode(user_id=uuid.UUID(value["userId"]), provider=OAuthProvider(value["provider"]))
+    return SignInCode(
+        user_id=uuid.UUID(value["userId"]),
+        provider=OAuthProvider(value["provider"]),
+        code_challenge=value["codeChallenge"],
+    )
+
+
+def verifies(code_challenge: str, code_verifier: str) -> bool:
+    """code_verifier가 authorize에서 받은 code_challenge(PKCE S256)를 만드는가.
+
+    타이밍 공격을 피하려고 hmac.compare_digest로 비교한다. RFC 7636의 code verifier는
+    ASCII([A-Za-z0-9-._~])만 쓰므로, ASCII가 아니면 바로 False다.
+    """
+    if not code_verifier.isascii():
+        return False
+    return hmac.compare_digest(providers.challenge(code_verifier), code_challenge)

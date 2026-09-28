@@ -131,7 +131,12 @@ async def test_refresh_rotates_and_reuse_revokes_the_session(
     ("attributes", "status", "code", "pointer"),
     [
         ({"grantType": "refreshToken", "refreshToken": "x" * 43}, 401, "auth.token_invalid", None),
-        ({"grantType": "oauthCode", "code": "abc"}, 401, "auth.oauth_code_invalid", None),
+        (
+            {"grantType": "oauthCode", "code": "abc", "codeVerifier": "v" * 43},
+            401,
+            "auth.oauth_code_invalid",
+            None,
+        ),
         ({"email": "a@example.com"}, 422, "validation.required", "/data/attributes/grantType"),
         ({"grantType": "magic"}, 422, "validation.invalid_choice", "/data/attributes/grantType"),
         (
