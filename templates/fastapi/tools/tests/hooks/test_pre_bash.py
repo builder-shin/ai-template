@@ -13,6 +13,7 @@ from tools.hooks.pre_bash import (
     FORCE_PUSH,
     HOOKS_OFF,
     LOCAL_HOSTS,
+    MAX_DEPTH,
     NO_VERIFY,
     problem,
 )
@@ -61,6 +62,10 @@ def test_force_push_is_denied(command: str) -> None:
         "git commit -nm wip",
         "git push --no-verify",
         "git merge --no-verify main",
+        # git은 헷갈리지 않는 만큼 줄인 긴 옵션을 받는다(--no-ver는 --no-verbose와 겹쳐 거부한다).
+        "git commit --no-verif -m x",
+        "git commit --no-veri -m x",
+        "git push --no-verif",
     ],
 )
 def test_skipping_git_hooks_is_denied(command: str) -> None:
@@ -81,6 +86,13 @@ def test_skipping_git_hooks_is_denied(command: str) -> None:
         ("git config --local core.hooksPath x", False),
         ("lefthook uninstall", False),
         ("uv run lefthook uninstall", False),
+        (
+            "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null "
+            "git commit -m x",
+            False,
+        ),
+        ("GIT_CONFIG_PARAMETERS=\"'core.hooksPath=/dev/null'\" git commit -m x", False),
+        ("set LEFTHOOK=0 && git commit -m wip", True),
         ("$env:LEFTHOOK=0; git commit -m wip", True),
         ("$env:LEFTHOOK = '0'", True),
         ('$Env:lefthook="false"', True),
@@ -110,6 +122,15 @@ def test_commands_passed_to_a_shell_are_checked(
     command: str, powershell: bool, reason: str
 ) -> None:
     assert problem(command, cwd=str(ROOT), powershell=powershell) == reason
+
+
+@pytest.mark.parametrize(("layers", "reason"), [(MAX_DEPTH, FORCE_PUSH), (MAX_DEPTH + 1, None)])
+def test_wrapped_commands_are_unwrapped_up_to_the_depth_limit(
+    layers: int, reason: str | None
+) -> None:
+    """eval을 MAX_DEPTH번 겹친 명령까지 풀어 본다. 더 깊으면 풀지 않고 둔다."""
+    command = "eval " * layers + "git push --force"
+    assert problem(command, cwd=str(ROOT)) == reason
 
 
 @pytest.mark.parametrize(
@@ -142,6 +163,7 @@ def test_reading_env_files_through_the_shell_is_denied(command: str, powershell:
         "git push -u origin feature-fix",
         "git log --oneline -5",
         'git commit -m "--force와 -n은 쓰지 않는다"',
+        'git commit -m "--no-ver"',
         "git commit -am 'message'",
         "git commit -mn",
         "psql postgresql://127.0.0.1:25432/app",

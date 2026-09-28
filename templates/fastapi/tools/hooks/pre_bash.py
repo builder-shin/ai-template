@@ -1,8 +1,9 @@
 """PreToolUse(Bash|PowerShell): 되돌리기 어렵거나 안전장치를 끄는 명령을 막는다.
 
 - 강제 푸시: git push의 --force, --force-with-lease, -f(짧은 옵션 묶음 포함), +refspec
-- git hook 건너뛰기: --no-verify, git commit의 -n
-- git hook 끄기: LEFTHOOK=0(false), LEFTHOOK_EXCLUDE, core.hooksPath 바꾸기, lefthook uninstall
+- git hook 건너뛰기: --no-verify(git이 받는 줄임 --no-veri, --no-verif 포함), git commit의 -n
+- git hook 끄기: LEFTHOOK=0(false), LEFTHOOK_EXCLUDE, core.hooksPath 바꾸기(git -c, git config,
+  환경 변수 GIT_CONFIG_KEY_<n>·GIT_CONFIG_PARAMETERS), lefthook uninstall
 - 이 PC가 아닌 PostgreSQL: 주소(postgresql://), psql 같은 클라이언트의 -h·--host·host=, PGHOST
 - 커밋된 마이그레이션(migrations/versions/)을 지우거나 옮기는 명령. 커밋하지 않은 초안은
   지워도 된다.
@@ -64,7 +65,8 @@ _POSTGRES_CLIENTS = frozenset(
 )
 _POSTGRES_URL = re.compile(r"postgres(?:ql)?(?:\+\w+)?://[^\s'\"`]*", re.IGNORECASE)
 _CONNINFO_HOST = re.compile(r"\bhost(?:addr)?\s*=\s*([^\s'\"]+)", re.IGNORECASE)
-_MAX_DEPTH = 5  # bash -c "bash -c '...'"처럼 겹친 명령을 따라가는 깊이
+_GIT_CONFIG_KEY = re.compile(r"GIT_CONFIG_KEY_\d+")  # GIT_CONFIG_COUNT와 함께 git 설정을 넘긴다
+MAX_DEPTH = 5  # bash -c "bash -c '...'"처럼 겹친 명령을 따라가는 깊이
 
 
 def _git(args: list[str]) -> tuple[str, list[str]]:
@@ -105,6 +107,14 @@ def _short_flags(word: str, takes_value: str) -> str:
     return letters
 
 
+def _skips_hooks(word: str) -> bool:
+    """--no-verify이거나 git이 --no-verify로 알아듣는 줄임인가.
+
+    git은 헷갈리지 않는 만큼 줄인 긴 옵션을 받는다. --no-ver는 --no-verbose와 겹쳐 거부한다.
+    """
+    return len(word) >= len("--no-veri") and "--no-verify".startswith(word)
+
+
 def _changes_hooks_path(args: list[str]) -> bool:
     """git -c core.hooksPath=... 나 git config core.hooksPath 값처럼 hook 경로를 바꾸는가."""
     if any(setting.lower().startswith("core.hookspath") for setting in _git_settings(args)):
@@ -118,7 +128,7 @@ def _changes_hooks_path(args: list[str]) -> bool:
 
 def _git_problem(args: list[str]) -> str | None:
     subcommand, rest = _git(args)
-    if "--no-verify" in rest:
+    if any(_skips_hooks(word) for word in rest):
         return NO_VERIFY
     if _changes_hooks_path(args):
         return HOOKS_OFF
@@ -140,11 +150,18 @@ def _git_problem(args: list[str]) -> str | None:
 
 
 def _turns_hooks_off(words: list[str], assignments: list[tuple[str, str]]) -> bool:
-    """LEFTHOOK=0(false)이나 LEFTHOOK_EXCLUDE를 두거나, lefthook uninstall을 부르는가."""
+    """LEFTHOOK=0(false)이나 LEFTHOOK_EXCLUDE를 두거나, lefthook uninstall을 부르는가.
+
+    환경 변수로 넘기는 git 설정(GIT_CONFIG_KEY_<n>, GIT_CONFIG_PARAMETERS)의 core.hooksPath도 본다.
+    """
     for name, value in assignments:
         if name == "LEFTHOOK" and value.lower() in {"0", "false"}:
             return True
         if name == "LEFTHOOK_EXCLUDE":
+            return True
+        if _GIT_CONFIG_KEY.fullmatch(name) and value.lower() == "core.hookspath":
+            return True
+        if name == "GIT_CONFIG_PARAMETERS" and "core.hookspath" in value.lower():
             return True
     return any(
         shell.name_of(word) == "lefthook" and words[index + 1 : index + 2] == ["uninstall"]
@@ -245,7 +262,7 @@ def _segment_problem(words: list[str], *, cwd: str, root: Path, depth: int) -> s
     if shell.encoded(name, args):
         return ENCODED
     inner = shell.inner_command(name, args)
-    if inner is not None and depth < _MAX_DEPTH:
+    if inner is not None and depth < MAX_DEPTH:
         command, powershell = inner
         found = problem(command, cwd=cwd, root=root, powershell=powershell, depth=depth + 1)
         if found is not None:

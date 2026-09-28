@@ -96,6 +96,7 @@
 | `SessionStart`                      | 인프라 기동 여부, 적용 안 된 마이그레이션, 생성물 최신 여부를 요약해 넣는다                                                                                               |
 
 - Claude Code는 진전 없이 연속 8번 막힌 Stop hook을 무시한다. 무한 반복은 `stop_hook_active`로 먼저 끊는다.
+- `.env` 읽기 차단은 명령의 단어만 보는 최선의 검사다. 파일을 스스로 여는 프로그램(`cp`, `python -c "open('.env')"`)은 잡지 못한다.
 - hook 스크립트도 입력 JSON 픽스처로 테스트한다. 출력 형식은 구현할 때 공식 레퍼런스(https://code.claude.com/docs/en/hooks)로 확인한다.
 
 ## 권한 (`.claude/settings.json`)
