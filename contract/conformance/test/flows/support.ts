@@ -11,6 +11,7 @@ import { resolveAdmin, resolveMailbox, resolveTarget } from "../../src/targets.t
 
 export type ErrorDocument = components["schemas"]["ErrorDocument"];
 export type PermissionCode = components["schemas"]["PermissionCode"];
+export type FileResource = components["schemas"]["FileResource"];
 
 export const target = resolveTarget(process.env);
 export const mailbox = resolveMailbox(process.env);
@@ -159,4 +160,56 @@ export async function userWith(
     throw new Error(`역할을 주지 못했다: ${String(updated.response.status)}`);
   }
   return { ...user, roleId };
+}
+
+/** 1x1 PNG. 업로드 흐름이 올리는 이미지다. */
+export const PNG = Uint8Array.from(
+  Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
+    "base64",
+  ),
+);
+
+export interface UploadOptions {
+  readonly content?: Uint8Array;
+  readonly contentType?: string;
+  readonly filename?: string;
+  /** 업로드를 마쳤다고 알릴지(기본 true). false면 올리기만 하고 pending으로 둔다. */
+  readonly complete?: boolean;
+}
+
+/** 파일을 만들고 meta.upload의 presigned 요청으로 스토리지에 올린다. 브라우저가 하는 일과 같다. */
+export async function uploadFile(
+  session: Session,
+  options: UploadOptions = {},
+): Promise<FileResource> {
+  const content = options.content ?? PNG;
+  const attributes = {
+    filename: options.filename ?? "image.png",
+    contentType: options.contentType ?? "image/png",
+    size: content.byteLength,
+  };
+  const created = await session.api.POST("/api/v1/files", {
+    body: { data: { type: "files", attributes } },
+  });
+  const file = created.data?.data;
+  const upload = file?.meta?.upload;
+  if (file === undefined || upload === undefined) {
+    throw new Error(`파일을 만들지 못했다: ${String(created.response.status)}`);
+  }
+  const put = await fetch(upload.url, {
+    method: upload.method,
+    headers: upload.headers,
+    body: content,
+  });
+  if (!put.ok) throw new Error(`스토리지에 올리지 못했다: ${String(put.status)}`);
+  if (options.complete === false) return file;
+  const completed = await session.api.PATCH("/api/v1/files/{id}", {
+    params: { path: { id: file.id } },
+    body: { data: { type: "files", id: file.id, attributes: { status: "ready" } } },
+  });
+  if (completed.data === undefined) {
+    throw new Error(`업로드 완료를 알리지 못했다: ${String(completed.response.status)}`);
+  }
+  return completed.data.data;
 }

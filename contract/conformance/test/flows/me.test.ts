@@ -1,6 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { api, codes, newUser, PASSWORD, problems, register, target } from "./support.ts";
+import {
+  api,
+  codes,
+  newUser,
+  PASSWORD,
+  problems,
+  register,
+  target,
+  uploadFile,
+} from "./support.ts";
 
 describe(`내 정보 (${target.name})`, () => {
   it("내 계정, 역할, 실제 권한을 본다", async () => {
@@ -50,6 +59,56 @@ describe(`내 정보 (${target.name})`, () => {
     });
     expect(avatar.response.status).toBe(404);
     expect(problems(avatar.error)).toEqual([
+      ["resource.not_found", "/data/relationships/avatar/data"],
+    ]);
+  });
+
+  it("올린 이미지를 아바타로 걸면 누구나 읽고, 탈퇴하면 그 파일도 지워진다", async () => {
+    const [user, other] = await Promise.all([newUser(), newUser()]);
+    const image = await uploadFile(user);
+    const avatar = { data: { type: "files" as const, id: image.id } };
+    const updated = await user.api.PATCH("/api/v1/me", {
+      body: { data: { type: "users", id: user.userId, relationships: { avatar } } },
+    });
+    expect(updated.response.status).toBe(200);
+    expect(updated.data?.data.relationships.avatar.data).toEqual(avatar.data);
+    const mine = await user.api.GET("/api/v1/me", { params: { query: { include: "avatar" } } });
+    const included = (mine.data?.included ?? []).find((resource) => resource.type === "files");
+    expect(included?.id).toBe(image.id);
+    expect(included?.type === "files" ? included.meta?.downloadUrl : undefined).toBeDefined();
+    // 아바타는 누구나 읽지만, 고치고 지우는 것은 소유자만 한다.
+    const path = { params: { path: { id: image.id } } };
+    expect((await api().GET("/api/v1/files/{id}", path)).response.status).toBe(200);
+    const removed = await other.api.DELETE("/api/v1/files/{id}", path);
+    expect(removed.response.status).toBe(403);
+    expect(codes(removed.error)).toEqual(["permission.denied"]);
+    // 탈퇴하면 다른 리소스가 가리키지 않는 내 파일을 지운다(아바타 포함).
+    expect((await user.api.DELETE("/api/v1/me")).response.status).toBe(204);
+    expect((await other.api.GET("/api/v1/files/{id}", path)).response.status).toBe(404);
+  });
+
+  it("아바타는 내가 올리고 업로드를 마친 파일이어야 한다", async () => {
+    const [user, other] = await Promise.all([newUser(), newUser()]);
+    const setAvatar = (id: string) =>
+      user.api.PATCH("/api/v1/me", {
+        body: {
+          data: {
+            type: "users",
+            id: user.userId,
+            relationships: { avatar: { data: { type: "files", id } } },
+          },
+        },
+      });
+    const pending = await uploadFile(user, { complete: false });
+    const incomplete = await setAvatar(pending.id);
+    expect(incomplete.response.status).toBe(422);
+    expect(problems(incomplete.error)).toEqual([
+      ["file.upload_incomplete", "/data/relationships/avatar/data"],
+    ]);
+    const theirs = await uploadFile(other);
+    const foreign = await setAvatar(theirs.id);
+    expect(foreign.response.status).toBe(404);
+    expect(problems(foreign.error)).toEqual([
       ["resource.not_found", "/data/relationships/avatar/data"],
     ]);
   });
