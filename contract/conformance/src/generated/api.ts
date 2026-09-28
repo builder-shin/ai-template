@@ -129,7 +129,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state와 PKCE(S256)를 붙인다. 세 제공자 모두 PKCE를 지원한다. */
+        /** @description 제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. state와 PKCE(S256)를 붙인다. 세 제공자 모두 PKCE를 지원한다. codeChallenge는 BFF가 만든 code verifier의 S256 challenge(base64url, 43자)다. 콜백이 넘긴 1회용 코드는 같은 verifier(`POST /sessions`의 codeVerifier)로만 토큰으로 바꿀 수 있다(로그인 CSRF 방지). */
         get: operations["OAuth_authorize"];
         put?: never;
         post?: never;
@@ -1090,6 +1090,8 @@ export interface components {
             grantType: "oauthCode";
             /** @description OAuth 콜백이 프론트로 넘긴 1회용 코드. */
             code: string;
+            /** @description authorize에 보낸 codeChallenge를 만든 code verifier. */
+            codeVerifier: string;
         };
         SessionPasswordGrant: {
             /**
@@ -2482,6 +2484,7 @@ export interface operations {
         parameters: {
             query: {
                 redirectUri: string;
+                codeChallenge: string;
             };
             header?: never;
             path: {

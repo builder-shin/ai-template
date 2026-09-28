@@ -24,6 +24,9 @@ model SessionOAuthCodeGrant {
 
   /** OAuth 콜백이 프론트로 넘긴 1회용 코드. */
   code: string;
+
+  /** authorize에 보낸 codeChallenge를 만든 code verifier. */
+  codeVerifier: string;
 }
 
 /** 로그인, 토큰 갱신, 소셜 로그인 완료를 grantType으로 구분한다. */
