@@ -7,7 +7,7 @@
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import Annotated, Literal
 
 import structlog
 from fastapi import APIRouter, Request
@@ -17,12 +17,8 @@ from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from app.core.config import Settings
 from app.core.jsonapi.models import JsonApiModel
-from app.core.storage import check_bucket
-
-if TYPE_CHECKING:
-    from types_boto3_s3 import S3Client
+from app.core.storage import Storage
 
 logger = structlog.get_logger(__name__)
 
@@ -78,14 +74,13 @@ async def _check(name: str, probe: Callable[[], Awaitable[object]]) -> HealthSta
     responses={503: {"model": HealthReport, "description": "Service unavailable."}},
 )
 async def ready(request: Request) -> JSONResponse:
-    settings: Settings = request.app.state.settings
     engine: AsyncEngine = request.app.state.engine
     redis: Redis = request.app.state.redis
-    storage: S3Client = request.app.state.storage
+    storage: Storage = request.app.state.storage
     probes: dict[str, Callable[[], Awaitable[object]]] = {
         "database": lambda: _database(engine),
         "redis": lambda: redis.ping(),  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
-        "storage": lambda: check_bucket(storage, settings.s3_bucket),
+        "storage": storage.check,
     }
     results = await asyncio.gather(*(_check(name, probe) for name, probe in probes.items()))
     checks = dict(zip(probes, results, strict=True))

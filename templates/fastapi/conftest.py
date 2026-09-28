@@ -6,12 +6,15 @@
   SAVEPOINT만 풀리고, 테스트가 끝나면 바깥 트랜잭션을 롤백하므로 다음 테스트에 남지 않는다.
 - redis: 테스트마다 비운(FLUSHDB) 테스트 전용 Valkey DB.
 - mailbox: 테스트마다 비운 Mailpit. 메일은 모킹하지 않고 실제로 보낸다.
-- app, api: 모듈 API 테스트용 앱과 httpx 클라이언트. lifespan 대신 위의 자원(db, redis)과
+- storage: 테스트마다 다른 키 prefix(tests/<uuid>/)를 쓰는 스토리지. 테스트가 끝나면 그 아래를
+  지운다.
+- app, api: 모듈 API 테스트용 앱과 httpx 클라이언트. lifespan 대신 위의 자원(db, redis, storage)과
   잡을 그 자리에서 실행하는 broker를 app.state에 둔다.
 - accounts: 역할과 권한을 골라 계정을 만들고 로그인 헤더를 만드는 도우미(app.tests.accounts).
 """
 
 import asyncio
+import uuid
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -33,6 +36,7 @@ from tools.mailpit import Mailpit
 
 if TYPE_CHECKING:
     from app.core.jsonapi.openapi import JsonApiApp
+    from app.core.storage import Storage
     from app.tests.accounts import Accounts
 
 ROOT = Path(__file__).resolve().parent
@@ -111,20 +115,34 @@ async def mailbox(infra: Settings) -> Mailpit:
 
 
 @pytest.fixture
+async def storage(infra: Settings) -> AsyncIterator[Storage]:
+    """테스트마다 다른 키 prefix를 쓰는 스토리지(개발 인프라의 버킷).
+
+    테스트가 끝나면 그 prefix 아래의 객체를 지운다.
+    """
+    from app.core.storage import Storage
+
+    store = Storage(infra, prefix=f"tests/{uuid.uuid4()}/")
+    yield store
+    await store.clear()
+
+
+@pytest.fixture
 async def app(
     infra: Settings,
     engine: AsyncEngine,
     db: async_sessionmaker[AsyncSession],
     redis: Redis,
+    storage: Storage,
 ) -> AsyncIterator[JsonApiApp]:
     """모듈 API 테스트용 앱. app.main.create_app의 lifespan이 두는 자원을 테스트용으로 둔다.
 
-    DB는 테스트마다 롤백되는 db, Valkey는 비운 redis, 잡은 그 자리에서 실행하는 InMemoryBroker다.
+    DB는 테스트마다 롤백되는 db, Valkey는 비운 redis, 스토리지는 테스트 prefix의 storage, 잡은 그
+    자리에서 실행하는 InMemoryBroker다.
     시드처럼 시스템 역할(admin, member)을 테스트 트랜잭션 안에 만든다.
     무거운 import(앱 전체)는 이 fixture를 쓰는 테스트에서만 한다.
     """
     from app.core.jobs import JobQueue
-    from app.core.storage import create_client
     from app.main import create_app
     from app.modules import roles
     from app.worker import create_broker
@@ -134,13 +152,13 @@ async def app(
         await session.commit()
 
     application = create_app(infra)
-    broker = create_broker(infra, in_memory=True, sessions=db)
+    broker = create_broker(infra, in_memory=True, sessions=db, storage=storage)
     await broker.startup()
     application.state.settings = infra
     application.state.engine = engine
     application.state.sessions = db
     application.state.redis = redis
-    application.state.storage = create_client(infra)
+    application.state.storage = storage
     application.state.jobs = JobQueue(broker)
     yield application
     await broker.shutdown()

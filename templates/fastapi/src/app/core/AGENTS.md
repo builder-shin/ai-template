@@ -6,7 +6,7 @@
 - `logging.py`: structlog 설정과 traceId 미들웨어.
 - `db.py`: 비동기 엔진, 세션 팩토리, 모델의 기반 `Base`(제약 이름 규칙 포함), 요청 세션 `SessionDep`, 모델 시각의 기본값 `utc_now`.
 - `redis.py`: Valkey 클라이언트와 요청 의존성 `RedisDep`.
-- `storage.py`: S3 클라이언트(`create_client`)와 버킷 확인(`check_bucket`).
+- `storage.py`: 스토리지(`Storage`, 요청에서는 `StorageDep`). presigned 업로드·다운로드 URL(SigV4라 선언한 타입과 크기만 올라간다), 크기 확인(HEAD), 삭제, 버킷 확인. 네트워크 호출은 스레드에서 돈다.
 - `jsonvalue.py`: JSON 값 좁히기(`is_object`, `is_array`).
 - `security.py`: 비밀번호 해시(Argon2id), access token(JWT) 발급과 검증, 1회용 토큰과 SHA-256(`digest`). async 코드는 비밀번호를 스레드에서 도는 `hash_password_async`, `check_password_async`로 다룬다.
 - `permissions.py`: 권한(`Permission`)과 레지스트리(`PermissionRegistry`). 권한은 모듈이 내보내고 `app.modules.registry`가 모은다.

@@ -43,7 +43,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - `src/app/modules/`: 도메인 모듈. `auth`(가입, 이메일 인증, 세션, 비밀번호), `users`(내 정보, 탈퇴, 사용자 관리), `roles`(역할, 권한), `audit_logs`(감사 로그 읽기). `files`와 `posts`(골든 모듈)는 M3에서 채운다. [src/app/modules/AGENTS.md](src/app/modules/AGENTS.md)
 - `migrations/`: Alembic 마이그레이션. [migrations/AGENTS.md](migrations/AGENTS.md)
 - `tools/`: 하네스 도구(명령, check, 검사, hook, 인프라, 프로세스). [tools/AGENTS.md](tools/AGENTS.md)
-- `conftest.py`: 테스트 공용 fixture(`settings`, `infra`, `db`, `redis`). `tests/e2e/`: E2E 테스트.
+- `conftest.py`: 테스트 공용 fixture(`settings`, `infra`, `db`, `redis`, `storage`). `tests/e2e/`: E2E 테스트.
 - `compose.yaml`: 개발 인프라(PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth). 포트는 127.0.0.1에만 열고, 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit SMTP 21025·웹 28025, 모의 OAuth 28080). `app` 프로필은 이미지로 migrate, api(8000), worker, scheduler를 띄운다.
 - `Dockerfile`: 운영 이미지. 명령만 바꿔 api(기본), worker, scheduler, migrate로 띄운다.
 - `.claude/settings.json`: Claude Code의 hook과 권한. `.claude/skills/fastapi/`, `.agents/skills/fastapi/`: FastAPI 공식 skill 사본.
@@ -79,7 +79,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 ### 테스트
 
 - 테스트는 대상 코드 옆의 `tests/`에 둔다: `src/app/tests/`(앱 조립), `src/app/core/tests/`, `src/app/modules/<이름>/tests/`, `tools/tests/`.
-- 자기 인프라(DB, Valkey, 스토리지, 메일)를 모킹하지 않는다. 테스트 DB는 `app_test`, Valkey는 DB 15다. DB는 `db` fixture(테스트마다 롤백), Valkey는 `redis` fixture(테스트마다 비움)로 쓴다.
+- 자기 인프라(DB, Valkey, 스토리지, 메일)를 모킹하지 않는다. 테스트 DB는 `app_test`, Valkey는 DB 15다. DB는 `db` fixture(테스트마다 롤백), Valkey는 `redis` fixture(테스트마다 비움), 스토리지는 `storage` fixture(테스트마다 다른 키 prefix, 끝나면 지움)로 쓴다.
 - 잡은 `create_broker(settings, in_memory=True)`로 그 자리에서 돌린다.
 - 모듈 API는 `api`(httpx 클라이언트)와 `accounts`(`app.tests.accounts.Accounts`)로 테스트한다. 계정은 `await accounts.create(permissions={"users:read"})`, 로그인 헤더는 `await accounts.sign_in(user)`로 만든다. 메일은 `mailbox`(Mailpit)로 읽는다.
 - 가짜 비밀 값을 써야 하면 그 줄 끝에 `betterleaks:allow` 주석을 단다.

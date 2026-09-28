@@ -16,7 +16,7 @@ from app.core.jsonapi.openapi import JsonApiApp
 from app.core.logging import configure_logging
 from app.core.permissions import PermissionRegistry
 from app.core.redis import create_redis
-from app.core.storage import create_client
+from app.core.storage import Storage
 from app.modules import registry
 from app.worker import create_broker
 
@@ -48,9 +48,10 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
 
     만들 때는 설정을 읽지 않으므로, 앱을 띄우지 않는 곳(openapi.json 내보내기, 테스트)에서
     .env 없이 import할 수 있다. 설정이 틀리면 시작할 때 변수마다 한 줄씩 알리고 멈춘다.
-    시작할 때 연결 자원을 만들어 app.state에 둔다: settings, engine, sessions, redis, storage,
-    jobs(잡을 보내는 JobQueue). DB와 Valkey는 처음 쓸 때 접속한다. 모듈의 테스트는 lifespan 없이
-    같은 이름으로 테스트용 자원을 둔다(루트 conftest.py의 api fixture).
+    시작할 때 연결 자원을 만들어 app.state에 둔다: settings, engine, sessions, redis,
+    storage(app.core.storage.Storage), jobs(잡을 보내는 JobQueue). DB와 Valkey는 처음 쓸 때
+    접속한다. 모듈의 테스트는 lifespan 없이 같은 이름으로 테스트용 자원을 둔다(루트 conftest.py의
+    api fixture).
     """
 
     @asynccontextmanager
@@ -65,7 +66,7 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
         app.state.engine = engine
         app.state.sessions = session_factory(engine)
         app.state.redis = redis
-        app.state.storage = create_client(current)
+        app.state.storage = Storage(current)
         app.state.jobs = JobQueue(broker)
         try:
             yield

@@ -11,7 +11,7 @@
   재시도할 때마다 5초씩 늘고(최대 60초) 0~1초 지터가 붙는다. taskiq-redis의 broker는 지연을 모르므로
   재시도는 Valkey 스케줄 소스에 넣고, scheduler(app.scheduler)가 때가 되면 보낸다.
 - 잡은 app.modules.registry.JOBS를 안정된 이름(task_name)으로 등록한다. 잡은 시작할 때 만든
-  JobContext(설정, DB 세션 팩토리)를 받는다(app.core.jobs).
+  JobContext(설정, DB 세션 팩토리, 스토리지)를 받는다(app.core.jobs).
 - api도 잡을 보내려고 자기 broker를 만든다(app.main). api는 잡을 실행하지 않는다.
 - 테스트는 create_broker(settings, in_memory=True)로 잡을 그 자리에서 실행하는 InMemoryBroker를
   쓴다.
@@ -32,6 +32,7 @@ from taskiq_redis import ListRedisScheduleSource, RedisStreamBroker
 from app.core.config import Settings, load_settings
 from app.core.jobs import attach_context, register
 from app.core.logging import configure_logging
+from app.core.storage import Storage
 from app.modules.registry import JOBS
 
 QUEUE = "taskiq"  # 잡을 담는 Valkey 스트림의 키
@@ -77,12 +78,14 @@ def create_broker(
     *,
     in_memory: bool = False,
     sessions: async_sessionmaker[AsyncSession] | None = None,
+    storage: Storage | None = None,
 ) -> AsyncBroker:
     """broker를 만들고 app.modules.registry.JOBS의 잡을 등록한다.
 
     - settings가 없으면 .env와 환경 변수에서 읽는다.
     - in_memory면 잡을 그 자리에서 실행하는 InMemoryBroker다(테스트).
     - sessions를 주면 잡이 그 세션 팩토리를 쓴다(테스트가 롤백되는 세션을 넘긴다).
+    - storage를 주면 잡이 그 스토리지를 쓴다(테스트가 테스트마다 다른 prefix를 넘긴다).
     """
     current = settings
     if current is None:
@@ -102,7 +105,7 @@ def create_broker(
         )
         stream = DeleteOnAckStreamBroker(current.redis_url, queue_name=QUEUE)
         broker = stream.with_middlewares(retry)
-    attach_context(broker, current, sessions)
+    attach_context(broker, current, sessions, storage)
     register(broker, JOBS)
     return broker
 
