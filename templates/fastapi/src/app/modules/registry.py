@@ -14,13 +14,14 @@ from app.core.jobs import Job
 from app.core.jsonapi.operation import JsonApiRouter
 from app.core.mail import SEND_MAIL
 from app.core.permissions import Permission
-from app.modules import audit_logs, auth, posts, roles, users
+from app.modules import audit_logs, auth, files, posts, roles, users
 
 ROUTERS: tuple[JsonApiRouter, ...] = (
     *users.ROUTERS,
     *roles.ROUTERS,
     *auth.ROUTERS,
     *audit_logs.ROUTERS,
+    *files.ROUTERS,
 )
 
 PERMISSIONS: tuple[Permission, ...] = (

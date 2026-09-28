@@ -7,11 +7,14 @@ from pydantic import Field
 from pydantic.experimental.missing_sentinel import MISSING
 
 from app.core.jsonapi.models import (
+    CreateDocument,
+    Document,
     Int64,
     JsonApiModel,
     Omittable,
     ResourceWithRelationships,
     ToOne,
+    UpdateDocument,
 )
 from app.modules.files.models import FileStatus
 
@@ -54,3 +57,28 @@ class FileResource(ResourceWithRelationships[FileType, FileAttributes, FileRelat
     """관계가 있는 리소스 객체."""
 
     meta: Omittable[FileMeta] = MISSING
+
+
+class FileDocument(Document[FileResource]):
+    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+
+
+class FileCreateAttributes(JsonApiModel):
+    filename: Annotated[str, Field(min_length=1, max_length=255)]
+    content_type: str
+    size: Annotated[Int64, Field(ge=1)]
+
+
+class FileCreateDocument(CreateDocument[FileType, FileCreateAttributes]):
+    """생성 요청 문서."""
+
+
+class FileUpdateAttributes(JsonApiModel):
+    status: Annotated[
+        Omittable[Literal["ready"]],
+        Field(description="업로드를 마쳤다고 알린다. 백엔드가 객체를 확인한 뒤 ready로 바꾼다."),
+    ] = MISSING
+
+
+class FileUpdateDocument(UpdateDocument[FileType, FileUpdateAttributes]):
+    """수정 요청 문서. 속성 모델의 필드는 모두 선택이어야 한다."""

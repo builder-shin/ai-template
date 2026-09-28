@@ -1,5 +1,18 @@
-"""files 모듈의 공개 인터페이스. M2는 문서 모델만, API와 저장은 M3에서 채운다."""
+"""files 모듈의 공개 인터페이스. 다른 모듈은 여기서 내보낸 이름만 쓴다."""
 
+from app.modules.files.models import File, FileStatus
+from app.modules.files.router import files
 from app.modules.files.schemas import FileResource
+from app.modules.files.service import ReadRule, add_read_rule, file_resources
 
-__all__ = ["FileResource"]
+ROUTERS = (files,)
+
+__all__ = [
+    "ROUTERS",
+    "File",
+    "FileResource",
+    "FileStatus",
+    "ReadRule",
+    "add_read_rule",
+    "file_resources",
+]
