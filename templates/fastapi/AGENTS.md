@@ -4,6 +4,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 
 - 라이브러리 API는 기억에 의존하지 말고 [docs/stack.md](docs/stack.md)에 적힌 버전의 문서를 확인한다.
 - FastAPI 코드를 쓰기 전에 FastAPI 공식 skill(`.claude/skills/fastapi/SKILL.md`)을 읽는다.
+- 모듈, 엔드포인트, 마이그레이션, 잡, 권한, 메일 템플릿을 더할 때는 `docs/recipes/`의 레시피를 따른다. `.claude/skills/add-*`가 레시피를 부른다.
 
 ## 명령
 
@@ -47,10 +48,10 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - `conftest.py`: 테스트 공용 fixture(`settings`, `infra`, `db`, `redis`, `storage`). `tests/e2e/`: E2E 테스트.
 - `compose.yaml`: 개발 인프라(PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth). 포트는 127.0.0.1에만 열고, 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit SMTP 21025·웹 28025, 모의 OAuth 28080). `app` 프로필은 이미지로 migrate, api(8000), worker, scheduler를 띄운다.
 - `Dockerfile`: 운영 이미지. 명령만 바꿔 api(기본), worker, scheduler, migrate로 띄운다.
-- `.claude/settings.json`: Claude Code의 hook과 권한. `.claude/skills/fastapi/`, `.agents/skills/fastapi/`: FastAPI 공식 skill 사본.
+- `.claude/settings.json`: Claude Code의 hook과 권한. `.claude/skills/fastapi/`, `.agents/skills/fastapi/`: FastAPI 공식 skill 사본. `.claude/skills/add-*/`: 레시피를 부르는 skill.
 - `lefthook.yml`, `.betterleaks.toml`: git hook과 비밀 스캔 설정.
 - `openapi.json`: 앱이 내보낸 OpenAPI 문서. `api-style/lint.mjs`: 저장소가 넣는 API 스타일 룰셋 번들의 사본.
-- `docs/`: [architecture.md](docs/architecture.md)(계층, 요청 흐름, 프로세스, JSON:API 쓰는 법), [stack.md](docs/stack.md)(버전과 문서), `recipes/`(작업 절차).
+- `docs/`: [architecture.md](docs/architecture.md)(계층, 요청 흐름, 프로세스, JSON:API 쓰는 법), [stack.md](docs/stack.md)(버전과 문서), `recipes/`(작업 절차: [모듈](docs/recipes/module.md), [엔드포인트](docs/recipes/endpoint.md), [마이그레이션](docs/recipes/migration.md), [잡](docs/recipes/job.md), [권한](docs/recipes/permission.md), [메일 템플릿](docs/recipes/mail-template.md)).
 
 ## 규칙
 
