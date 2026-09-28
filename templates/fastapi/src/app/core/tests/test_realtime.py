@@ -1,5 +1,6 @@
 """실시간 서버: WebSocket만 받고 Origin을 본다, 룸으로 보낸다, 쓰기 전용 발행기, commit 뒤 발행."""
 
+import logging
 from typing import override
 
 import httpx
@@ -77,6 +78,36 @@ async def test_a_write_only_publisher_reaches_the_server(
                 continue
         else:
             pytest.fail("쓰기 전용 발행기의 이벤트가 오지 않았다.")
+
+
+async def test_an_event_without_rooms_reaches_no_one(
+    app: JsonApiApp, realtime: Realtime, infra: Settings
+) -> None:
+    empty = Event(name="thing.happened", rooms=(), payload={"meta": {"n": 1}})
+    worker = RedisPublisher(infra.redis_url, channel=realtime.channel)
+    async with serving(app) as url, connected(url) as bystander:
+        await realtime.publisher.publish(empty)
+        assert await bystander.nothing(EVENT.name)
+        await worker.publish(empty)
+        assert await bystander.nothing(EVENT.name)
+        # 빈 rooms를 쓰기 전용 발행기로 보내도 pub/sub 수신 태스크가 죽지 않는다.
+        await realtime.server.enter_room(bystander.sid, "a")
+        for _ in range(20):
+            await worker.publish(EVENT)
+            try:
+                assert await bystander.next(EVENT.name, within=0.25) == {"meta": {"n": 1}}
+                break
+            except TimeoutError:
+                continue
+        else:
+            pytest.fail("빈 rooms 이후에도 쓰기 전용 발행기의 이벤트가 와야 한다.")
+
+
+async def test_create_realtime_quiets_the_socketio_loggers(realtime: Realtime) -> None:
+    for name in ("socketio.server", "engineio.server"):
+        configured = logging.getLogger(name)
+        assert configured.level == logging.WARNING
+        assert configured.handlers == []
 
 
 async def test_queued_events_leave_only_after_a_commit(

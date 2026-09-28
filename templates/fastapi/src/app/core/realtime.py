@@ -13,6 +13,7 @@
 """
 
 import contextlib
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol, override
@@ -65,6 +66,9 @@ class ServerPublisher:
         self.server = server
 
     async def publish(self, event: Event) -> None:
+        # 빈 rooms를 그대로 넘기면 Socket.IO가 room 전체(모든 클라이언트) 브로드캐스트로 다룬다.
+        if not event.rooms:
+            return
         await self.server.emit(event.name, dict(event.payload), to=list(event.rooms))
 
 
@@ -80,6 +84,9 @@ class RedisPublisher:
         )
 
     async def publish(self, event: Event) -> None:
+        # 빈 rooms를 그대로 넘기면 Socket.IO가 room 전체(모든 클라이언트) 브로드캐스트로 다룬다.
+        if not event.rooms:
+            return
         await self.manager.emit(event.name, dict(event.payload), room=list(event.rooms))
 
 
@@ -112,7 +119,11 @@ def queue(session: AsyncSession, event: Event) -> None:
 
 
 class EventSession(AsyncSession):
-    """commit이 성공한 뒤에 queue한 이벤트를 보내는 세션(app.core.db.session_factory가 쓴다)."""
+    """commit이 성공한 뒤에 queue한 이벤트를 보내는 세션(app.core.db.session_factory가 쓴다).
+
+    Valkey 발행 실패는 python-socketio가 재시도한 뒤 스스로 로그를 남기고 예외를 내지 않는다.
+    realtime_publish_failed는 그 밖의 발행 실패(ServerPublisher 등)를 잡는다.
+    """
 
     @override
     async def commit(self) -> None:
@@ -164,6 +175,10 @@ def create_realtime(settings: Settings, *, channel: str | None = None) -> Realti
     """소켓 서버를 만든다. channel을 주면 그 pub/sub 채널을 쓴다(테스트가 테스트마다 나눈다)."""
     channel = channel or pubsub_channel(settings.redis_url)
     manager = socketio.AsyncRedisManager(settings.redis_url, channel=channel)
+    # logger=False라도 레벨이 NOTSET이면 라이브러리가 자기 핸들러를 단다.
+    # 미리 WARNING으로 정해 root(structlog) 핸들러로만 가게 한다.
+    logging.getLogger("socketio.server").setLevel(logging.WARNING)
+    logging.getLogger("engineio.server").setLevel(logging.WARNING)
     server = socketio.AsyncServer(
         async_mode="asgi",
         client_manager=manager,
