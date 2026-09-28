@@ -57,3 +57,7 @@ async def cover_ids_among(session: AsyncSession, file_ids: Sequence[uuid.UUID]) 
     """file_ids 중 어떤 글의 커버 이미지인 것."""
     query = select(Post.cover_image_id).where(Post.cover_image_id.in_(list(file_ids)))
     return {file_id for file_id in await session.scalars(query) if file_id is not None}
+
+
+async def remove(session: AsyncSession, post: Post) -> None:
+    await session.delete(post)

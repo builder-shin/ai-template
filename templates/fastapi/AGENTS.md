@@ -40,7 +40,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - `src/app/worker.py`, `src/app/scheduler.py`: Taskiq broker(Valkey 스트림, 재시도)와 scheduler(주기 작업, 지연 재시도). scheduler는 반드시 하나만 띄운다.
 - `src/app/seed.py`: 개발용 시드. 여러 번 돌려도 안전하게 쓴다.
 - `src/app/core/`: 도메인을 모르는 기반(설정, 로그, DB, Valkey, 스토리지, `jsonapi/` 공통 계층). [src/app/core/AGENTS.md](src/app/core/AGENTS.md)
-- `src/app/modules/`: 도메인 모듈. `auth`(가입, 이메일 인증, 세션, 비밀번호), `users`(내 정보, 탈퇴, 사용자 관리), `roles`(역할, 권한), `audit_logs`(감사 로그 읽기), `files`(업로드, 완료 확인, 다운로드 URL, 읽기 규칙). `posts`(골든 모듈)는 M3에서 채운다. [src/app/modules/AGENTS.md](src/app/modules/AGENTS.md)
+- `src/app/modules/`: 도메인 모듈. `auth`(가입, 이메일 인증, 세션, 비밀번호), `users`(내 정보, 탈퇴, 사용자 관리), `roles`(역할, 권한), `audit_logs`(감사 로그 읽기), `files`(업로드, 완료 확인, 다운로드 URL, 읽기 규칙), `posts`(골든 모듈: 글 목록·조회·쓰기, 전이 표, 권한 매트릭스 테스트). [src/app/modules/AGENTS.md](src/app/modules/AGENTS.md)
 - `migrations/`: Alembic 마이그레이션. [migrations/AGENTS.md](migrations/AGENTS.md)
 - `tools/`: 하네스 도구(명령, check, 검사, hook, 인프라, 프로세스). [tools/AGENTS.md](tools/AGENTS.md)
 - `conftest.py`: 테스트 공용 fixture(`settings`, `infra`, `db`, `redis`, `storage`). `tests/e2e/`: E2E 테스트.

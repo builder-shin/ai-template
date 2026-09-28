@@ -13,7 +13,7 @@
 - 다른 리소스의 `included`에 사용자를 넣을 때는 `users.public_users`(공개 표현: 이름과 아바타, 이메일 없음)를 쓴다.
 - 리소스에 파일을 걸 때(아바타, 커버 이미지)는 `files.attachable_file`로 검사한다(요청한 사람 소유의 ready 이미지). 포함 리소스는 `files.file_resources`로 만든다(`meta.downloadUrl`). 소유자가 아닌 사람이 파일을 읽게 하려면 `registry.py`에서 `files.add_read_rule`로 읽기 규칙("이 파일을 가리키는 리소스를 이 사람이 볼 수 있는가")을 건다. 리소스가 파일을 가리키면 `files.add_reference_check`로 참조 확인도 건다(탈퇴한 사용자의 파일 중 남길 것을 가린다).
 - 공개 인터페이스(`__init__.py`)는 등록부(`registry.py`)가 모을 `ROUTERS`, `PERMISSIONS`, `JOBS`와 다른 모듈이 쓰는 이름만 내보낸다. 모듈을 더하면 `registry.py`에도 더한다.
-- 쓰지 않는 파일은 만들지 않는다. `posts`가 모든 파일을 갖춘 정답 예시다(M3에서 채운다).
+- 쓰지 않는 파일은 만들지 않는다. `posts`가 모든 계층을 갖춘 정답 예시다. 새 모듈은 posts를 따른다.
 - 메일 템플릿은 `<모듈>/templates/<ko|en>/<메일>.subject.txt`, `.txt`, `.html`로 두고 로케일마다 세 파일을 모두 둔다(하네스 검사 `mail-template`).
 - 테스트는 `<모듈>/tests/`에 둔다. `check --fast`는 바뀐 모듈의 테스트만 돌린다.
 - 모델(`models.py`)을 바꾸면 마이그레이션을 만든다(`docs/recipes/migration.md`).

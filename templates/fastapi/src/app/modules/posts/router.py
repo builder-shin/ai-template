@@ -9,12 +9,18 @@ from pydantic.experimental.missing_sentinel import MISSING
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.posts.service as service
-from app.core.access import OptionalPrincipalDep
+from app.core.access import OptionalPrincipalDep, PrincipalDep
+from app.core.clients import ClientDep
 from app.core.db import SessionDep
+from app.core.jsonapi.errors import require_matching_id
+from app.core.jsonapi.media import JsonApiBody
 from app.core.jsonapi.models import CollectionMeta, ResourceIdentifier, ToOne
 from app.core.jsonapi.operation import (
     AUTH_ERRORS,
+    BODY_ERRORS,
     COMMON_ERRORS,
+    CONFLICT,
+    CREATE_ERRORS,
     NOT_FOUND,
     CollectionOperation,
     JsonApiRouter,
@@ -24,14 +30,17 @@ from app.core.jsonapi.query import CollectionQuery, ResourceQuery
 from app.core.jsonapi.rendering import load_included, pagination, render
 from app.core.storage import Storage, StorageDep
 from app.modules import files, users
-from app.modules.posts.models import Post
+from app.modules.posts.models import Post, PostStatus
+from app.modules.posts.permissions import POSTS_CREATE
 from app.modules.posts.schemas import (
     PostAttributes,
     PostCollectionDocument,
+    PostCreateDocument,
     PostDocument,
     PostFilter,
     PostRelationships,
     PostResource,
+    PostUpdateDocument,
 )
 
 posts = JsonApiRouter(prefix="/posts", tag="posts", interface="Posts")
@@ -57,6 +66,27 @@ GET = Operation(
     errors=AUTH_ERRORS + NOT_FOUND + COMMON_ERRORS,
     include=POST_INCLUDE,
     fields=POST_FIELDS,
+)
+CREATE = Operation(
+    name="create",
+    status_code=201,
+    permission=POSTS_CREATE.code,
+    errors=AUTH_ERRORS + NOT_FOUND + CREATE_ERRORS + BODY_ERRORS + COMMON_ERRORS,
+)
+UPDATE = Operation(
+    name="update",
+    errors=AUTH_ERRORS + NOT_FOUND + CONFLICT + BODY_ERRORS + COMMON_ERRORS,
+    description=(
+        "작성자 또는 posts:manage 권한자만 고친다. status를 바꿔 발행하거나 발행을 취소한다."
+    ),
+)
+DELETE = Operation(
+    name="delete",
+    status_code=204,
+    errors=AUTH_ERRORS + NOT_FOUND + COMMON_ERRORS,
+    description=(
+        "작성자 또는 posts:manage 권한자만 지운다. 관리자가 남의 글을 지우면 감사 로그를 남긴다."
+    ),
 )
 PostId = Annotated[uuid.UUID, Path(alias="id")]
 Included = users.UserPublicResource | files.FileResource
@@ -139,3 +169,56 @@ async def get_post(
     post = await service.visible_post(session, post_id, viewer)
     included = await included_for(session, storage, query.include, [post])
     return render(PostDocument(data=post_resource(post), included=included), fields=query.fields)
+
+
+@posts.route("POST", "", CREATE, response_model=PostDocument)
+async def create_post(
+    session: SessionDep, actor: PrincipalDep, document: JsonApiBody[PostCreateDocument]
+) -> Response:
+    data = document.data
+    attributes = data.attributes
+    cover = None
+    if data.relationships is not MISSING and data.relationships.cover_image is not MISSING:
+        identifier = data.relationships.cover_image.data
+        cover = None if identifier is None else identifier.id
+    post = await service.create_post(
+        session,
+        actor,
+        title=attributes.title,
+        body=attributes.body,
+        status=PostStatus.DRAFT if attributes.status is MISSING else attributes.status,
+        cover=cover,
+    )
+    return render(PostDocument(data=post_resource(post)), status_code=201)
+
+
+@posts.route("PATCH", "/{id}", UPDATE, response_model=PostDocument)
+async def update_post(
+    post_id: PostId,
+    session: SessionDep,
+    actor: PrincipalDep,
+    document: JsonApiBody[PostUpdateDocument],
+) -> Response:
+    data = document.data
+    require_matching_id(data.id, post_id)
+    cover: str | MISSING | None = MISSING
+    if data.relationships is not MISSING and data.relationships.cover_image is not MISSING:
+        identifier = data.relationships.cover_image.data
+        cover = None if identifier is None else identifier.id
+    title = body = status = None
+    if data.attributes is not MISSING:
+        title = None if data.attributes.title is MISSING else data.attributes.title
+        body = None if data.attributes.body is MISSING else data.attributes.body
+        status = None if data.attributes.status is MISSING else data.attributes.status
+    post = await service.update_post(
+        session, actor, post_id, title=title, body=body, status=status, cover=cover
+    )
+    return render(PostDocument(data=post_resource(post)))
+
+
+@posts.route("DELETE", "/{id}", DELETE, response_model=None)
+async def delete_post(
+    post_id: PostId, session: SessionDep, actor: PrincipalDep, client: ClientDep
+) -> Response:
+    await service.delete_post(session, actor, client, post_id)
+    return Response(status_code=204)
