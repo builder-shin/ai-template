@@ -57,12 +57,32 @@ export interface OAuthReturn {
   readonly codeVerifier: string;
 }
 
+export interface OAuthStartOptions {
+  /**
+   * 드라이버가 만드는 code verifier 대신 쓸 값. authorize에 보내는 codeChallenge는 이 값의 S256이다.
+   * RFC 7636 형식이 아닌 verifier(예: 빈 값)를 백엔드가 거부하는지 보는 흐름이 쓴다.
+   */
+  readonly codeVerifier?: string;
+}
+
 /** 브라우저 대신 소셜 로그인을 진행한다. 결과는 프론트 콜백 주소의 쿼리(code 또는 error)다. */
 export interface OAuthDriver {
   /** 백엔드 authorize를 불러 제공자 주소와 state를 얻는다. codeChallenge는 드라이버가 새로 만든다. */
-  start(provider: OAuthProvider, redirectUri: string): Promise<OAuthStart>;
-  /** 제공자에서 person으로 로그인하고 백엔드 콜백을 거친다. */
-  signIn(provider: OAuthProvider, redirectUri: string, person: OAuthPerson): Promise<OAuthReturn>;
+  start(
+    provider: OAuthProvider,
+    redirectUri: string,
+    options?: OAuthStartOptions,
+  ): Promise<OAuthStart>;
+  /**
+   * 제공자에서 person으로 로그인하고 백엔드 콜백을 거친다. 제공자가 백엔드의 콜백 경로
+   * (/api/v1/oauth/<provider>/callback)가 아닌 곳으로 보내면 던진다.
+   */
+  signIn(
+    provider: OAuthProvider,
+    redirectUri: string,
+    person: OAuthPerson,
+    options?: OAuthStartOptions,
+  ): Promise<OAuthReturn>;
   /** 제공자가 돌려보낸 것처럼 백엔드 콜백을 직접 부른다(거부, 틀린 코드). */
   callback(
     provider: OAuthProvider,

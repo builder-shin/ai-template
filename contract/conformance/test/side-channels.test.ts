@@ -147,6 +147,42 @@ describe("모의 OAuth 드라이버", () => {
     expect(JSON.parse(form.get("claims") ?? "")).toEqual(mockClaims("kakao", person));
   });
 
+  it("제공자가 백엔드의 콜백 경로가 아닌 곳으로 보내면 던진다", async () => {
+    const fetchStub = (input: string | URL | Request) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.startsWith("http://api.test/api/v1/oauth/kakao/authorize")) {
+        return Promise.resolve(redirect("http://idp.test/kakao/authorize?state=s"));
+      }
+      if (url.startsWith("http://idp.test/")) {
+        return Promise.resolve(
+          redirect("http://localhost:8000/oauth/kakao/callback?state=s&code=c"),
+        );
+      }
+      // 백엔드 콜백은 정상으로 답한다. 드라이버가 경로를 보지 않으면 signIn이 성공한다.
+      if (url.startsWith("http://api.test/api/v1/oauth/kakao/callback")) {
+        return Promise.resolve(redirect("http://web.test/callback?code=one-time"));
+      }
+      return Promise.reject(new Error(`예상하지 못한 요청: ${url}`));
+    };
+    const driver = createMockOAuthDriver({ baseUrl: "http://api.test", fetch: fetchStub });
+    await expect(
+      driver.signIn("kakao", "http://web.test/callback", { subject: "42" }),
+    ).rejects.toThrow("콜백 경로는 /api/v1/oauth/kakao/callback여야 한다");
+  });
+
+  it("codeVerifier를 주면 만든 verifier 대신 그 값의 S256을 codeChallenge로 보낸다", async () => {
+    let codeChallenge = "";
+    const fetchStub = (input: string | URL | Request) => {
+      const url = String(input instanceof Request ? input.url : input);
+      codeChallenge = new URL(url).searchParams.get("codeChallenge") ?? "";
+      return Promise.resolve(redirect("http://idp.test/kakao/authorize?state=s"));
+    };
+    const driver = createMockOAuthDriver({ baseUrl: "http://api.test", fetch: fetchStub });
+    const started = await driver.start("kakao", "http://web.test/callback", { codeVerifier: "" });
+    expect(started.codeVerifier).toBe("");
+    expect(codeChallenge).toBe(createHash("sha256").update("").digest("base64url"));
+  });
+
   it("제공자마다 프로필 응답의 모양을 흉내 낸다", () => {
     const person = { subject: "7", email: "b@example.com", name: "Bo" };
     expect(mockClaims("naver", person)).toEqual({

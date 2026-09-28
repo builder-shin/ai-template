@@ -100,8 +100,11 @@ describe(`실시간 (${target.name})`, () => {
     }
   });
 
-  it("허용하지 않은 Origin의 연결은 거부한다", async () => {
+  it("허용하지 않은 Origin의 연결은 거부하고, 허용한 Origin의 연결은 받는다", async () => {
     const outsider = await refused({ origin: "http://evil.example" });
     expect(outsider.message).not.toBe("");
+    // 템플릿의 기본 REALTIME_ALLOWED_ORIGINS. 모든 브라우저를 거부하는 백엔드는 여기서 걸린다.
+    const browser = await RealtimeClient.connect({ origin: "http://localhost:3000" });
+    browser.close();
   });
 });

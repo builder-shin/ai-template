@@ -5,6 +5,7 @@ import type {
   OAuthProvider,
   OAuthReturn,
   OAuthStart,
+  OAuthStartOptions,
 } from "../side-channels.ts";
 import { ContractViolation, validateResponse } from "../validation.ts";
 
@@ -58,9 +59,14 @@ export function mockClaims(provider: OAuthProvider, person: OAuthPerson): Record
   }
 }
 
-/** PKCE 쌍(verifier, S256 challenge). BFF가 만들어 authorize에 codeChallenge로 보내고, 코드 교환 때 codeVerifier로 증명한다. */
-function pkcePair(): { readonly verifier: string; readonly challenge: string } {
-  const verifier = randomBytes(32).toString("base64url");
+/**
+ * PKCE 쌍(verifier, S256 challenge). BFF가 만들어 authorize에 codeChallenge로 보내고, 코드 교환 때
+ * codeVerifier로 증명한다. verifier를 주면 새로 만들지 않고 그 값을 쓴다.
+ */
+function pkcePair(verifier = randomBytes(32).toString("base64url")): {
+  readonly verifier: string;
+  readonly challenge: string;
+} {
   const challenge = createHash("sha256").update(verifier).digest("base64url");
   return { verifier, challenge };
 }
@@ -117,8 +123,12 @@ export function createMockOAuthDriver(options: MockOAuthDriverOptions): OAuthDri
     return new URL(location);
   }
 
-  async function start(provider: OAuthProvider, redirectUri: string): Promise<OAuthStart> {
-    const { verifier, challenge } = pkcePair();
+  async function start(
+    provider: OAuthProvider,
+    redirectUri: string,
+    options: OAuthStartOptions = {},
+  ): Promise<OAuthStart> {
+    const { verifier, challenge } = pkcePair(options.codeVerifier);
     const query = new URLSearchParams({ redirectUri, codeChallenge: challenge });
     const response = await backend(
       `${root}/api/v1/oauth/${provider}/authorize?${query.toString()}`,
@@ -146,15 +156,21 @@ export function createMockOAuthDriver(options: MockOAuthDriverOptions): OAuthDri
     provider: OAuthProvider,
     redirectUri: string,
     person: OAuthPerson,
+    options: OAuthStartOptions = {},
   ): Promise<OAuthReturn> {
-    const { providerUrl, codeVerifier } = await start(provider, redirectUri);
+    const { providerUrl, codeVerifier } = await start(provider, redirectUri, options);
     const form = new URLSearchParams({
       username: person.subject,
       claims: JSON.stringify(mockClaims(provider, person)),
     });
     const login = await request(providerUrl, { method: "POST", body: form, redirect: "manual" });
-    // 제공자는 백엔드의 콜백 주소(대상의 API_URL)로 보낸다. 같은 쿼리로 대상의 콜백을 부른다.
+    // 제공자는 백엔드가 authorize에서 알려 준 콜백 주소로 보낸다. 호스트는 대상의 API_URL이라
+    // 경로만 본다. 같은 쿼리로 대상의 콜백을 부른다.
     const back = redirected(login, "모의 제공자");
+    const expected = CALLBACK.replace("{provider}", provider);
+    if (back.pathname !== expected) {
+      throw new Error(`모의 제공자가 ${back.href}로 보냈다. 콜백 경로는 ${expected}여야 한다.`);
+    }
     const query = await callback(provider, Object.fromEntries(back.searchParams));
     return { query, codeVerifier };
   }

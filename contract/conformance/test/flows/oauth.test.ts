@@ -88,10 +88,13 @@ describe(`소셜 로그인 (${target.name})`, () => {
     },
   );
 
-  it("거부는 auth.oauth_denied, 코드 교환 실패는 auth.oauth_failed로 프론트에 돌아간다", async () => {
+  it("거부(access_denied)는 auth.oauth_denied, 제공자의 다른 에러와 코드 교환 실패는 auth.oauth_failed로 프론트에 돌아간다", async () => {
     const denied = await oauth.start("google", FRONT_CALLBACK);
     const back = await oauth.callback("google", { state: denied.state, error: "access_denied" });
     expect(back.get("error")).toBe("auth.oauth_denied");
+    const broken = await oauth.start("naver", FRONT_CALLBACK);
+    const error = await oauth.callback("naver", { state: broken.state, error: "server_error" });
+    expect(error.get("error")).toBe("auth.oauth_failed");
     const failed = await oauth.start("kakao", FRONT_CALLBACK);
     const wrong = await oauth.callback("kakao", { state: failed.state, code: "wrong-code" });
     expect(wrong.get("error")).toBe("auth.oauth_failed");
@@ -135,7 +138,7 @@ describe(`소셜 로그인 (${target.name})`, () => {
     expect(missing.status).toBe(404);
   });
 
-  it("codeChallenge가 없거나 형식이 틀리면 400이고, codeVerifier가 안 맞으면 401이며 코드는 그때 이미 쓴다", async () => {
+  it("codeChallenge가 없거나 형식이 틀리면 400이고, codeVerifier가 안 맞거나 RFC 7636 형식이 아니면 401이며 코드는 그때 이미 쓴다", async () => {
     const redirectUri = encodeURIComponent(FRONT_CALLBACK);
     const queries = [
       `redirectUri=${redirectUri}`,
@@ -163,5 +166,14 @@ describe(`소셜 로그인 (${target.name})`, () => {
     const rightVerifier = await signInWith(code, back.codeVerifier);
     expect(rightVerifier.response.status).toBe(401);
     expect(codes(rightVerifier.error)).toEqual(["auth.oauth_code_invalid"]);
+
+    // 빈 verifier의 S256도 43자라 authorize는 받는다. 코드 교환에서 verifier의 형식으로 거부한다.
+    const empty = await oauth.signIn("kakao", FRONT_CALLBACK, person(), { codeVerifier: "" });
+    expect(empty.query.get("error")).toBeNull();
+    const emptyCode = empty.query.get("code");
+    expect(emptyCode).not.toBeNull();
+    const emptyVerifier = await signInWith(emptyCode, "");
+    expect(emptyVerifier.response.status).toBe(401);
+    expect(codes(emptyVerifier.error)).toEqual(["auth.oauth_code_invalid"]);
   });
 });
