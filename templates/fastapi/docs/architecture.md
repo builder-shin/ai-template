@@ -99,13 +99,14 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 브라우저가 스토리지(S3 호환, 개발은 SeaweedFS)에 직접 올리고 내려받는다. 앱은 presigned URL을 만들고 상태를 확인한다.
 
 1. 만들기(`POST /files`): 크기(`FILE_MAX_SIZE`)와 타입(`FILE_ALLOWED_TYPES`)을 검사하고 `pending` 행을 만든다. `meta.upload`에 presigned PUT(15분)을 담는다. 서명은 SigV4라 `Content-Type`과 `Content-Length`가 서명에 들어가고, 선언과 다른 크기나 타입의 본문은 스토리지가 403으로 거절한다.
-2. 올리기: 브라우저가 `meta.upload.url`에 `meta.upload.headers`(`Content-Type`)를 붙여 PUT한다. 스토리지의 CORS(개발 프론트 출처)는 `uv run poe setup`이 건다.
+2. 올리기: 브라우저가 `meta.upload.url`에 `meta.upload.headers`(`Content-Type`)를 붙여 PUT한다. 스토리지의 CORS는 `uv run poe setup`이 개발 프론트 출처로만 건다. 운영 버킷에는 프론트 출처의 CORS(올리기 PUT, 내려받기 GET)를 따로 건다.
 3. 완료(`PATCH /files/{id}`, `status: "ready"`): 소유자만 한다. HEAD로 크기를 확인하고, 다르면 객체를 지우고 `file.upload_incomplete`다.
 4. 내려받기: ready 파일의 `meta.downloadUrl`은 presigned GET(10분)이다. 포함 리소스(아바타, 커버 이미지)에도 채운다. presign은 네트워크 호출 없이 계산만 한다.
 5. 정리: 24시간이 넘도록 pending인 파일은 잡 `files.purge_pending`(매시간 정각, UTC)이 지운다. 탈퇴하면 다른 리소스가 가리키지 않는 본인 파일을 지운다.
 
 - 읽기: 소유자는 읽는다. 그 밖에는 모듈이 등록한 규칙 중 하나가 허용하면 읽는다(아바타는 공개, 볼 수 있는 글의 커버). 볼 수 없으면 404, 볼 수 있지만 소유자가 아닌 사람이 고치거나 지우면 403이다.
 - 다른 리소스에 거는 파일(아바타, 커버)은 `files.attachable_file`로 검사한다. 요청한 사람 소유의 ready 이미지여야 한다.
+- 허용 타입(`FILE_ALLOWED_TYPES`)에 `image/svg+xml`이나 HTML 타입을 넣지 않는다. 스크립트를 담을 수 있는 문서라 presigned URL을 열면 스토리지 출처에서 실행되고, SVG는 이미지로 통과해 공개 아바타나 커버가 될 수도 있다. 꼭 받아야 하면 그 타입의 presigned GET에 `ResponseContentDisposition=attachment`를 줘 내려받게만 한다.
 - 객체 키는 `files/<id>`다. 테스트는 테스트마다 다른 키 prefix(`tests/<uuid>/`)를 쓴다(`storage` fixture).
 
 ### 공개 파일 전달로 바꾸는 방법
@@ -123,5 +124,6 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 
 - `get_or_set(키, 수명, 만들기)`는 캐시에 있으면 그 값을, 없으면 만들어 넣은 값을 돌려준다. `clear()`는 이름공간의 키를 모두 지운다. 값은 JSON으로 오갈 수 있는 것이다.
 - Valkey에 닿지 못하면 캐시 없이 만들기를 부르고 경고만 남긴다.
-- 예시는 posts의 공개 목록 첫 페이지(60초)다. 초안이 보이지 않는 요청의 기본 첫 페이지만 캐시하고, 키는 정렬한 쿼리 문자열이다(`include`와 `fields`만 다를 수 있다). 글을 쓰면 commit한 뒤에 캐시를 지운다.
+- 예시는 posts의 공개 목록 첫 페이지(60초)다. 초안이 보이지 않는 요청 가운데 `include` 말고는 쿼리가 없는 요청(필터와 `fields` 없음, 기본 정렬, 기본 크기)만 캐시한다. 글을 쓰면 commit한 뒤에 캐시를 지운다.
+- 키는 검증을 마친 값으로만 만든다. posts의 키는 검증한 `include` 경로를 정렬한 값이라, 키의 수가 include 조합 수를 넘지 않는다. 검증하지 않는 값(`fields` 등)이 키에 들어가면 값만 바꾼 요청마다 새 키가 생겨 캐시를 우회하고 메모리를 늘린다.
 - 캐시한 문서에 presigned URL이 들어 있으면 캐시 수명을 URL 수명(10분)보다 짧게 둔다.

@@ -44,3 +44,5 @@ API 에러 객체의 `code` 값 목록이다. 원본은 `contract/typespec/src/e
 | `rate_limit.exceeded`             | 429        | 요청 한도를 넘었다. `Retry-After`를 따른다                                                         |
 | `internal.unexpected`             | 500        | 예상하지 못한 서버 오류다                                                                          |
 | `service.unavailable`             | 503        | 의존 서비스(DB 등)를 쓸 수 없다                                                                    |
+
+`POST /files`에서 크기와 타입이 모두 한도를 벗어나면 크기를 먼저 본다. 응답은 `file.too_large` 하나이고, 두 백엔드 모두 이 순서를 따른다. 여러 단계의 에러가 겹칠 때의 순서는 [JSON:API 규약](jsonapi.md)의 "에러 우선순위"에 있다.
