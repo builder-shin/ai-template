@@ -4,7 +4,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 
 - 라이브러리 API는 기억에 의존하지 말고 [docs/stack.md](docs/stack.md)에 적힌 버전의 문서를 확인한다.
 - FastAPI 코드를 쓰기 전에 FastAPI 공식 skill(`.claude/skills/fastapi/SKILL.md`)을 읽는다.
-- 모듈, 엔드포인트, 마이그레이션, 잡, 권한, 메일 템플릿을 더할 때는 `docs/recipes/`의 레시피를 따른다. `.claude/skills/add-*`가 레시피를 부른다.
+- 모듈, 엔드포인트, 마이그레이션, 잡, 권한, 메일 템플릿, 실시간 이벤트를 더할 때는 `docs/recipes/`의 레시피를 따른다. `.claude/skills/add-*`가 레시피를 부른다.
 
 ## 명령
 
@@ -41,17 +41,18 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - `src/app/health.py`: 헬스체크 `/health/live`, `/health/ready`(DB, Valkey, 스토리지). JSON:API가 아니라 `application/json`이다.
 - `src/app/worker.py`, `src/app/scheduler.py`: Taskiq broker(Valkey 스트림, 재시도)와 scheduler(주기 작업, 지연 재시도). scheduler는 반드시 하나만 띄운다.
 - `src/app/seed.py`: 개발용 시드. 여러 번 돌려도 안전하게 쓴다.
-- `src/app/core/`: 도메인을 모르는 기반(설정, 로그, DB, Valkey, 스토리지, `jsonapi/` 공통 계층). [src/app/core/AGENTS.md](src/app/core/AGENTS.md)
-- `src/app/modules/`: 도메인 모듈. `auth`(가입, 이메일 인증, 세션, 비밀번호), `users`(내 정보, 탈퇴, 사용자 관리), `roles`(역할, 권한), `audit_logs`(감사 로그 읽기), `files`(업로드, 완료 확인, 다운로드 URL, 읽기 규칙), `posts`(골든 모듈: 글 목록·조회·쓰기, 전이 표, 권한 매트릭스 테스트). [src/app/modules/AGENTS.md](src/app/modules/AGENTS.md)
+- `src/app/core/`: 도메인을 모르는 기반(설정, 로그, DB, Valkey, 스토리지, 실시간 서버와 발행기, OpenTelemetry, `jsonapi/` 공통 계층). [src/app/core/AGENTS.md](src/app/core/AGENTS.md)
+- `src/app/modules/`: 도메인 모듈. `auth`(가입, 이메일 인증, 세션, 비밀번호, 소셜 로그인), `users`(내 정보, 탈퇴, 사용자 관리), `roles`(역할, 권한), `audit_logs`(감사 로그 읽기), `files`(업로드, 완료 확인, 다운로드 URL, 읽기 규칙), `realtime`(실시간 티켓, Socket.IO 연결과 구독), `posts`(골든 모듈: 글 목록·조회·쓰기, 전이 표, 실시간 이벤트, 권한 매트릭스 테스트). [src/app/modules/AGENTS.md](src/app/modules/AGENTS.md)
 - `migrations/`: Alembic 마이그레이션. [migrations/AGENTS.md](migrations/AGENTS.md)
 - `tools/`: 하네스 도구(명령, check, 검사, hook, 인프라, 프로세스). [tools/AGENTS.md](tools/AGENTS.md)
 - `conftest.py`: 테스트 공용 fixture(`settings`, `infra`, `db`, `redis`, `storage`). `tests/e2e/`: E2E 테스트.
-- `compose.yaml`: 개발 인프라(PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth). 포트는 127.0.0.1에만 열고, 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit SMTP 21025·웹 28025, 모의 OAuth 28080). `app` 프로필은 이미지로 migrate, api(8000), worker, scheduler를 띄운다.
+- `compose.yaml`: 개발 인프라(PostgreSQL, Valkey, SeaweedFS, Mailpit, 모의 OAuth). 포트는 127.0.0.1에만 열고, 호스트 포트는 기본 포트에 20000을 더한 번호다(PostgreSQL 25432, Valkey 26379, SeaweedFS 28333, Mailpit SMTP 21025·웹 28025, 모의 OAuth 28080). `app` 프로필은 이미지로 migrate, api(8000), worker, scheduler를 띄운다. `observability` 프로필은 Grafana LGTM(화면 23000, OTLP 24317·24318)이다.
+- `typings/`: 타입 정보가 없는 라이브러리(python-socketio)의 스텁. 쓰는 API만 적었다. 새 API를 쓰면 여기에 더한다.
 - `Dockerfile`: 운영 이미지. 명령만 바꿔 api(기본), worker, scheduler, migrate로 띄운다.
 - `.claude/settings.json`: Claude Code의 hook과 권한. `.claude/skills/fastapi/`, `.agents/skills/fastapi/`: FastAPI 공식 skill 사본. `.claude/skills/add-*/`: 레시피를 부르는 skill.
 - `lefthook.yml`, `.betterleaks.toml`: git hook과 비밀 스캔 설정.
 - `openapi.json`: 앱이 내보낸 OpenAPI 문서. `api-style/lint.mjs`: 저장소가 넣는 API 스타일 룰셋 번들의 사본.
-- `docs/`: [architecture.md](docs/architecture.md)(계층, 요청 흐름, 프로세스, JSON:API 쓰는 법), [stack.md](docs/stack.md)(버전과 문서), `recipes/`(작업 절차: [모듈](docs/recipes/module.md), [엔드포인트](docs/recipes/endpoint.md), [마이그레이션](docs/recipes/migration.md), [잡](docs/recipes/job.md), [권한](docs/recipes/permission.md), [메일 템플릿](docs/recipes/mail-template.md)).
+- `docs/`: [architecture.md](docs/architecture.md)(계층, 요청 흐름, 프로세스, JSON:API 쓰는 법), [stack.md](docs/stack.md)(버전과 문서), `recipes/`(작업 절차: [모듈](docs/recipes/module.md), [엔드포인트](docs/recipes/endpoint.md), [마이그레이션](docs/recipes/migration.md), [잡](docs/recipes/job.md), [권한](docs/recipes/permission.md), [메일 템플릿](docs/recipes/mail-template.md), [실시간 이벤트](docs/recipes/realtime-event.md)).
 
 ## 규칙
 
@@ -84,6 +85,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - 자기 인프라(DB, Valkey, 스토리지, 메일)를 모킹하지 않는다. 테스트 DB는 `app_test`, Valkey는 DB 15다. DB는 `db` fixture(테스트마다 롤백), Valkey는 `redis` fixture(테스트마다 비움), 스토리지는 `storage` fixture(테스트마다 다른 키 prefix, 끝나면 지움)로 쓴다.
 - 잡은 `create_broker(settings, in_memory=True)`로 그 자리에서 돌린다.
 - 모듈 API는 `api`(httpx 클라이언트)와 `accounts`(`app.tests.accounts.Accounts`)로 테스트한다. 계정은 `await accounts.create(permissions={"users:read"})`, 로그인 헤더는 `await accounts.sign_in(user)`로 만든다. 메일은 `mailbox`(Mailpit)로 읽는다.
+- 실시간 이벤트는 `publisher`(`RecordingPublisher`)가 모은다. 소켓으로 받는 테스트는 `app.tests.sockets`(`serving`, `connected`)로 앱을 실제 포트에 띄워 붙는다. 소셜 로그인은 `app.tests.oauth`로 모의 OAuth 서버의 로그인 폼에 신원을 보낸다.
 - 가짜 비밀 값을 써야 하면 그 줄 끝에 `betterleaks:allow` 주석을 단다.
 
 ### 설정과 DB

@@ -14,6 +14,8 @@
 - `clients.py`: 요청을 보낸 쪽(IP, User-Agent). `ClientDep`으로 받는다.
 - `ratelimit.py`: 레이트 리밋(Valkey 고정 윈도). 엄격한 한도는 service가 `enforce(redis, Limit(...), 대상)`로 걸고, IP별 전역 한도는 미들웨어가 건다.
 - `jobs.py`: 잡 선언(`Job`), 등록(`register`), 잡의 문맥(`JobContext`, `JOB_CONTEXT`), 보내기(`JobQueue`, `JobsDep`).
+- `realtime.py`: Socket.IO 서버(`create_realtime`, `/socket.io`의 `RealtimeEndpoint`), 발행기(api는 `ServerPublisher`, worker와 scheduler는 쓰기 전용 `RedisPublisher`, 테스트는 `RecordingPublisher`), commit 뒤에 이벤트를 보내는 세션(`EventSession`, `queue`), 채널·이벤트·메시지 선언(`Channel`, `EventSpec`, `MessageSpec`)과 그 OpenAPI 확장(`realtime_openapi`).
+- `telemetry.py`: OpenTelemetry. 기본으로 꺼 두고 `OTEL_ENABLED=true`면 트레이스를 OTLP로 보낸다. 요청, SQLAlchemy·psycopg, Valkey, httpx, Taskiq를 계측하고, 수동 span은 `tracer(이름)`으로 만든다.
 - `mail.py`: 메일 템플릿 렌더링(`MailTemplates`, 로케일이 없으면 ko)과 SMTP 발송. 서비스는 메일을 만들어 잡 `SEND_MAIL`로 보낸다.
 - `audit.py`: 감사 로그 테이블(`AuditLog`)과 기록(`record_audit`), 계약의 행위·대상 어휘(`AuditLogAction`, `AuditLogTargetType`). 여러 모듈이 기록하고 읽기 API(audit_logs 모듈)가 users를 포함하므로 core에 둔다.
 - `access.py`: 인증과 권한 검사. 인증기와 레지스트리는 `install_access`로 앱에 건다. 라우트 선언의 `auth`, `permission`을 라우터가 강제하고, 엔드포인트는 `PrincipalDep`, `OptionalPrincipalDep`으로 주체를 받는다.

@@ -24,7 +24,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 
 - 모듈 안의 방향은 `router → service → repository → models` 하나다. `schemas`는 router와 service가, `policies`와 `events`는 service가 쓴다. 아래 계층은 위 계층을 import하지 않는다(import-linter 계약 `module-layers`).
 - 다른 모듈은 `app.modules.<이름>` 패키지만 import한다. 내부 파일(`app.modules.users.repository` 등)은 import하지 않는다(`tools/checks/boundaries.py`). 모듈 사이의 순환 import는 basedpyright의 `reportImportCycles`가 막는다.
-- 모듈 등록은 `src/app/modules/registry.py` 한 곳에서 한다. 모듈은 공개 인터페이스(`__init__.py`)로 `ROUTERS`, `PERMISSIONS`, `JOBS`를 내보내고, 등록부가 모은다. 등록부도 모듈의 공개 인터페이스만 import한다(`module-boundary`는 `src/app/` 아래의 조립 파일도 본다).
+- 모듈 등록은 `src/app/modules/registry.py` 한 곳에서 한다. 모듈은 공개 인터페이스(`__init__.py`)로 `ROUTERS`, `PERMISSIONS`, `JOBS`, `CHANNELS`, `EVENTS`를 내보내고, 등록부가 모은다. 등록부도 모듈의 공개 인터페이스만 import한다(`module-boundary`는 `src/app/` 아래의 조립 파일도 본다).
 - 잡은 `app.core.jobs.Job(이름, 함수, cron=...)`으로 선언한다. 이름(`<모듈>.<동사구>`)이 큐의 task_name이다. 잡 함수는 설정과 DB 세션을 `context: JobContext = JOB_CONTEXT`로 받고, api는 요청에서 `JobsDep`으로 잡을 보낸다.
 
 ## 플랫폼 모듈
@@ -33,19 +33,20 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 | ------------ | ------------------------------------------------------------------------------------------ | ------------ |
 | `roles`      | 역할과 권한 API, 실제 권한 계산, 권한 상승 판정(`within`)                                  | 없음         |
 | `users`      | 내 정보, 탈퇴, 사용자 관리, 다른 리소스에 넣을 공개 사용자(`public_users`)                 | roles, files |
-| `auth`       | 가입, 이메일 인증, 세션, 비밀번호, 요청의 인증기(`authenticate`)                           | users, roles |
+| `auth`       | 가입, 이메일 인증, 세션, 비밀번호, 소셜 로그인(제공자는 `auth/providers/`), 인증기(`authenticate`) | users, roles |
 | `audit_logs` | 감사 로그 읽기. 기록은 각 모듈이 `app.core.audit.record_audit`로 한다                      | users        |
 | `files`      | 업로드(presigned PUT), 완료 확인, 다운로드 URL, 읽기 규칙과 참조 확인의 등록 지점, 정리 잡 | 없음         |
-| `posts`      | 골든 모듈. 글 목록·조회·쓰기, 전이 표, 공개 목록 캐시, 커버 이미지                         | users, files |
+| `realtime`   | 실시간 티켓, Socket.IO 연결(티켓 → 사용자 룸)과 구독(채널 권한)                            | auth         |
+| `posts`      | 골든 모듈. 글 목록·조회·쓰기, 전이 표, 공개 목록 캐시, 커버 이미지, 실시간 이벤트          | users, files |
 
-- 의존은 한쪽으로만 흐른다. 반대 방향이 필요하면 등록으로 뒤집는다. 계정을 닫을 때(비활성화, 탈퇴) users가 부를 처리를 auth가 `users.on_account_closed`로 등록한다(등록은 `registry.py`).
+- 의존은 한쪽으로만 흐른다. 반대 방향이 필요하면 등록으로 뒤집는다. 계정을 닫을 때(비활성화, 탈퇴) users가 부를 처리를 auth가 `users.on_account_closed`로, 역할의 권한이 바뀌거나 역할이 지워질 때 그 멤버에게 알릴 처리를 users가 `roles.on_members_changed`로 등록한다(등록은 `registry.py`).
 - files는 다른 모듈을 모른다. 소유자가 아닌 사람이 파일을 읽게 할 규칙(`files.add_read_rule`)과, 탈퇴 때 남길 파일을 가리는 참조 확인(`files.add_reference_check`)을 users와 posts가 등록한다.
 - 감사 로그 테이블과 기록 함수는 core(`app.core.audit`)에 있다. 여러 모듈이 기록하고, 읽기 API(audit_logs)가 users를 포함하기 때문이다.
 - 인증기는 요청마다 access token의 서명을 검증하고, 세션이 살아 있는지(`revoked_at`)와 사용자, 역할을 DB에서 읽는다. 그래서 폐기와 권한 변경이 곧바로 효과를 낸다.
 
 ## 요청 흐름
 
-1. `TraceIdMiddleware`(`app.core.logging`)가 요청마다 traceId(32자리 16진수)를 만들어 로그 문맥과 요청 상태에 둔다.
+1. OpenTelemetry를 켰으면 가장 바깥 미들웨어가 요청 span을 연다(`app.core.telemetry`). `TraceIdMiddleware`(`app.core.logging`)가 요청마다 traceId(32자리 16진수)를 정해 로그 문맥과 요청 상태에 둔다. span이 있으면 그 trace id이고, 없으면 새로 만든다.
 2. `GlobalRateLimitMiddleware`(`app.core.ratelimit`)가 `/api/` 아래 요청을 IP별로 센다. 분당 한도(`RATE_LIMIT_GLOBAL`)를 넘으면 429와 `Retry-After`다. Valkey에 닿지 못하면 세지 않고 통과시킨다.
 3. `JsonApiNegotiationMiddleware`가 `/api/` 아래 요청의 `Content-Type`(415)과 `Accept`(406)를 본다.
 4. 라우트 선언의 `auth`와 `permission`을 인증 검사(`app.core.access`)가 강제한다. Bearer 토큰을 인증기(auth 모듈)가 검증해 주체(`Principal`)를 만들고, 권한이 없으면 403이다. 토큰이 없거나 틀리면 401이다.
@@ -53,7 +54,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 6. router는 service를 부르고, service가 트랜잭션을 연다(`SessionDep`의 세션으로 commit). repository가 DB를 읽고 쓴다.
 7. router는 문서 모델을 만들어 `render()`로 응답한다. 에러는 `ApiError(상태, ErrorCode.<코드>, 영어 detail)`를 던지면 에러 문서(`meta.traceId` 포함)가 된다. 예상하지 못한 예외는 500 에러 문서다.
 
-`/health/live`, `/health/ready`(`src/app/health.py`)는 JSON:API가 아니라 `application/json`이다.
+`/health/live`, `/health/ready`(`src/app/health.py`)는 JSON:API가 아니라 `application/json`이다. Socket.IO는 같은 api 프로세스의 `/socket.io/`에서 받는다(아래 "실시간").
 
 ## 프로세스
 
@@ -93,6 +94,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 4. 엔드포인트: `@router.route("GET", "", LIST, response_model=PostCollectionDocument)`로 달고, 쿼리는 `query: Annotated[CollectionQuery[PostFilter], Depends(LIST)]`로 받는다.
 5. 응답: `render(document, fields=query.fields)`. 페이지 링크와 `meta.page`는 `pagination(request, query.page, total)`, 포함 리소스는 `load_included(query.include, {"author": load_authors})`로 만든다.
 6. 라우트나 문서 모델을 바꾸면 `uv run poe gen`으로 `openapi.json`을 다시 쓴다. check의 `generated` 단계가 최신인지, `contract` 단계가 계약 룰셋을 지키는지 본다.
+7. JSON:API 밖의 리다이렉트(소셜 로그인)는 `RedirectOperation(name=..., errors=REDIRECT_ERRORS, query=(QueryParameter(...), ...), callback=...)`으로 선언한다. 성공은 본문 없는 302와 `Location`이고, 핸들러는 `RedirectResponse`를 돌려준다. `callback=True`면 제공자가 덧붙이는 파라미터를 받아들인다.
 
 ## 파일
 
@@ -127,3 +129,33 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 - 예시는 posts의 공개 목록 첫 페이지(60초)다. 초안이 보이지 않는 요청 가운데 `include` 말고는 쿼리가 없는 요청(필터와 `fields` 없음, 기본 정렬, 기본 크기)만 캐시한다. 글을 쓰면 commit한 뒤에 캐시를 지운다.
 - 키는 검증을 마친 값으로만 만든다. posts의 키는 검증한 `include` 경로를 정렬한 값이라, 키의 수가 include 조합 수를 넘지 않는다. 검증하지 않는 값(`fields` 등)이 키에 들어가면 값만 바꾼 요청마다 새 키가 생겨 캐시를 우회하고 메모리를 늘린다.
 - 캐시한 문서에 presigned URL이 들어 있으면 캐시 수명을 URL 수명(10분)보다 짧게 둔다.
+
+## 실시간
+
+Socket.IO 서버(`app.core.realtime`)가 api 프로세스의 `/socket.io/`에서 WebSocket 연결만 받는다. 브라우저 연결의 Origin은 `REALTIME_ALLOWED_ORIGINS`로 본다.
+
+- 연결: 로그인한 브라우저는 BFF가 받은 티켓(`POST /realtime-tickets`, 30초, 1회용)을 `auth.ticket`으로 보낸다. 서버는 티켓을 꺼내 지우고, 세션이 살아 있으면 그 연결을 `user:{id}` 룸에 넣는다. 틀린 티켓(ASCII가 아닌 값 포함)은 연결을 거부한다(`connect_error`의 message `auth.token_invalid`, data 에러 객체). 티켓이 없으면 익명 연결이다(realtime 모듈의 `gateway.py`).
+- 구독: `subscribe`와 `unsubscribe`에 `{ channel }`을 보내고 ack(`RealtimeAck`)를 받는다. 채널은 모듈이 선언한다(`Channel`, posts는 `posts`와 `posts:all`). 권한이 필요한 채널은 구독할 때 DB에서 권한을 계산한다. 이미 맺은 연결은 세션을 폐기해도 끊지 않고, `session.revoked` 이벤트로 알린다.
+- 발행: 모듈이 쓰기의 commit 전에 `queue(session, 이름, 룸, 페이로드를 만드는 함수)`로 넣으면, 세션(`EventSession`)이 commit이 성공한 뒤 페이로드를 만들어 발행기로 보낸다. rollback하면 버려지고, 발행에 실패해도 요청은 성공한다. 계정 닫기 같은 훅 안에서 넣은 이벤트도 부른 쪽의 commit 뒤에 나간다. 룸이 없는 이벤트는 보내지 않는다(빈 룸 목록을 그대로 넘기면 Socket.IO가 room 전체 브로드캐스트로 다루기 때문이다).
+- 인스턴스 사이: api의 발행기는 이 인스턴스의 연결에 보내고 Valkey pub/sub으로 다른 인스턴스에 알린다. worker와 scheduler는 소켓 서버가 아니라 쓰기 전용 발행기(`JobContext.realtime`)로 보낸다. pub/sub 채널 이름에는 Valkey DB 번호를 넣어 개발, 테스트, E2E를 나눈다.
+- 계약: 채널, 이벤트, 메시지는 계약의 `x-realtime-channels`, `x-realtime-events`, `x-realtime-messages`와 같다. 앱이 `openapi.json`에 이 확장과 페이로드 스키마를 내고(`realtime_openapi`), 저장소의 구조 비교(`pnpm spec-compare`)가 계약과 같은지 본다.
+
+## 소셜 로그인
+
+auth 모듈의 `service/oauth.py`와 `providers/`다. 제공자는 파일 하나씩이고(`google.py`, `kakao.py`, `naver.py`) 인가 주소와 코드 교환은 httpx-oauth가, 신원 조회는 설정의 프로필 주소를 GET으로 읽는다. 로그인은 BFF가 쥔 PKCE 쌍에 묶어 로그인 CSRF를 막는다.
+
+1. BFF가 로그인 시도마다 code verifier를 만들어 시작한 브라우저에 연결해 두고(예: httpOnly 쿠키), `GET /api/v1/oauth/{provider}/authorize?redirectUri=&codeChallenge=`로 이동시킨다(`codeChallenge`는 그 verifier의 S256, base64url 43자). `redirectUri`가 `OAUTH_REDIRECT_URIS`에 없거나 URL 형식이 아니면(urlparse가 읽지 못하면) 400이고, `codeChallenge`가 없거나 형식이 틀려도 400이다. state, 받은 `codeChallenge`, 제공자와 주고받을 자신의 PKCE verifier, `redirectUri`를 Valkey에 10분 두고 제공자 로그인 화면으로 302를 보낸다. 세 제공자 모두 OIDC 인가(scope에 openid)와 PKCE(S256)를 쓴다.
+2. 제공자가 `<API_URL>/api/v1/oauth/{provider}/callback`으로 돌아온다. state가 없거나 만료됐으면 400이다. 거부는 `redirectUri?error=auth.oauth_denied`, 코드 교환·신원 조회 실패는 `auth.oauth_failed`, 비활성 계정은 `auth.account_deactivated`로 보낸다.
+3. 계정 연결: (제공자, 제공자의 사용자 id)로 연결된 계정 → 제공자가 검증한 이메일이면 같은 이메일의 계정(인증하지 않고 먼저 가입한 계정이면 그 비밀번호를 지운다) 또는 인증을 마친 새 계정 → 그 밖에는 이메일 없는 새 계정. 이메일 검증은 구글은 `email_verified`가 참이고 `gmail.com` 주소이거나 `hd`(구글 워크스페이스)가 있을 때, 카카오는 `is_email_valid`와 `is_email_verified`가 모두 참일 때, 네이버는 늘 미검증이다. 구글의 다른 주소는 `email_verified`만으로 그 이메일의 주인을 보증하지 않는다(메일함 주인이 바뀐 뒤에도 참으로 남을 수 있다).
+4. 성공하면 1회용 코드(60초)에 `codeChallenge`를 실어 `redirectUri?code=`로 보낸다. BFF가 `POST /sessions`의 `oauthCode` grant에 `code`와 `codeVerifier`를 보내 토큰을 받는다. `codeVerifier`가 `codeChallenge`를 만들지 못하면 코드를 소비하고 `auth.oauth_code_invalid`다. BFF는 자기가 verifier를 쥐지 않은 프론트 콜백 `code`를 거부한다(그러지 않으면 공격자가 완성된 콜백 URL을 피해자에게 넘길 수 있다). 로그인 성공 감사 로그(`method: oauth`, `provider`)는 이때 남긴다.
+
+- 설정: 제공자마다 `OAUTH_<제공자>_CLIENT_ID`, `_CLIENT_SECRET`, `_AUTHORIZE_URL`(브라우저가 부른다), `_TOKEN_URL`, `_PROFILE_URL`(서버가 부른다). 운영 주소는 `.env.example`의 주석에 있다. 카카오는 콘솔에서 OpenID Connect를 켜야 한다.
+- 개발과 테스트는 모의 OAuth 서버(compose의 `oauth`, 28080)를 쓴다. 로그인 폼에 신원(claims)을 보내면 그대로 토큰과 userinfo에 담는다. 제공자마다 다른 프로필 응답(카카오 `kakao_account`, 네이버 `response`)을 claims로 흉내 낸다(`app.tests.oauth`). 비ASCII 값은 깨지므로 테스트의 이름은 ASCII로 쓴다.
+- 새 제공자는 `providers/`에 파일 하나(`Provider` 값), 설정(`OAUTH_<이름>_*`), 계약의 `OAuthProvider` 값으로 더한다.
+
+## 관측성
+
+- 로그는 structlog JSON(개발은 콘솔 형식)이고, 요청마다 traceId가 붙는다. 에러 문서의 `meta.traceId`도 같은 값이다.
+- OpenTelemetry는 기본으로 꺼 둔다. `OTEL_ENABLED=true`면 프로세스가 시작할 때 `configure_telemetry`가 tracer를 설정하고 트레이스를 OTLP(HTTP, `OTEL_EXPORTER_OTLP_ENDPOINT`)로 보낸다. 서비스 이름은 `OTEL_SERVICE_NAME`에 역할을 붙인 것이다(예: `app-api`, `app-worker`).
+- 계측: FastAPI(요청), SQLAlchemy와 psycopg(쿼리), Redis(Valkey 명령), httpx(소셜 로그인 제공자 호출), Taskiq(잡 보내기와 실행, broker 미들웨어). python-socketio에는 계측이 없어 연결과 구독 처리에 수동 span(`realtime.connect`, `realtime.subscribe`)을 둔다.
+- 로컬에서 보려면 `docker compose --profile observability up -d`로 Grafana LGTM을 띄우고 `OTEL_ENABLED=true`로 api를 다시 띄운다. 화면은 http://127.0.0.1:23000 이다.

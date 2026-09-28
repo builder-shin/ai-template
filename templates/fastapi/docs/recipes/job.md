@@ -13,7 +13,7 @@
 ## 고칠 파일
 
 - `src/app/modules/<모듈>/jobs.py`
-  - 함수: `async def <동사>(<인자>, context: JobContext = JOB_CONTEXT) -> None`. 인자는 JSON으로 오갈 수 있는 값(원시 값, Pydantic 모델)만 쓴다. 설정, DB 세션(`context.sessions()`), 스토리지는 `context`로 받는다.
+  - 함수: `async def <동사>(<인자>, context: JobContext = JOB_CONTEXT) -> None`. 인자는 JSON으로 오갈 수 있는 값(원시 값, Pydantic 모델)만 쓴다. 설정, DB 세션(`context.sessions()`), 스토리지, 실시간 발행기(`context.realtime`)는 `context`로 받는다.
   - 선언: `<이름> = Job("<모듈>.<동사구>", <함수>)`. 주기 작업은 `cron="0 * * * *"`(UTC)을 더한다. 파일 끝에 `JOBS = (<이름>, ...)`.
 - `src/app/modules/<모듈>/__init__.py`: `JOBS`를 내보낸다.
 - `src/app/modules/registry.py`: `JOBS`에 `*<모듈>.JOBS`를 더한다.
@@ -27,7 +27,7 @@
 
 ## 확인
 
-- 잡 함수를 테스트에서 직접 부른다: `await <함수>(..., context=JobContext(settings=infra, sessions=db, storage=storage))`.
+- 잡 함수를 테스트에서 직접 부른다: `await <함수>(..., context=JobContext(settings=infra, sessions=db, storage=storage, realtime=publisher))`.
 - API 테스트에서는 테스트 앱의 잡 큐가 잡을 그 자리에서 실행한다.
 - 잡 이름이 겹치면 `src/app/tests/test_registry.py`가 실패한다.
 - `uv run poe check`가 통과한다.
