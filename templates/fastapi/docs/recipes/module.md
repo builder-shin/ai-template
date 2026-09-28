@@ -8,7 +8,7 @@
 
 1. `uv run poe gen:module <이름>`: 이름은 영어 복수형 kebab-case다(예: `comments`, `blog-posts`). 끝 단어의 단수형이 규칙(categories → category, boxes → box, comments → comment)과 다르면 `--singular <단수형>`을 붙인다(예: `people --singular person`). 출력의 첫 줄이 만든 단수형을 알린다.
    - 골든 모듈 `posts`를 `src/app/modules/<이름>/`으로 복사하고 이름을 바꾼다. 식별자, 리소스 type, 경로, 권한(`<이름>:create`, `<이름>:manage`), 테이블, 테스트가 바뀐다.
-   - 등록한다: `src/app/modules/registry.py`(라우터, 권한, 파일 읽기 규칙과 참조 확인), `src/app/main.py`의 `TAGS`, `roles/schemas.py`의 `PermissionCode`.
+   - 등록한다: `src/app/modules/registry.py`(라우터, 권한, 실시간 채널과 이벤트(`CHANNELS`, `EVENTS`), 파일 읽기 규칙과 참조 확인), `src/app/main.py`의 `TAGS`, `roles/schemas.py`의 `PermissionCode`.
    - `migrations/versions/`에 새 테이블의 초안을 만든다. posts 테이블을 만든 리비전을 복사한 것이다. 뒤의 리비전으로 posts 스키마를 바꿨다면 초안이 모델과 다르므로, 초안을 지우고 `db:revision`으로 다시 만든다(아래 3번).
    - 이름이 파이썬 예약어·내장 이름, 골든 모듈이 쓰는 이름(author, session 등), 이미 있는 테이블(refresh_tokens 등)과 겹치면 아무 파일도 쓰지 않고 멈춘다. 다른 이름을 쓴다.
 2. 출력 끝의 "고칠 곳" 목록과 다음 할 일을 따라 고친다(아래 "고칠 파일").
@@ -22,6 +22,7 @@
 - `service.py`: 유스케이스. 공개 목록 캐시는 예시다. 필요 없으면 지운다.
 - 에러 코드와 감사 행위: 생성 직후에는 posts의 값(`post.invalid_transition`, `post.deleted_by_admin`, 감사 대상 `posts`)을 그대로 쓴다. 새 값을 `ErrorCode`(`app.core.jsonapi.models`), `AuditLogAction`·`AuditLogTargetType`(`app.core.audit`)에 더한 뒤 바꾸고, 테스트의 기대값도 바꾼다.
 - `permissions.py`: 권한 설명. 가입한 사람이 쓰게 하려면 [권한 추가](permission.md)를 따른다.
+- `events.py`: 실시간 채널과 이벤트(이름, 받는 룸, 보내는 때). 이 모듈의 이벤트는 계약에 없다. [실시간 이벤트 추가](realtime-event.md)
 - `src/app/modules/registry.py`: 커버 이미지를 쓰지 않으면 이 모듈의 파일 읽기 규칙과 참조 확인 줄을 지운다(모델, 서비스, 라우터의 coverImage도 지운다).
 - 문서, 주석, API 설명(`description`): 골든 모듈은 글을 설명한다.
 - `tests/`: 바꾼 규칙에 맞게 고친다. 권한 매트릭스(`test_permissions.py`)는 새 규칙의 표로 바꾼다.

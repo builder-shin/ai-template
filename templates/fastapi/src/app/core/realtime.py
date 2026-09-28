@@ -182,6 +182,9 @@ def queue(session: AsyncSession, name: str, rooms: Iterable[str], payload: Paylo
 class EventSession(AsyncSession):
     """commit이 성공한 뒤에 queue한 이벤트를 보내는 세션(app.core.db.session_factory가 쓴다).
 
+    이벤트는 `await session.commit()`만 보낸다. 이벤트를 넣은 트랜잭션은 그것으로 끝낸다.
+    `async with session.begin():` 블록이 끝날 때의 commit은 이벤트를 보내지 않고, savepoint
+    (`begin_nested`)를 rollback해도 그 안에서 넣은 이벤트는 버려지지 않는다.
     Valkey 발행 실패는 python-socketio가 재시도한 뒤 스스로 로그를 남기고 예외를 내지 않는다.
     realtime_publish_failed는 그 밖의 발행 실패(ServerPublisher 등)를 잡는다.
     """
