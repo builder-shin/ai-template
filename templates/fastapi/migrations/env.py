@@ -1,7 +1,8 @@
 """Alembic 환경. 설정(.env)의 DATABASE_URL로 접속해 마이그레이션한다.
 
 - 앱과 같은 psycopg 드라이버를 동기 연결로 쓴다. 이벤트 루프가 필요 없어 어디서 불러도 된다.
-- 테스트(conftest.py)는 config.attributes["database_url"]로 테스트 DB 주소를 넘긴다.
+- 테스트와 E2E(tools.infra.migrate_disposable)는 config.attributes["database_url"]로 DB 주소를
+  넘긴다.
 - autogenerate가 모든 테이블을 보도록 모듈마다 models.py와 core의 감사 로그 모델을 import한다.
 """
 

@@ -2,6 +2,8 @@
 
 - setup(tools/cli.py)이 up → ensure_bucket → ensure_databases 순서로 부른다.
 - 테스트는 conftest.py가 isolated_settings(..., "test")로 바꾼 설정으로 preflight를 부른다.
+- 테스트와 E2E DB는 migrate_disposable로 마이그레이션한다. 버려도 되는 DB라, 지금 없는
+  리비전에 있으면(지운 마이그레이션 초안, 다른 브랜치) 스키마를 비우고 다시 한다.
 """
 
 import subprocess
@@ -11,6 +13,9 @@ from urllib.parse import urlsplit, urlunsplit
 
 import psycopg
 import redis
+from alembic import command
+from alembic.config import Config
+from alembic.util import CommandError
 from botocore.exceptions import ClientError
 from psycopg import sql
 from sqlalchemy import URL, make_url
@@ -22,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 INFRA_DOWN = "인프라가 꺼져 있다. `uv run poe setup`을 실행하라."
 LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 CONNECT_TIMEOUT = 2  # 초. libpq는 2초보다 짧게 두지 못한다
+UNKNOWN_REVISION = "Can't locate revision"  # DB가 가리키는 리비전 파일이 없을 때 Alembic의 말
 
 type Target = Literal["test", "e2e"]
 
@@ -112,6 +118,29 @@ def reset_database(settings: Settings) -> None:
     with psycopg.connect(_conninfo(url, "postgres"), autocommit=True) as connection:
         connection.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(name))
         connection.execute(sql.SQL("CREATE DATABASE {}").format(name))
+
+
+def migrate_disposable(settings: Settings) -> bool:
+    """테스트나 E2E DB를 head까지 마이그레이션한다. 스키마를 비우고 처음부터 했으면 True다.
+
+    DB가 지금 없는 리비전에 있으면 public 스키마를 비우고 다시 한다. 이 PC의 DB가 아니면 비우지
+    않고 그대로 실패한다.
+    """
+    config = Config(toml_file=ROOT / "pyproject.toml")
+    config.attributes["database_url"] = settings.database_url
+    try:
+        command.upgrade(config, "head")
+    except CommandError as error:
+        if UNKNOWN_REVISION not in str(error) or not is_local(settings.database_url):
+            raise
+    else:
+        return False
+    url = make_url(settings.database_url)
+    with psycopg.connect(_conninfo(url, url.database or ""), autocommit=True) as connection:
+        connection.execute("DROP SCHEMA public CASCADE")
+        connection.execute("CREATE SCHEMA public")
+    command.upgrade(config, "head")
+    return True
 
 
 def ensure_bucket(settings: Settings) -> bool:

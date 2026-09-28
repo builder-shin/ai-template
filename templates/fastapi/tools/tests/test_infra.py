@@ -1,20 +1,26 @@
-"""개발 인프라 도구: 테스트·E2E 설정, 로컬 DB 판정, 사전 확인, 버킷과 CORS."""
+"""개발 인프라 도구: 테스트·E2E 설정, 로컬 DB 판정, 사전 확인, 버킷과 CORS, DB 다시 만들기."""
 
 import uuid
 from typing import Literal
 
 import httpx
+import psycopg
 import pytest
+from alembic.script import ScriptDirectory
+from psycopg import sql
+from sqlalchemy import make_url
 
 from app.core.config import Settings
 from app.core.storage import create_client
 from tools.infra import (
     INFRA_DOWN,
     RATE_LIMIT_FIELDS,
+    ROOT,
     TEST_RATE_LIMIT,
     ensure_bucket,
     is_local,
     isolated_settings,
+    migrate_disposable,
     preflight,
     reset_database,
 )
@@ -95,3 +101,30 @@ def test_bucket_is_created_once_with_cors_for_local_frontends(infra: Settings) -
         assert preflight_request.headers["access-control-allow-origin"] == "http://localhost:3000"
     finally:
         client.delete_bucket(Bucket=settings.s3_bucket)
+
+
+def test_a_database_on_a_missing_revision_is_rebuilt(infra: Settings) -> None:
+    """지운 마이그레이션 초안처럼 파일이 없는 리비전에 있는 DB는 스키마를 비우고 다시 한다."""
+    url = make_url(infra.database_url)
+    name = f"{url.database}_scratch_{uuid.uuid4().hex[:8]}"
+    server = url.set(drivername="postgresql", database="postgres").render_as_string(
+        hide_password=False
+    )
+    scratch = url.set(drivername="postgresql", database=name).render_as_string(hide_password=False)
+    with psycopg.connect(server, autocommit=True) as connection:
+        connection.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
+    try:
+        settings = infra.model_copy(
+            update={"database_url": url.set(database=name).render_as_string(hide_password=False)}
+        )
+        assert migrate_disposable(settings) is False
+        with psycopg.connect(scratch, autocommit=True) as connection:
+            connection.execute("UPDATE alembic_version SET version_num = 'deadbeef0000'")
+        assert migrate_disposable(settings) is True
+        with psycopg.connect(scratch) as connection:
+            current = connection.execute("SELECT version_num FROM alembic_version").fetchall()
+        assert current == [(ScriptDirectory(str(ROOT / "migrations")).get_current_head(),)]
+    finally:
+        with psycopg.connect(server, autocommit=True) as connection:
+            drop = sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)")
+            connection.execute(drop.format(sql.Identifier(name)))

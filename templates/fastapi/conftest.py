@@ -2,6 +2,7 @@
 
 - settings: .env를 읽어 DB를 app_test로, Valkey를 DB 15로 바꾼 설정. 연결하지 않는다.
 - infra: 인프라에 접속해 보고(꺼져 있으면 세션을 바로 멈춘다) app_test를 head까지 마이그레이션한다.
+  app_test가 지금 없는 리비전에 있으면 스키마를 비우고 다시 한다(tools.infra.migrate_disposable).
 - db: 테스트마다 롤백되는 세션 팩토리. 앱의 app.state.sessions 자리에 넣는다. 앱이 commit해도
   SAVEPOINT만 풀리고, 테스트가 끝나면 바깥 트랜잭션을 롤백하므로 다음 테스트에 남지 않는다.
 - redis: 테스트마다 비운(FLUSHDB) 테스트 전용 Valkey DB.
@@ -16,14 +17,11 @@
 import asyncio
 import uuid
 from collections.abc import AsyncIterator
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
 import pytest
 import structlog
-from alembic import command
-from alembic.config import Config
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
@@ -31,15 +29,13 @@ from app.core.config import Settings, load_settings
 from app.core.db import create_engine
 from app.core.logging import PLAIN_TRACEBACK
 from app.core.redis import create_redis
-from tools.infra import isolated_settings, preflight
+from tools.infra import isolated_settings, migrate_disposable, preflight
 from tools.mailpit import Mailpit
 
 if TYPE_CHECKING:
     from app.core.jsonapi.openapi import JsonApiApp
     from app.core.storage import Storage
     from app.tests.accounts import Accounts
-
-ROOT = Path(__file__).resolve().parent
 
 # 로그를 설정하지 않는 테스트(configure_logging을 부르지 않는 앱)의 structlog 기본값.
 # structlog의 기본 콘솔 출력은 rich로 예외를 그리는데, Python 3.14.7(Windows)에서 프로세스가
@@ -70,9 +66,7 @@ def infra(settings: Settings) -> Settings:
         preflight(settings)
     except SystemExit as error:
         pytest.exit(str(error), returncode=1)
-    config = Config(toml_file=ROOT / "pyproject.toml")
-    config.attributes["database_url"] = settings.database_url
-    command.upgrade(config, "head")
+    migrate_disposable(settings)
     return settings
 
 

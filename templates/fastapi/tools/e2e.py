@@ -17,7 +17,7 @@ import redis
 
 from app.core.config import Settings, load_settings
 from tools.dev import SCHEDULER, WORKER, api
-from tools.infra import RATE_LIMIT_FIELDS, isolated_settings, preflight
+from tools.infra import RATE_LIMIT_FIELDS, isolated_settings, migrate_disposable, preflight
 from tools.processes import ProcessGroup
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,12 +38,15 @@ def overrides(settings: Settings) -> dict[str, str]:
 
 
 def prepare(settings: Settings) -> None:
-    """E2E DB를 head까지 마이그레이션하고 시드를 넣는다. E2E용 Valkey DB를 비운다."""
+    """E2E DB를 head까지 마이그레이션하고 시드를 넣는다. E2E용 Valkey DB를 비운다.
+
+    E2E DB가 지금 없는 리비전에 있으면 스키마를 비우고 다시 한다(migrate_disposable).
+    """
+    migrate_disposable(settings)
     env = {**os.environ, "PYTHONUTF8": "1", **overrides(settings)}
-    for args in (("alembic", "upgrade", "head"), ("app.seed",)):
-        done = subprocess.run([sys.executable, "-m", *args], cwd=ROOT, env=env, check=False)
-        if done.returncode != 0:
-            raise SystemExit(f"E2E DB를 준비하지 못했다: python -m {' '.join(args)}")
+    done = subprocess.run([sys.executable, "-m", "app.seed"], cwd=ROOT, env=env, check=False)
+    if done.returncode != 0:
+        raise SystemExit("E2E DB를 준비하지 못했다: python -m app.seed")
     client = redis.Redis.from_url(settings.redis_url)  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
     try:
         client.flushdb()  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
