@@ -26,6 +26,7 @@ from pydantic.experimental.missing_sentinel import MISSING
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.modules.posts.events as events
 import app.modules.posts.policies as policies
 import app.modules.posts.repository as repository
 from app.core.access import Principal
@@ -149,6 +150,7 @@ async def create_post(
         cover_image_id=await _cover_id(session, actor, cover),
     )
     repository.add(session, post)
+    events.created(session, post)
     await session.commit()
     await cache.clear()
     return post
@@ -185,6 +187,7 @@ async def update_post(
             f"A post cannot go from {post.status} to {status}.",
             pointer="/data/attributes/status",
         )
+    was = post.status
     if title is not None:
         post.title = title
     if body is not None:
@@ -194,6 +197,7 @@ async def update_post(
         post.published_at = utc_now() if status == PostStatus.PUBLISHED else None
     if cover is not MISSING:
         post.cover_image_id = await _cover_id(session, actor, cover)
+    events.updated(session, post, was=was)
     await session.commit()
     await cache.clear()
     return post
@@ -204,6 +208,7 @@ async def delete_post(
 ) -> None:
     post = await _editable_post(session, post_id, actor)
     await repository.remove(session, post)
+    events.deleted(session, post)
     if post.author_id != actor.user_id:
         target_type = AuditLogTargetType.POSTS  # gen:module: 그대로
         await record_audit(

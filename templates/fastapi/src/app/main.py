@@ -15,7 +15,7 @@ from app.core.jsonapi.install import install_jsonapi
 from app.core.jsonapi.openapi import JsonApiApp
 from app.core.logging import configure_logging
 from app.core.permissions import PermissionRegistry
-from app.core.realtime import RealtimeEndpoint, create_realtime
+from app.core.realtime import RealtimeEndpoint, create_realtime, realtime_openapi
 from app.core.redis import create_redis
 from app.core.storage import Storage
 from app.modules import registry
@@ -96,6 +96,9 @@ def create_app(settings: Settings | None = None) -> JsonApiApp:
         app.include_router(router.api, prefix=API_PREFIX)
     # Socket.IO(WebSocket). 경로는 클라이언트의 기본값(/socket.io/)이다.
     app.mount("/socket.io", RealtimeEndpoint())
+    app.openapi_extensions.append(
+        realtime_openapi(registry.CHANNELS, registry.EVENTS, registry.MESSAGES)
+    )
     return app
 
 

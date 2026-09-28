@@ -338,7 +338,11 @@ def test_generated_code_passes_format_and_lint(
     commands = [("format", *config, *paths), ("check", *config, *rules, "--fix", *paths)]
     for command in commands:
         result = subprocess.run(
-            [sys.executable, "-m", "ruff", *command], capture_output=True, text=True, check=False
+            [sys.executable, "-m", "ruff", *command],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
         )
         assert result.returncode == 0, result.stdout + result.stderr
     for path in [*generated.module.rglob("*.py"), generated.migration]:

@@ -7,8 +7,9 @@
 - 모듈 사이의 등록: users가 계정을 닫을 때 부를 처리(auth의 세션 폐기)와, files가 파일을 읽게
   해 줄 규칙(사용자의 아바타는 공개)과 파일을 가리키는지 확인하는 처리(탈퇴 때 남길 파일)를 건다.
 - JOBS: 잡(`app.core.jobs.Job`). broker가 이름 그대로 등록하고, cron이 있으면 scheduler가 보낸다.
-- CHANNELS: 실시간 구독 채널(`app.core.realtime.Channel`). attach_realtime이 소켓 서버에 연결·구독
-  처리(realtime 모듈)를 걸 때 넘긴다.
+- CHANNELS, EVENTS, MESSAGES: 실시간 구독 채널, 보내는 이벤트, 클라이언트 메시지의 선언
+  (app.core.realtime). attach_realtime이 소켓 서버에 연결·구독 처리(realtime 모듈)를 걸 때 채널을
+  넘기고, 앱이 openapi.json에 계약의 실시간 확장으로 낸다.
 이 파일도 모듈의 공개 인터페이스만 import한다(check의 module-boundary 검사).
 """
 
@@ -20,7 +21,7 @@ from app.core.jobs import Job
 from app.core.jsonapi.operation import JsonApiRouter
 from app.core.mail import SEND_MAIL
 from app.core.permissions import Permission
-from app.core.realtime import Channel
+from app.core.realtime import Channel, EventSpec, MessageSpec
 from app.modules import audit_logs, auth, files, posts, realtime, roles, users
 
 ROUTERS: tuple[JsonApiRouter, ...] = (
@@ -42,6 +43,8 @@ PERMISSIONS: tuple[Permission, ...] = (
 JOBS: tuple[Job[...], ...] = (SEND_MAIL, *auth.JOBS, *files.JOBS)
 AUTHENTICATOR: Authenticator = auth.authenticate
 CHANNELS: tuple[Channel, ...] = (*posts.CHANNELS,)
+EVENTS: tuple[EventSpec, ...] = (*posts.EVENTS,)
+MESSAGES: tuple[MessageSpec, ...] = realtime.MESSAGES
 
 
 def attach_realtime(server: socketio.AsyncServer, state: State) -> None:

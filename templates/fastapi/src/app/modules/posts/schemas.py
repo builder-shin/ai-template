@@ -13,6 +13,7 @@ from app.core.jsonapi.models import (
     Document,
     JsonApiModel,
     Omittable,
+    ResourceIdentifier,
     ResourceWithRelationships,
     ToOne,
     UpdateDocumentWithRelationships,
@@ -20,7 +21,7 @@ from app.core.jsonapi.models import (
 )
 from app.core.jsonapi.query import FilterModel
 from app.modules.files import FileResource
-from app.modules.posts.models import PostStatus
+from app.modules.posts.models import Post, PostStatus
 from app.modules.users import UserPublicResource
 
 PostType = Literal["posts"]
@@ -57,6 +58,47 @@ class PostCollectionDocument(CollectionDocument[PostResource]):
     """컬렉션 문서. 페이지 링크와 페이지 메타를 항상 담는다."""
 
     included: list[UserPublicResource | FileResource] = included_field()
+
+
+# 실시간 이벤트의 페이로드(계약의 realtime.tsp). 보내는 곳은 events.py다.
+class PostCreatedEventDocument(Document[PostResource]):
+    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+
+
+class PostUpdatedEventDocument(Document[PostResource]):
+    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+
+
+class PostPublishedEventDocument(Document[PostResource]):
+    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+
+
+class PostDeletedEventDocument(JsonApiModel):
+    data: ResourceIdentifier[PostType]
+
+
+def post_resource(post: Post) -> PostResource:
+    """글의 리소스 객체. 응답(router)과 이벤트(events)가 같이 쓴다."""
+    author = ResourceIdentifier[Literal["users"]](type="users", id=str(post.author_id))
+    cover = None
+    if post.cover_image_id is not None:
+        cover = ResourceIdentifier[Literal["files"]](type="files", id=str(post.cover_image_id))
+    return PostResource(
+        type="posts",
+        id=str(post.id),
+        attributes=PostAttributes(
+            title=post.title,
+            body=post.body,
+            status=post.status,
+            published_at=post.published_at,
+            created_at=post.created_at,
+            updated_at=post.updated_at,
+        ),
+        relationships=PostRelationships(
+            author=ToOne[Literal["users"]](data=author),
+            cover_image=ToOne[Literal["files"]](data=cover),
+        ),
+    )
 
 
 class PostCreateAttributes(JsonApiModel):

@@ -114,11 +114,11 @@ async def test_queued_events_leave_only_after_a_commit(
     db: async_sessionmaker[AsyncSession], publisher: RecordingPublisher
 ) -> None:
     async with db() as session:
-        queue(session, EVENT)
+        queue(session, EVENT.name, EVENT.rooms, lambda: EVENT.payload)
         assert publisher.events == []
         await session.commit()
         assert publisher.events == [EVENT]
-        queue(session, EVENT)
+        queue(session, EVENT.name, EVENT.rooms, lambda: EVENT.payload)
         await session.rollback()
         await session.commit()
     assert publisher.events == [EVENT]
@@ -136,8 +136,8 @@ async def test_a_failed_publish_does_not_fail_the_commit(
 ) -> None:
     broken = BrokenThenRecording()
     async with db(info={"realtime_publisher": broken}) as session:
-        queue(session, EVENT)
-        queue(session, EVENT)
+        queue(session, EVENT.name, EVENT.rooms, lambda: EVENT.payload)
+        queue(session, EVENT.name, EVENT.rooms, lambda: EVENT.payload)
         await session.commit()
     # 하나가 실패해도 나머지를 보낸다.
     assert broken.events == [EVENT, EVENT]

@@ -105,8 +105,11 @@ def _normalize(schema: dict[str, Any]) -> None:
     - 단일 값 Literal은 `const`가 아니라 `enum: [값]`(룰셋이 enum으로 리소스 type을 읽는다)
     - 제목(title)은 뺀다(계약에 없고 `Publishedat` 같은 값이 된다)
     - `dict[str, T]`는 `unevaluatedProperties`
+    - 속성이 없는 모델(빈 attributes)은 `properties: {}` 없이 `type: object`만
     """
     schema.pop("title", None)
+    if schema.get("properties") == {}:
+        del schema["properties"]
     properties: dict[str, dict[str, Any]] = schema.get("properties", {})
     for prop in properties.values():
         prop.pop("title", None)

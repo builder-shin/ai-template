@@ -93,7 +93,7 @@ class Gateway:
             subscription = RealtimeSubscription.model_validate(data)
         except ValidationError:
             return None
-        return self.channels.get(subscription.channel)
+        return self.channels.get(subscription.channel.root)
 
     async def _allowed(self, sid: str, channel: Channel) -> bool:
         if channel.permission is None:

@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, RootModel
 from pydantic.experimental.missing_sentinel import MISSING
 
 from app.core.jsonapi.models import (
@@ -44,10 +44,18 @@ class RealtimeTicketCreateDocument(
     pass
 
 
+class RealtimeChannel(RootModel[str]):
+    """구독할 수 있는 채널. main.tsp의 x-realtime-channels와 같은 목록이다.
+
+    값은 모듈이 등록한 채널이다. openapi.json의 enum은 앱이 등록된 채널로 채우고
+    (app.core.realtime.realtime_openapi), 들어온 값은 gateway가 채널 목록으로 본다.
+    """
+
+
 class RealtimeSubscription(JsonApiModel):
     """클라이언트가 subscribe·unsubscribe 메시지로 보내는 페이로드."""
 
-    channel: str
+    channel: RealtimeChannel
 
 
 class RealtimeAck(JsonApiModel):

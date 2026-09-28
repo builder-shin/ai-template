@@ -5,7 +5,7 @@
 
 import uuid
 from collections.abc import Sequence
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from fastapi import Depends, Path, Request, Response
 from pydantic.experimental.missing_sentinel import MISSING
@@ -17,7 +17,7 @@ from app.core.clients import ClientDep
 from app.core.db import SessionDep
 from app.core.jsonapi.errors import require_matching_id
 from app.core.jsonapi.media import JsonApiBody, JsonApiResponse
-from app.core.jsonapi.models import CollectionMeta, ResourceIdentifier, ToOne
+from app.core.jsonapi.models import CollectionMeta
 from app.core.jsonapi.operation import (
     AUTH_ERRORS,
     BODY_ERRORS,
@@ -37,14 +37,12 @@ from app.modules import files, users
 from app.modules.posts.models import Post, PostStatus
 from app.modules.posts.permissions import POSTS_CREATE
 from app.modules.posts.schemas import (
-    PostAttributes,
     PostCollectionDocument,
     PostCreateDocument,
     PostDocument,
     PostFilter,
-    PostRelationships,
-    PostResource,
     PostUpdateDocument,
+    post_resource,
 )
 
 posts = JsonApiRouter(prefix="/posts", tag="posts", interface="Posts")
@@ -91,29 +89,6 @@ DELETE = Operation(
 )
 PostId = Annotated[uuid.UUID, Path(alias="id")]
 Included = users.UserPublicResource | files.FileResource
-
-
-def post_resource(post: Post) -> PostResource:
-    author = ResourceIdentifier[Literal["users"]](type="users", id=str(post.author_id))
-    cover = None
-    if post.cover_image_id is not None:
-        cover = ResourceIdentifier[Literal["files"]](type="files", id=str(post.cover_image_id))
-    return PostResource(
-        type="posts",
-        id=str(post.id),
-        attributes=PostAttributes(
-            title=post.title,
-            body=post.body,
-            status=post.status,
-            published_at=post.published_at,
-            created_at=post.created_at,
-            updated_at=post.updated_at,
-        ),
-        relationships=PostRelationships(
-            author=ToOne[Literal["users"]](data=author),
-            cover_image=ToOne[Literal["files"]](data=cover),
-        ),
-    )
 
 
 async def included_for(

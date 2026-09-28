@@ -6509,6 +6509,45 @@
         ],
         "description": "관계를 함께 보내는 생성 요청 문서."
       },
+      "PostCreatedEventDocument": {
+        "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PostResource"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "PostDeletedEventDocument": {
+        "properties": {
+          "data": {
+            "description": "관계가 가리키는 리소스 식별자.",
+            "properties": {
+              "type": {
+                "enum": [
+                  "posts"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "PostDocument": {
         "properties": {
           "data": {
@@ -6533,6 +6572,18 @@
           "data"
         ],
         "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."
+      },
+      "PostPublishedEventDocument": {
+        "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PostResource"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
       },
       "PostRelationships": {
         "properties": {
@@ -6697,6 +6748,18 @@
         ],
         "description": "관계를 함께 보내는 수정 요청 문서."
       },
+      "PostUpdatedEventDocument": {
+        "description": "단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PostResource"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "PostWriteRelationships": {
         "properties": {
           "coverImage": {
@@ -6737,6 +6800,41 @@
         },
         "type": "object"
       },
+      "RealtimeAck": {
+        "description": "subscribe·unsubscribe에 대한 서버의 ack. ok가 false면 error가 있다(권한 없음\npermission.denied, 모르는 채널 validation.invalid_choice).",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorObject"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      },
+      "RealtimeChannel": {
+        "type": "string",
+        "enum": [
+          "posts",
+          "posts:all"
+        ],
+        "description": "구독할 수 있는 채널. main.tsp의 x-realtime-channels와 같은 목록이다."
+      },
+      "RealtimeSubscription": {
+        "description": "클라이언트가 subscribe·unsubscribe 메시지로 보내는 페이로드.",
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/RealtimeChannel"
+          }
+        },
+        "required": [
+          "channel"
+        ],
+        "type": "object"
+      },
       "RealtimeTicketAttributes": {
         "properties": {
           "token": {
@@ -6755,7 +6853,6 @@
         ]
       },
       "RealtimeTicketCreateAttributes": {
-        "properties": {},
         "type": "object"
       },
       "RealtimeTicketCreateDocument": {
@@ -8191,6 +8288,77 @@
     },
     {
       "name": "realtime"
+    }
+  ],
+  "x-realtime-channels": [
+    {
+      "name": "posts",
+      "permission": null,
+      "description": "발행된 글의 이벤트. 익명 연결도 구독할 수 있다."
+    },
+    {
+      "name": "posts:all",
+      "permission": "posts:manage",
+      "description": "모든 글의 이벤트."
+    }
+  ],
+  "x-realtime-events": [
+    {
+      "name": "post.created",
+      "rooms": [
+        "posts:all",
+        "user:{authorId}"
+      ],
+      "payload": "PostCreatedEventDocument"
+    },
+    {
+      "name": "post.updated",
+      "rooms": [
+        "posts:all",
+        "user:{authorId}"
+      ],
+      "conditionalRooms": [
+        {
+          "room": "posts",
+          "when": "published"
+        }
+      ],
+      "payload": "PostUpdatedEventDocument"
+    },
+    {
+      "name": "post.published",
+      "rooms": [
+        "posts",
+        "posts:all",
+        "user:{authorId}"
+      ],
+      "payload": "PostPublishedEventDocument"
+    },
+    {
+      "name": "post.deleted",
+      "rooms": [
+        "posts:all",
+        "user:{authorId}"
+      ],
+      "conditionalRooms": [
+        {
+          "room": "posts",
+          "when": "wasPublished"
+        }
+      ],
+      "payload": "PostDeletedEventDocument"
+    }
+  ],
+  "x-realtime-messages": [
+    {
+      "name": "subscribe",
+      "payload": "RealtimeSubscription",
+      "ack": "RealtimeAck"
+    },
+    {
+      "name": "unsubscribe",
+      "payload": "RealtimeSubscription",
+      "ack": "RealtimeAck"
     }
   ]
 }

@@ -11,6 +11,7 @@ FastAPI만으로 끌 수 없는 것만 여기서 고친다.
 """
 
 import copy
+from collections.abc import Callable
 from typing import Any, override
 
 from fastapi import FastAPI
@@ -130,11 +131,20 @@ class JsonApiApp(FastAPI):
 
     FastAPI 문서의 `app.openapi = custom` 대입 대신 메서드를 재정의한다. 서브클래스면 이 클래스로
     만든 모든 앱(테스트 포함)에 같은 후처리가 붙고, FastAPI의 `openapi_schema` 캐시 규칙을
-    그대로 쓴다.
+    그대로 쓴다. openapi_extensions는 후처리 전에 문서를 고치는 함수다(예: 실시간 확장).
     """
+
+    openapi_extensions: list[Callable[[Json], None]]
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.openapi_extensions = []
 
     @override
     def openapi(self) -> dict[str, Any]:
         if self.openapi_schema is None:
-            self.openapi_schema = finalize_openapi(super().openapi())
+            raw = copy.deepcopy(super().openapi())
+            for extend in self.openapi_extensions:
+                extend(raw)
+            self.openapi_schema = finalize_openapi(raw)
         return self.openapi_schema
