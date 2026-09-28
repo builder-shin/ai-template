@@ -5,6 +5,7 @@
 - 인증과 권한 검사(의존성). auth와 permission을 app.core.access가 강제한다
 - 쿼리 파라미터(OpenAPI)와 `x-jsonapi-include`, `x-jsonapi-sort`
 - 쿼리 파서(의존성). 선언에 없는 쿼리 파라미터는 400이다. 파서 본체는 query.py에 있다.
+- JSON:API 밖의 리다이렉트(소셜 로그인)는 RedirectOperation으로 선언한다. 성공은 본문 없는 302다.
 
 쿼리 파라미터는 FastAPI의 `Query(alias=...)`로 선언하지 않고 선언 객체가 OpenAPI 파라미터를
 직접 만든다. `Query(alias="page[number]")`도 동작하지만 제목(title), `anyOf: [.., null]`(enum
@@ -15,6 +16,7 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, override
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -28,6 +30,7 @@ from app.core.jsonapi.query import (
     PAGE_SIZE_MAX,
     CollectionQuery,
     FilterModel,
+    RedirectQuery,
     ResourceQuery,
     parse_fields,
     parse_filter,
@@ -35,6 +38,7 @@ from app.core.jsonapi.query import (
     parse_page,
     parse_sort,
     query_error,
+    single,
 )
 
 REF_TEMPLATE = "#/components/schemas/{model}"
@@ -45,6 +49,8 @@ BODY_ERRORS = (415, 422)
 AUTH_ERRORS = (401, 403)
 NOT_FOUND = (404,)
 CONFLICT = (409,)
+# 리다이렉트(RedirectOperation)의 에러. 브라우저가 이동하는 요청이라 협상 에러(406, 415)가 없다.
+REDIRECT_ERRORS = (400, 404, 429, 500)
 # 모든 POST에 넣는다: 클라이언트가 만든 id는 403, 본문의 type 불일치는 409다(JSON:API 1.1).
 # 로그인이 필요한 POST에서 AUTH_ERRORS와 403이 겹쳐도 된다. 응답은 상태마다 하나다.
 CREATE_ERRORS = (403, 409)
@@ -59,6 +65,7 @@ _SUCCESS_DESCRIPTIONS: Mapping[int, str] = {
     201: "201 Created.",
     202: "202 Accepted.",
     204: "204 No Content.",
+    302: "Redirection",
 }
 _ERROR_DESCRIPTIONS: Mapping[int, str] = {
     400: "The server could not understand the request due to invalid syntax.",
@@ -240,6 +247,73 @@ class CollectionOperation[FilterT: FilterModel](Operation):
             sort=parse_sort(request, self.sort),
             filter=parse_filter(request, self.filter),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class QueryParameter:
+    """리다이렉트 operation의 쿼리 파라미터. JSON:API 밖의 이름이다(예: redirectUri, state)."""
+
+    name: str
+    required: bool = False
+    format: Literal["uri"] | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class RedirectOperation(Operation):
+    """JSON:API 밖의 리다이렉트 operation(소셜 로그인). 성공하면 본문 없이 302와 Location이다.
+
+    - query: 이 operation의 쿼리 파라미터. 필수인데 없거나, 두 번 오거나, 형식(uri)이 틀리면
+      400 jsonapi.invalid_query다.
+    - callback: 제공자가 돌아오는 콜백이다. 선언하지 않은 파라미터(제공자가 덧붙이는 scope 등)를
+      받아들인다. 콜백이 아니면 선언하지 않은 파라미터는 400이다.
+    엔드포인트는 `Depends(선언)`으로 RedirectQuery(values: 이름 → 값)를 받는다.
+    """
+
+    status_code: int = 302
+    auth: Auth = "none"
+    query: tuple[QueryParameter, ...] = ()
+    callback: bool = False
+
+    @override
+    def parameters(self) -> list[dict[str, Any]]:
+        parameters: list[dict[str, Any]] = []
+        for item in self.query:
+            schema = {"type": "string"} | ({} if item.format is None else {"format": item.format})
+            parameter = {"name": item.name, "in": "query", "required": item.required}
+            parameters.append({**parameter, "schema": schema, "explode": False})
+        return parameters
+
+    @override
+    def responses(self) -> dict[int | str, dict[str, Any]]:
+        location = {"required": True, "schema": {"type": "string", "format": "uri"}}
+        redirect = {"description": self.success_description, "headers": {"location": location}}
+        return {self.status_code: redirect, **super().responses()}
+
+    @override
+    def is_known_parameter(self, name: str) -> bool:
+        return self.callback or super().is_known_parameter(name)
+
+    @override
+    async def __call__(self, request: Request) -> RedirectQuery:
+        self.check_unknown(request)
+        values: dict[str, str] = {}
+        for item in self.query:
+            if item.name not in request.query_params:
+                if item.required:
+                    detail = f"Query parameter {item.name} is required."
+                    raise query_error(ErrorCode.JSONAPI_INVALID_QUERY, item.name, detail)
+                continue
+            value = single(request, item.name)
+            if item.format == "uri" and not _is_url(value):
+                detail = f"Query parameter {item.name} must be an absolute URL."
+                raise query_error(ErrorCode.JSONAPI_INVALID_QUERY, item.name, detail)
+            values[item.name] = value
+        return RedirectQuery(include=(), fields={}, values=values)
+
+
+def _is_url(value: str) -> bool:
+    parts = urlparse(value)
+    return parts.scheme in {"http", "https"} and bool(parts.netloc)
 
 
 def _access(operation: Operation) -> list[Any]:

@@ -7,7 +7,9 @@ FastAPI만으로 끌 수 없는 것만 여기서 고친다.
 3. InlineModel 스키마(`x-inline`)를 참조 자리에 펼치고 컴포넌트에서 지운다.
 4. 제목을 뺀다: 파라미터 스키마(FastAPI의 `title: Id`), enum 컴포넌트(모델은 JsonApiModel이 뺀다),
    operation `summary`(FastAPI가 라우트 이름으로 만드는 "Posts List". 계약에는 없다).
-5. `securitySchemes`와 루트 `x-generated`를 넣는다.
+5. 리다이렉트(3xx) 응답의 본문을 지운다. FastAPI는 본문이 있을 수 있는 상태마다 라우트의 미디어
+   타입으로 빈 본문을 붙인다. 응답 클래스를 바꾸면 에러 응답의 미디어 타입까지 바뀐다.
+6. `securitySchemes`와 루트 `x-generated`를 넣는다.
 """
 
 import copy
@@ -111,6 +113,14 @@ def _strip_titles(spec: Json) -> None:
         schema.pop("title", None)
 
 
+def _drop_redirect_bodies(spec: Json) -> None:
+    for operation in _operations(spec):
+        responses: Json = operation.get("responses", {})
+        for status, response in responses.items():
+            if str(status).startswith("3"):
+                response.pop("content", None)
+
+
 def finalize_openapi(raw: Json) -> Json:
     """FastAPI의 OpenAPI 문서를 계약 표기로 바꾼 사본을 돌려준다."""
     spec = copy.deepcopy(raw)
@@ -120,6 +130,7 @@ def finalize_openapi(raw: Json) -> Json:
     _merge_component_extensions(spec, schemas)
     spec = _inline_marked(spec, schemas)
     _strip_titles(spec)
+    _drop_redirect_bodies(spec)
     components = spec["components"]
     components["schemas"] = dict(sorted(components["schemas"].items()))
     components["securitySchemes"] = {"BearerAuth": {"type": "http", "scheme": "Bearer"}}

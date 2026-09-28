@@ -74,6 +74,13 @@ class CollectionQuery[FilterT: FilterModel](ResourceQuery):
     filter: FilterT
 
 
+@dataclass(frozen=True, slots=True)
+class RedirectQuery(ResourceQuery):
+    """리다이렉트 operation의 쿼리. values는 선언한 파라미터 중 들어온 것(이름 → 값)이다."""
+
+    values: Mapping[str, str]
+
+
 def query_error(code: ErrorCode, parameter: str, detail: str) -> ApiError:
     return ApiError(400, code, detail, parameter=parameter)
 
