@@ -7,9 +7,9 @@
 - refreshToken grant: refresh token을 회전한다. 이미 쓴 토큰이 다시 오면 그 세션을 폐기하고
   401 auth.refresh_token_reused다.
 - oauthCode grant: 소셜 로그인 콜백이 프론트로 넘긴 1회용 코드(60초)와, authorize에 보낸
-  codeChallenge를 만든 codeVerifier다. 코드가 틀렸거나 만료됐거나 이미 썼거나 codeVerifier가
-  codeChallenge를 만들지 못하면(로그인 CSRF 방지) 401 auth.oauth_code_invalid, 그사이
-  비활성화된 계정은 403 auth.account_deactivated다.
+  codeChallenge를 만든 codeVerifier다. 코드가 틀렸거나 만료됐거나 이미 썼거나, codeVerifier가
+  RFC 7636 모양(43~128자)이 아니거나 codeChallenge를 만들지 못하면(로그인 CSRF 방지) 401
+  auth.oauth_code_invalid, 그사이 비활성화된 계정은 403 auth.account_deactivated다.
 """
 
 import uuid

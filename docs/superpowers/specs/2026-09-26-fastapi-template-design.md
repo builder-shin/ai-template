@@ -679,6 +679,11 @@ M1~M4의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획
   - 구조 비교에서 `--subset`을 떼고, 실시간 선언(`x-realtime-*`)도 계약과 같은지 본다.
   - python-socketio에는 타입 정보가 없어 쓰는 API만 담은 스텁(`typings/socketio/`)을 두었다.
   - `gen:module`의 테이블 검사는 소스를 바이트로 읽는다(BOM이 있는 파일, M3 최종 재리뷰).
+  - 채널 구독의 권한은 구독할 때 본다. 구독한 뒤 권한을 잃거나 계정이 닫혀도 그 연결은 끊기거나 구독을 풀 때까지 받는다. 클라이언트는 `me.updated`(`roles`, `status`)나 `session.revoked`를 받으면 새 티켓으로 다시 붙는다(§1.3, §6.8, 최종 리뷰).
+  - 역할 이름을 이미 있는 이름으로 바꾸면서 권한도 바꾸는 요청은 422 `validation.already_taken`이다. 멤버 알림은 이름 검사가 끝난 뒤에 한다(최종 리뷰).
+  - 토큰의 해시는 짝이 없는 서로게이트도 인코딩한다(`surrogatepass`). 그런 토큰은 500이 아니라 각 grant의 401이다(최종 리뷰).
+  - `codeVerifier`는 RFC 7636 모양(`[A-Za-z0-9._~-]` 43~128자)이어야 한다. 제공자의 에러는 `access_denied`만 `auth.oauth_denied`이고, 나머지는 `auth.oauth_failed`다(최종 리뷰).
+  - OpenTelemetry는 헬스 체크 요청과 ASGI send·receive를 span으로 만들지 않는다. 쓰기 전용 발행기와 소켓 테스트 도우미는 쓴 연결을 닫는다(최종 리뷰).
 - 나중. M2의 최종 리뷰가 남긴, 아직 정하지 않은 결정이다.
   - `DELETE /me`에 다시 인증 요구하기
   - `POST /password-changes`에 엄격한 레이트 리밋 걸기
@@ -692,6 +697,14 @@ M1~M4의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획
   - 사용자별 파일 수·용량 한도(ready 파일은 정리되지 않는다)
   - 탈퇴한 사용자에게 남은 파일(글의 커버 이미지) 정리
   - 캐시 키에 세대 번호를 넣어 채우는 중의 경쟁, `clear()`의 SCAN, 배포 직후 옛 모양의 문서를 함께 없애기
+- 나중. M4의 최종 리뷰가 남긴, 아직 정하지 않은 결정이다.
+  - 권한을 잃거나 계정이 닫힌 연결을 권한 채널에서 서버가 내보내기. 인스턴스를 가로지르는 사용자별 소켓 id 기록이 필요하다.
+  - 발행을 취소한 글(published → draft)을 `posts` 채널에 알리기. 계약에 그 이벤트가 없다.
+  - 계약에 `codeChallenge`의 형식(base64url 43자)을 스키마 pattern으로 적기. 지금은 설명에만 있다.
+  - `spec-compare`의 실시간 비교를 키 순서와 상관없게 하기
+  - 적합성 흐름: `hd`가 없는 구글 검증 이메일은 기존 계정에 연결하지 않는다
+  - 첫 연결 전의 발행 때문에 python-socketio가 새로 만든 Valkey 클라이언트를 `Realtime.close()`가 닫지 못한다
+  - 준비 검사(`/health/ready`)의 DB·Valkey span이 따로 루트 trace가 된다. 헬스 경로를 코드에서 빼므로 `OTEL_PYTHON_FASTAPI_EXCLUDED_URLS`는 읽지 않는다
 
 ## 13. 계획 단계에서 확인할 것
 
