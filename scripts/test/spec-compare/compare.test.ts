@@ -5,6 +5,7 @@ import {
   normalizePath,
   type OpenApiLike,
   reachableSchemas,
+  realtimeMismatches,
   restrictToImplemented,
 } from "../../src/spec-compare/compare.ts";
 
@@ -91,6 +92,7 @@ describe("부분 비교(--subset)", () => {
       missingSchemas: ["HealthCheck"],
       missingOperations: [],
       extraOperations: [],
+      realtimeMismatches: [],
     });
   });
 
@@ -112,5 +114,46 @@ describe("부분 비교(--subset)", () => {
     const result = compareSpecs(referenced, implementation);
     expect(result.missingOperations).toEqual(["GET /api/v1/posts"]);
     expect(result.missingSchemas).toEqual(["ErrorCode", "PostCollectionDocument"]);
+  });
+});
+
+describe("실시간 확장", () => {
+  const realtime: OpenApiLike = {
+    "x-realtime-channels": [{ name: "posts", permission: null, description: "계약의 설명" }],
+    "x-realtime-events": [
+      { name: "post.created", rooms: ["posts:all"], payload: "PostCreatedEventDocument" },
+    ],
+    "x-realtime-messages": [
+      { name: "subscribe", payload: "RealtimeSubscription", ack: "RealtimeAck" },
+    ],
+  };
+
+  it("설명이 달라도, 구현의 항목이 더 있어도 통과한다", () => {
+    const implementation: OpenApiLike = {
+      ...realtime,
+      "x-realtime-channels": [
+        { name: "posts", permission: null, description: "구현의 설명" },
+        { name: "comments", permission: null, description: "프로젝트가 더한 채널" },
+      ],
+    };
+    expect(realtimeMismatches(realtime, implementation)).toEqual([]);
+  });
+
+  it("빠졌거나 모양이 다른 항목을 이름으로 알려 준다", () => {
+    const implementation: OpenApiLike = {
+      "x-realtime-events": [
+        { name: "post.created", rooms: ["posts"], payload: "PostCreatedEventDocument" },
+      ],
+      "x-realtime-messages": realtime["x-realtime-messages"],
+    };
+    expect(realtimeMismatches(realtime, implementation)).toEqual([
+      "x-realtime-channels: posts",
+      "x-realtime-events: post.created",
+    ]);
+  });
+
+  it("부분 모드는 실시간 항목을 보지 않는다", () => {
+    expect(compareSpecs(realtime, {}, { subset: true }).realtimeMismatches).toEqual([]);
+    expect(compareSpecs(realtime, {}).realtimeMismatches).toHaveLength(3);
   });
 });

@@ -29,7 +29,7 @@ jobs:
           key: tools-${{ runner.os }}-${{ hashFiles('scripts/src/tools/manifest.ts') }}
       - run: pnpm check
       - name: Compare the FastAPI spec with the contract (implemented operations)
-        run: pnpm run -s spec-compare --subset contract/openapi.yaml templates/fastapi/openapi.json
+        run: pnpm run -s spec-compare contract/openapi.yaml templates/fastapi/openapi.json
       - name: Scan git history for secrets
         run: pnpm run -s tool betterleaks git . --no-banner --redact
 

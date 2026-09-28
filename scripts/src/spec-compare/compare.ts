@@ -3,13 +3,23 @@
 export interface OpenApiLike {
   readonly paths?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
   readonly components?: { readonly schemas?: Readonly<Record<string, unknown>> };
+  readonly [extension: `x-${string}`]: unknown;
 }
 
 export interface Comparison {
   readonly missingSchemas: readonly string[];
   readonly missingOperations: readonly string[];
   readonly extraOperations: readonly string[];
+  /** 구현에 없거나 계약과 다른 실시간 항목. 예: "x-realtime-events: post.created" */
+  readonly realtimeMismatches: readonly string[];
 }
+
+/** 계약의 실시간 확장. 항목마다 name이 있고, 설명(description)을 뺀 나머지가 같아야 한다. */
+export const REALTIME_EXTENSIONS = [
+  "x-realtime-channels",
+  "x-realtime-events",
+  "x-realtime-messages",
+] as const;
 
 const METHODS = new Set(["get", "put", "post", "delete", "options", "head", "patch", "trace"]);
 
@@ -75,6 +85,43 @@ export function reachableSchemas(spec: OpenApiLike): Set<string> {
   return found;
 }
 
+function withoutDescription(item: unknown): string {
+  if (typeof item !== "object" || item === null || Array.isArray(item)) return JSON.stringify(item);
+  const kept = Object.entries(item).filter(([key]) => key !== "description");
+  return JSON.stringify(Object.fromEntries(kept));
+}
+
+function nameOf(item: unknown): string {
+  const name =
+    typeof item === "object" && item !== null ? (item as Record<string, unknown>).name : undefined;
+  return typeof name === "string" ? name : JSON.stringify(item);
+}
+
+/**
+ * 계약의 실시간 항목(채널, 이벤트, 메시지)이 구현에 같은 모양으로 있는가. oasdiff는 이 확장을 보지 않는다.
+ * 구현에 더 있는 항목(프로젝트가 더한 모듈의 이벤트)은 괜찮다.
+ */
+export function realtimeMismatches(contract: OpenApiLike, implementation: OpenApiLike): string[] {
+  const mismatches: string[] = [];
+  for (const extension of REALTIME_EXTENSIONS) {
+    const expected = contract[extension];
+    if (!Array.isArray(expected)) continue;
+    const actual = implementation[extension];
+    const found = new Map(
+      (Array.isArray(actual) ? actual : []).map((item: unknown) => [
+        nameOf(item),
+        withoutDescription(item),
+      ]),
+    );
+    for (const item of expected) {
+      if (found.get(nameOf(item)) !== withoutDescription(item)) {
+        mismatches.push(`${extension}: ${nameOf(item)}`);
+      }
+    }
+  }
+  return mismatches;
+}
+
 export interface CompareOptions {
   /** 구현에 있는 operation만 비교한다(구현 도중). 스키마는 그 operation에서 닿는 것만 요구한다. */
   readonly subset?: boolean;
@@ -83,7 +130,9 @@ export interface CompareOptions {
 /**
  * 계약의 스키마 이름은 모두 구현에 있어야 한다(구현의 보조 스키마가 더 있는 것은 괜찮다).
  * operation 집합은 정확히 같아야 한다. 경로 파라미터 이름은 달라도 된다.
+ * 계약의 실시간 항목은 구현에 같은 모양으로 있어야 한다(realtimeMismatches).
  * 부분 모드는 구현에 있는 operation만 남긴 계약과 비교한다. 계약에 없는 operation은 여전히 문제다.
+ * 부분 모드는 실시간 항목을 보지 않는다.
  */
 export function compareSpecs(
   contract: OpenApiLike,
@@ -108,6 +157,7 @@ export function compareSpecs(
     extraOperations: [...implementedOperations]
       .filter((key) => !contractOperations.has(key))
       .sort(),
+    realtimeMismatches: options.subset === true ? [] : realtimeMismatches(contract, implementation),
   };
 }
 
@@ -120,6 +170,9 @@ export function describeComparison(result: Comparison): string[] {
     ...result.extraOperations.map(
       (key) =>
         `${key}는 계약에 없다. 플랫폼 기능이면 계약(contract/typespec)에 먼저 추가하고, 프로젝트 전용 기능이면 생성된 프로젝트에서 만든다.`,
+    ),
+    ...result.realtimeMismatches.map(
+      (item) => `${item}가 구현 스펙에 없거나 계약과 다르다. 계약의 실시간 선언과 같게 낸다.`,
     ),
   ];
 }

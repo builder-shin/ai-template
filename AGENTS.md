@@ -24,7 +24,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `pnpm gen`                                   | 계약을 컴파일하고 적합성 테스트 타입을 다시 만든다                                                                                                                                                         |
 | `pnpm sync`                                  | 공유 자산 원본을 템플릿 사본 위치로 복사한다                                                                                                                                                               |
 | `pnpm tool <oasdiff\|betterleaks>`           | 버전을 고정한 바이너리를 받아 실행한다                                                                                                                                                                     |
-| `pnpm spec-compare [--subset] <계약> <구현>` | 백엔드 스펙이 계약과 이름·경로가 같고 계약을 깨지 않는지 본다. `--subset`은 구현한 operation만 비교한다                                                                                                    |
+| `pnpm spec-compare [--subset] <계약> <구현>` | 백엔드 스펙이 계약과 이름·경로·실시간 선언이 같고 계약을 깨지 않는지 본다. `--subset`은 구현 도중에 구현한 operation만 비교한다                                                                            |
 | `pnpm conformance <대상>`                    | 대상 스택을 compose로 띄우고 적합성 흐름 테스트를 돌린 뒤 내린다(Docker 필요). 템플릿의 개발 인프라와 같은 compose 프로젝트를 써서 개발 DB에 마이그레이션과 시드를 실행한다(끝나면 개발 인프라도 내려간다) |
 
 ## 규칙
