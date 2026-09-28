@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, utc_now
@@ -36,5 +36,10 @@ class User(Base):
     status: Mapped[UserStatus] = mapped_column(default=UserStatus.ACTIVE, index=True)
     password_hash: Mapped[str | None] = mapped_column(String(255))  # 소셜 전용 계정은 None
     email_verified_at: Mapped[datetime | None] = mapped_column()
+    # 아바타(files). 파일을 지우면 null이 된다. files.owner_id가 users를 가리켜 두 테이블이 서로를
+    # 참조하므로, 이 외래 키는 테이블을 만든 뒤에 건다(use_alter).
+    avatar_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("files.id", ondelete="SET NULL", use_alter=True), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(default=utc_now, index=True)
     updated_at: Mapped[datetime] = mapped_column(default=utc_now, onupdate=utc_now)

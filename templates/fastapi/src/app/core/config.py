@@ -2,14 +2,27 @@
 
 from typing import Annotated, Literal
 
-from pydantic import Field, SecretStr, ValidationError
+from pydantic import BeforeValidator, Field, SecretStr, ValidationError
 from pydantic_core import ErrorDetails
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 NonEmpty = Annotated[str, Field(min_length=1)]
 HttpUrl = Annotated[str, Field(pattern=r"^https?://")]
 # 레이트 리밋 한도: 한 윈도(분이나 시간) 동안 받는 요청 수
 Limit = Annotated[int, Field(ge=1)]
+
+
+def _comma_separated(value: object) -> object:
+    """쉼표로 나눈 목록(예: image/png,image/jpeg). 앞뒤 공백을 지우고 빈 항목은 뺀다."""
+    if isinstance(value, str):
+        return frozenset(item.strip() for item in value.split(",") if item.strip())
+    return value
+
+
+# 쉼표로 나눈 목록. 환경 변수를 JSON으로 풀지 않는다(NoDecode).
+CommaSeparated = Annotated[
+    frozenset[str], NoDecode, BeforeValidator(_comma_separated), Field(min_length=1)
+]
 
 
 class Settings(BaseSettings):
@@ -30,6 +43,9 @@ class Settings(BaseSettings):
     s3_access_key_id: NonEmpty
     s3_secret_access_key: SecretStr
     s3_bucket: NonEmpty
+    # 파일 업로드: 최대 크기(바이트)와 허용하는 MIME 타입(쉼표로 구분)
+    file_max_size: Annotated[int, Field(ge=1)]
+    file_allowed_types: CommaSeparated
     # access token(JWT, HS256)의 서명 키. 32자 이상
     jwt_secret: Annotated[SecretStr, Field(min_length=32)]
     # 메일 서버. smtp://(평문), smtp+starttls://(STARTTLS), smtps://(TLS). 계정은 주소에 넣는다

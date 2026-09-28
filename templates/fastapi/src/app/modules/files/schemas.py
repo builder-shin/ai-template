@@ -1,10 +1,6 @@
-"""파일의 JSON:API 문서 모델. 이름은 계약(files.tsp)과 같다.
-
-M2에서는 사용자 문서가 포함 리소스(아바타)로 쓰는 모델만 둔다. API와 저장은 M3에서 채운다.
-"""
+"""파일의 JSON:API 문서 모델. 이름은 계약(files.tsp)과 같다."""
 
 from datetime import datetime
-from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import Field
@@ -17,16 +13,10 @@ from app.core.jsonapi.models import (
     ResourceWithRelationships,
     ToOne,
 )
+from app.modules.files.models import FileStatus
 
 FileType = Literal["files"]
 Url = Annotated[str, Field(json_schema_extra={"format": "uri"})]
-
-
-class FileStatus(StrEnum):
-    """pending: 업로드 URL만 발급됨. ready: 백엔드가 객체를 확인함."""
-
-    PENDING = "pending"
-    READY = "ready"
 
 
 class FileAttributes(JsonApiModel):

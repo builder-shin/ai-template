@@ -32,6 +32,23 @@ def test_example_env_is_a_valid_configuration(tmp_path: Path) -> None:
     assert settings.redis_url == "redis://127.0.0.1:26379/0"
 
 
+def test_file_types_are_a_comma_separated_list(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    write_dotenv(tmp_path)
+    assert load_settings().file_allowed_types == {
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/gif",
+    }
+    monkeypatch.setenv("FILE_ALLOWED_TYPES", " image/png , text/plain ,,")
+    assert load_settings().file_allowed_types == {"image/png", "text/plain"}
+    monkeypatch.setenv("FILE_ALLOWED_TYPES", " , ")
+    with pytest.raises(SystemExit, match="FILE_ALLOWED_TYPES"):
+        load_settings()
+
+
 def test_reports_each_bad_variable_on_its_own_line(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
