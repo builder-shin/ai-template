@@ -1,4 +1,4 @@
-"""글. 골든 모듈 posts의 모델이다(새 모듈은 이 구조를 따른다).
+"""글.
 
 - 상태는 draft와 published다. 바꿀 수 있는 전이는 policies.TRANSITIONS가 정한다.
 - 발행하면 published_at을 채우고, 발행을 취소하면 null로 되돌린다.

@@ -17,6 +17,7 @@ from app.tests.uploads import upload_file
 pytestmark = pytest.mark.anyio
 
 POSTS = "/api/v1/posts"
+WRITE = {"posts:create"}  # 글을 쓰는 권한(member 역할에 기대지 않는다)
 COVER_POINTER = "/data/relationships/coverImage/data"
 
 
@@ -44,7 +45,7 @@ async def create(
 
 
 async def test_a_new_post_is_a_draft_by_me(api: httpx.AsyncClient, accounts: Accounts) -> None:
-    user = await accounts.create()
+    user = await accounts.create(permissions=WRITE)
     post = await create(api, await accounts.sign_in(user))
     assert post["attributes"]["status"] == "draft"
     assert post["attributes"]["publishedAt"] is None
@@ -57,7 +58,7 @@ async def test_a_new_post_is_a_draft_by_me(api: httpx.AsyncClient, accounts: Acc
 async def test_publishing_and_unpublishing_set_published_at(
     api: httpx.AsyncClient, accounts: Accounts
 ) -> None:
-    headers = await accounts.sign_in(await accounts.create())
+    headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
     post = await create(api, headers, status="published")
     published_at = post["attributes"]["publishedAt"]
     assert published_at is not None
@@ -79,18 +80,19 @@ async def test_publishing_and_unpublishing_set_published_at(
 async def test_a_transition_missing_from_the_table_is_refused(
     api: httpx.AsyncClient, accounts: Accounts, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    headers = await accounts.sign_in(await accounts.create())
+    headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
     post = await create(api, headers, status="published")
     publish_only = frozenset({(PostStatus.DRAFT, PostStatus.PUBLISHED)})
     monkeypatch.setattr(policies, "TRANSITIONS", publish_only)
     document = update_document(post["id"], attributes={"status": "draft"})
     response = await api.patch(f"{POSTS}/{post['id']}", **jsonapi_body(document, headers))
-    assert (response.status_code, error_codes(response)) == (422, ["post.invalid_transition"])
+    invalid = ["post.invalid_transition"]  # gen:module: 그대로
+    assert (response.status_code, error_codes(response)) == (422, invalid)
     assert error_sources(response) == [{"pointer": "/data/attributes/status"}]
 
 
 async def test_a_cover_is_my_uploaded_image(api: httpx.AsyncClient, accounts: Accounts) -> None:
-    headers = await accounts.sign_in(await accounts.create())
+    headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
     image = await upload_file(api, headers)
     post = await create(api, headers, cover=image["id"])
     assert post["relationships"]["coverImage"]["data"] == {"type": "files", "id": image["id"]}
@@ -109,7 +111,7 @@ async def test_a_cover_is_my_uploaded_image(api: httpx.AsyncClient, accounts: Ac
 
 
 async def test_the_body_id_must_match_the_path(api: httpx.AsyncClient, accounts: Accounts) -> None:
-    headers = await accounts.sign_in(await accounts.create())
+    headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
     post = await create(api, headers)
     other = await create(api, headers)
     document = update_document(other["id"], attributes={"title": "다른 글"})
@@ -120,7 +122,7 @@ async def test_the_body_id_must_match_the_path(api: httpx.AsyncClient, accounts:
 async def test_an_admin_deleting_someone_elses_post_is_audited(
     api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession]
 ) -> None:
-    author = await accounts.create()
+    author = await accounts.create(permissions=WRITE)
     mine = await accounts.sign_in(author)
     manager = await accounts.create(permissions={"posts:manage"})
     own = await create(api, mine)
@@ -132,7 +134,7 @@ async def test_an_admin_deleting_someone_elses_post_is_audited(
     async with db() as session:
         logs = list(await session.scalars(select(AuditLog)))
     assert [(log.action, log.actor_id, str(log.target_id)) for log in logs] == [
-        ("post.deleted_by_admin", manager.id, theirs["id"])
+        ("post.deleted_by_admin", manager.id, theirs["id"])  # gen:module: 그대로
     ]
     assert logs[0].details == {"author": str(author.id)}
     assert (await api.get(f"{POSTS}/{theirs['id']}", headers=mine)).status_code == 404
@@ -141,7 +143,7 @@ async def test_an_admin_deleting_someone_elses_post_is_audited(
 async def test_a_post_and_its_cover_stay_when_the_author_leaves(
     api: httpx.AsyncClient, accounts: Accounts
 ) -> None:
-    headers = await accounts.sign_in(await accounts.create())
+    headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
     image = await upload_file(api, headers)
     post = await create(api, headers, cover=image["id"], status="published")
     assert (await api.delete("/api/v1/me", headers=headers)).status_code == 204

@@ -63,6 +63,10 @@ async def remove(session: AsyncSession, post: Post) -> None:
     await session.delete(post)
 
 
+# gen:module: 빼기 시작
 async def count_by_author(session: AsyncSession, author_id: uuid.UUID) -> int:
     query = select(func.count()).select_from(Post).where(Post.author_id == author_id)
     return await session.scalar(query) or 0
+
+
+# gen:module: 빼기 끝

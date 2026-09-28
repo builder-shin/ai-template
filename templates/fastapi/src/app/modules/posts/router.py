@@ -1,4 +1,7 @@
-"""글(Posts) API. 라우트, 권한 선언, 쿼리 허용 목록, 문서 조립(관계, 포함 리소스)이 여기 있다."""
+"""글(Posts) API.
+
+라우트, 권한 선언, 쿼리 허용 목록, 문서 조립(관계, 포함 리소스)이 여기 있다.
+"""
 
 import uuid
 from collections.abc import Sequence
@@ -76,20 +79,17 @@ CREATE = Operation(
     permission=POSTS_CREATE.code,
     errors=AUTH_ERRORS + NOT_FOUND + CREATE_ERRORS + BODY_ERRORS + COMMON_ERRORS,
 )
+# 설명을 감싼 괄호는 지우지 않는다. gen:module이 긴 이름으로 바꾸면 ruff가 괄호 안에서 줄을 나눈다.
 UPDATE = Operation(
     name="update",
     errors=AUTH_ERRORS + NOT_FOUND + CONFLICT + BODY_ERRORS + COMMON_ERRORS,
-    description=(
-        "작성자 또는 posts:manage 권한자만 고친다. status를 바꿔 발행하거나 발행을 취소한다."
-    ),
+    description=("작성자나 posts:manage 권한자만 고친다. status로 발행하거나 발행을 취소한다."),
 )
 DELETE = Operation(
     name="delete",
     status_code=204,
     errors=AUTH_ERRORS + NOT_FOUND + COMMON_ERRORS,
-    description=(
-        "작성자 또는 posts:manage 권한자만 지운다. 관리자가 남의 글을 지우면 감사 로그를 남긴다."
-    ),
+    description=("작성자나 posts:manage 권한자만 지운다. 남의 글을 지우면 감사 로그를 남긴다."),
 )
 PostId = Annotated[uuid.UUID, Path(alias="id")]
 Included = users.UserPublicResource | files.FileResource
@@ -100,8 +100,8 @@ _PUBLIC_PARAMETERS = frozenset({"include", *(f"fields[{kind}]" for kind in POST_
 def public_page_key(request: Request, viewer: Principal | None) -> str | None:
     """발행된 글의 첫 페이지(필터 없음, 기본 정렬, 기본 크기)를 보는 요청이면 캐시 키, 아니면 None.
 
-    초안이 보이는 사람(posts:manage)은 공개 목록을 보지 않으므로 캐시하지 않는다. 링크와 포함
-    리소스가 쿼리에 따라 달라지므로 쿼리 문자열이 키에 들어간다.
+    초안이 보이는 사람(posts:manage)은 공개 목록을 보지 않으므로 캐시하지 않는다.
+    링크와 포함 리소스가 쿼리에 따라 달라지므로 쿼리 문자열이 키에 들어간다.
     """
     if not set(request.query_params) <= _PUBLIC_PARAMETERS or policies.manages(viewer):
         return None

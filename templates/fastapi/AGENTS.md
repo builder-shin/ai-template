@@ -16,6 +16,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 | `uv run poe test`                   | 테스트(`src`와 `tools`의 `tests/`, E2E 제외)                                                                                 |
 | `uv run poe test:e2e`               | api, worker, scheduler를 따로 띄우고 `tests/e2e`를 돌린 뒤 내린다                                                            |
 | `uv run poe gen`                    | 앱을 띄우지 않고 `openapi.json`을 다시 쓴다                                                                                  |
+| `uv run poe gen:module <이름>`      | 골든 모듈 posts를 복사해 새 모듈과 마이그레이션 초안을 만들고 등록한다. 이름은 영어 복수형 kebab-case다(예: `comments`)      |
 | `uv run poe db:migrate`             | 개발 DB에 마이그레이션을 적용한다                                                                                            |
 | `uv run poe db:revision "<메시지>"` | 모델과 개발 DB를 비교해 마이그레이션 초안을 만든다                                                                           |
 | `uv run poe db:reset`               | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                                                                |

@@ -15,6 +15,7 @@ from app.tests.requests import jsonapi_body
 pytestmark = pytest.mark.anyio
 
 POSTS = "/api/v1/posts"
+WRITE = {"posts:create"}  # 글을 쓰는 권한(member 역할에 기대지 않는다)
 
 
 def titles(response: httpx.Response) -> list[str]:
@@ -34,7 +35,7 @@ async def add_post(db: async_sessionmaker[AsyncSession], author_id: object, titl
 async def test_the_public_first_page_is_cached_until_a_post_changes(
     api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession], redis: Redis
 ) -> None:
-    author = await accounts.create()
+    author = await accounts.create(permissions=WRITE)
     await add_post(db, author.id, "처음")
     assert titles(await api.get(POSTS)) == ["처음"]
     await add_post(db, author.id, "몰래")

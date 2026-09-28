@@ -1,4 +1,6 @@
-"""글 읽기: 목록의 가시성(발행, 내 초안, posts:manage), 필터, 정렬, 포함 리소스, 페이지, 조회."""
+"""글 읽기: 목록의 가시성(발행, 내 초안, posts:manage), 필터, 정렬, 포함 리소스,
+페이지, 조회.
+"""
 
 import uuid
 from datetime import timedelta

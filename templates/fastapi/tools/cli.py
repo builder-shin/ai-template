@@ -131,6 +131,13 @@ def gen() -> None:
     raise SystemExit(_python("tools.openapi_export"))
 
 
+def gen_module(name: str, singular: str | None = None) -> None:
+    """골든 모듈 posts를 복사해 새 모듈과 마이그레이션 초안을 만들고 등록한다."""
+    from tools.genmodule.generate import run as generate
+
+    raise SystemExit(generate(name, singular))
+
+
 def db_migrate() -> None:
     """개발 DB에 마이그레이션을 적용한다(alembic upgrade head)."""
     raise SystemExit(_python("alembic", "upgrade", "head"))

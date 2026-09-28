@@ -1,16 +1,19 @@
 """글의 유스케이스와 다른 모듈이 쓰는 함수(파일 읽기 규칙, 파일 참조 확인).
 
-- 목록: 초안을 볼 수 없는 쿼리는 발행된 글만 돌려주고, filter[status]=draft면 빈 목록이다. 초안을
-  볼 수 있는 쿼리(posts:manage, 또는 filter[author]=내 id)는 상태 필터가 없으면 모든 상태다.
+- 목록: 초안을 볼 수 없는 쿼리는 발행된 글만 돌려주고, filter[status]=draft면 빈 목록이다.
+  초안을 볼 수 있는 쿼리(posts:manage, 또는 filter[author]=내 id)는 상태 필터가
+  없으면 모든 상태다.
 - 조회: 볼 수 없는 글(남의 초안)은 있는지도 알리지 않고 404다.
-- 쓰기: posts:create가 있으면 만든다(작성자는 나). 고치기와 지우기는 작성자와 posts:manage만 하고,
-  볼 수 있지만 고칠 수 없으면 403이다. 상태는 전이 표(policies.TRANSITIONS)대로만 바꾼다.
+- 쓰기: posts:create가 있으면 만든다(작성자는 나). 고치기와 지우기는 작성자와
+  posts:manage만 하고, 볼 수 있지만 고칠 수 없으면 403이다. 상태는 전이 표대로만
+  바꾼다(policies.TRANSITIONS).
 - 발행하면 publishedAt을 채우고, 발행을 취소하면 null로 되돌린다.
 - 커버 이미지는 요청한 사람이 올린 ready 이미지여야 한다(files.attachable_file).
-- 관리자(작성자가 아닌 posts:manage)가 글을 지우면 감사 로그 post.deleted_by_admin을 남긴다.
-- 공개 목록의 첫 페이지는 60초 캐시한다(posts_cache). 글을 쓰면 commit한 뒤에 캐시를 지운다.
-  다른 모듈의 변경(작성자 이름, 커버 파일 삭제)은 캐시가 끝나면 반영된다. 캐시 수명은 포함
-  리소스의 presigned URL 수명(10분)보다 짧다.
+- 관리자(작성자가 아닌 posts:manage)가 글을 지우면 감사 로그
+  post.deleted_by_admin을 남긴다.
+- 공개 목록의 첫 페이지는 60초 캐시한다(posts_cache). 글을 쓰면 commit한 뒤에
+  캐시를 지운다. 다른 모듈의 변경(작성자 이름, 커버 파일 삭제)은 캐시가 끝나면 반영된다.
+  캐시 수명은 포함 리소스의 presigned URL 수명(10분)보다 짧다.
 """
 
 import uuid
@@ -35,6 +38,7 @@ from app.modules import files
 from app.modules.posts.models import Post, PostStatus
 
 COVER_POINTER = "/data/relationships/coverImage/data"
+# gen:module: 빼기 시작
 # 시드의 예제 글: (제목, 본문, 상태)
 EXAMPLE_POSTS: tuple[tuple[str, str, PostStatus], ...] = (
     (
@@ -49,6 +53,8 @@ EXAMPLE_POSTS: tuple[tuple[str, str, PostStatus], ...] = (
     ),
     ("초안", "초안은 작성자와 posts:manage만 본다.", PostStatus.DRAFT),
 )
+# gen:module: 빼기 끝
+# gen:module: 고칠 곳 — 캐시는 예시다(공개 목록의 첫 페이지). 필요 없으면 지운다.
 PUBLIC_CACHE_TTL = timedelta(seconds=60)
 
 
@@ -136,7 +142,7 @@ async def create_post(
 async def _editable_post(session: AsyncSession, post_id: uuid.UUID, actor: Principal) -> Post:
     post = await visible_post(session, post_id, actor)
     if not policies.can_edit(post, actor):
-        detail = "Only the author or someone with posts:manage can change this post."
+        detail = "Only the author or someone with posts:manage can change it."
         raise ApiError(403, ErrorCode.PERMISSION_DENIED, detail)
     return post
 
@@ -157,9 +163,10 @@ async def update_post(
     if status is not None and not policies.can_transition(
         post.status, status, policies.TRANSITIONS
     ):
+        # gen:module: 고칠 곳 — 에러 코드와 감사 행위는 계약의 값이다. 계약에 더한 뒤 바꾼다.
         raise ApiError(
             422,
-            ErrorCode.POST_INVALID_TRANSITION,
+            ErrorCode.POST_INVALID_TRANSITION,  # gen:module: 그대로
             f"A post cannot go from {post.status} to {status}.",
             pointer="/data/attributes/status",
         )
@@ -183,18 +190,20 @@ async def delete_post(
     post = await _editable_post(session, post_id, actor)
     await repository.remove(session, post)
     if post.author_id != actor.user_id:
+        target_type = AuditLogTargetType.POSTS  # gen:module: 그대로
         await record_audit(
             session,
-            AuditLogAction.POST_DELETED_BY_ADMIN,
+            AuditLogAction.POST_DELETED_BY_ADMIN,  # gen:module: 그대로
             actor_id=actor.user_id,
             ip_address=client.ip,
-            target=(AuditLogTargetType.POSTS, post.id),
+            target=(target_type, post.id),
             metadata={"author": str(post.author_id)},
         )
     await session.commit()
     await cache.clear()
 
 
+# gen:module: 빼기 시작
 async def ensure_example_posts(session: AsyncSession, author_id: uuid.UUID) -> list[str]:
     """작성자에게 글이 하나도 없으면 예제 글(발행 둘, 초안 하나)을 만들고 그 제목을 돌려준다.
 
@@ -211,3 +220,6 @@ async def ensure_example_posts(session: AsyncSession, author_id: uuid.UUID) -> l
         repository.add(session, post)
     await session.flush()
     return [title for title, _, _ in EXAMPLE_POSTS]
+
+
+# gen:module: 빼기 끝

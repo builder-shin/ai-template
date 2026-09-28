@@ -63,6 +63,14 @@ script = "tools.cli:check"
 help = "완료 기준. 모든 검사를 돌린다"
 args = [{ name = "fast", type = "boolean", default = false, help = "빠른 경로(Stop hook용)" }]
 
+[tool.poe.tasks."gen:module"]
+script = "tools.cli:gen_module"
+help = "골든 모듈 posts를 복사해 새 모듈을 만들고 등록한다"
+args = [
+  { name = "name", positional = true, required = true, help = "영어 복수형 kebab-case(예: comments)" },
+  { name = "singular", help = "끝 단어의 단수형이 규칙과 다를 때(예: statuses면 status)" },
+]
+
 [tool.poe.tasks."db:revision"]
 script = "tools.cli:db_revision"
 help = "모델과 DB를 비교해 마이그레이션 초안을 만든다"

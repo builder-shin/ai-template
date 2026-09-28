@@ -126,7 +126,7 @@ interface Posts {
     | NotFound
     | CommonErrors;
 
-  /** 작성자 또는 posts:manage 권한자만 고친다. status를 바꿔 발행하거나 발행을 취소한다. */
+  /** 작성자나 posts:manage 권한자만 고친다. status로 발행하거나 발행을 취소한다. */
   @patch(#{ implicitOptionality: false })
   @route("{id}")
   @useAuth(BearerAuth)
@@ -138,7 +138,7 @@ interface Posts {
     | BodyErrors
     | CommonErrors;
 
-  /** 작성자 또는 posts:manage 권한자만 지운다. 관리자가 남의 글을 지우면 감사 로그를 남긴다. */
+  /** 작성자나 posts:manage 권한자만 지운다. 남의 글을 지우면 감사 로그를 남긴다. */
   @delete
   @route("{id}")
   @useAuth(BearerAuth)

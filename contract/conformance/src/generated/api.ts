@@ -250,11 +250,11 @@ export interface paths {
         get: operations["Posts_get"];
         put?: never;
         post?: never;
-        /** @description 작성자 또는 posts:manage 권한자만 지운다. 관리자가 남의 글을 지우면 감사 로그를 남긴다. */
+        /** @description 작성자나 posts:manage 권한자만 지운다. 남의 글을 지우면 감사 로그를 남긴다. */
         delete: operations["Posts_delete"];
         options?: never;
         head?: never;
-        /** @description 작성자 또는 posts:manage 권한자만 고친다. status를 바꿔 발행하거나 발행을 취소한다. */
+        /** @description 작성자나 posts:manage 권한자만 고친다. status로 발행하거나 발행을 취소한다. */
         patch: operations["Posts_update"];
         trace?: never;
     };

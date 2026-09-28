@@ -1,5 +1,6 @@
-"""권한 매트릭스: 사람(비로그인, 작성자, 다른 회원, posts:manage)마다 행동(조회, 초안 조회, 만들기,
-고치기, 지우기, 발행)의 결과. 초안은 볼 수 없으면 404, 볼 수 있지만 고칠 수 없으면 403이다.
+"""권한 매트릭스: 사람(비로그인, 작성자, 다른 회원, posts:manage)마다 행동(조회,
+초안 조회, 만들기, 고치기, 지우기, 발행)의 결과. 초안은 볼 수 없으면 404, 볼 수 있지만
+고칠 수 없으면 403이다.
 """
 
 from collections.abc import Awaitable, Callable
@@ -14,6 +15,7 @@ from app.tests.requests import jsonapi_body
 pytestmark = pytest.mark.anyio
 
 POSTS = "/api/v1/posts"
+WRITE = {"posts:create"}  # 글을 쓰는 권한(member 역할에 기대지 않는다)
 WHO = ("anonymous", "author", "member", "manager")
 # 행동마다 (비로그인, 작성자, 다른 회원, posts:manage)의 상태 코드
 MATRIX = {
@@ -82,12 +84,14 @@ ACTIONS: dict[str, Action] = {
 
 @pytest.mark.parametrize("action", list(MATRIX))
 async def test_permission_matrix(api: httpx.AsyncClient, accounts: Accounts, action: str) -> None:
-    author = await accounts.create()
+    author = await accounts.create(permissions=WRITE)
     headers = {
         "anonymous": {},
         "author": await accounts.sign_in(author),
-        "member": await accounts.sign_in(await accounts.create()),
-        "manager": await accounts.sign_in(await accounts.create(permissions={"posts:manage"})),
+        "member": await accounts.sign_in(await accounts.create(permissions=WRITE)),
+        "manager": await accounts.sign_in(
+            await accounts.create(permissions={*WRITE, "posts:manage"})
+        ),
     }
     statuses: list[int] = []
     for who in WHO:
