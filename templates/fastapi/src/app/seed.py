@@ -4,7 +4,7 @@
 - 시스템 역할 admin, member
 - 관리자 계정: SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD. 이메일 인증을 마친 상태이고 admin 역할을
   가진다.
-M3가 예제 글을 더한다.
+- 예제 글: 관리자가 쓴 글 셋(발행 둘, 초안 하나). 관리자에게 글이 하나도 없을 때만 만든다.
 """
 
 import asyncio
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings, load_settings
 from app.core.db import create_engine, session_factory
-from app.modules import roles, users
+from app.modules import posts, roles, users
 
 ADMIN_NAME = "Admin"
 
@@ -24,8 +24,9 @@ async def seed(sessions: async_sessionmaker[AsyncSession], settings: Settings) -
     async with sessions() as session:
         done += [f"역할 {name}" for name in await roles.ensure_system_roles(session)]
         email = users.normalize_email(settings.seed_admin_email)
-        if await users.find_account(session, email) is None:
-            await users.create_account(
+        admin = await users.find_account(session, email)
+        if admin is None:
+            admin = await users.create_account(
                 session,
                 email=email,
                 password=settings.seed_admin_password.get_secret_value(),
@@ -35,6 +36,7 @@ async def seed(sessions: async_sessionmaker[AsyncSession], settings: Settings) -
                 role_names=(roles.ADMIN_ROLE,),
             )
             done.append(f"관리자 {email}")
+        done += [f"글 {title}" for title in await posts.ensure_example_posts(session, admin.id)]
         await session.commit()
     return done
 

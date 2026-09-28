@@ -35,6 +35,20 @@ from app.modules import files
 from app.modules.posts.models import Post, PostStatus
 
 COVER_POINTER = "/data/relationships/coverImage/data"
+# 시드의 예제 글: (제목, 본문, 상태)
+EXAMPLE_POSTS: tuple[tuple[str, str, PostStatus], ...] = (
+    (
+        "환영합니다",
+        "# 환영합니다\n\nAI 템플릿의 예제 글이다. 발행된 글은 누구나 본다.",
+        PostStatus.PUBLISHED,
+    ),
+    (
+        "마크다운으로 쓰기",
+        "본문은 **마크다운**이다.\n\n- 목록\n- 링크: [JSON:API](https://jsonapi.org)",
+        PostStatus.PUBLISHED,
+    ),
+    ("초안", "초안은 작성자와 posts:manage만 본다.", PostStatus.DRAFT),
+)
 PUBLIC_CACHE_TTL = timedelta(seconds=60)
 
 
@@ -179,3 +193,21 @@ async def delete_post(
         )
     await session.commit()
     await cache.clear()
+
+
+async def ensure_example_posts(session: AsyncSession, author_id: uuid.UUID) -> list[str]:
+    """작성자에게 글이 하나도 없으면 예제 글(발행 둘, 초안 하나)을 만들고 그 제목을 돌려준다.
+
+    시드가 쓴다. commit하지 않는다.
+    """
+    if await repository.count_by_author(session, author_id):
+        return []
+    now = utc_now()
+    for title, body, status in EXAMPLE_POSTS:
+        published_at = now if status == PostStatus.PUBLISHED else None
+        post = Post(
+            author_id=author_id, title=title, body=body, status=status, published_at=published_at
+        )
+        repository.add(session, post)
+    await session.flush()
+    return [title for title, _, _ in EXAMPLE_POSTS]

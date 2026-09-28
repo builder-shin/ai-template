@@ -3,7 +3,7 @@
 import uuid
 from collections.abc import Collection, Sequence
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jsonapi.query import Page, SortField
@@ -61,3 +61,8 @@ async def cover_ids_among(session: AsyncSession, file_ids: Sequence[uuid.UUID]) 
 
 async def remove(session: AsyncSession, post: Post) -> None:
     await session.delete(post)
+
+
+async def count_by_author(session: AsyncSession, author_id: uuid.UUID) -> int:
+    query = select(func.count()).select_from(Post).where(Post.author_id == author_id)
+    return await session.scalar(query) or 0
