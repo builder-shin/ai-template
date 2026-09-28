@@ -110,6 +110,7 @@
 - `x-realtime-events`의 `rooms`는 그 이벤트를 늘 받는 룸이다. `user:{userId}`와 `user:{authorId}`는 해당 사용자(글 이벤트는 작성자)의 `user:{id}` 룸이다. `conditionalRooms`는 조건이 맞을 때만 받는 룸이고 `{ room, when }` 꼴이다. `when`은 `published`(바뀐 뒤 글이 발행 상태)와 `wasPublished`(지우기 전 글이 발행 상태였음) 둘 중 하나다.
 - 페이로드도 JSON:API 문서이고 `components.schemas`에 있다. 그래서 프론트엔드는 같은 생성 과정으로 이벤트 타입을 얻는다.
 - 클라이언트가 보내는 메시지는 `x-realtime-messages`에 적는다. `subscribe`와 `unsubscribe`는 페이로드 `RealtimeSubscription`(`{ channel }`)을 보내고, 서버는 ack `RealtimeAck`로 답한다. 성공이면 `{ ok: true }`, 실패면 `{ ok: false, error }`이고 `error`는 에러 객체다(권한 없음 403 `permission.denied`, 모르는 채널이나 틀린 페이로드 422 `validation.invalid_choice`, `source.pointer`는 `/channel`).
+- 채널 권한은 구독할 때만 본다. 구독한 뒤에 권한을 잃거나 계정이 비활성화되거나 탈퇴해도, 그 연결은 끊기거나 구독을 풀 때까지 그 채널의 이벤트를 받는다. 그래서 `me.updated`(`changed`에 `roles`나 `status`)나 `session.revoked`를 받은 클라이언트는 연결을 끊고 새 티켓으로 다시 붙어 구독을 다시 검사받아야 한다. 서버에서 그런 연결을 내보내는 일은 후속 작업이다(인스턴스를 가로질러 사용자별 소켓 id를 기록해야 한다).
 - 연결: 전송은 WebSocket만 받는다. 브라우저 연결의 Origin은 허용 목록으로 본다. 로그인한 연결은 `auth.ticket`에 티켓(`POST /realtime-tickets`, 30초, 1회용)을 넣는다. 티켓이 틀렸거나 만료됐거나 세션이 끝났으면 연결을 거부하고, `connect_error`의 message는 `auth.token_invalid`, data는 에러 객체(`status` "401")다. 티켓이 없으면 익명 연결이다.
 - 이벤트는 쓰기가 commit된 뒤에 나간다. 한 연결이 여러 룸에 있어도 한 번 받는다. `session.revoked`는 그 사용자의 모든 연결이 받으므로(페이로드에 세션 id가 없다) 클라이언트는 자기 세션이 살아 있는지 확인한다. `me.updated`의 `changed`는 `roles`(역할을 받거나 잃음, 가진 역할의 권한이 바뀌거나 역할이 지워짐), `status`(관리자가 상태를 바꿈), `profile`(이름, 로케일, 아바타)이다.
 

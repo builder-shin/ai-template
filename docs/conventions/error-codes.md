@@ -26,9 +26,9 @@ API 에러 객체의 `code` 값 목록이다. 원본은 `contract/typespec/src/e
 | `auth.token_expired`              | 401        | access token이 만료됐다                                                                            |
 | `auth.token_invalid`              | 401        | 토큰이 올바르지 않다. 실시간 티켓이 틀렸거나 만료됐으면 연결 거부(`connect_error`)의 message다     |
 | `auth.refresh_token_reused`       | 401        | 이미 쓴 refresh token이다. 세션 계열을 폐기했다                                                    |
-| `auth.oauth_code_invalid`         | 401        | 소셜 로그인 1회용 코드가 틀렸거나 만료됐다. `codeVerifier`가 일치하지 않을 때도 쓴다               |
-| `auth.oauth_denied`               | 리다이렉트 | 사용자가 제공자 화면에서 로그인을 거부했다. 소셜 로그인 콜백이 프론트 콜백 주소의 `error`로 보낸다 |
-| `auth.oauth_failed`               | 리다이렉트 | 소셜 로그인의 코드 교환이나 신원 조회에 실패했다. 콜백이 `error`로 보낸다                          |
+| `auth.oauth_code_invalid`         | 401        | 소셜 로그인 1회용 코드가 틀렸거나 만료됐다. `codeVerifier`가 맞지 않거나 형식이 틀릴 때도 쓴다     |
+| `auth.oauth_denied`               | 리다이렉트 | 사용자가 제공자 화면에서 로그인을 거부했다(`access_denied`). 콜백이 프론트 콜백의 `error`로 보낸다 |
+| `auth.oauth_failed`               | 리다이렉트 | `access_denied` 밖의 제공자 에러, 또는 코드 교환이나 신원 조회 실패다. 콜백이 `error`로 보낸다     |
 | `auth.email_not_verified`         | 403        | 이메일 인증을 마치지 않았다                                                                        |
 | `auth.account_deactivated`        | 403        | 비활성화된 계정이다                                                                                |
 | `auth.verification_token_invalid` | 422        | 인증·재설정 토큰이 틀렸거나 만료됐다                                                               |
@@ -46,3 +46,5 @@ API 에러 객체의 `code` 값 목록이다. 원본은 `contract/typespec/src/e
 | `service.unavailable`             | 503        | 의존 서비스(DB 등)를 쓸 수 없다                                                                    |
 
 `POST /files`에서 크기와 타입이 모두 한도를 벗어나면 크기를 먼저 본다. 응답은 `file.too_large` 하나이고, 두 백엔드 모두 이 순서를 따른다. 여러 단계의 에러가 겹칠 때의 순서는 [JSON:API 규약](jsonapi.md)의 "에러 우선순위"에 있다.
+
+소셜 로그인의 `codeVerifier`는 RFC 7636의 code verifier(`[A-Za-z0-9._~-]` 43~128자)여야 한다. 그 형식이 아니거나 `codeChallenge`와 맞지 않으면 `oauthCode` grant는 401 `auth.oauth_code_invalid`다. 콜백의 `error`는 제공자의 에러가 `access_denied`(사용자가 거부)일 때만 `auth.oauth_denied`이고, 그 밖의 제공자 에러(`server_error`, `invalid_scope` 등)는 `auth.oauth_failed`다.

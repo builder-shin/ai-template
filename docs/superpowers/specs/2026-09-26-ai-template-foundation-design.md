@@ -132,8 +132,8 @@ my-project/
 - 소셜 로그인 흐름
   1. 프론트 BFF가 로그인 시도마다 code verifier를 만들어 시작한 브라우저에 연결해 둔다(예: httpOnly 쿠키). 브라우저를 `GET /api/v1/oauth/{provider}/authorize?redirectUri=<프론트 콜백>&codeChallenge=<verifier의 S256>`으로 이동시킨다. `redirectUri`는 허용 목록으로, `codeChallenge`는 형식(43자 base64url)으로 검사한다.
   2. 백엔드가 state와 `codeChallenge`를 함께 두고, 제공자와는 별도인 자신의 PKCE 쌍을 만들어 제공자로 리다이렉트한다.
-  3. 제공자가 `GET /api/v1/oauth/{provider}/callback`으로 돌아오면, 백엔드가 계정을 연결하거나 만든 뒤 1회용 코드(60초)에 `codeChallenge`를 실어 프론트 콜백으로 리다이렉트한다.
-  4. 프론트 BFF가 서버 간 호출로 `POST /sessions`에 grantType `oauthCode`와 `codeVerifier`를 보내 토큰을 받는다. 토큰은 URL에 절대 실리지 않는다.
+  3. 제공자가 `GET /api/v1/oauth/{provider}/callback`으로 돌아오면, 백엔드가 계정을 연결하거나 만든 뒤 1회용 코드(60초)에 `codeChallenge`를 실어 프론트 콜백으로 리다이렉트한다. 실패하면 코드 대신 `error`를 붙인다. 제공자의 에러가 `access_denied`(사용자가 거부)일 때만 `auth.oauth_denied`이고, 그 밖의 제공자 에러와 코드 교환·신원 조회 실패는 `auth.oauth_failed`다.
+  4. 프론트 BFF가 서버 간 호출로 `POST /sessions`에 grantType `oauthCode`와 `codeVerifier`를 보내 토큰을 받는다. 토큰은 URL에 절대 실리지 않는다. `codeVerifier`는 RFC 7636의 code verifier(`[A-Za-z0-9._~-]` 43~128자)여야 하고, 그 형식이 아니거나 `codeChallenge`와 맞지 않으면 401 `auth.oauth_code_invalid`다.
   - 새 제공자는 제공자 인터페이스를 구현한 파일 하나와 설정으로 추가한다.
   - 소셜 로그인으로 만든 계정은 제공자가 검증한 이메일이면 이메일 인증을 마친 것으로 본다. 제공자가 검증을 보장하지 않는 이메일로는 기존 계정에 자동 연결하지 않는다. 제공자별 세부 연결 규칙은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §6.2에 있다.
   - BFF는 자기가 verifier를 쥐지 않은 콜백 `code`를 거부한다. 그러지 않으면 공격자가 완성된 콜백 URL을 피해자에게 넘겨 로그인시킬 수 있다(로그인 CSRF).

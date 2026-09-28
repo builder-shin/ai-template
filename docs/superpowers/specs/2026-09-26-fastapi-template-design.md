@@ -35,6 +35,7 @@
 - 이메일 없는 계정에 나중에 이메일을 추가하는 흐름
 - 공개 버킷과 CDN
 - 세션을 폐기할 때 서버 쪽에서 소켓을 강제로 끊는 일
+- 권한을 잃거나 계정이 비활성화되거나 탈퇴한 사용자의 연결을 서버 쪽에서 구독한 채널에서 내보내는 일(§6.8). 인스턴스를 가로질러 사용자별 소켓 id를 기록해야 한다.
 - 테스트 병렬 실행
 
 ## 2. 결정 기록
@@ -267,15 +268,15 @@ src/app/modules/posts/
   - state, 제공자와 주고받을 자신의 PKCE verifier, 받은 `codeChallenge`, `redirectUri`, 제공자를 Valkey에 10분 두고 제공자로 302 리다이렉트한다.
 - `callback`
   - state가 없거나 만료됐거나 다른 제공자의 것이면 돌려보낼 곳을 모르므로 400 `jsonapi.invalid_query`(`source.parameter`: `state`)다. 제공자가 덧붙이는 쿼리 파라미터(scope 등)는 받아들인다.
-  - 사용자가 제공자 화면에서 거부했으면 `redirectUri?error=auth.oauth_denied`로 보낸다.
-  - 코드 교환이나 신원 조회에 실패하면 `redirectUri?error=auth.oauth_failed`로 보낸다.
+  - 제공자가 `error=access_denied`로 돌아왔으면(사용자가 제공자 화면에서 거부했다) `redirectUri?error=auth.oauth_denied`로 보낸다. `auth.oauth_denied`는 이 경우뿐이다.
+  - 제공자가 그 밖의 `error`(`server_error`, `invalid_scope` 등)로 돌아왔거나, 코드 교환이나 신원 조회에 실패하면 `redirectUri?error=auth.oauth_failed`로 보낸다.
   - 비활성 계정이면 `redirectUri?error=auth.account_deactivated`로 보낸다.
 - 계정 연결 순서(F4)
   1. (제공자, subject)로 연결된 계정이 있으면 그 계정이다.
   2. 없고 이메일이 검증됐으면, 같은 이메일의 계정에 연결한다. 그 계정이 이메일 인증 전이면(누군가 먼저 가입해 두었을 수 있다) 비밀번호를 지우고 인증을 마친 것으로 둔다. 그런 계정도 없으면 이메일 인증을 마친 새 계정을 만든다.
   3. 이메일이 검증되지 않았거나 없으면, 이메일 없는 새 계정을 만든다. 미검증 이메일은 저장하지 않는다.
 - 새 계정의 `name`은 제공자가 준 이름이고, 없으면 null이다. 역할은 `member`다.
-- 성공하면 1회용 코드(60초, Valkey)에 `codeChallenge`를 실어 `redirectUri?code=...`로 보낸다. BFF가 `POST /sessions`의 `oauthCode` grant에 `code`와 `codeVerifier`를 보내 토큰을 받는다. `codeVerifier`가 `codeChallenge`를 만들지 못하면 코드를 소비하고 `auth.oauth_code_invalid`다. BFF는 자기가 verifier를 쥐지 않은 콜백 `code`를 거부해야 한다(로그인 CSRF 방지, RFC 6749 §10.12).
+- 성공하면 1회용 코드(60초, Valkey)에 `codeChallenge`를 실어 `redirectUri?code=...`로 보낸다. BFF가 `POST /sessions`의 `oauthCode` grant에 `code`와 `codeVerifier`를 보내 토큰을 받는다. `codeVerifier`는 RFC 7636의 code verifier(`[A-Za-z0-9._~-]` 43~128자)여야 한다. 그 형식이 아니거나 `codeChallenge`를 만들지 못하면 코드를 소비하고 401 `auth.oauth_code_invalid`다. 빈 문자열의 S256도 43자라 `authorize`의 형식 검사를 지나므로, verifier가 없는 BFF가 보낸 빈 값이나 짧은 자리표시 값으로 공격자의 코드가 풀리지 않게 형식을 본다. BFF는 자기가 verifier를 쥐지 않은 콜백 `code`를 거부해야 한다(로그인 CSRF 방지, RFC 6749 §10.12).
 
 ### 6.3 RBAC
 
@@ -379,6 +380,7 @@ src/app/modules/posts/
   - `subscribe`와 `unsubscribe`, 페이로드는 `RealtimeSubscription`(`{ "channel": "posts" }`)이다.
   - ack는 `RealtimeAck`로, 성공이면 `{ "ok": true }`다. 실패면 `{ "ok": false, "error": ErrorObject }`이고, 권한이 없으면 `permission.denied`, 모르는 채널이면 `validation.invalid_choice`다.
   - 익명 연결은 `posts`만 구독할 수 있다. `posts:all`에는 `posts:manage`가 필요하다. 권한은 구독할 때 DB에서 계산한다.
+  - 권한은 구독할 때만 본다(M4의 알려진 한계). 구독한 뒤에 권한을 잃거나 계정이 비활성화되거나 탈퇴해도, 그 연결은 끊기거나 구독을 풀 때까지 그 채널의 이벤트를 받는다. 그래서 `me.updated`(`changed`에 `roles`나 `status`)나 `session.revoked`를 받은 클라이언트는 연결을 끊고 새 티켓으로 다시 붙어 구독을 다시 검사받아야 한다. 서버에서 그런 연결을 내보내는 일은 후속 작업이다(§1.3). 인스턴스를 가로질러 사용자별 소켓 id를 기록해야 한다.
   - ack의 에러 객체는 권한 없음 403, 모르는 채널이나 틀린 페이로드 422이고 `source.pointer`는 `/channel`이다.
 - api는 `AsyncRedisManager`로 인스턴스 사이에 이벤트를 전파한다. worker와 scheduler는 쓰기 전용 매니저로 이벤트를 보낸다.
 - 이벤트 페이로드는 모듈의 직렬화 함수로 만든 JSON:API 문서다.
