@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jsonapi.query import Page, SortField
 from app.core.listing import ESCAPE, Sortable, contains, fetch_page, ordering
-from app.modules.roles.models import Role, UserRole
+from app.modules.roles.models import ADMIN_ROLE, Role, UserRole
 
 SORT_COLUMNS: dict[str, Sortable] = {"name": Role.name, "createdAt": Role.created_at}
 DEFAULT_SORT = (SortField(name="name", descending=False),)
@@ -20,6 +20,14 @@ async def find_by_name(session: AsyncSession, name: str) -> Role | None:
 
 async def find_by_names(session: AsyncSession, names: Iterable[str]) -> list[Role]:
     return list(await session.scalars(select(Role).where(Role.name.in_(list(names)))))
+
+
+async def lock_admin(session: AsyncSession) -> None:
+    """시스템 admin 역할 행을 잠근다(SELECT ... FOR UPDATE). 트랜잭션이 끝나면 풀린다."""
+    query = (
+        select(Role.id).where(Role.name == ADMIN_ROLE, Role.is_system.is_(True)).with_for_update()
+    )
+    await session.execute(query)
 
 
 async def roles_of_user(session: AsyncSession, user_id: uuid.UUID) -> list[Role]:

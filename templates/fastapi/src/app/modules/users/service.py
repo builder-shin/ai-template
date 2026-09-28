@@ -163,9 +163,14 @@ async def is_admin(session: AsyncSession, user_id: uuid.UUID) -> bool:
 
 
 async def protect_last_admin(session: AsyncSession, user: User) -> None:
-    """user가 마지막 활성 admin이면 422 role.last_admin_protected다."""
+    """user가 마지막 활성 admin이면 422 role.last_admin_protected다.
+
+    세기 전에 admin 역할 행을 잠근다. 마지막 두 admin을 동시에 강등하거나 탈퇴시키면 두 요청이
+    서로의 변경을 못 본 채 둘 다 통과할 수 있다. 잠금이 검사를 commit까지 한 줄로 세운다.
+    """
     if user.status != UserStatus.ACTIVE or not await is_admin(session, user.id):
         return
+    await roles.lock_admin_role(session)
     if await repository.active_admins_besides(session, user.id) == 0:
         detail = "The last active admin must keep the admin role and stay active."
         raise ApiError(422, ErrorCode.ROLE_LAST_ADMIN_PROTECTED, detail)

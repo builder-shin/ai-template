@@ -113,6 +113,11 @@ async def clear_roles(session: AsyncSession, user_id: uuid.UUID) -> None:
     await repository.clear(session, user_id)
 
 
+async def lock_admin_role(session: AsyncSession) -> None:
+    """admin 역할 행을 이 트랜잭션이 끝날 때까지 잠근다. 다른 트랜잭션의 같은 잠금은 기다린다."""
+    await repository.lock_admin(session)
+
+
 def role_resource(role: Role, registry: PermissionRegistry) -> RoleResource:
     return RoleResource(
         type="roles",
