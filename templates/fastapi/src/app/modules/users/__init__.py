@@ -4,7 +4,7 @@ from app.modules.users.models import Locale, User, UserStatus
 from app.modules.users.permissions import PERMISSIONS, USERS_MANAGE, USERS_READ
 from app.modules.users.router import me, users
 from app.modules.users.schemas import UserPublicResource
-from app.modules.users.service import (
+from app.modules.users.service.accounts import (
     Closure,
     create_account,
     find_account,

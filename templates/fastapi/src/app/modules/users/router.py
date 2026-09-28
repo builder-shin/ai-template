@@ -8,7 +8,9 @@ from fastapi import Depends, Path, Request, Response
 from pydantic.experimental.missing_sentinel import MISSING
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import app.modules.users.service as service
+import app.modules.users.service.accounts as accounts
+import app.modules.users.service.management as management
+import app.modules.users.service.profile as profile
 from app.core.access import PermissionsDep, Principal, PrincipalDep
 from app.core.clients import ClientDep
 from app.core.db import SessionDep
@@ -142,7 +144,7 @@ async def me_document(
     actor: Principal,
     include: Sequence[str] = (),
 ) -> UserMeDocument:
-    user = await service.require_user(session, actor.user_id)
+    user = await accounts.require_user(session, actor.user_id)
     held = (await roles.roles_by_user(session, [user.id]))[user.id]
     permissions = [roles.PermissionCode(code) for code in sorted(actor.permissions)]
     return UserMeDocument(
@@ -181,7 +183,7 @@ async def update_me(
             raise ApiError(404, ErrorCode.RESOURCE_NOT_FOUND, detail, pointer=pointer)
     attributes = data.attributes
     if attributes is not MISSING:
-        await service.update_me(
+        await profile.update_me(
             session,
             actor,
             name=None if attributes.name is MISSING else attributes.name,
@@ -192,7 +194,7 @@ async def update_me(
 
 @me.route("DELETE", "", DELETE_ME, response_model=None)
 async def delete_me(session: SessionDep, actor: PrincipalDep, client: ClientDep) -> Response:
-    await service.delete_me(session, actor, client)
+    await profile.delete_me(session, actor, client)
     return Response(status_code=204)
 
 
@@ -213,7 +215,7 @@ async def list_users(
     query: Annotated[CollectionQuery[UserFilter], Depends(LIST)],
 ) -> Response:
     wanted = query.filter
-    found, total = await service.list_users(
+    found, total = await management.list_users(
         session,
         q=None if wanted.q is MISSING else wanted.q,
         status=None if wanted.status is MISSING else wanted.status,
@@ -240,7 +242,7 @@ async def get_user(
     registry: PermissionsDep,
     query: Annotated[ResourceQuery, Depends(GET)],
 ) -> Response:
-    user = await service.require_user(session, user_id)
+    user = await accounts.require_user(session, user_id)
     document = await user_document(session, registry, user, query.include)
     return render(document, fields=query.fields)
 
@@ -262,7 +264,7 @@ async def update_user(
     role_ids = None
     if data.relationships is not MISSING and data.relationships.roles is not MISSING:
         role_ids = [identifier.id for identifier in data.relationships.roles.data]
-    user = await service.update_user(
+    user = await management.update_user(
         session, registry, actor, client, user_id, status=status, role_ids=role_ids
     )
     return render(await user_document(session, registry, user))
