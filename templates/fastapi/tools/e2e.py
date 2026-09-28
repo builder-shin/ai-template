@@ -31,10 +31,11 @@ TAIL = 40  # 실패했을 때 보여 줄 로그 줄 수
 def overrides(settings: Settings) -> dict[str, str]:
     """E2E 설정을 자식 프로세스에 넘기는 환경 변수. 환경 변수는 .env보다 앞선다.
 
-    isolated_settings가 바꾸는 필드(환경, DB, Valkey 번호, 레이트 리밋)를 넘긴다.
+    isolated_settings가 바꾸는 필드(환경, DB, Valkey 번호, 레이트 리밋)를 넘긴다. 소셜 로그인
+    제공자가 돌아올 주소(API_URL)는 E2E api의 주소다.
     """
     names = ("app_env", "database_url", "redis_url", *RATE_LIMIT_FIELDS)
-    return {name.upper(): str(getattr(settings, name)) for name in names}
+    return {name.upper(): str(getattr(settings, name)) for name in names} | {"API_URL": BASE_URL}
 
 
 def prepare(settings: Settings) -> None:
