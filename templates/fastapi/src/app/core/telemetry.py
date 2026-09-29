@@ -10,6 +10,7 @@
 - 요청의 trace id는 켜져 있으면 현재 span의 것이다(app.core.logging).
 """
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -92,17 +93,28 @@ def configure_telemetry(
 
 
 # span을 만들지 않는 요청(app.health). 전체 URL(scheme://host/path, 쿼리 없음)에 쓰는 정규식이다.
-_EXCLUDED_URLS = "/health/live$,/health/ready$"
+HEALTH_URLS = "/health/live$,/health/ready$"
+
+
+def excluded_urls() -> str:
+    """span을 만들지 않을 URL(쉼표로 구분한 정규식). 헬스 체크에 환경 변수의 URL을 더한다.
+
+    OpenTelemetry의 규칙대로 OTEL_PYTHON_FASTAPI_EXCLUDED_URLS를, 없으면
+    OTEL_PYTHON_EXCLUDED_URLS를 읽는다.
+    """
+    configured = os.environ.get("OTEL_PYTHON_FASTAPI_EXCLUDED_URLS", "").strip()
+    configured = configured or os.environ.get("OTEL_PYTHON_EXCLUDED_URLS", "").strip()
+    return ",".join(item for item in (configured, HEALTH_URLS) if item)
 
 
 def instrument_app(app: FastAPI) -> None:
     """요청마다 span을 만든다. 앱을 만들 때 늘 부른다(켜지 않으면 아무것도 하지 않는다).
 
     헬스 체크 요청과 ASGI의 send, receive에는 span을 만들지 않는다(자주 와서 잡음이다).
-    제외할 URL을 직접 주므로 환경 변수 OTEL_PYTHON_FASTAPI_EXCLUDED_URLS는 쓰지 않는다.
+    제외할 URL은 excluded_urls다(환경 변수의 URL과 헬스 체크).
     """
     FastAPIInstrumentor.instrument_app(
-        app, excluded_urls=_EXCLUDED_URLS, exclude_spans=["send", "receive"]
+        app, excluded_urls=excluded_urls(), exclude_spans=["send", "receive"]
     )
 
 

@@ -163,6 +163,7 @@ auth 모듈의 `service/oauth.py`와 `providers/`다. 제공자는 파일 하나
 - 로그는 structlog JSON(개발은 콘솔 형식)이고, 요청마다 traceId가 붙는다. 에러 문서의 `meta.traceId`도 같은 값이다.
 - OpenTelemetry는 기본으로 꺼 둔다. `OTEL_ENABLED=true`면 프로세스가 시작할 때 `configure_telemetry`가 tracer를 설정하고 트레이스를 OTLP(HTTP, `OTEL_EXPORTER_OTLP_ENDPOINT`)로 보낸다. 서비스 이름은 `OTEL_SERVICE_NAME`에 역할을 붙인 것이다(예: `app-api`, `app-worker`).
 - 계측: FastAPI(요청), SQLAlchemy와 psycopg(쿼리), Redis(Valkey 명령), httpx(소셜 로그인 제공자 호출), Taskiq(잡 보내기와 실행, broker 미들웨어). python-socketio에는 계측이 없어 연결과 구독 처리에 수동 span(`realtime.connect`, `realtime.subscribe`)을 둔다.
+- 헬스 체크(`/health/live`, `/health/ready`)는 span을 만들지 않는다(자주 와서 잡음이다). 제외 URL은 `OTEL_PYTHON_FASTAPI_EXCLUDED_URLS`(없으면 `OTEL_PYTHON_EXCLUDED_URLS`)에 헬스 경로를 더한 값이다(`excluded_urls`). 준비 검사 안의 DB·Valkey 호출도 계측을 끈 채 돌아, 따로 루트 trace가 되지 않는다.
 - 로컬에서 보려면 `docker compose --profile observability up -d`로 Grafana LGTM을 띄우고 `OTEL_ENABLED=true`로 api를 다시 띄운다. 화면은 http://127.0.0.1:23000 이다.
 
 ## 설정과 비밀

@@ -12,6 +12,7 @@ from typing import Annotated, Literal
 import structlog
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from pydantic import Field
 from redis.asyncio import Redis
 from sqlalchemy import text
@@ -82,7 +83,10 @@ async def ready(request: Request) -> JSONResponse:
         "redis": lambda: redis.ping(),  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
         "storage": storage.check,
     }
-    results = await asyncio.gather(*(_check(name, probe) for name, probe in probes.items()))
+    # 헬스 요청에는 span이 없으므로(telemetry의 제외 URL) 그 안의 DB·Valkey span은 따로 루트
+    # trace가 된다. 검사하는 동안 계측을 끈다(gather가 만드는 태스크에도 이어진다).
+    with suppress_instrumentation():
+        results = await asyncio.gather(*(_check(name, probe) for name, probe in probes.items()))
     checks = dict(zip(probes, results, strict=True))
     healthy = all(result == "ok" for result in results)
     report = HealthReport(status="ok" if healthy else "unavailable", checks=checks)

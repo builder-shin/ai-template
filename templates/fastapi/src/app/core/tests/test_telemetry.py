@@ -1,5 +1,6 @@
 """OpenTelemetry: 꺼져 있으면 아무것도 하지 않는다. 켜면 요청, DB, Valkey, 소켓에 span이 생기고
-에러 문서의 traceId가 요청 span의 trace id다. 헬스 체크 요청에는 span이 없다. 잡의 계측은
+에러 문서의 traceId가 요청 span의 trace id다. 헬스 체크에는 요청 span도, 그 안의 DB·Valkey span도
+없다. 제외 URL은 환경 변수의 URL에 헬스 체크를 더한 것이다. 잡의 계측은
 app/tests/test_worker.py가 본다.
 
 전역 tracer provider는 프로세스에서 한 번만 정할 수 있어, 이 모듈이 메모리 exporter로 한 번 켜고
@@ -17,10 +18,22 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.config import Settings
 from app.core.jsonapi.openapi import JsonApiApp
-from app.core.telemetry import configure_telemetry, instrument_engine
+from app.core.telemetry import configure_telemetry, excluded_urls, instrument_engine
 from app.tests.sockets import connected, serving
 
 pytestmark = pytest.mark.anyio
+
+
+def test_excluded_urls_add_the_health_checks_to_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OTEL_PYTHON_FASTAPI_EXCLUDED_URLS", raising=False)
+    monkeypatch.delenv("OTEL_PYTHON_EXCLUDED_URLS", raising=False)
+    assert excluded_urls() == "/health/live$,/health/ready$"
+    monkeypatch.setenv("OTEL_PYTHON_EXCLUDED_URLS", "/metrics$")
+    assert excluded_urls() == "/metrics$,/health/live$,/health/ready$"
+    monkeypatch.setenv("OTEL_PYTHON_FASTAPI_EXCLUDED_URLS", "/internal/.*")
+    assert excluded_urls() == "/internal/.*,/health/live$,/health/ready$"
 
 
 def test_nothing_happens_while_it_is_off(infra: Settings) -> None:
@@ -61,13 +74,17 @@ async def test_a_request_is_traced_with_its_db_and_valkey_calls(
 
 
 @pytest.mark.parametrize("path", ["/health/live", "/health/ready"])
-async def test_health_checks_make_no_request_span(
-    api: httpx.AsyncClient, spans: InMemorySpanExporter, path: str
+async def test_health_checks_make_no_spans(
+    api: httpx.AsyncClient, engine: AsyncEngine, spans: InMemorySpanExporter, path: str
 ) -> None:
+    instrument_engine(engine)
     spans.clear()
     assert (await api.get(path)).status_code == 200
-    server = [span.name for span in spans.get_finished_spans() if span.kind == SpanKind.SERVER]
-    assert server == []
+    finished = spans.get_finished_spans()
+    assert [span.name for span in finished if span.kind == SpanKind.SERVER] == []
+    # 준비 검사의 DB(SELECT 1)와 Valkey(PING)도 span이 없다(따로 루트 trace가 되지 않는다).
+    checks = [span.name for span in finished if span.name.startswith(("SELECT", "PING"))]
+    assert checks == []
 
 
 async def test_socket_handlers_make_spans(app: JsonApiApp, spans: InMemorySpanExporter) -> None:
