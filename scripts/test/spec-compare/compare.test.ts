@@ -156,4 +156,45 @@ describe("실시간 확장", () => {
     expect(compareSpecs(realtime, {}, { subset: true }).realtimeMismatches).toEqual([]);
     expect(compareSpecs(realtime, {}).realtimeMismatches).toHaveLength(3);
   });
+
+  const updated: OpenApiLike = {
+    "x-realtime-events": [
+      {
+        name: "post.updated",
+        rooms: ["posts:all", "user:{authorId}"],
+        conditionalRooms: [{ room: "posts", when: "published" }],
+        payload: "PostUpdatedEventDocument",
+      },
+    ],
+  };
+
+  it("객체의 키 순서가 달라도(안쪽 객체도) 같은 항목으로 본다", () => {
+    const implementation: OpenApiLike = {
+      "x-realtime-events": [
+        {
+          payload: "PostUpdatedEventDocument",
+          conditionalRooms: [{ when: "published", room: "posts" }],
+          rooms: ["posts:all", "user:{authorId}"],
+          name: "post.updated",
+        },
+      ],
+    };
+    expect(realtimeMismatches(updated, implementation)).toEqual([]);
+  });
+
+  it("배열의 순서는 모양의 일부로 본다", () => {
+    const implementation: OpenApiLike = {
+      "x-realtime-events": [
+        {
+          name: "post.updated",
+          rooms: ["user:{authorId}", "posts:all"],
+          conditionalRooms: [{ room: "posts", when: "published" }],
+          payload: "PostUpdatedEventDocument",
+        },
+      ],
+    };
+    expect(realtimeMismatches(updated, implementation)).toEqual([
+      "x-realtime-events: post.updated",
+    ]);
+  });
 });

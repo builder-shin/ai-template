@@ -85,10 +85,21 @@ export function reachableSchemas(spec: OpenApiLike): Set<string> {
   return found;
 }
 
+/** 객체의 키를 (안쪽까지) 정렬한 값. 배열의 순서는 그대로 둔다. */
+function sortedKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortedKeys);
+  if (typeof value !== "object" || value === null) return value;
+  const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return Object.fromEntries(entries.map(([key, inner]) => [key, sortedKeys(inner)]));
+}
+
+/** 항목을 비교할 문자열. 설명은 빼고, 키 순서는 보지 않는다. */
 function withoutDescription(item: unknown): string {
-  if (typeof item !== "object" || item === null || Array.isArray(item)) return JSON.stringify(item);
+  if (typeof item !== "object" || item === null || Array.isArray(item)) {
+    return JSON.stringify(sortedKeys(item));
+  }
   const kept = Object.entries(item).filter(([key]) => key !== "description");
-  return JSON.stringify(Object.fromEntries(kept));
+  return JSON.stringify(sortedKeys(Object.fromEntries(kept)));
 }
 
 function nameOf(item: unknown): string {
@@ -99,6 +110,7 @@ function nameOf(item: unknown): string {
 
 /**
  * 계약의 실시간 항목(채널, 이벤트, 메시지)이 구현에 같은 모양으로 있는가. oasdiff는 이 확장을 보지 않는다.
+ * 항목은 이름으로 짝짓고, 설명을 뺀 모양을 객체의 키 순서와 상관없이 비교한다(배열의 순서는 본다).
  * 구현에 더 있는 항목(프로젝트가 더한 모듈의 이벤트)은 괜찮다.
  */
 export function realtimeMismatches(contract: OpenApiLike, implementation: OpenApiLike): string[] {
