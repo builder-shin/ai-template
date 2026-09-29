@@ -81,6 +81,12 @@ describe("세션 (§4.2, §5.5)", () => {
 });
 
 describe("OAuth 리다이렉트 (JSON:API 예외)", () => {
+  it("authorize의 codeChallenge는 PKCE S256 challenge(base64url 43자) 모양이다", () => {
+    const authorize = operation("get", "/api/v1/oauth/{provider}/authorize");
+    const challenge = authorize.parameters?.find((parameter) => parameter.name === "codeChallenge");
+    expect(challenge?.schema).toEqual({ type: "string", pattern: "^[A-Za-z0-9_-]{43}$" });
+  });
+
   it("authorize와 callback은 302로 리다이렉트한다", () => {
     for (const path of [
       "/api/v1/oauth/{provider}/authorize",

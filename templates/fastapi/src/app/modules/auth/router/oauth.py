@@ -29,7 +29,8 @@ AUTHORIZE = RedirectOperation(
     errors=REDIRECT_ERRORS,
     query=(
         QueryParameter("redirectUri", required=True, format="uri"),
-        QueryParameter("codeChallenge", required=True),
+        # PKCE S256 challenge: SHA-256을 패딩 없는 base64url로 담아 늘 43자다.
+        QueryParameter("codeChallenge", required=True, pattern=r"^[A-Za-z0-9_-]{43}$"),
     ),
     description=(
         "제공자 로그인 화면으로 보낸다. redirectUri는 허용 목록으로 검사한다. "

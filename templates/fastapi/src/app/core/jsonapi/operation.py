@@ -13,6 +13,7 @@
 422 응답이 붙고, 모르는 파라미터를 조용히 무시하기 때문이다.
 """
 
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, override
@@ -252,19 +253,23 @@ class CollectionOperation[FilterT: FilterModel](Operation):
 
 @dataclass(frozen=True, slots=True)
 class QueryParameter:
-    """리다이렉트 operation의 쿼리 파라미터. JSON:API 밖의 이름이다(예: redirectUri, state)."""
+    """리다이렉트 operation의 쿼리 파라미터. JSON:API 밖의 이름이다(예: redirectUri, state).
+
+    pattern은 값 전체가 맞아야 하는 정규식이다(^…$). OpenAPI 스키마에도 그대로 나간다.
+    """
 
     name: str
     required: bool = False
     format: Literal["uri"] | None = None
+    pattern: str | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
 class RedirectOperation(Operation):
     """JSON:API 밖의 리다이렉트 operation(소셜 로그인). 성공하면 본문 없이 302와 Location이다.
 
-    - query: 이 operation의 쿼리 파라미터. 필수인데 없거나, 두 번 오거나, 형식(uri)이 틀리면
-      400 jsonapi.invalid_query다.
+    - query: 이 operation의 쿼리 파라미터. 필수인데 없거나, 두 번 오거나, 형식(uri)이나
+      pattern에 맞지 않으면 400 jsonapi.invalid_query다.
     - callback: 제공자가 돌아오는 콜백이다. 선언하지 않은 파라미터(제공자가 덧붙이는 scope 등)를
       받아들인다. 콜백이 아니면 선언하지 않은 파라미터는 400이다.
     엔드포인트는 `Depends(선언)`으로 RedirectQuery(values: 이름 → 값)를 받는다.
@@ -280,6 +285,7 @@ class RedirectOperation(Operation):
         parameters: list[dict[str, Any]] = []
         for item in self.query:
             schema = {"type": "string"} | ({} if item.format is None else {"format": item.format})
+            schema |= {} if item.pattern is None else {"pattern": item.pattern}
             parameter = {"name": item.name, "in": "query", "required": item.required}
             parameters.append({**parameter, "schema": schema, "explode": False})
         return parameters
@@ -307,6 +313,9 @@ class RedirectOperation(Operation):
             value = single(request, item.name)
             if item.format == "uri" and not _is_url(value):
                 detail = f"Query parameter {item.name} must be an absolute URL."
+                raise query_error(ErrorCode.JSONAPI_INVALID_QUERY, item.name, detail)
+            if item.pattern is not None and re.fullmatch(item.pattern, value) is None:
+                detail = f"Query parameter {item.name} must match {item.pattern}."
                 raise query_error(ErrorCode.JSONAPI_INVALID_QUERY, item.name, detail)
             values[item.name] = value
         return RedirectQuery(include=(), fields={}, values=values)

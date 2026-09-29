@@ -56,8 +56,6 @@ logger = structlog.get_logger(__name__)
 
 STATE_TTL = timedelta(minutes=10)
 CODE_TTL = timedelta(seconds=60)
-# PKCE S256 challenge(providers.base.challenge): SHA-256을 패딩 없는 base64url로 담아 늘 43자다.
-_CODE_CHALLENGE = re.compile(r"[A-Za-z0-9_-]{43}")
 # PKCE code verifier(RFC 7636 §4.1): unreserved 문자 43~128자.
 _CODE_VERIFIER = re.compile(r"[A-Za-z0-9._~-]{43,128}")
 
@@ -92,9 +90,6 @@ async def authorize(
     if redirect_uri not in settings.oauth_redirect_uris:
         detail = "redirectUri is not one of the allowed front-end callbacks."
         raise ApiError(400, ErrorCode.JSONAPI_INVALID_QUERY, detail, parameter="redirectUri")
-    if not _CODE_CHALLENGE.fullmatch(code_challenge):
-        detail = "codeChallenge must be 43 base64url characters (PKCE S256)."
-        raise ApiError(400, ErrorCode.JSONAPI_INVALID_QUERY, detail, parameter="codeChallenge")
     state, verifier = new_token(), new_token()
     stored = {
         "provider": provider.value,

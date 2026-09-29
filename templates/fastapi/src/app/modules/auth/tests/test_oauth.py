@@ -10,6 +10,7 @@ from urllib.parse import parse_qsl, urlsplit
 import httpx
 import pytest
 
+from app.core.jsonapi.openapi import JsonApiApp
 from app.core.security import new_token
 from app.modules.auth.providers.base import challenge
 from app.tests.accounts import PASSWORD, Accounts, new_email
@@ -176,16 +177,23 @@ async def test_state_redirect_uri_and_provider_are_checked(api: httpx.AsyncClien
     assert missing.status_code == 404
 
 
+async def test_the_code_challenge_shape_is_declared(app: JsonApiApp) -> None:
+    parameters = app.openapi()["paths"]["/api/v1/oauth/{provider}/authorize"]["get"]["parameters"]
+    [challenge] = [item for item in parameters if item["name"] == "codeChallenge"]
+    assert challenge["schema"] == {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"}
+
+
 async def test_code_challenge_is_required_and_pkce_shaped(api: httpx.AsyncClient) -> None:
     empty = await api.get("/api/v1/oauth/google/authorize", params={"redirectUri": FRONT})
     assert (empty.status_code, error_codes(empty)) == (400, ["jsonapi.invalid_query"])
     assert error_sources(empty) == [{"parameter": "codeChallenge"}]
-    malformed = await api.get(
-        "/api/v1/oauth/google/authorize",
-        params={"redirectUri": FRONT, "codeChallenge": "too-short"},
-    )
-    assert (malformed.status_code, error_codes(malformed)) == (400, ["jsonapi.invalid_query"])
-    assert error_sources(malformed) == [{"parameter": "codeChallenge"}]
+    for bad in ("too-short", "a" * 42 + "=", "a" * 44):
+        malformed = await api.get(
+            "/api/v1/oauth/google/authorize",
+            params={"redirectUri": FRONT, "codeChallenge": bad},
+        )
+        assert (malformed.status_code, error_codes(malformed)) == (400, ["jsonapi.invalid_query"])
+        assert error_sources(malformed) == [{"parameter": "codeChallenge"}]
 
 
 async def test_a_code_only_becomes_a_session_with_its_own_verifier(

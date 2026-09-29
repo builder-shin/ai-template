@@ -47,6 +47,11 @@ BACK = RedirectOperation(
     query=(QueryParameter("state", required=True), QueryParameter("code")),
     callback=True,
 )
+KNOCK = RedirectOperation(
+    name="knock",
+    errors=REDIRECT_ERRORS,
+    query=(QueryParameter("code", required=True, pattern=r"^[0-9]{4}$"),),
+)
 
 
 @router.route("GET", "/open", OPEN, response_model=None)
@@ -57,6 +62,11 @@ async def open_door(kind: DoorKind, query: Annotated[RedirectQuery, Depends(OPEN
 @router.route("GET", "/back", BACK, response_model=None)
 async def come_back(kind: DoorKind, query: Annotated[RedirectQuery, Depends(BACK)]) -> Response:
     return RedirectResponse(f"{FRONT}?{urlencode(dict(query.values))}", status_code=302)
+
+
+@router.route("GET", "/knock", KNOCK, response_model=None)
+async def knock(kind: DoorKind, query: Annotated[RedirectQuery, Depends(KNOCK)]) -> Response:
+    return RedirectResponse(f"{FRONT}?kind={kind}", status_code=302)
 
 
 def doors_app() -> JsonApiApp:
@@ -135,3 +145,20 @@ def test_the_contract_shape_of_a_redirect() -> None:
         "description": "Redirection",
         "headers": {"location": {"required": True, "schema": {"type": "string", "format": "uri"}}},
     }
+
+
+async def test_a_parameter_with_a_pattern_must_match_it(browser: httpx.AsyncClient) -> None:
+    assert (
+        await browser.get("/api/v1/doors/red/knock", params={"code": "1234"})
+    ).status_code == 302
+    for bad in ("123", "12345", "abcd"):
+        response = await browser.get("/api/v1/doors/red/knock", params={"code": bad})
+        assert response.status_code == 400
+        [error] = response.json()["errors"]
+        assert (error["code"], error["source"]) == ("jsonapi.invalid_query", {"parameter": "code"})
+
+
+def test_the_pattern_is_in_the_parameter_schema() -> None:
+    parameters = doors_app().openapi()["paths"]["/api/v1/doors/{kind}/knock"]["get"]["parameters"]
+    [code] = [parameter for parameter in parameters if parameter["name"] == "code"]
+    assert code["schema"] == {"type": "string", "pattern": "^[0-9]{4}$"}

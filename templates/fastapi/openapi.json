@@ -4333,7 +4333,8 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
             },
             "explode": false
           }
