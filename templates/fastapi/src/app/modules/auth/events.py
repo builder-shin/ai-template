@@ -7,7 +7,8 @@
 - refresh_token_reused: refresh token 재사용이 감지됐다
 - account_deactivated, account_deleted: 관리자가 비활성화했거나 탈퇴했다
 폐기한 세션이 없으면 보내지 않는다. 같은 사용자의 다른 연결도 받으므로, 클라이언트는 자기 세션이
-살아 있는지 확인한다.
+살아 있는지 확인한다. commit한 뒤에 그 사용자의 연결을 다시 검사해 폐기한 세션의 연결을 끊는다
+(queue_recheck).
 """
 
 import uuid
@@ -15,7 +16,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jsonapi.rendering import document_content
-from app.core.realtime import EventSpec, queue, user_room
+from app.core.realtime import EventSpec, queue, queue_recheck, user_room
 from app.modules.auth.schemas import (
     SessionRevokedEventDocument,
     SessionRevokedEventMeta,
@@ -32,3 +33,4 @@ def session_revoked(
 ) -> None:
     document = SessionRevokedEventDocument(meta=SessionRevokedEventMeta(reason=reason))
     queue(session, REVOKED, [user_room(user_id)], lambda: document_content(document))
+    queue_recheck(session, [user_id])

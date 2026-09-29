@@ -15,7 +15,7 @@
 - `ratelimit.py`: 레이트 리밋(Valkey 고정 윈도). 엄격한 한도는 service가 `enforce(redis, Limit(...), 대상)`로 걸고, IP별 전역 한도는 미들웨어가 건다.
 - `jobs.py`: 잡 선언(`Job`), 등록(`register`), 잡의 문맥(`JobContext`, `JOB_CONTEXT`), 보내기(`JobQueue`, `JobsDep`).
 - `realtime.py`: Socket.IO 서버(`create_realtime`, `/socket.io`의 `RealtimeEndpoint`), 발행기(api는 `ServerPublisher`, worker와 scheduler는 쓰기 전용 `RedisPublisher`, 테스트는 `RecordingPublisher`), commit 뒤에 이벤트를 보내는 세션(`EventSession`, `queue`), 채널·이벤트·메시지 선언(`Channel`, `EventSpec`, `MessageSpec`)과 그 OpenAPI 확장(`realtime_openapi`).
-- `realtime_pubsub.py`: 실시간의 Valkey pub/sub 도우미. python-socketio 매니저가 만든 Valkey 클라이언트를 모두 기억했다가 닫는다(`TrackedRedisManager`).
+- `realtime_pubsub.py`: 실시간의 Valkey pub/sub 도우미. python-socketio 매니저가 만든 Valkey 클라이언트를 모두 기억했다가 닫는다(`TrackedRedisManager`). 연결 재검사를 인스턴스 사이에 알리는 제어 채널(`ControlChannel`)을 둔다. 모듈은 `app.core.realtime.queue_recheck`로 넣는다.
 - `telemetry.py`: OpenTelemetry. 기본으로 꺼 두고 `OTEL_ENABLED=true`면 트레이스를 OTLP로 보낸다. 요청, SQLAlchemy·psycopg, Valkey, httpx, Taskiq를 계측하고, 수동 span은 `tracer(이름)`으로 만든다.
 - `mail.py`: 메일 템플릿 렌더링(`MailTemplates`, 로케일이 없으면 ko)과 SMTP 발송(`send`). 메일은 모듈의 잡이 id를 받아 잡 안에서 만들고 보낸다(예: `auth/jobs.py`).
 - `audit.py`: 감사 로그 테이블(`AuditLog`)과 기록(`record_audit`), 계약의 행위·대상 어휘(`AuditLogAction`, `AuditLogTargetType`). 여러 모듈이 기록하고 읽기 API(audit_logs 모듈)가 users를 포함하므로 core에 둔다.

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import uuid
 from collections.abc import AsyncIterator
 from typing import override
 
@@ -20,6 +21,7 @@ from app.core.realtime import (
     RedisPublisher,
     pubsub_channel,
     queue,
+    queue_recheck,
 )
 from app.tests.sockets import connected, serving
 
@@ -156,6 +158,22 @@ async def test_queued_events_leave_only_after_a_commit(
         await session.rollback()
         await session.commit()
     assert publisher.events == [EVENT]
+
+
+async def test_rechecks_leave_after_a_commit_once_per_user(
+    db: async_sessionmaker[AsyncSession], publisher: RecordingPublisher
+) -> None:
+    first, second = uuid.uuid7(), uuid.uuid7()
+    async with db() as session:
+        queue_recheck(session, [second, first])
+        queue_recheck(session, [first])
+        assert publisher.rechecks == []
+        await session.commit()
+        assert publisher.rechecks == [tuple(sorted([first, second]))]
+        queue_recheck(session, [first])
+        await session.rollback()
+        await session.commit()
+    assert len(publisher.rechecks) == 1
 
 
 class BrokenThenRecording(RecordingPublisher):

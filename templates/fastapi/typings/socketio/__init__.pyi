@@ -1,6 +1,6 @@
 # python-socketio 5.17.0에는 타입 정보(py.typed)가 없다. 템플릿이 쓰는 부분만 적은 스텁이다.
 # basedpyright가 typings/ 아래를 스텁으로 읽는다. 새 API를 쓰면 여기에 더한다.
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 from typing import Any
 
 from redis.asyncio import Redis
@@ -19,6 +19,8 @@ class AsyncManager:
         to: str | list[str] | None = None,
         **kwargs: Any,
     ) -> None: ...
+    # 이 인스턴스에 있는 room의 참가자(sid, engine.io sid). 다른 인스턴스의 연결은 없다.
+    def get_participants(self, namespace: str, room: str) -> Iterator[tuple[str, str]]: ...
 
 class AsyncRedisManager(AsyncManager):
     # 발행과 수신이 함께 쓰는 클라이언트. _redis_connect가 부를 때마다 새로 만든다.

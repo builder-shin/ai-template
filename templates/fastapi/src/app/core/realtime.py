@@ -9,6 +9,9 @@
   성공한 뒤에 페이로드를 만들어 세션의 발행기가 보내고(EventSession), rollback하면 버린다. 그래서
   페이로드에는 commit한 값(예: flush가 채운 시각)이 들어간다. 발행에 실패해도 요청은 성공한다.
 - 소켓 서버가 아닌 프로세스(worker, scheduler)는 쓰기 전용 발행기(RedisPublisher)로 보낸다.
+- 연결 재검사: 세션을 폐기하거나 역할·상태를 바꾼 모듈은 `queue_recheck(session, 사용자 id)`로
+  트랜잭션에 넣는다. commit한 뒤에 발행기가 제어 채널(app.core.realtime_pubsub.ControlChannel)로
+  알리고, api 인스턴스마다 realtime 모듈이 자기 연결을 다시 검사해 자격을 잃은 연결을 끊는다.
 - 구독할 수 있는 채널(Channel)과 보내는 이벤트(EventSpec)는 모듈이 공개 인터페이스로 내보내고
   app.modules.registry가 모은다. 연결과 구독(MessageSpec)은 realtime 모듈이 처리한다.
 - 채널, 이벤트, 메시지는 계약의 루트 확장(x-realtime-channels, x-realtime-events,
@@ -18,7 +21,8 @@
 
 import contextlib
 import logging
-from collections.abc import Callable, Iterable, Mapping
+import uuid
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol, override
 from urllib.parse import urlparse
@@ -31,12 +35,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import Settings
-from app.core.realtime_pubsub import TrackedRedisManager
+from app.core.realtime_pubsub import ControlChannel, TrackedRedisManager
 
 logger = structlog.get_logger(__name__)
 
 EVENTS_KEY = "realtime_events"  # session.info: commit 뒤에 보낼 이벤트
 PUBLISHER_KEY = "realtime_publisher"  # session.info: 그 세션의 발행기
+RECHECK_KEY = "realtime_recheck"  # session.info: commit 뒤에 연결을 다시 검사할 사용자 id
 SCHEMA_PREFIX = "#/components/schemas/"
 
 type Payload = Mapping[str, Any]
@@ -98,20 +103,28 @@ class MessageSpec:
 class Publisher(Protocol):
     async def publish(self, event: Event) -> None: ...
 
+    async def recheck(self, user_ids: Sequence[uuid.UUID]) -> None:
+        """user_ids의 연결을 다시 검사하라고 모든 api 인스턴스에 알린다."""
+        ...
+
 
 class ServerPublisher:
     """소켓 서버(api)의 발행기. 이 인스턴스의 클라이언트에 보내고 pub/sub으로 다른 인스턴스에
     알린다. 룸을 여러 개 주면 여러 룸에 든 클라이언트도 한 번만 받는다.
     """
 
-    def __init__(self, server: socketio.AsyncServer) -> None:
+    def __init__(self, server: socketio.AsyncServer, control: ControlChannel) -> None:
         self.server = server
+        self.control = control
 
     async def publish(self, event: Event) -> None:
         # 빈 rooms를 그대로 넘기면 Socket.IO가 room 전체(모든 클라이언트) 브로드캐스트로 다룬다.
         if not event.rooms:
             return
         await self.server.emit(event.name, dict(event.payload), to=list(event.rooms))
+
+    async def recheck(self, user_ids: Sequence[uuid.UUID]) -> None:
+        await self.control.send(user_ids)
 
 
 class RedisPublisher:
@@ -122,9 +135,9 @@ class RedisPublisher:
     """
 
     def __init__(self, redis_url: str, *, channel: str | None = None) -> None:
-        self.manager = TrackedRedisManager(
-            redis_url, channel=channel or pubsub_channel(redis_url), write_only=True
-        )
+        name = channel or pubsub_channel(redis_url)
+        self.manager = TrackedRedisManager(redis_url, channel=name, write_only=True)
+        self.control = ControlChannel(redis_url, name)
 
     async def publish(self, event: Event) -> None:
         # 빈 rooms를 그대로 넘기면 Socket.IO가 room 전체(모든 클라이언트) 브로드캐스트로 다룬다.
@@ -132,22 +145,35 @@ class RedisPublisher:
             return
         await self.manager.emit(event.name, dict(event.payload), room=list(event.rooms))
 
+    async def recheck(self, user_ids: Sequence[uuid.UUID]) -> None:
+        await self.control.send(user_ids)
+
     async def close(self) -> None:
         """발행하면서 만든 Valkey 클라이언트를 모두 닫는다. 발행한 적이 없으면 할 일이 없다."""
         await self.manager.close_clients()
+        await self.control.close()
 
 
 @dataclass(slots=True)
 class RecordingPublisher:
-    """보낸 이벤트를 모으는 발행기. 테스트가 쓴다. forward가 있으면 그 발행기로도 보낸다."""
+    """보낸 이벤트와 재검사를 모으는 발행기. 테스트가 쓴다.
+
+    forward가 있으면 그 발행기로도 보낸다.
+    """
 
     events: list[Event] = field(default_factory=list[Event])
     forward: Publisher | None = None
+    rechecks: list[tuple[uuid.UUID, ...]] = field(default_factory=list[tuple[uuid.UUID, ...]])
 
     async def publish(self, event: Event) -> None:
         self.events.append(event)
         if self.forward is not None:
             await self.forward.publish(event)
+
+    async def recheck(self, user_ids: Sequence[uuid.UUID]) -> None:
+        self.rechecks.append(tuple(user_ids))
+        if self.forward is not None:
+            await self.forward.recheck(user_ids)
 
     def named(self, name: str) -> list[Event]:
         return [event for event in self.events if event.name == name]
@@ -175,6 +201,14 @@ def queue(session: AsyncSession, name: str, rooms: Iterable[str], payload: Paylo
     pending.append((name, tuple(rooms), payload))
 
 
+def queue_recheck(session: AsyncSession, user_ids: Iterable[uuid.UUID]) -> None:
+    """commit이 성공하면 user_ids의 연결을 다시 검사하게 한다(세션이 끝났거나 권한을 잃은 연결을
+    끊는다). 세션을 폐기하거나 역할·상태를 바꿀 때 부른다. rollback하면 버려진다.
+    """
+    pending: set[uuid.UUID] = session.info.setdefault(RECHECK_KEY, set())
+    pending.update(user_ids)
+
+
 class EventSession(AsyncSession):
     """commit이 성공한 뒤에 queue한 이벤트를 보내는 세션(app.core.db.session_factory가 쓴다).
 
@@ -191,30 +225,46 @@ class EventSession(AsyncSession):
         pending: list[tuple[str, tuple[str, ...], PayloadBuilder]] = self.info.pop(EVENTS_KEY, [])
         publisher: Publisher | None = self.info.get(PUBLISHER_KEY)
         if publisher is None:
+            self.info.pop(RECHECK_KEY, None)
             return
+        rechecks: set[uuid.UUID] = self.info.pop(RECHECK_KEY, set())
         for name, rooms, payload in pending:
             try:
                 await publisher.publish(Event(name, rooms, payload()))
             except Exception:
                 # 이벤트는 알림이다. 원본은 이미 commit했으므로 요청을 실패시키지 않는다.
                 logger.warning("realtime_publish_failed", realtime_event=name, exc_info=True)
+        if rechecks:
+            try:
+                await publisher.recheck(sorted(rechecks))
+            except Exception:
+                logger.warning("realtime_recheck_failed", exc_info=True)
 
     @override
     async def rollback(self) -> None:
         self.info.pop(EVENTS_KEY, None)
+        self.info.pop(RECHECK_KEY, None)
         await super().rollback()
 
 
 @dataclass(slots=True)
 class Realtime:
-    """api의 소켓 서버와 그 발행기. lifespan이 만들고 닫는다."""
+    """api의 소켓 서버, 발행기, 제어 채널. lifespan이 만들고 닫는다.
+
+    제어 채널의 수신은 처리기를 건 뒤에 start로 시작한다(app.modules.registry.attach_realtime).
+    """
 
     server: socketio.AsyncServer
     publisher: Publisher
     asgi: ASGIApp
     channel: str  # pub/sub 채널. 쓰기 전용 발행기(RedisPublisher)도 같은 채널을 쓴다.
     manager: TrackedRedisManager  # 서버의 pub/sub 매니저(server.manager와 같다)
+    control: ControlChannel  # 연결 재검사를 알리는 제어 채널
     closed: bool = field(default=False, init=False)
+
+    def start(self) -> None:
+        """제어 채널을 듣기 시작한다. 연결·구독 처리와 재검사 처리기를 건 뒤에 부른다."""
+        self.control.start()
 
     async def close(self) -> None:
         """연결을 끊고 pub/sub 수신을 멈추고, 매니저가 만든 Valkey 클라이언트를 모두 닫는다.
@@ -232,6 +282,7 @@ class Realtime:
             with contextlib.suppress(BaseException):
                 await listener
         await self.manager.close_clients()
+        await self.control.close()
 
 
 def create_realtime(settings: Settings, *, channel: str | None = None) -> Realtime:
@@ -253,12 +304,14 @@ def create_realtime(settings: Settings, *, channel: str | None = None) -> Realti
     )
     # 앱이 /socket.io 아래만 넘기므로 경로를 가리지 않는다("" → 모든 경로).
     asgi = socketio.ASGIApp(server, socketio_path="")
+    control = ControlChannel(redis_url, channel)
     return Realtime(
         server=server,
-        publisher=ServerPublisher(server),
+        publisher=ServerPublisher(server, control),
         asgi=asgi,
         channel=channel,
         manager=manager,
+        control=control,
     )
 
 

@@ -192,7 +192,7 @@ async def app(
     application.state.storage = storage
     application.state.jobs = JobQueue(broker)
     application.state.realtime = realtime
-    registry.attach_realtime(realtime.server, application.state)
+    registry.attach_realtime(realtime, application.state)
     yield application
     await broker.shutdown()
 

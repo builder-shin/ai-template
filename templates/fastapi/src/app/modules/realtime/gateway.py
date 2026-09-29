@@ -5,11 +5,14 @@
   에러 코드(auth.token_invalid), data가 ErrorObject다. 티켓이 없으면 익명 연결이다.
 - subscribe·unsubscribe: 페이로드는 RealtimeSubscription, ack는 RealtimeAck다. 모르는 채널은
   validation.invalid_choice, 권한이 없으면 permission.denied다. 권한은 구독할 때 DB에서 계산한다.
-- 세션을 폐기해도 이미 맺은 연결은 끊지 않는다(스펙 §1.3). 폐기는 session.revoked 이벤트로 알린다.
+- 재검사: 세션을 폐기하거나 역할·상태를 바꾸면(auth와 users의 queue_recheck) 제어 채널로
+  알림이 온다. 이 인스턴스에 있는 그 사용자의 연결을 다시 검사해, 세션이 끝났거나(폐기, 계정
+  비활성화·탈퇴) 구독한 채널의 권한을 잃은 연결을 끊는다. 끊긴 클라이언트는 새 티켓으로 다시
+  붙는다(세션이 끝났으면 티켓 발급이 401이고, 권한을 잃은 채널은 구독이 permission.denied다).
 """
 
 import uuid
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 import socketio
@@ -25,7 +28,7 @@ from app.core.jsonapi.errors import error_object
 from app.core.jsonapi.models import ErrorCode
 from app.core.jsonvalue import is_object
 from app.core.permissions import PermissionRegistry
-from app.core.realtime import Channel, user_room
+from app.core.realtime import Channel, Realtime, user_room
 from app.core.telemetry import tracer
 from app.modules import auth
 from app.modules.realtime.schemas import RealtimeAck, RealtimeSubscription
@@ -102,6 +105,36 @@ class Gateway:
             return None
         return self.channels.get(subscription.channel.root)
 
+    async def recheck(self, user_ids: Sequence[uuid.UUID]) -> None:
+        """이 인스턴스에 있는 user_ids의 연결을 다시 검사해 자격을 잃은 연결을 끊는다."""
+        for user_id in user_ids:
+            participants = self.server.manager.get_participants("/", user_room(user_id))
+            for sid in [sid for sid, _ in participants]:
+                if not await self._still_allowed(sid):
+                    logger.info("realtime_disconnected", user_id=str(user_id))
+                    await self.server.disconnect(sid)
+
+    async def _still_allowed(self, sid: str) -> bool:
+        """연결의 세션이 살아 있고, 구독한 채널의 권한을 모두 가졌는가."""
+        saved = await self.server.get_session(sid)
+        if USER_KEY not in saved:
+            return True
+        async with self._sessions() as session:
+            principal = await auth.session_principal(
+                session,
+                self._permissions,
+                uuid.UUID(saved[USER_KEY]),
+                uuid.UUID(saved[SESSION_KEY]),
+            )
+        if principal is None:
+            return False
+        for room in self.server.rooms(sid):
+            channel = self.channels.get(room)
+            permission = None if channel is None else channel.permission
+            if permission is not None and permission not in principal.permissions:
+                return False
+        return True
+
     async def _allowed(self, sid: str, channel: Channel) -> bool:
         if channel.permission is None:
             return True
@@ -143,9 +176,11 @@ class Gateway:
         return _ack(True)
 
 
-def attach(server: socketio.AsyncServer, state: State, channels: Iterable[Channel]) -> None:
-    """소켓 서버에 연결·구독 처리를 건다."""
-    gateway = Gateway(server, state, channels)
-    server.on("connect", gateway.connect)
-    server.on("subscribe", gateway.subscribe)
-    server.on("unsubscribe", gateway.unsubscribe)
+def attach(realtime: Realtime, state: State, channels: Iterable[Channel]) -> None:
+    """소켓 서버에 연결·구독 처리를 걸고, 재검사 처리기를 건 뒤 제어 채널을 듣기 시작한다."""
+    gateway = Gateway(realtime.server, state, channels)
+    realtime.server.on("connect", gateway.connect)
+    realtime.server.on("subscribe", gateway.subscribe)
+    realtime.server.on("unsubscribe", gateway.unsubscribe)
+    realtime.control.on_recheck(gateway.recheck)
+    realtime.start()

@@ -8,19 +8,18 @@
   해 줄 규칙(사용자의 아바타는 공개)과 파일을 가리키는지 확인하는 처리(탈퇴 때 남길 파일)를 건다.
 - JOBS: 잡(`app.core.jobs.Job`). broker가 이름 그대로 등록하고, cron이 있으면 scheduler가 보낸다.
 - CHANNELS, EVENTS, MESSAGES: 실시간 구독 채널, 보내는 이벤트, 클라이언트 메시지의 선언
-  (app.core.realtime). attach_realtime이 소켓 서버에 연결·구독 처리(realtime 모듈)를 걸 때 채널을
-  넘기고, 앱이 openapi.json에 계약의 실시간 확장으로 낸다.
+  (app.core.realtime). attach_realtime이 소켓 서버에 연결·구독 처리와 연결 재검사(realtime 모듈)를
+  걸 때 채널을 넘기고, 앱이 openapi.json에 계약의 실시간 확장으로 낸다.
 이 파일도 모듈의 공개 인터페이스만 import한다(check의 module-boundary 검사).
 """
 
-import socketio
 from starlette.datastructures import State
 
 from app.core.access import Authenticator
 from app.core.jobs import Job
 from app.core.jsonapi.operation import JsonApiRouter
 from app.core.permissions import Permission
-from app.core.realtime import Channel, EventSpec, MessageSpec
+from app.core.realtime import Channel, EventSpec, MessageSpec, Realtime
 from app.modules import audit_logs, auth, files, posts, realtime, roles, users
 
 ROUTERS: tuple[JsonApiRouter, ...] = (
@@ -53,12 +52,12 @@ EVENTS: tuple[EventSpec, ...] = (
 MESSAGES: tuple[MessageSpec, ...] = realtime.MESSAGES
 
 
-def attach_realtime(server: socketio.AsyncServer, state: State) -> None:
-    """소켓 서버에 연결·구독 처리를 건다.
+def attach_realtime(sockets: Realtime, state: State) -> None:
+    """소켓 서버에 연결·구독 처리와 연결 재검사를 걸고 제어 채널을 듣기 시작한다.
 
     앱이 시작할 때(app.main)와 테스트의 app fixture가 부른다.
     """
-    realtime.attach(server, state, CHANNELS)
+    realtime.attach(sockets, state, CHANNELS)
 
 
 # 계정을 닫을 때(비활성화, 탈퇴) auth가 세션을 폐기하고 토큰을 지운다.

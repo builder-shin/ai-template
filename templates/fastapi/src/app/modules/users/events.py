@@ -4,7 +4,8 @@
 - roles: 역할을 받거나 잃었다. 가진 역할의 권한이 바뀌었거나 역할이 지워졌다(roles가 알린다).
 - status: 관리자가 상태를 바꿨다.
 - profile: 이름, 로케일, 아바타를 바꿨다(PATCH /me).
-클라이언트는 GET /me를 다시 부른다.
+클라이언트는 GET /me를 다시 부른다. roles나 status가 바뀌면 commit한 뒤에 그 사용자들의 연결을
+다시 검사해 구독한 채널의 권한을 잃은 연결을 끊는다(queue_recheck).
 """
 
 import uuid
@@ -14,7 +15,7 @@ from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jsonapi.rendering import document_content
-from app.core.realtime import EventSpec, queue, user_room
+from app.core.realtime import EventSpec, queue, queue_recheck, user_room
 from app.modules.users.schemas import UserMeUpdatedEventDocument, UserMeUpdatedEventMeta
 
 UPDATED = "me.updated"
@@ -27,11 +28,14 @@ type Change = Literal["roles", "status", "profile"]
 def me_updated(
     session: AsyncSession, user_ids: Iterable[uuid.UUID], changed: Sequence[Change]
 ) -> None:
-    rooms = [user_room(user_id) for user_id in user_ids]
-    if not rooms or not changed:
+    targets = list(user_ids)
+    if not targets or not changed:
         return
     document = UserMeUpdatedEventDocument(meta=UserMeUpdatedEventMeta(changed=list(changed)))
+    rooms = [user_room(user_id) for user_id in targets]
     queue(session, UPDATED, rooms, lambda: document_content(document))
+    if {"roles", "status"} & set(changed):
+        queue_recheck(session, targets)
 
 
 def roles_changed(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> None:

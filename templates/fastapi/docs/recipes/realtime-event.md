@@ -28,7 +28,7 @@
 - 이벤트를 넣은 트랜잭션은 `await session.commit()`으로 끝낸다. 이벤트는 그 commit이 보낸다(`EventSession`). `async with session.begin():` 블록이 끝날 때의 commit은 이벤트를 보내지 않고, savepoint(`begin_nested`)를 rollback해도 그 안에서 넣은 이벤트는 버려지지 않는다.
 - 룸이 없는 이벤트는 보내지 않는다. 빈 룸 목록을 그대로 넘기면 Socket.IO가 room 전체(모든 클라이언트) 브로드캐스트로 다루므로, 발행기가 보내기 전에 막는다. 조건부 룸(`ConditionalRoom`)의 조건이 모두 거짓이라 보낼 룸이 하나도 남지 않을 수 있다.
 - 페이로드는 모듈의 직렬화 함수로 만든 JSON:API 문서다. 초안처럼 볼 권한이 필요한 내용은 그 권한이 있어야 구독하는 채널(예: `posts:all`)이나 본인 룸으로만 보낸다.
-- 채널의 권한은 구독할 때만 본다. 구독한 뒤에 권한을 잃거나 계정이 비활성화되거나 탈퇴해도, 그 연결은 끊기거나 구독을 풀 때까지 그 채널의 이벤트를 받는다. 그래서 `me.updated`(`changed`에 `roles`나 `status`)나 `session.revoked`를 받은 클라이언트는 연결을 끊고 새 티켓으로 다시 붙는다. 다시 구독할 때 권한을 다시 검사받는다. 서버에서 그런 연결을 내보내는 일은 후속 작업이다. 인스턴스를 가로질러 사용자별 소켓 id를 기록해야 한다.
+- 채널의 권한은 구독할 때 본다. 세션이 폐기되거나 사용자의 역할·상태가 바뀌면 서버가 그 사용자의 연결을 다시 검사해, 권한을 잃은 채널을 구독한 연결을 끊는다(`app.core.realtime.queue_recheck`, realtime 모듈의 `Gateway.recheck`). 새 채널도 `Channel`의 `permission`만 선언하면 이 검사를 받는다. 권한이 바뀌는 새 흐름을 더하면 그 쓰기에서 `queue_recheck`를 부른다.
 - 잡에서도 같은 방법이다. 잡의 세션은 commit한 뒤 쓰기 전용 발행기(`JobContext.realtime`)로 보낸다. DB와 상관없는 알림은 `await context.realtime.publish(Event(...))`로 바로 보낸다.
 - 한 연결이 여러 룸에 들어 있어도 이벤트는 한 번 받는다.
 
