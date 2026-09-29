@@ -4492,6 +4492,25 @@ components:
         - draft
         - published
       description: 골든 모듈. 새 리소스는 이 파일의 구조를 그대로 따른다.
+    PostUnpublishedEventDocument:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - type
+            - id
+          properties:
+            type:
+              type: string
+              enum:
+                - posts
+            id:
+              type: string
+          description: 관계가 가리키는 리소스 식별자.
+      description: 발행을 취소한 글. 초안의 내용이 공개 채널로 나가지 않게 식별자만 담는다.
     PostUpdateAttributes:
       type: object
       properties:
@@ -5590,6 +5609,10 @@ x-realtime-events:
       - posts:all
       - user:{authorId}
     payload: PostPublishedEventDocument
+  - name: post.unpublished
+    rooms:
+      - posts
+    payload: PostUnpublishedEventDocument
   - name: post.deleted
     rooms:
       - posts:all

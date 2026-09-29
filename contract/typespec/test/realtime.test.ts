@@ -46,6 +46,11 @@ describe("실시간 (§4.7)", () => {
         payload: "PostPublishedEventDocument",
       },
       {
+        name: "post.unpublished",
+        rooms: ["posts"],
+        payload: "PostUnpublishedEventDocument",
+      },
+      {
         name: "post.deleted",
         rooms: ["posts:all", "user:{authorId}"],
         conditionalRooms: [{ room: "posts", when: "wasPublished" }],
@@ -58,6 +63,12 @@ describe("실시간 (§4.7)", () => {
     for (const event of events) {
       expect(() => schema(event.payload)).not.toThrow();
     }
+  });
+
+  it("발행 취소는 공개 채널에 식별자만 보낸다", () => {
+    const data = schema("PostUnpublishedEventDocument").properties?.data;
+    expect(data?.$ref ?? "").not.toBe("#/components/schemas/PostResource");
+    expect(Object.keys(schema("PostUnpublishedEventDocument").properties ?? {})).toEqual(["data"]);
   });
 
   it("글 이벤트 페이로드는 posts 리소스 문서다", () => {

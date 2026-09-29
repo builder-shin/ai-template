@@ -110,6 +110,7 @@
 
 - OpenAPI 루트의 `x-realtime-channels`가 구독 가능한 채널과 필요한 권한을, `x-realtime-events`가 이벤트 이름·받는 곳·페이로드 스키마를 적는다.
 - `x-realtime-events`의 `rooms`는 그 이벤트를 늘 받는 룸이다. `user:{userId}`와 `user:{authorId}`는 해당 사용자(글 이벤트는 작성자)의 `user:{id}` 룸이다. `conditionalRooms`는 조건이 맞을 때만 받는 룸이고 `{ room, when }` 꼴이다. `when`은 `published`(바뀐 뒤 글이 발행 상태)와 `wasPublished`(지우기 전 글이 발행 상태였음) 둘 중 하나다.
+- 발행된 글을 초안으로 돌리면 공개 채널(`posts`)은 `post.unpublished`를 받는다. 페이로드는 리소스 식별자뿐이다(초안의 내용이 공개 채널로 나가지 않는다). `posts:all`과 작성자 룸은 `post.updated`(전체 문서)를 받는다.
 - 페이로드도 JSON:API 문서이고 `components.schemas`에 있다. 그래서 프론트엔드는 같은 생성 과정으로 이벤트 타입을 얻는다.
 - 클라이언트가 보내는 메시지는 `x-realtime-messages`에 적는다. `subscribe`와 `unsubscribe`는 페이로드 `RealtimeSubscription`(`{ channel }`)을 보내고, 서버는 ack `RealtimeAck`로 답한다. 성공이면 `{ ok: true }`, 실패면 `{ ok: false, error }`이고 `error`는 에러 객체다(권한 없음 403 `permission.denied`, 모르는 채널이나 틀린 페이로드 422 `validation.invalid_choice`, `source.pointer`는 `/channel`).
 - 채널 권한은 구독할 때만 본다. 구독한 뒤에 권한을 잃거나 계정이 비활성화되거나 탈퇴해도, 그 연결은 끊기거나 구독을 풀 때까지 그 채널의 이벤트를 받는다. 그래서 `me.updated`(`changed`에 `roles`나 `status`)나 `session.revoked`를 받은 클라이언트는 연결을 끊고 새 티켓으로 다시 붙어 구독을 다시 검사받아야 한다. 서버에서 그런 연결을 내보내는 일은 후속 작업이다(인스턴스를 가로질러 사용자별 소켓 id를 기록해야 한다).

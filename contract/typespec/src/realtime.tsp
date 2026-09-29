@@ -32,6 +32,11 @@ model PostCreatedEventDocument is JsonApi.Document<PostResource>;
 model PostUpdatedEventDocument is JsonApi.Document<PostResource>;
 model PostPublishedEventDocument is JsonApi.Document<PostResource>;
 
+/** 발행을 취소한 글. 초안의 내용이 공개 채널로 나가지 않게 식별자만 담는다. */
+model PostUnpublishedEventDocument {
+  data: JsonApi.ResourceIdentifier<"posts">;
+}
+
 model PostDeletedEventDocument {
   data: JsonApi.ResourceIdentifier<"posts">;
 }

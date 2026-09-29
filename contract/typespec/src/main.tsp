@@ -55,6 +55,7 @@ using OpenAPI;
       rooms: #["posts", "posts:all", "user:{authorId}"],
       payload: "PostPublishedEventDocument",
     },
+    #{ name: "post.unpublished", rooms: #["posts"], payload: "PostUnpublishedEventDocument" },
     #{
       name: "post.deleted",
       rooms: #["posts:all", "user:{authorId}"],

@@ -8,6 +8,9 @@
   - 만들면 post.created다.
     발행 상태로 만들면 post.published도 보낸다.
   - 발행하면(draft → published) post.published다.
+  - 발행을 취소하면(published → draft) 공개 채널에 post.unpublished를 보낸다.
+    페이로드는 식별자뿐이다(초안의 내용이 공개 채널로 나가지 않는다).
+    모든 글 채널과 작성자에게는 post.updated를 보낸다.
   - 그 밖의 변경은 post.updated다.
     고친 뒤 발행된 글이면 posts에도 보낸다.
   - 지우면 post.deleted다.
@@ -27,6 +30,7 @@ from app.modules.posts.schemas import (
     PostPublishedEventDocument,
     PostResource,
     PostType,
+    PostUnpublishedEventDocument,
     PostUpdatedEventDocument,
     post_resource,
 )
@@ -38,6 +42,7 @@ CHANNELS = (PUBLIC_CHANNEL, ALL_CHANNEL)
 CREATED = "post.created"
 UPDATED = "post.updated"
 PUBLISHED = "post.published"
+UNPUBLISHED = "post.unpublished"
 DELETED = "post.deleted"
 AUTHOR_ROOM = "user:{authorId}"  # 계약의 표기. 실제 룸은 user_room(작성자 id)이다.
 PRIVATE_ROOMS = (ALL_CHANNEL.name, AUTHOR_ROOM)
@@ -51,6 +56,7 @@ EVENTS = (
         (ConditionalRoom(PUBLIC_CHANNEL.name, "published"),),
     ),
     EventSpec(PUBLISHED, (PUBLIC_CHANNEL.name, *PRIVATE_ROOMS), PostPublishedEventDocument),
+    EventSpec(UNPUBLISHED, (PUBLIC_CHANNEL.name,), PostUnpublishedEventDocument),
     EventSpec(
         DELETED,
         PRIVATE_ROOMS,
@@ -85,13 +91,18 @@ def updated(session: AsyncSession, post: Post, *, was: PostStatus) -> None:
     """고친 글을 알린다.
 
     초안에서 발행으로 바뀌었으면 post.published다.
-    그 밖에는 post.updated다.
+    발행을 취소했으면 posts에 post.unpublished를 보낸다.
+    post.updated는 posts:all과 작성자에게 간다.
     """
     public = post.status is PostStatus.PUBLISHED
     if public and was is not PostStatus.PUBLISHED:
         published(session, post)
         return
     queue(session, UPDATED, _rooms(post, public=public), _document(PostUpdatedEventDocument, post))
+    if was is PostStatus.PUBLISHED and not public:
+        identifier = ResourceIdentifier[PostType](type="posts", id=str(post.id))
+        withdrawn: JsonApiModel = PostUnpublishedEventDocument(data=identifier)
+        queue(session, UNPUBLISHED, [PUBLIC_CHANNEL.name], lambda: document_content(withdrawn))
 
 
 def deleted(session: AsyncSession, post: Post) -> None:

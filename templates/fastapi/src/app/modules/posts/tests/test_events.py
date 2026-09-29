@@ -72,8 +72,11 @@ async def test_publishing_reaches_the_public_channel(
     assert _sent(publisher) == [
         ("post.updated", everyone),
         ("post.updated", private),
+        ("post.unpublished", ("posts",)),
         ("post.published", everyone),
     ]
+    assert publisher.events[2].payload == {"data": {"type": "posts", "id": post_id}}
+    assert publisher.events[1].payload["data"]["attributes"]["status"] == "draft"
     edited = publisher.events[0].payload["data"]["attributes"]
     assert edited["title"] == "고친 제목"
     assert edited["updatedAt"] > edited["createdAt"]
@@ -128,3 +131,9 @@ async def test_subscribers_receive_what_their_channel_allows(
         assert (await _patch(api, headers, draft, status="published")).status_code == 200
         assert (await anonymous.next("post.published"))["data"]["id"] == draft
         assert (await mine.next("post.published"))["data"]["id"] == draft
+        assert (await _patch(api, headers, draft, status="draft")).status_code == 200
+        withdrawn = await anonymous.next("post.unpublished")
+        assert withdrawn == {"data": {"type": "posts", "id": draft}}
+        assert await anonymous.nothing("post.updated")
+        assert (await mine.next("post.updated"))["data"]["attributes"]["status"] == "draft"
+        assert await mine.nothing("post.unpublished")

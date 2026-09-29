@@ -7091,6 +7091,34 @@
           "published"
         ]
       },
+      "PostUnpublishedEventDocument": {
+        "description": "발행을 취소한 글. 초안의 내용이 공개 채널로 나가지 않게 식별자만 담는다.",
+        "properties": {
+          "data": {
+            "description": "관계가 가리키는 리소스 식별자.",
+            "properties": {
+              "type": {
+                "enum": [
+                  "posts"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "PostUpdateAttributes": {
         "properties": {
           "title": {
@@ -8805,6 +8833,13 @@
         "user:{authorId}"
       ],
       "payload": "PostPublishedEventDocument"
+    },
+    {
+      "name": "post.unpublished",
+      "rooms": [
+        "posts"
+      ],
+      "payload": "PostUnpublishedEventDocument"
     },
     {
       "name": "post.deleted",

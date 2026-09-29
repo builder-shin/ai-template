@@ -889,6 +889,15 @@ export interface components {
          * @enum {string}
          */
         PostStatus: "draft" | "published";
+        /** @description 발행을 취소한 글. 초안의 내용이 공개 채널로 나가지 않게 식별자만 담는다. */
+        PostUnpublishedEventDocument: {
+            /** @description 관계가 가리키는 리소스 식별자. */
+            data: {
+                /** @enum {string} */
+                type: "posts";
+                id: string;
+            };
+        };
         PostUpdateAttributes: {
             title?: string;
             body?: string;

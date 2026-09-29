@@ -74,6 +74,12 @@ class PostPublishedEventDocument(Document[PostResource]):
     """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
 
 
+class PostUnpublishedEventDocument(JsonApiModel):
+    """발행을 취소한 글. 초안의 내용이 공개 채널로 나가지 않게 식별자만 담는다."""
+
+    data: ResourceIdentifier[PostType]
+
+
 class PostDeletedEventDocument(JsonApiModel):
     data: ResourceIdentifier[PostType]
 
