@@ -1,10 +1,12 @@
-"""메일: 모듈의 템플릿으로 만들고, 잡(mail.send)이 SMTP로 보낸다.
+"""메일: 모듈의 템플릿으로 만들고 SMTP로 보낸다. 보내기는 모듈의 메일 잡이 한다.
 
 - 템플릿은 메일을 보내는 모듈의 `templates/<로케일>/<이름>.subject.txt`, `.txt`, `.html`이다.
   로케일(ko, en)마다 세 파일이 모두 있어야 한다(check의 mail-template 검사). 받는 사람의 로케일이
   없으면 ko를 쓴다. 템플릿에 없는 변수를 쓰면 렌더링이 실패한다(StrictUndefined).
-- 서비스는 `MailTemplates.render`로 메일을 만들고 `JobsDep`으로 `SEND_MAIL`을 보낸다. 응답은 SMTP를
-  기다리지 않고, 보내다 실패하면 worker가 재시도한다.
+- 모듈은 메일마다 잡을 둔다. 잡 인자는 id뿐이고, 잡이 실행될 때 받는 사람을 DB에서 읽어
+  (토큰이 필요하면 발급해 commit한 뒤) `MailTemplates.render`로 만들고 `send`로 보낸다(예:
+  auth/jobs.py). 큐(Valkey)에 메일 주소와 토큰이 머물지 않는다. 서비스는 commit한 뒤 `JobsDep`으로
+  잡을 보내고, 응답은 SMTP를 기다리지 않는다. 보내다 실패하면 worker가 잡을 재시도한다.
 - SMTP_URL: `smtp://호스트:포트`(평문), `smtp+starttls://`(STARTTLS), `smtps://`(TLS).
   계정이 있으면 `smtps://사용자:비밀번호@호스트:포트`처럼 주소에 넣는다(퍼센트 인코딩).
 """
@@ -19,7 +21,6 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 from pydantic import BaseModel
 
 from app.core.config import Settings
-from app.core.jobs import JOB_CONTEXT, Job, JobContext
 
 LOCALES = ("ko", "en")
 DEFAULT_LOCALE = "ko"
@@ -28,7 +29,7 @@ _DEFAULT_PORTS = {"smtp": 25, "smtp+starttls": 587, "smtps": 465}
 
 
 class Mail(BaseModel):
-    """보낼 메일 하나. 잡 인자로 오간다."""
+    """보낼 메일 하나. 잡 안에서 만들고 보낸다(잡 인자로 넘기지 않는다)."""
 
     to: str
     subject: str
@@ -112,10 +113,3 @@ async def send(settings: Settings, mail: Mail) -> None:
         start_tls=server.start_tls,
         timeout=SMTP_TIMEOUT,
     )
-
-
-async def send_mail(mail: Mail, context: JobContext = JOB_CONTEXT) -> None:
-    await send(context.settings, mail)
-
-
-SEND_MAIL = Job("mail.send", send_mail)

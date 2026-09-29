@@ -14,7 +14,6 @@ from redis.asyncio import Redis
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import app.modules.auth.service.mails as mails
 import app.modules.auth.service.tokens as tokens
 from app.core.clients import Client
 from app.core.config import Settings
@@ -22,10 +21,10 @@ from app.core.db import utc_now, violates
 from app.core.jobs import JobQueue
 from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.models import ErrorCode
-from app.core.mail import SEND_MAIL
 from app.core.ratelimit import HOUR, Limit, enforce
 from app.core.security import identifier_hash
 from app.modules import users
+from app.modules.auth.jobs import SEND_VERIFICATION_MAIL, SEND_WELCOME_MAIL
 from app.modules.auth.models import TokenPurpose
 from app.modules.auth.schemas import RegistrationCreateAttributes
 
@@ -72,9 +71,8 @@ async def register(
                 422, ErrorCode.VALIDATION_ALREADY_TAKEN, detail, pointer=pointer
             ) from None
         raise
-    token = tokens.issue(session, user.id, TokenPurpose.EMAIL_VERIFICATION, utc_now())
     await session.commit()
-    await jobs.enqueue(SEND_MAIL, mails.verification(settings, user, token))
+    await jobs.enqueue(SEND_VERIFICATION_MAIL, user.id)
     return user
 
 
@@ -91,9 +89,10 @@ async def request_verification(
     user = await users.find_account(session, email)
     if user is None or user.email_verified_at is not None or user.status != users.UserStatus.ACTIVE:
         return
-    token = tokens.issue(session, user.id, TokenPurpose.EMAIL_VERIFICATION, utc_now())
+    # 잡은 요청의 트랜잭션을 끝낸 뒤에 보낸다. 테스트는 잡을 그 자리에서 같은 연결로 실행하므로
+    # 트랜잭션이 열려 있으면 잡이 발급한 토큰까지 요청과 함께 롤백된다.
     await session.commit()
-    await jobs.enqueue(SEND_MAIL, mails.verification(settings, user, token))
+    await jobs.enqueue(SEND_VERIFICATION_MAIL, user.id)
 
 
 async def verify_email(
@@ -112,5 +111,5 @@ async def verify_email(
     verified_at = user.email_verified_at or now
     await session.commit()
     if first:
-        await jobs.enqueue(SEND_MAIL, mails.welcome(settings, user))
+        await jobs.enqueue(SEND_WELCOME_MAIL, user.id)
     return row.id, verified_at

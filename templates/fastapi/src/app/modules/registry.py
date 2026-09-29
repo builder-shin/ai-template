@@ -19,7 +19,6 @@ from starlette.datastructures import State
 from app.core.access import Authenticator
 from app.core.jobs import Job
 from app.core.jsonapi.operation import JsonApiRouter
-from app.core.mail import SEND_MAIL
 from app.core.permissions import Permission
 from app.core.realtime import Channel, EventSpec, MessageSpec
 from app.modules import audit_logs, auth, files, posts, realtime, roles, users
@@ -40,7 +39,7 @@ PERMISSIONS: tuple[Permission, ...] = (
     *audit_logs.PERMISSIONS,
     *posts.PERMISSIONS,
 )
-JOBS: tuple[Job[...], ...] = (SEND_MAIL, *auth.JOBS, *files.JOBS)
+JOBS: tuple[Job[...], ...] = (*auth.JOBS, *files.JOBS)
 AUTHENTICATOR: Authenticator = auth.authenticate
 CHANNELS: tuple[Channel, ...] = (
     # 모듈이 내보낸 실시간 채널. gen:module이 새 모듈을 이 아래에 더한다.

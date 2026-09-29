@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.auth.events as events
 import app.modules.auth.repository as repository
-import app.modules.auth.service.mails as mails
 import app.modules.auth.service.tokens as tokens
 from app.core.access import Principal
 from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
@@ -28,10 +27,10 @@ from app.core.db import utc_now
 from app.core.jobs import JobQueue
 from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.models import ErrorCode
-from app.core.mail import SEND_MAIL
 from app.core.ratelimit import HOUR, Limit, enforce
 from app.core.security import check_password_async
 from app.modules import users
+from app.modules.auth.jobs import SEND_PASSWORD_RESET_MAIL
 from app.modules.auth.models import TokenPurpose
 from app.modules.auth.schemas import SessionRevokedReason
 from app.modules.auth.service.accounts import mail_request_limits
@@ -49,9 +48,10 @@ async def request_reset(
     user = await users.find_account(session, email)
     if user is None or user.status != users.UserStatus.ACTIVE:
         return
-    token = tokens.issue(session, user.id, TokenPurpose.PASSWORD_RESET, utc_now())
+    # 잡은 요청의 트랜잭션을 끝낸 뒤에 보낸다. 테스트는 잡을 그 자리에서 같은 연결로 실행하므로
+    # 트랜잭션이 열려 있으면 잡이 발급한 토큰까지 요청과 함께 롤백된다.
     await session.commit()
-    await jobs.enqueue(SEND_MAIL, mails.password_reset(settings, user, token))
+    await jobs.enqueue(SEND_PASSWORD_RESET_MAIL, user.id)
 
 
 async def reset_password(

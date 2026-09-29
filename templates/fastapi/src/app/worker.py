@@ -49,8 +49,8 @@ class DeleteOnAckStreamBroker(RedisStreamBroker):
     """확인할 때 메시지를 스트림에서 지우는 RedisStreamBroker.
 
     taskiq-redis의 확인은 XACK만 하고 항목을 지우지 않아, 끝난 잡이 스트림에 계속 남는다.
-    메일 잡은 받는 사람의 이메일과 이름, 1회용 토큰이 든 링크를 담는다. 그래서 확인을
-    XACK와 XDEL 한 트랜잭션(MULTI/EXEC)으로 바꾼다.
+    그래서 확인을 XACK와 XDEL 한 트랜잭션(MULTI/EXEC)으로 바꾼다. 잡 인자는 id뿐이지만(메일
+    잡도 받는 사람을 잡 안에서 읽는다) 끝난 잡이 스트림을 키우지 않게 한다.
     taskiq-redis 1.2.3의 _ack_generator에 기댄다. 메시지마다 항목 id를 받는 곳은 여기뿐이다.
     """
 

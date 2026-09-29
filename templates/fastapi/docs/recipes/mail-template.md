@@ -6,20 +6,22 @@
 
 ## 명령
 
-1. 템플릿과 메일을 만드는 함수를 쓰고, 서비스에서 보낸다(아래 "고칠 파일").
+1. 템플릿, 메일을 보내는 함수, 그 잡을 쓰고, 서비스에서 잡을 보낸다(아래 "고칠 파일").
 2. `uv run poe dev`로 띄워 보내 보고 Mailpit(http://127.0.0.1:28025)에서 받은 메일을 본다.
 3. `uv run poe check`.
 
 ## 고칠 파일
 
 - `src/app/modules/<모듈>/templates/<로케일>/<메일>.subject.txt`, `.txt`, `.html`: 로케일(`ko`, `en`)마다 세 파일을 모두 둔다. 변수는 Jinja(`{{ name }}`)로 쓰고, 넘기지 않은 변수를 쓰면 렌더링이 실패한다. `.html`만 이스케이프한다.
-- 메일을 만드는 함수: `TEMPLATES = MailTemplates(<모듈 폴더> / "templates")`를 두고 `TEMPLATES.render("<메일>", locale=user.locale, to=user.email, <변수>=...)`로 `Mail`을 만든다(예: `auth/service/mails.py`). 링크는 설정의 `FRONTEND_URL`에 경로를 붙인다.
-- 서비스: commit한 뒤 `await jobs.enqueue(SEND_MAIL, <메일>)`로 보낸다. 요청은 SMTP를 기다리지 않고, 실패하면 worker가 재시도한다.
+- 메일을 보내는 함수(`service/mails.py`): `TEMPLATES = MailTemplates(<모듈 폴더> / "templates")`를 둔다. 함수는 `(context: JobContext, <id>)`를 받아 `context.sessions()`로 받는 사람을 읽고, 보낼 조건을 다시 본 뒤 `TEMPLATES.render("<메일>", locale=user.locale, to=user.email, <변수>=...)`로 만들어 `await send(context.settings, mail)`로 보낸다(예: `auth/service/mails.py`). 토큰이 필요하면 발급해 commit한 뒤에 보낸다. 링크는 설정의 `FRONTEND_URL`에 경로를 붙인다.
+- 잡(`jobs.py`): `SEND_<메일>_MAIL = Job("<모듈>.send_<메일>_mail", <잡 함수>)`로 선언하고 모듈의 `JOBS`에 더한다. 잡 함수는 id와 `context: JobContext = JOB_CONTEXT`를 받는다(예: `auth/jobs.py`).
+- 서비스: commit한 뒤 `await jobs.enqueue(SEND_<메일>_MAIL, <id>)`로 보낸다. 요청은 SMTP를 기다리지 않고, 실패하면 worker가 재시도한다.
 
 ## 규칙
 
 - 받는 사람의 로케일이 `ko`, `en`이 아니면 `ko`로 보낸다.
 - 메일 주소 같은 개인정보는 로그와 감사 기록에 남기지 않는다.
+- 잡 인자에는 id만 넘긴다. 메일 주소, 렌더한 메일, 토큰을 넘기면 처리할 때까지 큐(Valkey)에 남는다.
 
 ## 확인
 

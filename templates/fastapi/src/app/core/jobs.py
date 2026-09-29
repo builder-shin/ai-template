@@ -2,10 +2,12 @@
 
 - 모듈은 잡을 `Job(이름, 함수)`으로 선언해 공개 인터페이스로 내보내고, `app.modules.registry`가
   모은다. broker(`app.worker.create_broker`)가 모은 잡을 그 이름(task_name)으로 등록한다.
-  이름은 `<모듈>.<동사구>`(예: `mail.send`)로 직접 정한다. 함수를 옮겨도 큐에 남은 잡이 길을
-  잃지 않는다.
-- 잡 함수의 인자는 JSON으로 오갈 수 있는 값(원시 값, Pydantic 모델)이다. worker가 타입 힌트대로
-  다시 만든다. 설정, DB 세션, 스토리지, 실시간 발행기는 인자로 넘기지 않고 `JobContext`로 받는다:
+  이름은 `<모듈>.<동사구>`(예: `auth.send_verification_mail`)로 직접 정한다. 함수를 옮겨도
+  큐에 남은 잡이 길을 잃지 않는다.
+- 잡 함수의 인자는 JSON으로 오갈 수 있는 값(원시 값, UUID, Pydantic 모델)이다. worker가 타입
+  힌트대로 다시 만든다. 인자는 처리할 때까지 큐(Valkey)에 남으므로 id만 넘기고, 개인정보(메일
+  주소)와 비밀(토큰)은 잡 안에서 읽거나 만든다.
+- 설정, DB 세션, 스토리지, 실시간 발행기는 인자로 넘기지 않고 `JobContext`로 받는다:
   `async def run(..., context: JobContext = JOB_CONTEXT) -> None`
 - api는 요청에서 `JobsDep`(JobQueue)로 잡을 보낸다. 테스트의 JobQueue는 잡을 그 자리에서 실행한다.
 - 주기 작업은 `cron`(UTC 기준 cron 식)을 적는다. scheduler가 때가 되면 보낸다.

@@ -1,15 +1,12 @@
-"""메일: 로케일별 템플릿(없으면 ko), html만 이스케이프, SMTP 주소 해석, 잡으로 실제 발송."""
+"""메일: 로케일별 템플릿(없으면 ko), html만 이스케이프, SMTP 주소 해석, 실제 발송."""
 
 from pathlib import Path
 
 import pytest
 from jinja2 import UndefinedError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from taskiq import InMemoryBroker
 
 from app.core.config import Settings
-from app.core.jobs import JobQueue, attach_context, register
-from app.core.mail import SEND_MAIL, Mail, MailTemplates, SmtpServer, smtp_server
+from app.core.mail import Mail, MailTemplates, SmtpServer, send, smtp_server
 from tools.mailpit import Mailpit
 
 pytestmark = pytest.mark.anyio
@@ -70,18 +67,9 @@ def test_smtp_url_gives_host_port_login_and_tls(url: str, server: SmtpServer) ->
     assert smtp_server(url) == server
 
 
-async def test_send_mail_job_delivers_through_smtp(
-    settings: Settings, db: async_sessionmaker[AsyncSession], mailbox: Mailpit
-) -> None:
-    broker = InMemoryBroker(await_inplace=True)
-    attach_context(broker, settings, db)
-    register(broker, [SEND_MAIL])
-    await broker.startup()
-    try:
-        mail = Mail(to="job@example.com", subject="잡 메일", text="본문", html="<p>본문</p>")
-        await JobQueue(broker).enqueue(SEND_MAIL, mail)
-    finally:
-        await broker.shutdown()
-    [received] = await mailbox.wait_for("job@example.com")
-    assert (received.subject, received.text.strip()) == ("잡 메일", "본문")
+async def test_send_delivers_through_smtp(settings: Settings, mailbox: Mailpit) -> None:
+    mail = Mail(to="send@example.com", subject="보낸 메일", text="본문", html="<p>본문</p>")
+    await send(settings, mail)
+    [received] = await mailbox.wait_for("send@example.com")
+    assert (received.subject, received.text.strip()) == ("보낸 메일", "본문")
     assert "<p>본문</p>" in received.html

@@ -70,9 +70,9 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 - taskiq CLI(`taskiq worker`, `taskiq scheduler`)는 `create_broker`, `create_scheduler`를 인자 없이 부른다. 그 경로에서는 두 함수가 structlog 로그 설정을 스스로 하므로, CLI 자체의 로그 설정은 `--no-configure-logging`으로 끈다.
 - Windows 기본 이벤트 루프(Proactor)에서는 psycopg의 비동기 모드가 돌지 않는다. 그래서 개발과 E2E는 api를 셀렉터 루프로, worker를 셀렉터 루프 한 프로세스(`python -m app.worker`)로 띄운다. Linux(이미지)는 기본 루프가 셀렉터다.
 - 잡은 Valkey 스트림으로 주고받고, worker가 잡을 끝낸 뒤에 확인한다. 실패한 잡은 재시도가 Valkey 스케줄 소스에 들어가고 scheduler가 때가 되면 다시 보낸다(`src/app/worker.py`). scheduler는 스케줄을 10초마다 다시 읽는다(`--update-interval=10`). 첫 재시도 지연이 5초라 기본값(1분)이면 재시도가 크게 늦는다.
-- 확인한 잡은 스트림에서 지운다(XACK와 XDEL을 한 트랜잭션으로). 스트림이나 스케줄 소스(재시도)에서 기다리는 잡은 처리할 때까지 내용(메일 잡이면 받는 사람과 링크)을 담고 있다.
+- 확인한 잡은 스트림에서 지운다(XACK와 XDEL을 한 트랜잭션으로). 스트림이나 스케줄 소스(재시도)에서 기다리는 잡은 처리할 때까지 인자를 담고 있다. 그래서 잡 인자는 id뿐이고, 개인정보(메일 주소)와 비밀(1회용 토큰)은 잡 안에서 읽거나 만든다.
 - 주기 작업은 잡에 `schedule` 라벨로 선언하고 scheduler가 보낸다(`src/app/scheduler.py`).
-- 메일은 보내는 모듈의 템플릿(`templates/<ko|en>/<메일>.subject.txt, .txt, .html`)으로 만들고(`app.core.mail.MailTemplates`), 잡 `mail.send`(`SEND_MAIL`)가 SMTP로 보낸다. 요청은 SMTP를 기다리지 않고, 실패하면 worker가 재시도한다. 개발과 테스트의 메일은 Mailpit(http://127.0.0.1:28025)이 받는다.
+- 메일은 보내는 모듈의 잡이 보낸다(예: auth의 `auth.send_verification_mail`). 잡이 실행될 때 사용자 id로 받는 사람을 읽고 보낼 조건을 다시 본 뒤, 토큰이 필요하면 발급해 commit하고, 모듈의 템플릿(`templates/<ko|en>/<메일>.subject.txt, .txt, .html`, `app.core.mail.MailTemplates`)으로 만들어 SMTP로 보낸다(`app.core.mail.send`). 요청은 SMTP를 기다리지 않고, 실패하면 worker가 재시도한다(재시도하면 토큰을 새로 발급한다). 개발과 테스트의 메일은 Mailpit(http://127.0.0.1:28025)이 받는다.
 
 ### 프록시 뒤에서 운영할 때
 
