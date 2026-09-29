@@ -185,7 +185,7 @@ async def test_an_admin_deleting_someone_elses_post_is_audited(
 
 
 async def test_the_cover_stays_after_the_author_leaves_until_it_is_deleted(
-    api: httpx.AsyncClient, accounts: Accounts
+    api: httpx.AsyncClient, accounts: Accounts, storage: Storage
 ) -> None:
     headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
     image = await upload_file(api, headers)
@@ -197,3 +197,4 @@ async def test_the_cover_stays_after_the_author_leaves_until_it_is_deleted(
     admin = await accounts.sign_in(await accounts.admin())
     assert (await api.delete(f"{POSTS}/{post['id']}", headers=admin)).status_code == 204
     assert (await api.get(f"/api/v1/files/{image['id']}", headers=admin)).status_code == 404
+    assert await storage.size(f"files/{image['id']}") is None
