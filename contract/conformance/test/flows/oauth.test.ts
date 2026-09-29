@@ -74,6 +74,14 @@ describe(`소셜 로그인 (${target.name})`, () => {
     expect((await userOf(back))?.id).toBe(existing.userId);
   });
 
+  it("구글이 검증했어도 hd(Workspace)가 없는 gmail.com 밖 이메일은 기존 계정에 연결하지 않는다", async () => {
+    const existing = await newUser();
+    const outsider = { ...person(existing.email, true), googleWorkspace: false };
+    const user = await userOf(await oauth.signIn("google", FRONT_CALLBACK, outsider));
+    expect(user?.id).not.toBe(existing.userId);
+    expect(user?.attributes.email).toBeNull();
+  });
+
   it.each([
     ["kakao", false],
     ["naver", true],

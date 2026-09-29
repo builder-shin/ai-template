@@ -40,6 +40,11 @@ export interface OAuthPerson {
   readonly emailVerified?: boolean;
   /** 이름. 모의 서버가 비ASCII 값을 깨뜨리므로 ASCII로 쓴다. */
   readonly name?: string;
+  /**
+   * 구글 Workspace 계정인가(구글의 hd 클레임). 없으면 검증된 gmail.com 밖 주소를 Workspace로
+   * 본다. false면 hd를 붙이지 않는다(구글이 그 주소의 주인을 보증하지 않는 경우).
+   */
+  readonly googleWorkspace?: boolean;
 }
 
 export interface OAuthStart {

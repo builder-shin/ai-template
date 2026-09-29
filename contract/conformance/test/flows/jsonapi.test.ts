@@ -57,6 +57,16 @@ describe(`JSON:API 규칙 (${target.name})`, () => {
     expect(problems(empty.body as ErrorDocument)).toEqual([["jsonapi.invalid_document", "/data"]]);
   });
 
+  it("1 MiB(1,048,576바이트)를 넘는 본문은 413 jsonapi.content_too_large이다", async () => {
+    const attributes = { ...REGISTRATION, name: "x".repeat(1_048_576) };
+    const body = JSON.stringify({ data: { type: "registrations", attributes } });
+    const sent = await send("/api/v1/registrations", { method: "POST", body });
+    expect(sent.status).toBe(413);
+    expect(problems(sent.body as ErrorDocument)).toEqual([
+      ["jsonapi.content_too_large", undefined],
+    ]);
+  });
+
   it("생성 요청의 type이 엔드포인트와 다르면 409, 클라이언트가 만든 id가 있으면 403이다", async () => {
     const wrongType = await send("/api/v1/registrations", {
       method: "POST",

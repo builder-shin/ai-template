@@ -37,14 +37,18 @@ function open(options: ConnectOptions): Socket {
   });
 }
 
-/** 받은 이벤트를 모으는 연결. */
+/** 받은 이벤트를 모으는 연결. 서버가 끊으면 그 까닭을 기억한다. */
 export class RealtimeClient {
   private readonly socket: Socket;
   private readonly received: Received[] = [];
   private readonly violations: string[] = [];
+  private reason: string | undefined;
 
   private constructor(socket: Socket) {
     this.socket = socket;
+    socket.on("disconnect", (reason: string) => {
+      this.reason = reason;
+    });
     socket.onAny((event: string, payload: unknown) => {
       this.violations.push(...validateEvent(event, payload));
       this.received.push({ event, payload });
@@ -86,6 +90,25 @@ export class RealtimeClient {
     await new Promise((resolve) => setTimeout(resolve, ms));
     if (this.violations.length > 0) throw new ContractViolation(this.takeViolations());
     return !this.received.some((item) => item.event === event && match(item.payload));
+  }
+
+  /** 서버가 이 연결을 끊을 때까지 기다린다. 제한 시간 안에 끊지 않거나 다른 까닭으로 끊기면 던진다. */
+  async closedByServer(): Promise<void> {
+    const deadline = Date.now() + WAIT_MS;
+    while (Date.now() < deadline) {
+      if (this.reason !== undefined) {
+        if (this.reason === "io server disconnect") return;
+        throw new Error(`서버가 끊지 않았다(까닭: ${this.reason}).`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    throw new Error(`${String(WAIT_MS)}ms 안에 서버가 연결을 끊지 않았다.`);
+  }
+
+  /** ms 동안 연결이 끊기지 않았는가. */
+  async staysConnected(ms = 500): Promise<boolean> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    return this.reason === undefined && this.socket.connected;
   }
 
   /** subscribe·unsubscribe를 보내고 ack를 받는다. ack는 계약의 RealtimeAck로 검증한다. */

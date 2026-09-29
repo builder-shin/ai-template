@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validateSchema } from "../../src/validation.ts";
 import { about, RealtimeClient, refused } from "./sockets.ts";
-import { api, newUser, type Session, signInAdmin, target } from "./support.ts";
+import { api, newUser, type Session, signIn, signInAdmin, target, userWith } from "./support.ts";
 
 async function ticketFor(session: Session): Promise<string> {
   const { data, response } = await session.api.POST("/api/v1/realtime-tickets", {
@@ -97,6 +97,76 @@ describe(`실시간 (${target.name})`, () => {
       } finally {
         everyone.close();
       }
+    }
+  });
+
+  it("발행을 취소하면 posts는 post.unpublished(식별자)를, posts:all은 post.updated를 받는다", async () => {
+    const [manager, author] = await Promise.all([signInAdmin(), newUser()]);
+    const everything = await RealtimeClient.connect({ ticket: await ticketFor(manager) });
+    const everyone = await RealtimeClient.connect();
+    try {
+      expect(await everything.ack("subscribe", { channel: "posts:all" })).toEqual({ ok: true });
+      expect(await everyone.ack("subscribe", { channel: "posts" })).toEqual({ ok: true });
+      const created = await author.api.POST("/api/v1/posts", {
+        body: {
+          data: { type: "posts", attributes: { title: "취소", body: "본문", status: "published" } },
+        },
+      });
+      const id = created.data?.data.id ?? "";
+      await everyone.next("post.published", about(id));
+      const withdrawn = await author.api.PATCH("/api/v1/posts/{id}", {
+        params: { path: { id } },
+        body: { data: { type: "posts", id, attributes: { status: "draft" } } },
+      });
+      expect(withdrawn.response.status).toBe(200);
+      expect(await everyone.next("post.unpublished", about(id))).toEqual({
+        data: { type: "posts", id },
+      });
+      const updated = await everything.next("post.updated", about(id));
+      expect(updated).toMatchObject({ data: { attributes: { status: "draft" } } });
+      expect(await everyone.nothing("post.updated", about(id))).toBe(true);
+    } finally {
+      try {
+        everything.close();
+      } finally {
+        everyone.close();
+      }
+    }
+  });
+
+  it("로그아웃한 세션의 연결은 서버가 끊고, 같은 사용자의 다른 세션 연결은 남는다", async () => {
+    const leaving = await newUser();
+    const staying = await signIn(leaving);
+    const gone = await RealtimeClient.connect({ ticket: await ticketFor(leaving) });
+    const kept = await RealtimeClient.connect({ ticket: await ticketFor(staying) });
+    try {
+      expect((await leaving.api.DELETE("/api/v1/sessions/current")).response.status).toBe(204);
+      await gone.closedByServer();
+      expect(await kept.staysConnected()).toBe(true);
+    } finally {
+      try {
+        gone.close();
+      } finally {
+        kept.close();
+      }
+    }
+  });
+
+  it("posts:manage를 잃으면 posts:all을 구독한 연결을 서버가 끊는다", async () => {
+    const [manager, editor] = await Promise.all([signInAdmin(), userWith(["posts:manage"])]);
+    const socket = await RealtimeClient.connect({ ticket: await ticketFor(editor) });
+    try {
+      expect(await socket.ack("subscribe", { channel: "posts:all" })).toEqual({ ok: true });
+      const narrowed = await manager.api.PATCH("/api/v1/roles/{id}", {
+        params: { path: { id: editor.roleId } },
+        body: {
+          data: { type: "roles", id: editor.roleId, attributes: { permissions: ["posts:create"] } },
+        },
+      });
+      expect(narrowed.response.status).toBe(200);
+      await socket.closedByServer();
+    } finally {
+      socket.close();
     }
   });
 

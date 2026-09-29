@@ -25,6 +25,7 @@ const JSON_MEDIA_TYPES = new Set(["application/vnd.api+json", "application/json"
  * 모의 서버는 로그인 폼의 claims를 토큰과 userinfo에 그대로 담고, username을 sub로 쓴다.
  * 구글은 gmail.com 주소이거나 email_verified가 참이고 hd(Workspace)가 있어야 그 이메일의 주인을
  * 보증한다(providers/google.py와 같은 규칙). hd는 검증된 이메일이 gmail.com이 아닐 때만 붙인다.
+ * googleWorkspace가 false면 붙이지 않는다.
  */
 export function mockClaims(provider: OAuthProvider, person: OAuthPerson): Record<string, unknown> {
   const verified = person.emailVerified ?? false;
@@ -49,6 +50,7 @@ export function mockClaims(provider: OAuthProvider, person: OAuthPerson): Record
       };
       if (
         verified &&
+        person.googleWorkspace !== false &&
         person.email !== undefined &&
         !person.email.toLowerCase().endsWith("@gmail.com")
       ) {

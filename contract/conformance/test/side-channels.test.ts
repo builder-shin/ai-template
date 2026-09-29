@@ -194,6 +194,13 @@ describe("모의 OAuth 드라이버", () => {
       name: "Bo",
       hd: "example.com",
     });
+    expect(
+      mockClaims("google", { ...person, emailVerified: true, googleWorkspace: false }),
+    ).toEqual({
+      email: "b@example.com",
+      email_verified: true,
+      name: "Bo",
+    });
   });
 
   it("백엔드가 302가 아니면 던진다", async () => {

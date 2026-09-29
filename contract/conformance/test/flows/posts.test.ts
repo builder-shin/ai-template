@@ -171,6 +171,19 @@ describe(`글 (${target.name})`, () => {
     expect(log?.attributes.targetType).toBe("posts");
   });
 
+  it("본문은 100,000자까지이고, 넘으면 422 validation.too_long이다", async () => {
+    const author = await newUser();
+    const longest = await write(author, { title: uniqueName("긴 글"), body: "가".repeat(100_000) });
+    expect(longest.attributes.body).toHaveLength(100_000);
+    const { error, response } = await author.api.POST("/api/v1/posts", {
+      body: {
+        data: { type: "posts", attributes: { title: "넘는 글", body: "가".repeat(100_001) } },
+      },
+    });
+    expect(response.status).toBe(422);
+    expect(problems(error)).toEqual([["validation.too_long", "/data/attributes/body"]]);
+  });
+
   it("로그인하지 않으면 401, posts:create가 없으면 403이다", async () => {
     const document = {
       data: { type: "posts" as const, attributes: { title: "글", body: "본문" } },
