@@ -44,23 +44,102 @@ async def connections_named(redis: Redis, name: str) -> int:
     return sum(1 for client in clients if client.get("name") == name)
 
 
-async def test_close_releases_every_valkey_connection_of_the_manager(
+async def kill_connections_named(redis: Redis, name: str) -> None:
+    """이름이 name인 연결을 모두 CLIENT KILL로 끊는다.
+
+    매니저가 다시 연결하는지 보는 테스트가 쓴다.
+    """
+    clients = await redis.client_list()  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 client_list에 타입이 없다
+    ids = [client["id"] for client in clients if client.get("name") == name]
+    assert ids
+    for client_id in ids:
+        await redis.client_kill_filter(_id=client_id)  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 client_kill_filter에 타입이 없다
+
+
+async def test_the_manager_keeps_one_client_and_close_releases_it(
     app: JsonApiApp, realtime: Realtime, redis: Redis
 ) -> None:
-    """첫 연결 전의 발행과 첫 연결이 시작한 수신이 클라이언트를 따로 만든다.
+    """첫 연결 전의 발행, 수신 시작, 실패한 발행 뒤의 재연결이 모두 같은 클라이언트를 쓴다.
 
-    close가 둘 다 닫는다.
+    close 뒤에는 그 클라이언트가 없고 연결도 남지 않는다.
     """
     await realtime.publisher.publish(EVENT)
+    first = realtime.manager.redis
+    assert first is not None
     async with serving(app) as url, connected(url):
-        assert len(realtime.manager.clients) == 2
+        for _ in range(50):
+            if await connections_named(redis, realtime.channel) > 0:
+                break
+            await asyncio.sleep(0.02)
+        assert await connections_named(redis, realtime.channel) > 0  # 양성 대조: 수신이 시작됐다
+        assert realtime.manager.redis is first
+        realtime.manager.connected = False  # 실패한 발행 뒤 재연결과 같은 경로
+        await realtime.publisher.publish(EVENT)
+        assert realtime.manager.redis is first
     await realtime.close()
     for _ in range(50):
         if await connections_named(redis, realtime.channel) == 0:
             break
         await asyncio.sleep(0.02)
     assert await connections_named(redis, realtime.channel) == 0
-    assert realtime.manager.clients == []
+    assert realtime.manager.redis is None
+
+
+async def test_events_still_flow_after_valkey_drops_the_managers_connections(
+    app: JsonApiApp, realtime: Realtime, worker: RedisPublisher, redis: Redis
+) -> None:
+    """Valkey가 매니저와 worker의 연결을 강제로 끊어도(CLIENT KILL) 이벤트가 다시 흐른다.
+
+    수신은 같은 PubSub으로 다시 구독한다(새 클라이언트를 만들지 않는다).
+    """
+    async with serving(app) as url, connected(url) as member:
+        await realtime.server.enter_room(member.sid, "a")
+        # 서버는 첫 연결 뒤에 pub/sub을 구독한다. 구독이 끝나기 전의 발행은 사라지므로 다시 보낸다.
+        for _ in range(20):
+            await worker.publish(EVENT)
+            try:
+                assert await member.next(EVENT.name, within=0.25) == {"meta": {"n": 1}}
+                break
+            except TimeoutError:
+                continue
+        else:
+            pytest.fail("쓰기 전용 발행기의 이벤트가 오지 않았다.")
+        before = realtime.manager.redis
+
+        await kill_connections_named(redis, realtime.channel)
+
+        # 수신은 약 1초 뒤에 같은 PubSub으로 다시 구독한다. pub/sub은 듣지 않는 동안의 메시지를
+        # 버리므로 다시 구독할 때까지 되풀이해 보낸다.
+        for _ in range(50):
+            await worker.publish(EVENT)
+            try:
+                assert await member.next(EVENT.name, within=0.2) == {"meta": {"n": 1}}
+                break
+            except TimeoutError:
+                continue
+        else:
+            pytest.fail("연결이 끊긴 뒤에는 이벤트가 다시 오지 않았다.")
+        assert realtime.manager.redis is before
+
+
+async def test_a_write_only_publisher_releases_its_connection_on_close(
+    infra: Settings, redis: Redis
+) -> None:
+    """쓰기 전용 발행기(worker, scheduler)가 만든 클라이언트를 close가 닫는다.
+
+    여러 번 불러도 된다.
+    """
+    channel = f"socketio-test-{uuid.uuid4()}"
+    publisher = RedisPublisher(infra.redis_url.get_secret_value(), channel=channel)
+    await publisher.publish(EVENT)
+    assert await connections_named(redis, channel) > 0
+    await publisher.close()
+    for _ in range(50):
+        if await connections_named(redis, channel) == 0:
+            break
+        await asyncio.sleep(0.02)
+    assert await connections_named(redis, channel) == 0
+    await publisher.close()
 
 
 def test_the_pubsub_channel_carries_the_db_number() -> None:

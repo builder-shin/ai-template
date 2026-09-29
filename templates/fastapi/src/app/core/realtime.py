@@ -267,22 +267,28 @@ class Realtime:
         self.control.start()
 
     async def close(self) -> None:
-        """연결을 끊고 pub/sub 수신을 멈추고, 매니저가 만든 Valkey 클라이언트를 모두 닫는다.
+        """제어 채널을 멈추고 연결을 끊고 pub/sub 수신을 멈춘 뒤 매니저의
+        Valkey 클라이언트를 닫는다.
 
         python-socketio 5.17.0에는 pub/sub 수신 태스크(thread)를 멈추는 공개 API가 없다.
-        여러 번 불러도 된다(engineio의 shutdown은 두 번 부르면 실패한다).
+        여러 번 불러도 된다(engineio의 shutdown은 두 번 부르면 실패한다). 한 단계가 실패해도
+        나머지 정리는 한다.
         """
         if self.closed:
             return
         self.closed = True
-        await self.server.shutdown()
-        listener = getattr(self.manager, "thread", None)
-        if listener is not None:
-            listener.cancel()
-            with contextlib.suppress(BaseException):
-                await listener
-        await self.manager.close_clients()
-        await self.control.close()
+        try:
+            try:
+                await self.control.close()
+            finally:
+                await self.server.shutdown()
+        finally:
+            listener = getattr(self.manager, "thread", None)
+            if listener is not None:
+                listener.cancel()
+                with contextlib.suppress(BaseException):
+                    await listener
+            await self.manager.close_clients()
 
 
 def create_realtime(settings: Settings, *, channel: str | None = None) -> Realtime:

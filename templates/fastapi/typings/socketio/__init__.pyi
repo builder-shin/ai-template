@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable, Iterator
 from typing import Any
 
 from redis.asyncio import Redis
+from redis.asyncio.client import PubSub
 from starlette.types import ASGIApp as _ASGIApp
 from starlette.types import Receive, Scope, Send
 
@@ -23,8 +24,10 @@ class AsyncManager:
     def get_participants(self, namespace: str, room: str) -> Iterator[tuple[str, str]]: ...
 
 class AsyncRedisManager(AsyncManager):
-    # 발행과 수신이 함께 쓰는 클라이언트. _redis_connect가 부를 때마다 새로 만든다.
-    redis: Redis
+    # 발행과 수신이 함께 쓰는 클라이언트와 PubSub. 처음 _redis_connect를 부르기 전에는 None이다.
+    redis: Redis | None
+    pubsub: PubSub | None
+    connected: bool
     def __init__(
         self,
         url: str = "redis://localhost:6379/0",

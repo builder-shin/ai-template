@@ -1,9 +1,11 @@
 """실시간의 Valkey pub/sub 도우미(app.core.realtime이 쓴다).
 
-- TrackedRedisManager: python-socketio의 AsyncRedisManager는 발행하거나 수신을 (다시) 시작할 때마다
-  Valkey 클라이언트를 새로 만들고 이전 것을 버린다(5.17.0의 _redis_connect). 그래서 첫 연결 전에
-  발행하면 그 클라이언트가 닫히지 않고 남는다. 이 매니저는 만든 클라이언트를 모두 기억했다가
-  close_clients로 닫는다. 연결 이름(CLIENT LIST의 name)은 pub/sub 채널 이름이다.
+- TrackedRedisManager: python-socketio의 AsyncRedisManager(5.17.0)는 발행이 실패하거나 수신을
+  다시 시작할 때마다 _redis_connect로 Valkey 클라이언트를 새로 만들고 이전 것을 닫지 않고 버린다.
+  Valkey가 끊긴 동안에는 실패한 발행마다 쌓인다. 이 매니저는 클라이언트와 PubSub을 처음 한 번만
+  만들고 다시 연결할 때도 그대로 쓴다. redis-py가 다음 명령에서 다시 연결하고, PubSub은 다시
+  연결할 때 구독을 되살린다(on_connect). close_clients가 둘을 닫는다. 연결 이름(CLIENT LIST의
+  name)은 pub/sub 채널 이름이다.
 - ControlChannel: 연결 재검사를 인스턴스 사이에 알리는 제어 채널(`<pub/sub 채널>:control`)이다.
   세션을 폐기하거나 역할·상태를 바꾼 쓰기가 commit되면 그 사용자 id를 보내고(send), api
   인스턴스마다 듣다가(start) 처리기(on_recheck)를 부른다. 처리기는 그 인스턴스의 연결만 본다.
@@ -33,22 +35,30 @@ type RecheckHandler = Callable[[list[uuid.UUID]], Awaitable[None]]
 
 
 class TrackedRedisManager(socketio.AsyncRedisManager):
-    """만든 Valkey 클라이언트를 모두 기억해 두었다가 닫는 AsyncRedisManager."""
+    """Valkey 클라이언트를 하나만 만들어 다시 쓰고, close_clients로 닫는 AsyncRedisManager."""
 
     def __init__(self, url: str, *, channel: str, write_only: bool = False) -> None:
         options = {"client_name": channel}
         super().__init__(url, channel=channel, write_only=write_only, redis_options=options)
-        self.clients: list[Redis] = []
 
     @override
     def _redis_connect(self) -> None:
-        super()._redis_connect()
-        self.clients.append(self.redis)
+        # 처음에만 클라이언트와 PubSub을 만든다. 그 뒤의 재연결은 같은 것을 쓴다.
+        if self.redis is None:
+            super()._redis_connect()
+        self.connected = True
 
     async def close_clients(self) -> None:
-        """만든 클라이언트를 모두 닫는다. 여러 번 불러도 된다."""
-        while self.clients:
-            await self.clients.pop().aclose()
+        """PubSub과 클라이언트를 닫는다. 하나가 실패해도 나머지를 닫는다. 여러 번 불러도 된다."""
+        pubsub, self.pubsub = self.pubsub, None
+        redis, self.redis = self.redis, None
+        self.connected = False
+        try:
+            if pubsub is not None:
+                await pubsub.aclose()
+        finally:
+            if redis is not None:
+                await redis.aclose()
 
 
 class _Recheck(BaseModel):
@@ -90,6 +100,7 @@ class ControlChannel:
             with contextlib.suppress(BaseException):
                 await self.task
             self.task = None
+        self.listening.clear()
         await self.redis.aclose()
 
     async def _listen(self) -> None:
