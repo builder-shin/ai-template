@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.datastructures import State
 
 import app.modules.realtime.service as service
+from app.core.access import Principal
 from app.core.jsonapi.errors import error_object
 from app.core.jsonapi.models import ErrorCode
 from app.core.jsonvalue import is_object
@@ -105,27 +106,49 @@ class Gateway:
             return None
         return self.channels.get(subscription.channel.root)
 
-    async def recheck(self, user_ids: Sequence[uuid.UUID]) -> None:
-        """이 인스턴스에 있는 user_ids의 연결을 다시 검사해 자격을 잃은 연결을 끊는다."""
-        for user_id in user_ids:
-            participants = self.server.manager.get_participants("/", user_room(user_id))
-            for sid in [sid for sid, _ in participants]:
-                if not await self._still_allowed(sid):
-                    logger.info("realtime_disconnected", user_id=str(user_id))
-                    await self.server.disconnect(sid)
+    async def _principal(self, sid: str) -> Principal | None:
+        """소켓 세션에 저장된 로그인 사용자의 Principal. 세션이 없거나(익명) 끝났으면 None이다.
 
-    async def _still_allowed(self, sid: str) -> bool:
-        """연결의 세션이 살아 있고, 구독한 채널의 권한을 모두 가졌는가."""
+        sid가 이미 끊긴 연결이면 get_session이 KeyError를 낸다(부르는 쪽이 본다).
+        """
         saved = await self.server.get_session(sid)
         if USER_KEY not in saved:
-            return True
+            return None
         async with self._sessions() as session:
-            principal = await auth.session_principal(
+            return await auth.session_principal(
                 session,
                 self._permissions,
                 uuid.UUID(saved[USER_KEY]),
                 uuid.UUID(saved[SESSION_KEY]),
             )
+
+    async def recheck(self, user_ids: Sequence[uuid.UUID]) -> None:
+        """이 인스턴스에 있는 user_ids의 연결을 다시 검사해 자격을 잃은 연결을 끊는다.
+
+        연결 하나를 검사하다 실패해도(예: 검사하는 동안 스스로 끊김, DB 일시 오류) 남은 연결과
+        남은 사용자는 계속 검사한다.
+        """
+        for user_id in user_ids:
+            participants = self.server.manager.get_participants("/", user_room(user_id))
+            for sid in [sid for sid, _ in participants]:
+                try:
+                    if not await self._still_allowed(sid):
+                        logger.info("realtime_disconnected", user_id=str(user_id))
+                        await self.server.disconnect(sid)
+                except Exception:
+                    logger.warning("realtime_recheck_connection_failed", sid=sid, exc_info=True)
+
+    async def _still_allowed(self, sid: str) -> bool:
+        """연결의 세션이 살아 있고, 구독한 채널의 권한을 모두 가졌는가.
+
+        recheck는 로그인한 연결(user:{id} 룸의 참가자)만 넘기므로 principal은 늘 있어야 한다.
+        검사하는 동안 스스로 끊긴 연결은 get_session이 KeyError를 내는데, 더 끊을 것이 없으니
+        허용으로 본다.
+        """
+        try:
+            principal = await self._principal(sid)
+        except KeyError:
+            return True
         if principal is None:
             return False
         for room in self.server.rooms(sid):
@@ -138,16 +161,7 @@ class Gateway:
     async def _allowed(self, sid: str, channel: Channel) -> bool:
         if channel.permission is None:
             return True
-        saved = await self.server.get_session(sid)
-        if USER_KEY not in saved:
-            return False
-        async with self._sessions() as session:
-            principal = await auth.session_principal(
-                session,
-                self._permissions,
-                uuid.UUID(saved[USER_KEY]),
-                uuid.UUID(saved[SESSION_KEY]),
-            )
+        principal = await self._principal(sid)
         return principal is not None and channel.permission in principal.permissions
 
     async def subscribe(self, sid: str, data: object = None) -> Any:

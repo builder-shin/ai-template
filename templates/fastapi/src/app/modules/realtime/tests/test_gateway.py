@@ -5,7 +5,7 @@
 
 import asyncio
 import uuid
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from typing import Any
 
 import httpx
@@ -125,6 +125,40 @@ async def test_a_logged_out_session_loses_its_connection(
             connected(url, auth={"ticket": tickets[0]}) as gone,
             connected(url, auth={"ticket": tickets[1]}) as kept,
         ):
+            assert (
+                await api.delete("/api/v1/sessions/current", headers=leaving)
+            ).status_code == 204
+            await gone.next("disconnect")
+            assert await kept.nothing("disconnect")
+            assert kept.client.connected
+
+
+async def test_a_gone_sid_does_not_stop_the_rest_of_a_recheck(
+    app: JsonApiApp,
+    api: httpx.AsyncClient,
+    accounts: Accounts,
+    realtime: Realtime,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """검사하던 도중 스스로 끊긴 연결이 있어도 같은 재검사의 나머지 연결은 계속 본다."""
+    user = await accounts.create()
+    leaving, staying = await accounts.sign_in(user), await accounts.sign_in(user)
+    tickets = [await _ticket(api, headers) for headers in (leaving, staying)]
+    manager = realtime.server.manager
+    real_participants = manager.get_participants
+
+    def with_a_gone_sid(namespace: str, room: str) -> Iterator[tuple[str, str]]:
+        # 실제 인프라(매니저)는 그대로 두고, 이미 끊긴 sid 하나만 앞에 끼워 넣는다.
+        yield ("gone-before-recheck", "gone-before-recheck")
+        yield from real_participants(namespace, room)
+
+    async with serving(app) as url:
+        await asyncio.wait_for(realtime.control.listening.wait(), 5)
+        async with (
+            connected(url, auth={"ticket": tickets[0]}) as gone,
+            connected(url, auth={"ticket": tickets[1]}) as kept,
+        ):
+            monkeypatch.setattr(manager, "get_participants", with_a_gone_sid)
             assert (
                 await api.delete("/api/v1/sessions/current", headers=leaving)
             ).status_code == 204
