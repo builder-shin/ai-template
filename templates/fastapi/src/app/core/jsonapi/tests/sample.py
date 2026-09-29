@@ -272,7 +272,10 @@ async def sample_authenticate(request: Request, session: AsyncSession, token: st
     if token not in grants:
         raise ApiError(401, ErrorCode.AUTH_TOKEN_INVALID, "Unknown sample token.")
     return Principal(
-        user_id=uuid.UUID(ADA), session_id=uuid.UUID(KNOWN_ID), permissions=grants[token]
+        user_id=uuid.UUID(ADA),
+        session_id=uuid.UUID(KNOWN_ID),
+        permissions=grants[token],
+        logged_in_at=datetime.now(UTC),
     )
 
 

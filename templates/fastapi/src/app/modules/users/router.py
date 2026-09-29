@@ -62,7 +62,11 @@ DELETE_ME = Operation(
     name="delete",
     status_code=204,
     errors=AUTH_ERRORS + COMMON_ERRORS,
-    description="회원 탈퇴. 개인정보를 익명화하고 모든 세션을 폐기한다.",
+    description=(
+        "회원 탈퇴. 개인정보를 익명화하고 모든 세션을 폐기한다. 로그인한 지 10분 안의 세션만 "
+        "할 수 있다. 지났으면 401 auth.reauthentication_required이고, 다시 로그인해 받은 새 "
+        "세션으로 부른다(refresh로는 풀리지 않는다)."
+    ),
 )
 LIST = CollectionOperation(
     name="list",

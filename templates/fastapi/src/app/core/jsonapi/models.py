@@ -341,6 +341,7 @@ class ErrorCode(StrEnum):
     AUTH_TOKEN_INVALID = "auth.token_invalid"
     AUTH_REFRESH_TOKEN_REUSED = "auth.refresh_token_reused"
     AUTH_OAUTH_CODE_INVALID = "auth.oauth_code_invalid"
+    AUTH_REAUTHENTICATION_REQUIRED = "auth.reauthentication_required"
     AUTH_OAUTH_DENIED = "auth.oauth_denied"
     AUTH_OAUTH_FAILED = "auth.oauth_failed"
     AUTH_EMAIL_NOT_VERIFIED = "auth.email_not_verified"

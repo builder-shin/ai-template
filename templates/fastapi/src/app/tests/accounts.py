@@ -6,6 +6,7 @@
 
 import uuid
 from collections.abc import Iterable, Sequence
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -61,9 +62,10 @@ class Accounts:
     async def admin(self) -> users.User:
         return await self.create(role_names=(roles.ADMIN_ROLE,))
 
-    async def sign_in(self, user: users.User) -> dict[str, str]:
-        """user로 로그인한 세션을 열고 Authorization 헤더를 돌려준다."""
+    async def sign_in(self, user: users.User, *, at: datetime | None = None) -> dict[str, str]:
+        """user로 로그인한 세션을 열고 Authorization 헤더를 돌려준다. at은 로그인한 시각이다."""
         async with self.sessions() as session:
-            issued = await auth.open_session(session, self.settings, user.id, "pytest", utc_now())
+            now = utc_now() if at is None else at
+            issued = await auth.open_session(session, self.settings, user.id, "pytest", now)
             await session.commit()
         return {"authorization": f"Bearer {issued.access_token}"}

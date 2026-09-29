@@ -1,6 +1,7 @@
 """글의 도메인 규칙(순수 함수): 전이 표, 보기와 고치기, 목록의 초안."""
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 
@@ -14,7 +15,10 @@ AUTHOR = uuid.uuid7()
 
 def principal(user_id: uuid.UUID | None = None, *permissions: str) -> Principal:
     return Principal(
-        user_id=user_id or uuid.uuid7(), session_id=uuid.uuid7(), permissions=frozenset(permissions)
+        user_id=user_id or uuid.uuid7(),
+        session_id=uuid.uuid7(),
+        permissions=frozenset(permissions),
+        logged_in_at=datetime.now(UTC),
     )
 
 

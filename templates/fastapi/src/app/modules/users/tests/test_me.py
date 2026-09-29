@@ -1,5 +1,6 @@
 """내 정보: 조회(역할, 권한, 포함 리소스), 수정(이름, 로케일, 아바타), 탈퇴(익명화와 계정 닫기)."""
 
+from datetime import timedelta
 from typing import Any
 
 import httpx
@@ -8,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.audit import AuditLog
+from app.core.db import utc_now
 from app.core.storage import Storage
 from app.modules.files import File, FileStatus
 from app.modules.roles import Role, UserRole
@@ -187,6 +189,26 @@ async def test_deleting_anonymizes_and_closes_the_account(
     assert email is not None
     again = await accounts.create(email=email)
     assert again.email == email
+
+
+async def test_leaving_needs_a_session_that_logged_in_recently(
+    api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession]
+) -> None:
+    user = await accounts.create()
+    stale = await accounts.sign_in(user, at=utc_now() - timedelta(minutes=11))
+    response = await api.delete(ME, headers=stale)
+    assert (response.status_code, error_codes(response)) == (
+        401,
+        ["auth.reauthentication_required"],
+    )
+    assert "insufficient_user_authentication" in response.headers["www-authenticate"]
+    assert (await api.get(ME, headers=stale)).status_code == 200
+    async with db() as session:
+        stored = await session.get(User, user.id)
+        assert stored is not None
+        assert stored.status == UserStatus.ACTIVE
+    fresh = await accounts.sign_in(user)
+    assert (await api.delete(ME, headers=fresh)).status_code == 204
 
 
 async def test_leaving_removes_my_avatar_and_other_files(

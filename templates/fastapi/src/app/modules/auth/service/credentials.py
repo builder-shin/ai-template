@@ -77,10 +77,16 @@ async def session_principal(
 
     인증기와 실시간 연결(티켓)이 같은 규칙으로 본다.
     """
-    if await repository.active_session(session, session_id, user_id) is None:
+    login = await repository.active_session(session, session_id, user_id)
+    if login is None:
         return None
     permissions = await roles.effective_permissions(session, registry, user_id)
-    return Principal(user_id=user_id, session_id=session_id, permissions=permissions)
+    return Principal(
+        user_id=user_id,
+        session_id=session_id,
+        permissions=permissions,
+        logged_in_at=login.created_at,
+    )
 
 
 def refresh_token_row(login: LoginSession, now: datetime) -> tuple[str, RefreshToken]:

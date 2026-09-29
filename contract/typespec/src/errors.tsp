@@ -26,6 +26,7 @@ union ErrorCode {
   "auth.token_invalid",
   "auth.refresh_token_reused",
   "auth.oauth_code_invalid",
+  "auth.reauthentication_required",
   "auth.oauth_denied",
   "auth.oauth_failed",
   "auth.email_not_verified",

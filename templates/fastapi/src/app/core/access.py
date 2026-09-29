@@ -6,11 +6,13 @@
   권한(403)이 쿼리 오류(400)보다 먼저 나온다. 결과는 request.state.principal에 둔다.
 - 엔드포인트는 PrincipalDep(로그인 필수 선언)이나 OptionalPrincipalDep(로그인 선택)으로 받는다.
   등록된 권한(PermissionRegistry)은 PermissionsDep으로 받는다.
+- 되돌릴 수 없는 동작(탈퇴)은 require_recent_login으로 최근 로그인(RECENT_LOGIN)을 요구한다.
 """
 
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Annotated, Literal, Protocol
 
 from fastapi import Depends, FastAPI, Request
@@ -24,15 +26,21 @@ from app.core.permissions import PermissionRegistry
 type Auth = Literal["none", "optional", "required"]
 
 _CHALLENGE = {"WWW-Authenticate": "Bearer"}
+# 되돌릴 수 없는 동작이 요구하는 로그인의 최근성. access token 수명(15분)처럼 API 설계 값이다.
+RECENT_LOGIN = timedelta(minutes=10)
 
 
 @dataclass(frozen=True, slots=True)
 class Principal:
-    """인증된 요청의 주체. permissions는 이번 요청에서 계산한 실제 권한이다."""
+    """인증된 요청의 주체. permissions는 이번 요청에서 계산한 실제 권한이다.
+
+    logged_in_at은 이 세션으로 로그인한 시각이다. refresh로는 바뀌지 않는다.
+    """
 
     user_id: uuid.UUID
     session_id: uuid.UUID
     permissions: frozenset[str]
+    logged_in_at: datetime
 
 
 class Authenticator(Protocol):
@@ -117,6 +125,25 @@ def optional_principal(request: Request) -> Principal | None:
 def get_permissions(request: Request) -> PermissionRegistry:
     registry: PermissionRegistry = request.app.state.permissions
     return registry
+
+
+def require_recent_login(principal: Principal, now: datetime) -> None:
+    """로그인한 지 RECENT_LOGIN이 지났으면 401 auth.reauthentication_required다.
+
+    refresh로는 풀리지 않는다. 클라이언트는 다시 로그인해 받은 새 세션으로 부른다. 응답의
+    WWW-Authenticate는 RFC 9470(step-up)의 error와 max_age(초)를 담는다.
+    """
+    if now - principal.logged_in_at <= RECENT_LOGIN:
+        return
+    seconds = int(RECENT_LOGIN.total_seconds())
+    challenge = f'Bearer error="insufficient_user_authentication", max_age={seconds}'
+    detail = f"Log in again: this needs a session that logged in within {seconds} seconds."
+    raise ApiError(
+        401,
+        ErrorCode.AUTH_REAUTHENTICATION_REQUIRED,
+        detail,
+        headers={"WWW-Authenticate": challenge},
+    )
 
 
 PrincipalDep = Annotated[Principal, Depends(current_principal)]

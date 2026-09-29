@@ -1,13 +1,25 @@
 """인증과 권한 검사: 선언의 auth·permission을 라우터가 강제하고, 쿼리 검사보다 먼저 한다."""
 
+import uuid
 from collections.abc import AsyncIterator
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
 import pytest
 from fastapi import Response
 
-from app.core.access import Auth, OptionalPrincipalDep, PrincipalDep
+from app.core.access import (
+    RECENT_LOGIN,
+    Auth,
+    OptionalPrincipalDep,
+    Principal,
+    PrincipalDep,
+    require_recent_login,
+)
+from app.core.jsonapi.errors import ApiError
+from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.operation import COMMON_ERRORS, JsonApiRouter, Operation
 from app.core.jsonapi.tests.sample import ADA, MANAGER_TOKEN, MEMBER_TOKEN, sample_app
 from app.core.permissions import Permission, PermissionRegistry
@@ -112,3 +124,23 @@ def test_registry_sorts_codes_and_rejects_duplicates() -> None:
     assert "posts:manage" in registry
     with pytest.raises(ValueError, match="posts:manage를 두 번 등록했다"):
         PermissionRegistry([posts, posts])
+
+
+def test_recent_login_allows_up_to_the_window() -> None:
+    now = datetime.now(UTC)
+    edge = Principal(
+        user_id=uuid.uuid7(),
+        session_id=uuid.uuid7(),
+        permissions=frozenset(),
+        logged_in_at=now - RECENT_LOGIN,
+    )
+    require_recent_login(edge, now)
+    older = replace(edge, logged_in_at=now - RECENT_LOGIN - timedelta(seconds=1))
+    with pytest.raises(ApiError) as caught:
+        require_recent_login(older, now)
+    assert (caught.value.status, caught.value.code) == (
+        401,
+        ErrorCode.AUTH_REAUTHENTICATION_REQUIRED,
+    )
+    challenge = 'Bearer error="insufficient_user_authentication", max_age=600'
+    assert caught.value.headers == {"WWW-Authenticate": challenge}
