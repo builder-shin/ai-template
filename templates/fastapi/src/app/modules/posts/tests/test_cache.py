@@ -1,4 +1,4 @@
-"""공개 목록의 첫 페이지 캐시: 60초 캐시하고 글을 쓰면 지운다.
+"""공개 목록의 첫 페이지 캐시: 60초 캐시하고 글을 쓰면 지운다(세대를 올린다).
 
 include 말고 다른 쿼리(필터, 정렬, 페이지, fields)가 있으면 캐시하지 않는다. 키는 검증을 마친
 include 경로를 정렬한 값이다. 초안이 보이는 사람(posts:manage)은 캐시를 쓰지 않는다.
@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.posts.models import Post, PostStatus
+from app.modules.posts.service import posts_cache
 from app.tests.accounts import Accounts
 from app.tests.requests import error_codes, jsonapi_body
 
@@ -17,7 +18,12 @@ pytestmark = pytest.mark.anyio
 
 POSTS = "/api/v1/posts"
 WRITE = {"posts:create"}  # 글을 쓰는 권한(member 역할에 기대지 않는다)
-KEY = "cache:posts:public?include="  # 뒤에 정렬한 include 경로가 붙는다
+KEY = "public?include="  # 뒤에 정렬한 include 경로가 붙는다
+
+
+async def cached(redis: Redis, include: str = "") -> str:
+    """지금 세대에서 공개 첫 페이지(include)를 담는 Valkey 키."""
+    return await posts_cache(redis).current_key(f"{KEY}{include}")
 
 
 def titles(response: httpx.Response) -> list[str]:
@@ -42,7 +48,7 @@ async def test_the_public_first_page_is_cached_until_a_post_changes(
     assert titles(await api.get(POSTS)) == ["처음"]
     await add_post(db, author.id, "몰래")
     assert titles(await api.get(POSTS)) == ["처음"]
-    assert await redis.ttl(KEY) > 0
+    assert await redis.ttl(await cached(redis)) > 0
     # 쿼리가 다르면(정렬, 필터, 페이지) 캐시를 쓰지 않는다.
     assert titles(await api.get(POSTS, params={"sort": "title"})) == ["몰래", "처음"]
     headers = await accounts.sign_in(author)
@@ -60,13 +66,13 @@ async def test_include_order_and_repeats_share_one_key(
     await add_post(db, author.id, "몰래")
     for include in ("author,coverImage", "coverImage,author,coverImage"):
         assert titles(await api.get(POSTS, params={"include": include})) == ["처음"]
-    assert await redis.ttl(f"{KEY}author,coverImage") > 0
+    assert await redis.ttl(await cached(redis, "author,coverImage")) > 0
     # include 조합이 다르면 키도 다르다.
     assert titles(await api.get(POSTS, params={"include": "author"})) == ["몰래", "처음"]
     # 허용하지 않은 include는 키가 되지 않고 400이다.
     unsupported = await api.get(POSTS, params={"include": "secrets"})
     assert error_codes(unsupported) == ["jsonapi.unsupported_include"]
-    assert await redis.exists(f"{KEY}secrets") == 0
+    assert await redis.exists(await cached(redis, "secrets")) == 0
 
 
 async def test_requests_with_fields_are_not_cached(
@@ -83,7 +89,7 @@ async def test_requests_with_fields_are_not_cached(
         with_author = {**params, "include": "author"}
         assert titles(await api.get(POSTS, params=with_author)) == ["몰래", "처음"]
         assert titles(await api.get(POSTS, params=params)) == ["몰래", "처음"]
-    assert await redis.exists(KEY, f"{KEY}author") == 0
+    assert await redis.exists(await cached(redis), await cached(redis, "author")) == 0
 
 
 async def test_managers_do_not_get_the_public_cache(

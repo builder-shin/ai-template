@@ -31,7 +31,7 @@ import app.modules.posts.policies as policies
 import app.modules.posts.repository as repository
 from app.core.access import Principal
 from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
-from app.core.cache import Cache
+from app.core.cache import Cache, schema_shape
 from app.core.clients import Client
 from app.core.db import utc_now
 from app.core.jsonapi.errors import ApiError
@@ -40,6 +40,7 @@ from app.core.jsonapi.query import Page, SortField
 from app.core.storage import Storage
 from app.modules import files
 from app.modules.posts.models import Post, PostStatus
+from app.modules.posts.schemas import PostCollectionDocument
 
 COVER_POINTER = "/data/relationships/coverImage/data"
 # gen:module: 빼기 시작
@@ -60,11 +61,13 @@ EXAMPLE_POSTS: tuple[tuple[str, str, PostStatus], ...] = (
 # gen:module: 빼기 끝
 # gen:module: 고칠 곳 — 캐시는 예시다(공개 목록의 첫 페이지). 필요 없으면 지운다.
 PUBLIC_CACHE_TTL = timedelta(seconds=60)
+# 캐시하는 문서의 모양. 문서 모델을 바꾼 배포는 옛 모양의 캐시를 읽지 않는다.
+PUBLIC_CACHE_SHAPE = schema_shape(PostCollectionDocument)
 
 
 def posts_cache(redis: Redis) -> Cache:
     """글의 캐시(공개 목록의 첫 페이지)."""
-    return Cache(redis, "posts")
+    return Cache(redis, "posts", PUBLIC_CACHE_SHAPE)
 
 
 def public_page_key(viewer: Principal | None, include: Sequence[str]) -> str | None:
