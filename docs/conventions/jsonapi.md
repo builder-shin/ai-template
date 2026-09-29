@@ -15,6 +15,7 @@
 - `type`은 복수형 kebab-case이고 URL 첫 세그먼트와 같다(`/api/v1/audit-logs` ↔ `audit-logs`). `/api/v1/me`만 `users`를 돌려주는 별칭이다.
 - `id`는 UUIDv7 문자열이다. 권한(`permissions`)만 권한 코드를 id로 쓴다.
 - 속성과 관계 이름은 camelCase다.
+- 문자열의 `maxLength`(계약과 각 백엔드 스키마)는 유니코드 코드 포인트 수다(JSON Schema, Pydantic과 같다). JavaScript의 `.length`(UTF-16 코드 유닛 수)와 다르므로, NestJS와 목 서버는 코드 포인트 수로 길이를 센다.
 - 관계 전용 엔드포인트(`/relationships/...`)는 두지 않는다. 관계는 리소스를 `PATCH`해서 바꾸고, 관계의 `self` 링크도 내보내지 않는다.
 - 생성은 201과 문서, 삭제는 204로 응답한다. 비동기로 처리하는 생성(인증 메일 재발송, 비밀번호 재설정 요청)은 계정이 있는지 드러내지 않도록 항상 202다.
 - CRUD가 아닌 동작도 리소스로 표현한다. 예: 로그인은 `POST /sessions`, 글 발행은 `PATCH /posts/{id}`로 `status: "published"`.
