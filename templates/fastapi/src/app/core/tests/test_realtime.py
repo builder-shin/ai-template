@@ -1,5 +1,6 @@
 """실시간 서버: WebSocket만 받고 Origin을 본다, 룸으로 보낸다, 쓰기 전용 발행기, commit 뒤 발행."""
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from typing import override
@@ -7,6 +8,7 @@ from typing import override
 import httpx
 import pytest
 import socketio.exceptions
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
@@ -32,6 +34,31 @@ async def worker(realtime: Realtime, infra: Settings) -> AsyncIterator[RedisPubl
     publisher = RedisPublisher(infra.redis_url.get_secret_value(), channel=realtime.channel)
     yield publisher
     await publisher.close()
+
+
+async def connections_named(redis: Redis, name: str) -> int:
+    """Valkey에 붙어 있는 연결 가운데 이름이 name인 것의 수(매니저는 채널 이름을 단다)."""
+    clients = await redis.client_list()  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 client_list에 타입이 없다
+    return sum(1 for client in clients if client.get("name") == name)
+
+
+async def test_close_releases_every_valkey_connection_of_the_manager(
+    app: JsonApiApp, realtime: Realtime, redis: Redis
+) -> None:
+    """첫 연결 전의 발행과 첫 연결이 시작한 수신이 클라이언트를 따로 만든다.
+
+    close가 둘 다 닫는다.
+    """
+    await realtime.publisher.publish(EVENT)
+    async with serving(app) as url, connected(url):
+        assert len(realtime.manager.clients) == 2
+    await realtime.close()
+    for _ in range(50):
+        if await connections_named(redis, realtime.channel) == 0:
+            break
+        await asyncio.sleep(0.02)
+    assert await connections_named(redis, realtime.channel) == 0
+    assert realtime.manager.clients == []
 
 
 def test_the_pubsub_channel_carries_the_db_number() -> None:

@@ -3,6 +3,7 @@
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from redis.asyncio import Redis
 from starlette.types import ASGIApp as _ASGIApp
 from starlette.types import Receive, Scope, Send
 
@@ -20,6 +21,8 @@ class AsyncManager:
     ) -> None: ...
 
 class AsyncRedisManager(AsyncManager):
+    # 발행과 수신이 함께 쓰는 클라이언트. _redis_connect가 부를 때마다 새로 만든다.
+    redis: Redis
     def __init__(
         self,
         url: str = "redis://localhost:6379/0",
@@ -29,6 +32,7 @@ class AsyncRedisManager(AsyncManager):
         json: Any = None,
         redis_options: dict[str, Any] | None = None,
     ) -> None: ...
+    def _redis_connect(self) -> None: ...
 
 class AsyncServer:
     manager: AsyncManager

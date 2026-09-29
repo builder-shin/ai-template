@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import Settings
+from app.core.realtime_pubsub import TrackedRedisManager
 
 logger = structlog.get_logger(__name__)
 
@@ -121,7 +122,7 @@ class RedisPublisher:
     """
 
     def __init__(self, redis_url: str, *, channel: str | None = None) -> None:
-        self.manager = socketio.AsyncRedisManager(
+        self.manager = TrackedRedisManager(
             redis_url, channel=channel or pubsub_channel(redis_url), write_only=True
         )
 
@@ -132,13 +133,8 @@ class RedisPublisher:
         await self.manager.emit(event.name, dict(event.payload), room=list(event.rooms))
 
     async def close(self) -> None:
-        """발행하면서 만든 Redis 클라이언트를 닫는다. 발행한 적이 없으면 할 일이 없다.
-
-        python-socketio 5.17.0에는 쓰기 전용 관리자의 연결(redis)을 닫는 공개 API가 없다.
-        """
-        redis = getattr(self.manager, "redis", None)
-        if redis is not None:
-            await redis.aclose()
+        """발행하면서 만든 Valkey 클라이언트를 모두 닫는다. 발행한 적이 없으면 할 일이 없다."""
+        await self.manager.close_clients()
 
 
 @dataclass(slots=True)
@@ -217,30 +213,32 @@ class Realtime:
     publisher: Publisher
     asgi: ASGIApp
     channel: str  # pub/sub 채널. 쓰기 전용 발행기(RedisPublisher)도 같은 채널을 쓴다.
+    manager: TrackedRedisManager  # 서버의 pub/sub 매니저(server.manager와 같다)
+    closed: bool = field(default=False, init=False)
 
     async def close(self) -> None:
-        """연결을 끊고 pub/sub 수신을 멈춘다.
+        """연결을 끊고 pub/sub 수신을 멈추고, 매니저가 만든 Valkey 클라이언트를 모두 닫는다.
 
-        python-socketio 5.17.0에는 pub/sub 수신 태스크(thread)와 연결(redis)을 닫는 공개 API가 없다.
+        python-socketio 5.17.0에는 pub/sub 수신 태스크(thread)를 멈추는 공개 API가 없다.
+        여러 번 불러도 된다(engineio의 shutdown은 두 번 부르면 실패한다).
         """
+        if self.closed:
+            return
+        self.closed = True
         await self.server.shutdown()
-        manager = self.server.manager
-        listener = getattr(manager, "thread", None)
+        listener = getattr(self.manager, "thread", None)
         if listener is not None:
             listener.cancel()
             with contextlib.suppress(BaseException):
                 await listener
-        # 첫 연결 전의 발행이 만든 클라이언트는 열린 채 남을 수 있다(수신 태스크가 새것으로 바꾼다).
-        redis = getattr(manager, "redis", None)
-        if redis is not None:
-            await redis.aclose()
+        await self.manager.close_clients()
 
 
 def create_realtime(settings: Settings, *, channel: str | None = None) -> Realtime:
     """소켓 서버를 만든다. channel을 주면 그 pub/sub 채널을 쓴다(테스트가 테스트마다 나눈다)."""
     redis_url = settings.redis_url.get_secret_value()
     channel = channel or pubsub_channel(redis_url)
-    manager = socketio.AsyncRedisManager(redis_url, channel=channel)
+    manager = TrackedRedisManager(redis_url, channel=channel)
     # logger=False라도 레벨이 NOTSET이면 라이브러리가 자기 핸들러를 단다.
     # 미리 WARNING으로 정해 root(structlog) 핸들러로만 가게 한다.
     logging.getLogger("socketio.server").setLevel(logging.WARNING)
@@ -255,7 +253,13 @@ def create_realtime(settings: Settings, *, channel: str | None = None) -> Realti
     )
     # 앱이 /socket.io 아래만 넘기므로 경로를 가리지 않는다("" → 모든 경로).
     asgi = socketio.ASGIApp(server, socketio_path="")
-    return Realtime(server=server, publisher=ServerPublisher(server), asgi=asgi, channel=channel)
+    return Realtime(
+        server=server,
+        publisher=ServerPublisher(server),
+        asgi=asgi,
+        channel=channel,
+        manager=manager,
+    )
 
 
 def realtime_openapi(
