@@ -34,7 +34,8 @@ CREATE = Operation(
     status_code=201,
     errors=AUTH_ERRORS + CREATE_ERRORS + BODY_ERRORS + COMMON_ERRORS,
     description=(
-        "크기와 MIME을 검사한 뒤 pending 파일을 만들고 meta.upload에 presigned URL을 담는다."
+        "크기와 MIME, 사용자별 한도(가진 파일 크기의 합)를 검사한 뒤 pending 파일을 만들고 "
+        "meta.upload에 presigned URL을 담는다. 한도를 넘으면 422 file.quota_exceeded다."
     ),
 )
 GET = Operation(

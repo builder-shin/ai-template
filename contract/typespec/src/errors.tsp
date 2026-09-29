@@ -42,6 +42,7 @@ union ErrorCode {
   "file.too_large",
   "file.type_not_allowed",
   "file.upload_incomplete",
+  "file.quota_exceeded",
   "rate_limit.exceeded",
   "internal.unexpected",
   "service.unavailable",

@@ -9,6 +9,7 @@ import pytest
 import app.modules.files.service as service
 from app.core.access import Principal
 from app.core.config import Settings
+from app.core.jsonapi.openapi import JsonApiApp
 from app.core.storage import Storage, create_client
 from app.tests.accounts import Accounts
 from app.tests.requests import error_codes, error_sources, jsonapi_body
@@ -74,6 +75,24 @@ async def test_create_checks_the_size_and_type(
     response = await api.post(FILES, **jsonapi_body(create_document(**attributes), auth))
     assert response.status_code == 422
     assert (error_codes(response), error_sources(response)) == ([code], [{"pointer": pointer}])
+
+
+async def test_create_keeps_each_user_under_the_quota(
+    app: JsonApiApp, api: httpx.AsyncClient, accounts: Accounts
+) -> None:
+    app.state.settings = app.state.settings.model_copy(update={"file_user_quota": 10})
+    auth = await accounts.sign_in(await accounts.create())
+    kept = await api.post(FILES, **jsonapi_body(create_document(size=6), auth))
+    assert kept.status_code == 201, kept.text
+    over = await api.post(FILES, **jsonapi_body(create_document(size=5), auth))
+    assert (over.status_code, error_codes(over)) == (422, ["file.quota_exceeded"])
+    assert error_sources(over) == [{"pointer": "/data/attributes/size"}]
+    assert over.json()["errors"][0]["meta"] == {"params": {"quota": 10}}
+    last = await api.post(FILES, **jsonapi_body(create_document(size=4), auth))
+    assert last.status_code == 201, last.text
+    other = await accounts.sign_in(await accounts.create())
+    theirs = await api.post(FILES, **jsonapi_body(create_document(size=10), other))
+    assert theirs.status_code == 201, theirs.text
 
 
 async def test_too_large_names_the_limit(

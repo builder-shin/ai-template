@@ -357,6 +357,7 @@ class ErrorCode(StrEnum):
     FILE_TOO_LARGE = "file.too_large"
     FILE_TYPE_NOT_ALLOWED = "file.type_not_allowed"
     FILE_UPLOAD_INCOMPLETE = "file.upload_incomplete"
+    FILE_QUOTA_EXCEEDED = "file.quota_exceeded"
     RATE_LIMIT_EXCEEDED = "rate_limit.exceeded"
     INTERNAL_UNEXPECTED = "internal.unexpected"
     SERVICE_UNAVAILABLE = "service.unavailable"

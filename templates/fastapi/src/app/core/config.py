@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     # 파일 업로드: 최대 크기(바이트)와 허용하는 MIME 타입(쉼표로 구분)
     file_max_size: Annotated[int, Field(ge=1)]
     file_allowed_types: CommaSeparated
+    # 한 사용자가 가진 파일(pending과 ready) 크기의 합의 한도(바이트)
+    file_user_quota: Annotated[int, Field(ge=1)]
     # access token(JWT, HS256)의 서명 키. 32자 이상
     jwt_secret: Annotated[SecretStr, Field(min_length=32)]
     # 이메일 같은 식별자의 해시(HMAC-SHA256) 키. 32자 이상.

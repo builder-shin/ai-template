@@ -43,10 +43,11 @@ API 에러 객체의 `code` 값 목록이다. 원본은 `contract/typespec/src/e
 | `file.too_large`                  | 422        | 파일이 너무 크다(`meta.params.max`)                                                                |
 | `file.type_not_allowed`           | 422        | 허용하지 않는 MIME 타입이다                                                                        |
 | `file.upload_incomplete`          | 422        | 스토리지에 업로드된 객체가 없다                                                                    |
+| `file.quota_exceeded`             | 422        | 사용자가 가진 파일 크기의 합이 한도(`FILE_USER_QUOTA`)를 넘는다                                    |
 | `rate_limit.exceeded`             | 429        | 요청 한도를 넘었다. `Retry-After`를 따른다                                                         |
 | `internal.unexpected`             | 500        | 예상하지 못한 서버 오류다                                                                          |
 | `service.unavailable`             | 503        | 의존 서비스(DB 등)를 쓸 수 없다                                                                    |
 
-`POST /files`에서 크기와 타입이 모두 한도를 벗어나면 크기를 먼저 본다. 응답은 `file.too_large` 하나이고, 두 백엔드 모두 이 순서를 따른다. 여러 단계의 에러가 겹칠 때의 순서는 [JSON:API 규약](jsonapi.md)의 "에러 우선순위"에 있다.
+`POST /files`는 크기(`file.too_large`), 타입(`file.type_not_allowed`), 사용자별 한도(`file.quota_exceeded`) 순서로 보고 먼저 걸린 하나만 돌려준다. 두 백엔드 모두 이 순서를 따른다. 여러 단계의 에러가 겹칠 때의 순서는 [JSON:API 규약](jsonapi.md)의 "에러 우선순위"에 있다.
 
 소셜 로그인의 `codeVerifier`는 RFC 7636의 code verifier(`[A-Za-z0-9._~-]` 43~128자)여야 한다. 그 형식이 아니거나 `codeChallenge`와 맞지 않으면 `oauthCode` grant는 401 `auth.oauth_code_invalid`다. 콜백의 `error`는 제공자의 에러가 `access_denied`(사용자가 거부)일 때만 `auth.oauth_denied`이고, 그 밖의 제공자 에러(`server_error`, `invalid_scope` 등)는 `auth.oauth_failed`다.

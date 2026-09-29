@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Iterable
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.files.models import File, FileStatus
@@ -26,6 +26,21 @@ async def get_many(session: AsyncSession, file_ids: Iterable[uuid.UUID]) -> list
 
 async def remove(session: AsyncSession, file: File) -> None:
     await session.delete(file)
+
+
+async def lock_owner(session: AsyncSession, owner_id: uuid.UUID) -> None:
+    """트랜잭션이 끝날 때까지 owner_id의 파일 만들기를 줄 세운다(트랜잭션 advisory lock).
+
+    사용자별 한도를 동시 요청이 함께 넘지 않게 한다. 다른 사용자는 서로 기다리지 않는다.
+    """
+    key = func.hashtextextended(f"files.quota:{owner_id}", 0)
+    await session.execute(select(func.pg_advisory_xact_lock(key)))
+
+
+async def stored_bytes(session: AsyncSession, owner_id: uuid.UUID) -> int:
+    """owner_id가 가진 파일(pending과 ready)의 선언 크기 합."""
+    query = select(func.coalesce(func.sum(File.size), 0)).where(File.owner_id == owner_id)
+    return int(await session.scalar(query) or 0)
 
 
 async def owned_by(session: AsyncSession, owner_id: uuid.UUID) -> list[File]:

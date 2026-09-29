@@ -13,6 +13,8 @@
   (attachable_file). 남의 파일을 걸면 그 리소스를 보는 모든 사람에게 파일이 공개되기 때문이다.
 - 객체는 행을 지운 트랜잭션을 commit한 뒤에 지운다. 지우지 못하면 경고만 남긴다(행이 없는 객체는
   URL을 받을 방법이 없다).
+- 한 사용자가 가진 파일(pending과 ready)의 크기 합은 설정 FILE_USER_QUOTA까지다. 넘으면 422
+  file.quota_exceeded다. 만들기는 사용자별 advisory lock으로 줄 세워 동시 요청도 한도를 넘지 않는다.
 - 24시간이 넘도록 pending인 파일은 잡(files.purge_pending, 매시간)이 지운다.
 - 탈퇴한 사용자의 파일 중 다른 리소스가 가리키지 않는 것은 지운다(remove_unreferenced).
   무엇이 파일을 가리키는지는 다른 모듈이 등록한 참조 확인(add_reference_check)으로 안다.
@@ -141,7 +143,7 @@ async def create_file(
     actor: Principal,
     attributes: FileCreateAttributes,
 ) -> tuple[File, PresignedRequest]:
-    """크기와 MIME을 검사하고 pending 파일과 업로드 URL을 만든다."""
+    """크기, MIME, 사용자별 한도를 검사하고 pending 파일과 업로드 URL을 만든다."""
     if attributes.size > settings.file_max_size:
         detail = f"A file can be at most {settings.file_max_size} bytes."
         raise ApiError(
@@ -159,6 +161,17 @@ async def create_file(
             f"Allowed types are {allowed}.",
             pointer="/data/attributes/contentType",
             params={"allowed": allowed},
+        )
+    await repository.lock_owner(session, actor.user_id)
+    used = await repository.stored_bytes(session, actor.user_id)
+    if used + attributes.size > settings.file_user_quota:
+        detail = f"The files of one user can take at most {settings.file_user_quota} bytes."
+        raise ApiError(
+            422,
+            ErrorCode.FILE_QUOTA_EXCEEDED,
+            detail,
+            pointer="/data/attributes/size",
+            params={"quota": settings.file_user_quota},
         )
     file = File(
         id=uuid.uuid7(),
