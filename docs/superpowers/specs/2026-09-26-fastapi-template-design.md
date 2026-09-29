@@ -1,13 +1,13 @@
 # FastAPI 템플릿 설계 (하위 프로젝트 1)
 
 - 작성일: 2026-09-26
-- 상태: 승인됨. 마일스톤 M1~M4 구현 완료(§1.2의 완료 조건 통과)
+- 상태: 승인됨. 마일스톤 M1~M5 구현 완료(§1.2의 완료 조건 통과)
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 1로 미룬 결정을 내리고, `templates/fastapi`와 이번 사이클의 저장소 변경을 설계한다.
   - 기반 설계의 규칙은 그대로 따른다: 플랫폼 기능(§4), API 규약(§5), 하네스(§6), 인프라(§7). 이 문서는 그 규칙을 구현하는 방법과 계약 변경을 정한다.
   - 기반 설계와 달라진 것은 §7의 계약 변경뿐이다.
-- 구현 계획: [M1](../plans/2026-09-26-fastapi-m1.md), [M2](../plans/2026-09-27-fastapi-m2.md), [M3](../plans/2026-09-28-fastapi-m3.md), [M4](../plans/2026-09-28-fastapi-m4.md)
-- 다음 단계: §12.1의 "나중" 목록은 M5(보강)에서 처리한다: [보강 설계](2026-09-29-fastapi-hardening-design.md). 그 뒤의 하위 프로젝트는 기반 설계 §3.4의 2(Next.js web)다.
+- 구현 계획: [M1](../plans/2026-09-26-fastapi-m1.md), [M2](../plans/2026-09-27-fastapi-m2.md), [M3](../plans/2026-09-28-fastapi-m3.md), [M4](../plans/2026-09-28-fastapi-m4.md), [M5](../plans/2026-09-29-fastapi-m5.md)
+- 다음 단계: 이 사이클은 끝났다. §12.1의 "나중" 목록은 M5(보강, [보강 설계](2026-09-29-fastapi-hardening-design.md))에서 처리했다. 다음 하위 프로젝트는 기반 설계 §3.4의 2(Next.js web)다.
 
 ## 1. 목표와 범위
 
@@ -35,8 +35,6 @@
 - 소셜 계정의 수동 연결과 해제
 - 이메일 없는 계정에 나중에 이메일을 추가하는 흐름
 - 공개 버킷과 CDN
-- 세션을 폐기할 때 서버 쪽에서 소켓을 강제로 끊는 일
-- 권한을 잃거나 계정이 비활성화되거나 탈퇴한 사용자의 연결을 서버 쪽에서 구독한 채널에서 내보내는 일(§6.8). 인스턴스를 가로질러 사용자별 소켓 id를 기록해야 한다.
 - 테스트 병렬 실행
 
 ## 2. 결정 기록
@@ -185,6 +183,7 @@ src/app/modules/posts/
 - JSON:API 1.1의 협상 규칙을 따른다. 확장(`ext`)은 지원하지 않고, `profile` 매개변수는 무시한다.
   - 415 `jsonapi.unsupported_media_type`: 본문이 있는 요청의 `Content-Type`이 JSON:API 미디어 타입이 아니거나, `profile` 밖의 매개변수가 붙어 있을 때
   - 406 `jsonapi.not_acceptable`: `Accept`에 JSON:API 미디어 타입이 있는데, 그 인스턴스 모두에 `profile` 밖의 매개변수가 붙어 있을 때
+  - 413 `jsonapi.content_too_large`: 요청 본문이 1 MiB(1,048,576바이트)를 넘을 때. 협상(415·406) 다음, 본문 JSON 검사 앞이다. `Content-Length`가 넘으면 본문을 읽지 않고, 길이를 알리지 않은 본문은 읽으면서 센다(M5).
   - `Accept`가 없거나 JSON:API 미디어 타입을 담지 않으면(예: `*/*`) 통과한다.
 - 응답은 `application/vnd.api+json` 전용 응답 클래스로 보낸다.
 - 모든 예외는 `ErrorDocument`와 `meta.traceId`로 바꾼다.
@@ -236,8 +235,8 @@ src/app/modules/posts/
   - 불투명 토큰(32바이트)이고, DB에는 SHA-256 해시만 저장한다.
   - 회전할 때마다 새 토큰을 30일짜리로 발급하고, 이전 토큰은 "사용됨"으로 남긴다. 세션의 `lastUsedAt`은 이때 갱신한다.
   - 사용된 토큰이 다시 들어오면 그 세션을 폐기하고 `auth.refresh_token_reused`를 돌려준다.
-- 이메일 인증 토큰(24시간)과 비밀번호 재설정 토큰(1시간)은 해시로 저장하는 1회용 토큰이다. 잘못됐거나 만료됐으면 `auth.verification_token_invalid`다.
-- 세션을 폐기하면 그 사용자 룸에 `session.revoked`를 보낸다. `meta.reason`은 다음과 같다.
+- 이메일 인증 토큰(24시간)과 비밀번호 재설정 토큰(1시간)은 해시로 저장하는 1회용 토큰이다. 잘못됐거나 만료됐으면 `auth.verification_token_invalid`다. 토큰은 메일 잡이 실행될 때 발급한다(§6.9).
+- 세션을 폐기하면 그 사용자 룸에 `session.revoked`를 보내고, 그 세션으로 맺은 실시간 연결을 서버가 끊는다(§6.8). `meta.reason`은 다음과 같다.
 
 | 사유                   | 경우                                                   |
 | ---------------------- | ------------------------------------------------------ |
@@ -250,6 +249,7 @@ src/app/modules/posts/
 | `account_deleted`      | 탈퇴했다                                               |
 
 - 비밀번호가 없는 계정(소셜 전용)은 `password` grant와 비밀번호 변경에서 `auth.invalid_credentials`를 받는다. 이메일이 없는 계정에는 재설정 메일을 보내지 않는다. 재설정 요청 자체는 계정 존재와 무관하게 늘 202다.
+- 비밀번호를 바꾸면(`POST /password-changes`) 남은 재설정 토큰을 지운다. 비밀번호 변경에는 사용자별 엄격한 레이트 리밋이 있다(§6.10, M5).
 
 ### 6.2 소셜 로그인
 
@@ -299,11 +299,11 @@ src/app/modules/posts/
 
 - 이메일은 앞뒤 공백을 지우고 소문자로 저장한다. 이메일에는 유일 제약(`uq_users_email`)을 건다. PostgreSQL은 NULL끼리 같다고 보지 않으므로, 이메일이 NULL인 탈퇴 계정끼리는 부딪치지 않는다.
 - 공개 속성(`UserPublicResource`)은 `name`과 아바타뿐이다. 본인과 `users:read` 권한자는 전체 속성을 본다. 다른 리소스의 `included`에는 늘 공개 형태로 들어간다.
-- `PATCH /me`로 이름, 로케일, 아바타를 바꾼다. 아바타는 본인 소유의 ready 이미지 파일이어야 한다.
-- 탈퇴(`DELETE /me`, F3)는 한 트랜잭션에서 다음을 한다.
+- `PATCH /me`로 이름, 로케일, 아바타를 바꾼다. 아바타는 본인 소유의 ready 이미지 파일이어야 한다. 바꾸거나 뺀 아바타는 다른 리소스가 가리키지 않으면 지운다(§6.5).
+- 탈퇴(`DELETE /me`, F3)는 로그인한 지 10분 안의 세션만 할 수 있다. 지났으면 401 `auth.reauthentication_required`이고, 클라이언트는 다시 로그인해 받은 새 세션으로 부른다(refresh로는 풀리지 않는다, M5). 탈퇴는 한 트랜잭션에서 다음을 한다.
   1. `email`과 `name`을 null로, `status`를 `deleted`로 바꾼다.
   2. 비밀번호 해시, 소셜 연결, 역할, 남은 인증·재설정 토큰을 지운다.
-  3. 아바타와, 다른 리소스가 참조하지 않는 본인 소유 파일을 지운다. 글의 커버 이미지처럼 남는 리소스가 참조하는 파일은 남긴다.
+  3. 아바타와, 다른 리소스가 참조하지 않는 본인 소유 파일을 지운다. 글의 커버 이미지처럼 남는 리소스가 참조하는 파일은 남긴다. 그 파일도 참조하던 리소스가 지워지면 함께 지운다(§6.5).
   4. 세션을 모두 폐기하고(`account_deleted`), 감사 로그 `user.deleted`를 남긴다.
 - 탈퇴한 사용자의 글은 남는다. 작성자는 `name`이 null인 공개 사용자로 보이고, 프론트는 이를 "탈퇴한 사용자"처럼 번역해 보여 준다.
 - 같은 이메일로 바로 다시 가입할 수 있다.
@@ -314,6 +314,7 @@ src/app/modules/posts/
 - 생성(`POST /files`)
   - 크기와 MIME을 설정의 한도와 허용 목록으로 검사한다. 기본값은 10 MiB와 `image/png`, `image/jpeg`, `image/webp`, `image/gif`다.
   - 위반하면 `file.too_large` 또는 `file.type_not_allowed`다.
+  - 한 사용자가 가진 파일(pending과 ready)의 크기 합은 `FILE_USER_QUOTA`(기본 1 GiB)를 넘지 못한다. 넘으면 422 `file.quota_exceeded`(`meta.params.quota`)다. 사용자별 advisory lock으로 동시 생성도 한도 안에 둔다(M5).
   - `pending` 파일을 만들고, 객체 키는 `files/{id}`로 한다.
   - `meta.upload`에 presigned PUT(15분)을 담는다. `Content-Type`과 `Content-Length`를 서명에 넣고, 브라우저가 붙일 헤더는 `Content-Type`뿐이다.
   - 서명은 SigV4로 한다. 서명 버전을 정하지 않으면 boto3가 SigV2 쿼리 서명을 써서 크기가 서명에 들어가지 않는다(§14). 선언과 크기나 타입이 다른 PUT은 스토리지가 403으로 거절한다.
@@ -331,6 +332,7 @@ src/app/modules/posts/
 - 삭제는 소유자만 한다. 객체와 행을 지우고, 참조하던 관계는 null이 된다.
 - 24시간이 넘은 `pending` 파일은 주기 잡(`files.purge_pending`, 매시간 정각 UTC)이 지운다.
 - 탈퇴 때 남길 파일(다른 리소스가 가리키는 파일)은 모듈이 등록한 참조 확인(`files.add_reference_check`)으로 가린다. users는 아바타를, posts는 커버 이미지를 등록한다.
+- 관계에서 풀린 파일(바꾸거나 뺀 아바타·커버, 지운 글의 커버)은 참조 확인이 남기라고 하지 않으면 지운다(`files.release`). 소유자가 탈퇴했어도 같다. 행은 같은 트랜잭션에서, 객체는 commit한 뒤에 지운다(M5).
 - 스토리지 설정
   - boto3의 체크섬 기본값을 `when_required`로 낮춘다. S3 호환 서버와의 호환 때문이다.
   - presign에는 브라우저가 접근하는 공개 엔드포인트를 따로 쓴다. compose 안의 주소와 브라우저가 보는 주소가 다르기 때문이다.
@@ -340,19 +342,20 @@ src/app/modules/posts/
 
 기반 설계 §4.9를 그대로 구현한다.
 
+- 글 본문은 100,000자까지다(`validation.too_long`, M5).
 - 상태 전이는 도메인 규칙의 전이 표(`draft ↔ published`)로 판정한다. 표에 없는 전이는 `post.invalid_transition`이다. 같은 상태로 PATCH하는 것은 전이가 아니므로 에러가 아니다.
 - 발행하면 `publishedAt`을 채우고, 발행을 취소하면 null로 되돌린다.
 - 목록은 발행된 글만 준다. 초안이 보이는 쿼리는 `filter[author]`가 보는 사람 자신이거나 보는 사람이 `posts:manage`일 때다. 그때 `filter[status]`가 없으면 모든 상태를 준다. 초안이 보이지 않는 쿼리의 `filter[status]=draft`는 빈 목록이다(에러가 아니다).
 - 조회는 발행된 글이면 누구나, 초안이면 작성자와 `posts:manage`만 한다. 볼 수 없으면 404, 볼 수 있지만 고칠 수 없으면 403이다.
-- 공개 목록의 첫 페이지(필터와 `fields` 없음, 기본 정렬, 기본 크기. `include`는 달라도 된다)를 60초 캐시한다. 키는 검증을 마친 `include` 경로를 정렬한 값이라, 키의 수가 include 조합 수를 넘지 않는다. 초안이 보이는 사람(`posts:manage`)의 요청은 캐시하지 않는다. 글이 생기거나 바뀌거나 지워지면 commit한 뒤에 캐시를 지운다. 캐시 수명은 presigned URL 수명보다 짧다.
+- 공개 목록의 첫 페이지(필터와 `fields` 없음, 기본 정렬, 기본 크기. `include`는 달라도 된다)를 60초 캐시한다. 키는 검증을 마친 `include` 경로를 정렬한 값이라, 키의 수가 include 조합 수를 넘지 않는다. 초안이 보이는 사람(`posts:manage`)의 요청은 캐시하지 않는다. 글이 생기거나 바뀌거나 지워지면 commit한 뒤에 캐시를 지운다(세대를 올린다, §6.10). 캐시 수명은 presigned URL 수명보다 짧다.
 - 관리자가 남의 글을 지우면 감사 로그 `post.deleted_by_admin`을 남긴다.
-- 실시간 이벤트는 계약의 `rooms`와 `conditionalRooms`대로 보낸다.
+- 실시간 이벤트는 계약의 `rooms`와 `conditionalRooms`대로 보낸다. 발행을 취소하면 `posts`에 `post.unpublished`(리소스 식별자만)를 보낸다(M5).
 - 테스트는 도메인 규칙 단위 테스트, API 통합 테스트, 권한 매트릭스 테스트로 나눈다.
 
 ### 6.7 감사 로그
 
 - 기록은 행위와 같은 트랜잭션에서 한다. 로그인 실패처럼 트랜잭션이 없는 경우는 따로 기록한다.
-- `metadata`에 이메일 같은 개인정보를 넣지 않는다. 로그인 실패는 입력된 식별자의 해시만 남겨, 같은 대상에 대한 반복 시도를 추적할 수 있게 한다.
+- `metadata`에 이메일 같은 개인정보를 넣지 않는다. 로그인 실패는 입력된 식별자의 해시(`IDENTIFIER_HASH_SECRET` 키의 HMAC-SHA256, M5)만 남겨, 같은 대상에 대한 반복 시도를 추적할 수 있게 한다.
 - `ipAddress`는 요청의 클라이언트 주소다. 프록시 헤더를 믿을지는 설정으로 정한다.
 - 기록하는 행위(계약 enum, §7)
 
@@ -381,9 +384,9 @@ src/app/modules/posts/
   - `subscribe`와 `unsubscribe`, 페이로드는 `RealtimeSubscription`(`{ "channel": "posts" }`)이다.
   - ack는 `RealtimeAck`로, 성공이면 `{ "ok": true }`다. 실패면 `{ "ok": false, "error": ErrorObject }`이고, 권한이 없으면 `permission.denied`, 모르는 채널이면 `validation.invalid_choice`다.
   - 익명 연결은 `posts`만 구독할 수 있다. `posts:all`에는 `posts:manage`가 필요하다. 권한은 구독할 때 DB에서 계산한다.
-  - 권한은 구독할 때만 본다(M4의 알려진 한계). 구독한 뒤에 권한을 잃거나 계정이 비활성화되거나 탈퇴해도, 그 연결은 끊기거나 구독을 풀 때까지 그 채널의 이벤트를 받는다. 그래서 `me.updated`(`changed`에 `roles`나 `status`)나 `session.revoked`를 받은 클라이언트는 연결을 끊고 새 티켓으로 다시 붙어 구독을 다시 검사받아야 한다. 서버에서 그런 연결을 내보내는 일은 후속 작업이다(§1.3). 인스턴스를 가로질러 사용자별 소켓 id를 기록해야 한다.
+  - 연결 재검사(M5): 세션을 폐기하거나 사용자의 역할·상태가 바뀌면(`session.revoked`, `me.updated`의 `roles`·`status`) commit한 뒤 Valkey pub/sub 제어 채널(`<pub/sub 채널>:control`)로 사용자 id를 알린다. api 인스턴스마다 자기 연결(`user:{id}` 룸의 참가자)만 다시 검사해, 세션이 끝났거나 구독한 채널의 권한을 잃은 연결을 끊는다. 사용자별 소켓 id를 인스턴스 밖에 기록하지 않는다. 끊긴 클라이언트는 새 티켓으로 다시 붙는다.
   - ack의 에러 객체는 권한 없음 403, 모르는 채널이나 틀린 페이로드 422이고 `source.pointer`는 `/channel`이다.
-- api는 `AsyncRedisManager`로 인스턴스 사이에 이벤트를 전파한다. worker와 scheduler는 쓰기 전용 매니저로 이벤트를 보낸다.
+- api는 `AsyncRedisManager`로 인스턴스 사이에 이벤트를 전파한다. worker와 scheduler는 쓰기 전용 매니저로 이벤트를 보낸다. 매니저는 Valkey 클라이언트를 하나만 만들어 다시 쓰고 닫을 때 닫는다(python-socketio는 발행이 실패하거나 수신을 다시 시작할 때마다 새로 만든다, M5).
 - 이벤트 페이로드는 모듈의 직렬화 함수로 만든 JSON:API 문서다.
 - 이벤트는 쓰기가 commit된 뒤에 나간다. 모듈이 트랜잭션에 넣고(`queue`) 세션이 commit한 뒤에 페이로드를 만들어 보낸다. 한 연결이 여러 룸에 있어도 한 번 받는다.
 - `session.revoked`는 그 사용자의 모든 연결이 받는다(페이로드에 세션 id가 없다). 클라이언트는 자기 세션이 살아 있는지 확인한다.
@@ -392,7 +395,7 @@ src/app/modules/posts/
 ### 6.9 잡, 메일, 스케줄러
 
 - broker는 taskiq-redis의 스트림 broker(`RedisStreamBroker`)다. 처리 중에 worker가 죽으면 확인하지 않은 잡을 다른 worker가 가져간다.
-  - 확인한 잡은 스트림에서 지운다(XACK와 XDEL을 한 트랜잭션으로). taskiq-redis의 확인은 XACK만 하므로 확인 함수(`_ack_generator`)를 재정의하고, 통합 테스트로 고정한다. 스트림이나 스케줄 소스(재시도)에서 기다리는 잡은 처리할 때까지 내용(메일 잡이면 받는 사람과 링크)을 담고 있다.
+  - 확인한 잡은 스트림에서 지운다(XACK와 XDEL을 한 트랜잭션으로). taskiq-redis의 확인은 XACK만 하므로 확인 함수(`_ack_generator`)를 재정의하고, 통합 테스트로 고정한다. 스트림이나 스케줄 소스(재시도)에서 기다리는 잡은 처리할 때까지 인자를 담고 있다. 그래서 잡 인자는 id뿐이다(M5).
 - 재시도는 `SmartRetryMiddleware`(처음 실행을 포함해 최대 5번)다. 지연은 재시도마다 5초씩 늘고(최대 60초) 0~1초 지터가 붙는다.
   - taskiq-redis broker는 지연을 지키지 않는다. 그래서 재시도를 Valkey 스케줄 소스에 넣고 scheduler가 때가 되면 보낸다.
   - scheduler는 스케줄을 10초마다 다시 읽는다(`--update-interval=10`). 기본값(1분)이면 5초 뒤의 첫 재시도가 1분 가까이 늦기 때문이다.
@@ -400,6 +403,7 @@ src/app/modules/posts/
 - 잡은 메일 발송, `pending` 파일 정리(매시간), 만료된 토큰과 세션 정리(매일)다.
 - 주기 작업은 작업 정의에 붙인 라벨로 선언하고, scheduler 하나가 실행한다(F6).
 - 메일
+  - 메일 잡(인증, 재설정, 환영)은 사용자 id만 받는다. 잡이 실행될 때 사용자를 읽어 보낼 조건을 다시 보고, 토큰이 필요하면 발급해 commit한 뒤 렌더해 보낸다. 재시도하면 토큰을 새로 발급한다(M5).
   - 템플릿은 메일을 보내는 모듈의 `templates/<로케일>/<이름>.{subject.txt,txt,html}`에 둔다. 인증, 재설정, 환영 메일은 `auth` 모듈에 있다.
   - 로케일(`ko`, `en`)마다 세 파일이 모두 있어야 한다. 빠지면 `check`가 실패한다.
   - 받는 사람의 로케일로 고르고, 없으면 `ko`를 쓴다.
@@ -409,20 +413,22 @@ src/app/modules/posts/
 ### 6.10 레이트 리밋과 캐시
 
 - 레이트 리밋(F26)은 Valkey 고정 윈도 카운터다. `INCR`과 만료를 파이프라인으로 원자적으로 건다.
-  - 엄격: 로그인(IP별, 식별자 해시별), 가입(IP별), 재설정 요청과 인증 메일 재발송(IP별, 이메일 해시별)
+  - 엄격: 로그인(IP별, 식별자 해시별), 가입(IP별), 재설정 요청과 인증 메일 재발송(IP별, 이메일 해시별), 비밀번호 변경(사용자별, M5)
   - 느슨: 그 밖의 모든 요청에 IP별 전역 제한
-  - 한도는 설정 값이다. 기본값은 로그인 IP별 분당 10회와 식별자별 분당 5회, 가입 IP별 시간당 10회, 재설정 요청과 재발송 IP별 시간당 5회와 이메일별 시간당 3회, 전역 IP별 분당 600회다.
+  - 한도는 설정 값이다. 기본값은 로그인 IP별 분당 10회와 식별자별 분당 5회, 가입 IP별 시간당 10회, 재설정 요청과 재발송 IP별 시간당 5회와 이메일별 시간당 3회, 비밀번호 변경 사용자별 시간당 5회, 전역 IP별 분당 600회다.
+  - 식별자(이메일)의 해시는 `IDENTIFIER_HASH_SECRET` 키의 HMAC-SHA256이다. 키 없는 해시는 흔한 주소 목록으로 되돌릴 수 있다(M5).
   - 초과하면 429, `Retry-After`, `rate_limit.exceeded`다.
   - 테스트 환경에서는 한도를 크게 두고, 레이트 리밋 자체를 확인하는 테스트만 한도를 낮춘다.
-- 캐시는 redis-py 위의 작은 cache-aside 도우미(`app.core.cache.Cache`)다. 키 이름공간과 JSON 직렬화를 담당한다. Valkey에 닿지 못하면 캐시 없이 동작한다(fail-open). 예시는 posts의 공개 목록이다.
+- 캐시는 redis-py 위의 작은 cache-aside 도우미(`app.core.cache.Cache`)다. 키 이름공간, 세대, 값의 모양, JSON 직렬화를 담당한다. 지우기는 세대를 올린다(SCAN이 없다). 채우는 사이에 지운 값은 옛 세대에 쓰여 읽히지 않고, 모양(문서 모델의 JSON 스키마 해시)이 바뀐 배포는 다른 키를 쓴다(M5). Valkey에 닿지 못하면 캐시 없이 동작한다(fail-open). 예시는 posts의 공개 목록이다.
 
 ### 6.11 관측성, 헬스체크, 설정
 
 - 로그는 structlog JSON이고, 개발 환경에서는 사람이 읽기 좋은 콘솔 형식이다.
 - 요청마다 traceId(32자리 16진수)를 붙인다. OpenTelemetry가 켜져 있으면 그 trace id를 쓴다. 모든 로그와 에러 응답의 `meta.traceId`에 들어간다.
-- OpenTelemetry는 기본으로 꺼 둔다. 켜면 FastAPI, SQLAlchemy, psycopg, Redis, httpx를 계측하고 Taskiq의 OpenTelemetry 연동을 켜서 OTLP로 내보낸다.
+- OpenTelemetry는 기본으로 꺼 둔다. 켜면 FastAPI, SQLAlchemy, psycopg, Redis, httpx를 계측하고 Taskiq의 OpenTelemetry 연동을 켜서 OTLP로 내보낸다. 헬스 체크는 span을 만들지 않는다. 제외 URL은 `OTEL_PYTHON_FASTAPI_EXCLUDED_URLS`(없으면 `OTEL_PYTHON_EXCLUDED_URLS`)에 헬스 경로를 더한 값이고, 준비 검사의 DB·Valkey 호출도 계측을 끈 채 돈다(M5).
 - 헬스체크는 `/health/live`와 `/health/ready`(DB, Valkey, 스토리지 버킷)다.
 - 설정은 pydantic-settings 스키마 하나다. 앱이 시작할 때 검증하고, 틀린 변수를 이름으로 알리고 멈춘다. `.env.example`과 스키마 필드가 일치하는지 `check`가 확인한다.
+- 비밀(키, 비밀번호, 계정이 든 `DATABASE_URL`·`REDIS_URL`·`SMTP_URL`)은 `SecretStr`로 받는다. 운영(`APP_ENV=production`)에서는 앱이 스스로 정하는 비밀(`JWT_SECRET`, `IDENTIFIER_HASH_SECRET`, `SEED_ADMIN_PASSWORD`)이 `.env.example`의 값이면 시작하지 않는다(M5).
 
 ### 6.12 시드
 
@@ -445,6 +451,11 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | 페이지 링크  | 링크 형식을 `url`에서 URI-reference 문자열로 바꾼다(F20)                                                                                     |
 | 에러 코드    | `role.last_admin_protected`(422)를 더한다. `auth.oauth_denied`, `auth.oauth_failed`를 더한다(콜백 리다이렉트의 `error` 값으로만 쓴다)       |
 | OAuth 설명   | 콜백의 에러 리다이렉트 규칙(§6.2)을 operation 설명에 적는다. PKCE와 `codeChallenge`를 적는 문장은 §12.1 M4를 따른다                          |
+| 에러 코드(M5) | `auth.reauthentication_required`(401), `jsonapi.content_too_large`(413), `file.quota_exceeded`(422)를 더한다. 413은 본문을 받는 operation의 에러(`BodyErrors`)에 더한다 |
+| posts(M5)    | 글 속성과 생성·수정 속성의 `body`에 `maxLength` 100000                                                                                      |
+| 실시간(M5)   | `post.unpublished` 이벤트(`rooms`: `posts`)와 `PostUnpublishedEventDocument`                                                               |
+| OAuth(M5)    | `authorize`의 `codeChallenge`에 pattern `^[A-Za-z0-9_-]{43}$`                                                                               |
+| 설명(M5)     | `DELETE /me`(재인증), `POST /password-changes`(사용자별 레이트 리밋, 재설정 토큰 삭제), `POST /files`(사용자별 한도)                        |
 
 - `x-realtime-messages`의 형식: `[{ "name": "subscribe", "payload": "RealtimeSubscription", "ack": "RealtimeAck" }, { "name": "unsubscribe", ... }]`
 - 룰셋의 공용 스키마 이름 목록에 `RealtimeChannel`, `RealtimeSubscription`, `RealtimeAck`를 더한다. 이 스키마들은 리소스에 속하지 않는다.
@@ -639,10 +650,11 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | M2  | users, roles, permissions, 가입과 이메일 인증, 세션(로그인, 갱신, 재사용 감지, 로그아웃, 목록, 폐기), 비밀번호 재설정과 변경, `/me`와 탈퇴, 사용자 관리, 메일과 잡, audit-logs, 레이트 리밋                                  | 해당 적합성 흐름 통과                                                                                          |
 | M3  | files(업로드, 완료 확인, 다운로드, 읽기 규칙, 정리 잡), posts(필터, 정렬, include, fields, 페이지, 캐시, 감사), `gen:module`, 레시피와 skill                                                                                  | 해당 적합성 흐름 통과. `gen:module`로 만든 모듈이 `check`를 통과                                               |
 | M4  | realtime(티켓, Socket.IO, 구독, 이벤트), 소셜 로그인, OpenTelemetry, `test:e2e`, 구조 비교에서 `--subset` 떼기                                                                                                                | §1.2의 사이클 완료 조건                                                                                       |
+| M5  | 보강: §12.1의 "나중" 18건([보강 설계](2026-09-29-fastapi-hardening-design.md))                                                                                                                                              | §1.2의 사이클 완료 조건과 보강 설계 §10의 적합성 흐름                                                          |
 
 ### 12.1 마일스톤 사이에 넘긴 일
 
-M1~M4의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
+M1~M5의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
 
 - M2를 시작하기 전(NestJS가 따라 하기 전에 정한다). M2 계획의 Task 1~2에서 다음과 같이 정했다.
   - POST 본문의 `type` 불일치는 409 `resource.conflict`, 클라이언트가 만든 `id`는 403 `permission.denied`다(JSON:API 1.1 MUST). 계약의 모든 POST가 403과 409를 선언한다. 로그인 없이 부르는 POST에는 `CreateErrors`(403, 409)를, 로그인이 필요한 POST에는 `Conflict`를 더한다(같은 상태를 두 번 넣으면 응답 스키마가 `anyOf`로 겹친다).
@@ -680,32 +692,17 @@ M1~M4의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획
   - 구조 비교에서 `--subset`을 떼고, 실시간 선언(`x-realtime-*`)도 계약과 같은지 본다.
   - python-socketio에는 타입 정보가 없어 쓰는 API만 담은 스텁(`typings/socketio/`)을 두었다.
   - `gen:module`의 테이블 검사는 소스를 바이트로 읽는다(BOM이 있는 파일, M3 최종 재리뷰).
-  - 채널 구독의 권한은 구독할 때 본다. 구독한 뒤 권한을 잃거나 계정이 닫혀도 그 연결은 끊기거나 구독을 풀 때까지 받는다. 클라이언트는 `me.updated`(`roles`, `status`)나 `session.revoked`를 받으면 새 티켓으로 다시 붙는다(§1.3, §6.8, 최종 리뷰).
+  - 채널 구독의 권한은 구독할 때 본다. 구독한 뒤 권한을 잃거나 계정이 닫혀도 그 연결은 끊기거나 구독을 풀 때까지 받는다. 클라이언트는 `me.updated`(`roles`, `status`)나 `session.revoked`를 받으면 새 티켓으로 다시 붙는다(§1.3, §6.8, 최종 리뷰). M5에서 서버가 그런 연결을 끊게 바꿨다(연결 재검사).
   - 역할 이름을 이미 있는 이름으로 바꾸면서 권한도 바꾸는 요청은 422 `validation.already_taken`이다. 멤버 알림은 이름 검사가 끝난 뒤에 한다(최종 리뷰).
   - 토큰의 해시는 짝이 없는 서로게이트도 인코딩한다(`surrogatepass`). 그런 토큰은 500이 아니라 각 grant의 401이다(최종 리뷰).
   - `codeVerifier`는 RFC 7636 모양(`[A-Za-z0-9._~-]` 43~128자)이어야 한다. 제공자의 에러는 `access_denied`만 `auth.oauth_denied`이고, 나머지는 `auth.oauth_failed`다(최종 리뷰).
   - OpenTelemetry는 헬스 체크 요청과 ASGI send·receive를 span으로 만들지 않는다. 쓰기 전용 발행기와 소켓 테스트 도우미는 쓴 연결을 닫는다(최종 리뷰).
-- 나중. M2의 최종 리뷰가 남긴, 아직 정하지 않은 결정이다.
-  - `DELETE /me`에 다시 인증 요구하기
-  - `POST /password-changes`에 엄격한 레이트 리밋 걸기
-  - 비밀번호를 바꿀 때 남은 재설정 토큰 지우기
-  - `identifierHash`와 메일 레이트 리밋 키를 키가 있는 HMAC으로 만들기
-  - 자격 증명이 든 URL(`SMTP_URL`, `DATABASE_URL`)을 `SecretStr`로 받기
-  - 운영에서 예시 비밀(`.env.example`의 `SEED_ADMIN_PASSWORD`, `JWT_SECRET`)을 거부하는 장치
-  - 렌더한 메일 대신 id를 담고, 토큰은 잡 안에서 발급하는 메일 잡
-- 나중. M3의 최종 리뷰가 남긴, 아직 정하지 않은 결정이다.
-  - 글 본문 최대 길이와 요청 본문 크기 제한
-  - 사용자별 파일 수·용량 한도(ready 파일은 정리되지 않는다)
-  - 탈퇴한 사용자에게 남은 파일(글의 커버 이미지) 정리
-  - 캐시 키에 세대 번호를 넣어 채우는 중의 경쟁, `clear()`의 SCAN, 배포 직후 옛 모양의 문서를 함께 없애기
-- 나중. M4의 최종 리뷰가 남긴, 아직 정하지 않은 결정이다.
-  - 권한을 잃거나 계정이 닫힌 연결을 권한 채널에서 서버가 내보내기. 인스턴스를 가로지르는 사용자별 소켓 id 기록이 필요하다.
-  - 발행을 취소한 글(published → draft)을 `posts` 채널에 알리기. 계약에 그 이벤트가 없다.
-  - 계약에 `codeChallenge`의 형식(base64url 43자)을 스키마 pattern으로 적기. 지금은 설명에만 있다.
-  - `spec-compare`의 실시간 비교를 키 순서와 상관없게 하기
-  - 적합성 흐름: `hd`가 없는 구글 검증 이메일은 기존 계정에 연결하지 않는다
-  - 첫 연결 전의 발행 때문에 python-socketio가 새로 만든 Valkey 클라이언트를 `Realtime.close()`가 닫지 못한다
-  - 준비 검사(`/health/ready`)의 DB·Valkey span이 따로 루트 trace가 된다. 헬스 경로를 코드에서 빼므로 `OTEL_PYTHON_FASTAPI_EXCLUDED_URLS`는 읽지 않는다
+- M5(보강). [보강 설계](2026-09-29-fastapi-hardening-design.md)가 M2~M4의 최종 리뷰가 남긴 "나중" 목록(M2 7건, M3 4건, M4 7건)을 모두 처리했다. 결정은 그 문서의 §2(H1~H18)에 있다.
+  - M2: 탈퇴 재인증(H1), 비밀번호 변경 리밋(H2)과 재설정 토큰 삭제(H3), 식별자 해시 HMAC(H4), 자격 증명 URL의 `SecretStr`(H5), 운영의 예시 비밀 거부(H6), id만 싣는 메일 잡(H7)
+  - M3: 요청 본문 한도와 글 본문 길이(H8), 사용자별 파일 한도(H9), 관계에서 풀린 파일 정리(H10), 캐시 세대와 모양(H11)
+  - M4: 연결 재검사(H12), 발행 취소 이벤트(H13), `codeChallenge` pattern(H14), 구조 비교의 키 순서(H15), 구글 `hd` 적합성 흐름(H16), 매니저의 Valkey 클라이언트(H17), 준비 검사의 span(H18)
+  - compose의 app 프로필은 운영 모드라 예시 비밀을 쓰지 못한다. 시드 관리자는 개발 관리자와 다른 이메일(`compose-admin@example.com`)과 비밀번호를 쓴다. 적합성 스택이 개발 DB를 함께 쓰는데 시드는 없는 계정만 만들기 때문이다.
+  - 계획과 다르게 한 것(태스크 리뷰): 매니저의 Valkey 클라이언트는 교체된 것을 모아 두었다가 닫지 않고 하나를 다시 쓴다(모아 두면 Valkey 장애 동안 끝없이 쌓인다). 연결 재검사는 도중에 닫힌 연결을 건너뛰고 나머지 연결을 이어서 본다. 요청 본문 한도(1 MiB)는 글 본문 100,000자를 UTF-8이나 BMP 문자의 유니코드 이스케이프로는 담지만, 4바이트 문자를 모두 이스케이프 쌍으로 보내면 넘을 수 있다(그때는 413).
 
 ## 13. 계획 단계에서 확인할 것
 

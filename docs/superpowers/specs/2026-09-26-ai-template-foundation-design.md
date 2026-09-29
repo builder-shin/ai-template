@@ -128,7 +128,7 @@ my-project/
 - 로그인은 `POST /sessions`에 grantType `password`로 한다. access token(JWT, 15분)과 refresh token(불투명 토큰, 30일)을 받는다.
 - 토큰 갱신은 `POST /sessions`에 grantType `refreshToken`으로 한다. refresh token은 쓸 때마다 새것으로 바뀐다. 이미 쓴 refresh token이 다시 들어오면 그 세션 계열 전체를 폐기하고 `auth.refresh_token_reused`를 돌려준다.
 - 로그아웃은 `DELETE /sessions/current`, 특정 세션 폐기는 `DELETE /sessions/{id}`, 다른 기기 또는 전체 로그아웃은 `POST /session-revocations`(scope `others` 또는 `all`)다. `GET /sessions`는 내 활성 세션 목록이다.
-- 비밀번호 재설정 요청(`POST /password-reset-requests`)은 계정이 있든 없든 항상 202를 돌려준다. 재설정(`POST /password-resets`)을 하면 모든 세션을 폐기한다. 비밀번호 변경(`POST /password-changes`)을 하면 현재 세션을 뺀 나머지를 폐기한다.
+- 비밀번호 재설정 요청(`POST /password-reset-requests`)은 계정이 있든 없든 항상 202를 돌려준다. 재설정(`POST /password-resets`)을 하면 모든 세션을 폐기한다. 비밀번호 변경(`POST /password-changes`)을 하면 현재 세션을 뺀 나머지를 폐기하고 남은 재설정 토큰을 지운다.
 - 소셜 로그인 흐름
   1. 프론트 BFF가 로그인 시도마다 code verifier를 만들어 시작한 브라우저에 연결해 둔다(예: httpOnly 쿠키). 브라우저를 `GET /api/v1/oauth/{provider}/authorize?redirectUri=<프론트 콜백>&codeChallenge=<verifier의 S256>`으로 이동시킨다. `redirectUri`는 허용 목록으로, `codeChallenge`는 형식(43자 base64url)으로 검사한다.
   2. 백엔드가 state와 `codeChallenge`를 함께 두고, 제공자와는 별도인 자신의 PKCE 쌍을 만들어 제공자로 리다이렉트한다.
@@ -138,7 +138,7 @@ my-project/
   - 소셜 로그인으로 만든 계정은 제공자가 검증한 이메일이면 이메일 인증을 마친 것으로 본다. 제공자가 검증을 보장하지 않는 이메일로는 기존 계정에 자동 연결하지 않는다. 제공자별 세부 연결 규칙은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §6.2에 있다.
   - BFF는 자기가 verifier를 쥐지 않은 콜백 `code`를 거부한다. 그러지 않으면 공격자가 완성된 콜백 URL을 피해자에게 넘겨 로그인시킬 수 있다(로그인 CSRF).
 - 백엔드는 `Authorization: Bearer`만 안다. 쿠키 처리는 프론트 BFF의 책임이다.
-- 로그인, 가입, 재설정 요청에는 IP와 식별자 기준의 엄격한 레이트 리밋을 건다.
+- 로그인, 가입, 재설정 요청에는 IP와 식별자 기준의 엄격한 레이트 리밋을 건다. 비밀번호 변경에는 사용자별 엄격한 레이트 리밋을 건다.
 
 ### 4.3 RBAC
 
@@ -158,11 +158,12 @@ my-project/
 - 다운로드는 `ready` 파일에 대해 수명이 짧은 presigned GET URL(`meta.downloadUrl`)로 한다.
 - 파일을 읽을 수 있는 사람은 소유자, 그리고 그 파일을 참조하는 리소스를 읽을 수 있는 사람이다(예: 발행된 글의 커버 이미지는 누구나 읽는다). 이 규칙을 구현하는 방식과 공개 이미지 전달 방식은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §6.5에 있다.
 - 24시간이 넘도록 `pending`인 파일은 주기 잡이 삭제한다.
+- 한 사용자가 가진 파일 크기의 합에는 한도가 있다(넘으면 422 `file.quota_exceeded`). 다른 리소스에 걸었던 파일(아바타, 커버 이미지)은 풀리면(바꾸거나 빼거나 리소스를 지우면) 다른 곳에서 쓰지 않을 때 지운다.
 
 ### 4.5 메일, 잡, 캐시, 레이트 리밋
 
 - 메일: SMTP로 보낸다. 템플릿(이메일 인증, 비밀번호 재설정, 환영)은 로케일마다 있어야 하며, 빠진 로케일이 있으면 `check`가 실패한다.
-- 잡: Redis 큐와 별도 worker 프로세스. 재시도와 지수 백오프, 주기 작업(만료된 토큰과 끝나지 않은 업로드 정리)을 포함한다. 잡은 내부 기능이라 API 계약에 넣지 않는다.
+- 잡: Redis 큐와 별도 worker 프로세스. 재시도와 지수 백오프, 주기 작업(만료된 토큰과 끝나지 않은 업로드 정리)을 포함한다. 잡은 내부 기능이라 API 계약에 넣지 않는다. 잡 인자는 id뿐이고, 메일 주소와 1회용 토큰은 잡 안에서 읽거나 만든다(큐에 개인정보와 비밀을 두지 않는다).
 - 캐시: Redis. 골든 모듈의 공개 목록 첫 페이지를 캐시하고, 글이 바뀌면 무효화하는 예시를 둔다.
 - 레이트 리밋: Redis. 인증 엔드포인트는 엄격하게, 나머지는 느슨한 전역 제한을 건다. 초과하면 `429`, `Retry-After`, 에러 코드 `rate_limit.exceeded`를 돌려준다.
 
@@ -181,6 +182,7 @@ my-project/
   - 로그인 연결은 접속하는 즉시 `user:{id}` 룸에 들어간다.
   - 구독 가능한 채널은 `posts`(발행된 글의 이벤트, 누구나)와 `posts:all`(모든 글의 이벤트, `posts:manage` 필요)이다.
   - 클라이언트는 `subscribe`와 `unsubscribe` 메시지를 보내고, 서버는 ack로 성공 또는 거부를 알린다.
+  - 세션이 폐기되거나 역할·상태가 바뀌면 서버가 그 사용자의 연결을 다시 검사해, 세션이 끝났거나 구독한 채널의 권한을 잃은 연결을 끊는다. 클라이언트는 새 티켓으로 다시 붙는다.
 - 서버가 보내는 이벤트
 
 | 이벤트 | 받는 곳 | 페이로드 |
@@ -190,6 +192,7 @@ my-project/
 | `post.created` | `posts:all`, 작성자의 `user:{id}` | `posts` 리소스 문서 |
 | `post.updated` | 위와 같음. 발행된 글이면 `posts`에도 | `posts` 리소스 문서 |
 | `post.published` | `posts`, `posts:all`, 작성자의 `user:{id}` | `posts` 리소스 문서 |
+| `post.unpublished` | `posts`(발행을 취소했을 때) | 리소스 식별자만 |
 | `post.deleted` | `posts:all`, 작성자의 `user:{id}`. 발행된 글이었으면 `posts`에도 | 리소스 식별자만 |
 
 - 서버를 여러 대 띄우면 Redis 어댑터로 이벤트를 모든 인스턴스에 전파한다. worker처럼 소켓 서버가 아닌 프로세스는 Redis emitter로 이벤트를 보낸다.
@@ -222,7 +225,7 @@ AI가 새 기능을 만들 때 따라 할 정답 예시다.
 
 - `users` 리소스의 속성은 보는 사람에 따라 달라진다. 다른 사람과 비로그인 사용자에게는 `name`과 아바타만 보인다. 본인과 `users:read` 권한자에게는 전체 속성이 보인다.
 - 이 규칙 때문에 공개 글의 `include=author`로 이메일이 새지 않는다.
-- 회원 탈퇴(`DELETE /me`)는 개인정보를 익명화하고 모든 세션을 폐기한다. 보존 정책의 세부는 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §6.4에 있다.
+- 회원 탈퇴(`DELETE /me`)는 로그인한 지 10분 안의 세션만 할 수 있고(`auth.reauthentication_required`), 개인정보를 익명화하고 모든 세션을 폐기한다. 보존 정책의 세부는 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §6.4에 있다.
 
 ### 4.11 범위 밖
 
