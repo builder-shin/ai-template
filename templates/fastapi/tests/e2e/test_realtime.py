@@ -34,7 +34,7 @@ async def test_a_published_post_reaches_a_subscriber(api: httpx.AsyncClient) -> 
 
 
 async def test_an_event_from_a_write_only_publisher_reaches_the_server() -> None:
-    worker = RedisPublisher(isolated_settings(load_settings(), "e2e").redis_url)
+    worker = RedisPublisher(isolated_settings(load_settings(), "e2e").redis_url.get_secret_value())
     event = Event("post.published", ("posts",), {"data": {"type": "posts", "id": "from-worker"}})
     try:
         async with connected(BASE_URL) as socket:

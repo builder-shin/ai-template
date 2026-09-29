@@ -34,8 +34,8 @@ describe("적합성 대상", () => {
       CONFORMANCE_TARGET: "fastapi",
       CONFORMANCE_BASE_URL: "http://localhost:8000",
       CONFORMANCE_MAILPIT_URL: "http://localhost:28025",
-      CONFORMANCE_ADMIN_EMAIL: "admin@example.com",
-      CONFORMANCE_ADMIN_PASSWORD: "admin-password", // betterleaks:allow 개발용 시드 관리자
+      CONFORMANCE_ADMIN_EMAIL: "compose-admin@example.com",
+      CONFORMANCE_ADMIN_PASSWORD: "compose-app-profile-admin-password", // betterleaks:allow compose app 프로필의 시드 관리자
     });
   });
 });

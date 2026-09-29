@@ -3,8 +3,9 @@
 from pathlib import Path
 
 import pytest
+from dotenv import dotenv_values
 
-from app.core.config import Settings, load_settings
+from app.core.config import EXAMPLE_SECRETS, Settings, load_settings
 
 EXAMPLE = Path(__file__).resolve().parents[4] / ".env.example"
 
@@ -28,8 +29,20 @@ def test_example_env_is_a_valid_configuration(tmp_path: Path) -> None:
     write_dotenv(tmp_path)
     settings = load_settings()
     assert settings.app_env == "development"
-    assert settings.database_url == "postgresql+psycopg://app:app@127.0.0.1:25432/app"
-    assert settings.redis_url == "redis://127.0.0.1:26379/0"
+    assert settings.database_url.get_secret_value() == (
+        "postgresql+psycopg://app:app@127.0.0.1:25432/app"
+    )
+    assert settings.redis_url.get_secret_value() == "redis://127.0.0.1:26379/0"
+
+
+def test_urls_with_credentials_do_not_show_in_repr(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    write_dotenv(tmp_path)
+    monkeypatch.setenv("SMTP_URL", "smtps://mailer:smtp-password@mail.example.com:465")
+    shown = repr(load_settings())
+    assert "app:app@" not in shown
+    assert "smtp-password" not in shown
 
 
 def test_file_types_are_a_comma_separated_list(
@@ -60,7 +73,7 @@ def test_reports_each_bad_variable_on_its_own_line(
     assert str(caught.value).splitlines() == [
         "설정 오류: APP_ENV — 값이 틀렸다(Input should be 'development', 'test' or 'production').",
         "설정 오류: DATABASE_URL — 값이 틀렸다"
-        "(String should match pattern '^postgresql\\+psycopg://').",
+        "(Value error, postgresql+psycopg://로 시작해야 한다).",
         "설정 오류: REDIS_URL — 값이 없다. .env나 환경 변수에 적는다(예시는 .env.example).",
     ]
 
@@ -77,5 +90,34 @@ def test_rejects_a_short_jwt_secret_and_an_unknown_mail_scheme(
         "설정 오류: JWT_SECRET — 값이 틀렸다"
         "(Value should have at least 32 items after validation, not 9).",
         "설정 오류: SMTP_URL — 값이 틀렸다"
-        "(String should match pattern '^(smtp|smtp\\+starttls|smtps)://').",
+        "(Value error, smtp:// 또는 smtp+starttls:// 또는 smtps://로 시작해야 한다).",
     ]
+
+
+def test_production_refuses_the_example_secrets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    write_dotenv(tmp_path)
+    monkeypatch.setenv("APP_ENV", "production")
+    with pytest.raises(SystemExit) as caught:
+        load_settings()
+    reason = "(Value error, 운영(APP_ENV=production)에서는 .env.example의 예시 값을 쓸 수 없다)."
+    assert str(caught.value).splitlines() == [
+        f"설정 오류: {name} — 값이 틀렸다{reason}"
+        for name in ("JWT_SECRET", "IDENTIFIER_HASH_SECRET", "SEED_ADMIN_PASSWORD")
+    ]
+
+
+def test_production_starts_with_its_own_secrets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    write_dotenv(tmp_path)
+    monkeypatch.setenv("APP_ENV", "production")
+    for name in EXAMPLE_SECRETS:
+        monkeypatch.setenv(name.upper(), f"production-{name}-value-that-is-long-enough")
+    assert load_settings().app_env == "production"
+
+
+def test_example_secrets_are_the_values_in_env_example() -> None:
+    example = dotenv_values(EXAMPLE)
+    assert {name: example.get(name.upper()) for name in EXAMPLE_SECRETS} == EXAMPLE_SECRETS

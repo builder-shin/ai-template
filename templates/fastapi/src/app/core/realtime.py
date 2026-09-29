@@ -238,8 +238,9 @@ class Realtime:
 
 def create_realtime(settings: Settings, *, channel: str | None = None) -> Realtime:
     """소켓 서버를 만든다. channel을 주면 그 pub/sub 채널을 쓴다(테스트가 테스트마다 나눈다)."""
-    channel = channel or pubsub_channel(settings.redis_url)
-    manager = socketio.AsyncRedisManager(settings.redis_url, channel=channel)
+    redis_url = settings.redis_url.get_secret_value()
+    channel = channel or pubsub_channel(redis_url)
+    manager = socketio.AsyncRedisManager(redis_url, channel=channel)
     # logger=False라도 레벨이 NOTSET이면 라이브러리가 자기 핸들러를 단다.
     # 미리 WARNING으로 정해 root(structlog) 핸들러로만 가게 한다.
     logging.getLogger("socketio.server").setLevel(logging.WARNING)

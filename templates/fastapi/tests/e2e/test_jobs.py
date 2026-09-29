@@ -27,7 +27,7 @@ RETRY_WITHIN = 30.0  # 초
 
 async def retry_scheduled(within: float = 10.0) -> bool:
     """worker가 실패한 잡의 재시도를 스케줄 소스(E2E Valkey)에 넣을 때까지 기다린다."""
-    redis = create_redis(isolated_settings(load_settings(), "e2e").redis_url)
+    redis = create_redis(isolated_settings(load_settings(), "e2e").redis_url.get_secret_value())
     deadline = time.monotonic() + within
     try:
         while time.monotonic() < deadline:

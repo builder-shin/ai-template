@@ -1,8 +1,22 @@
-"""앱과 도구의 설정. 환경 변수와 작업 폴더의 `.env`에서 읽는다."""
+"""앱과 도구의 설정. 환경 변수와 작업 폴더의 `.env`에서 읽는다.
+
+- 비밀(키, 비밀번호, 계정이 든 URL)은 SecretStr로 받는다. repr과 로그에 값이 드러나지 않고,
+  쓰는 곳에서 get_secret_value()로 꺼낸다.
+- 운영(APP_ENV=production)에서는 앱이 스스로 정하는 비밀이 .env.example의 예시 값이면
+  시작하지 않는다.
+"""
 
 from typing import Annotated, Literal
 
-from pydantic import BeforeValidator, Field, SecretStr, ValidationError
+from pydantic import (
+    AfterValidator,
+    BeforeValidator,
+    Field,
+    SecretStr,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+)
 from pydantic_core import ErrorDetails
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
@@ -25,6 +39,30 @@ CommaSeparated = Annotated[
 ]
 
 
+def _scheme(*schemes: str) -> AfterValidator:
+    """계정이 든 URL(SecretStr)의 스킴 검사. SecretStr에는 pattern을 걸 수 없다.
+
+    에러 메시지에 값을 싣지 않는다.
+    """
+
+    def check(value: SecretStr) -> SecretStr:
+        if not value.get_secret_value().startswith(schemes):
+            raise ValueError(f"{' 또는 '.join(schemes)}로 시작해야 한다")
+        return value
+
+    return AfterValidator(check)
+
+
+# .env.example에 적힌 예시 비밀. 운영에서 이 값을 쓰면 시작하지 않는다. 앱이 스스로 정하는 비밀만
+# 본다(DB, S3, SMTP, OAuth의 자격 증명은 예시 값이면 그 서비스가 거절한다). 이미지에는
+# .env.example이 없어 여기에 둔다. test_config가 .env.example과 같은지 본다.
+EXAMPLE_SECRETS = {
+    "jwt_secret": "local-development-only-jwt-signing-key",
+    "identifier_hash_secret": "local-development-only-identifier-hash-key",
+    "seed_admin_password": "admin-password",  # betterleaks:allow 예시 값
+}
+
+
 class Settings(BaseSettings):
     """설정 스키마. 환경 변수 이름은 필드 이름의 대문자(예: DATABASE_URL)이고, 모든 값이 필수다.
 
@@ -35,8 +73,9 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "test", "production"]
     log_level: Literal["debug", "info", "warning", "error"]
-    database_url: Annotated[str, Field(pattern=r"^postgresql\+psycopg://")]
-    redis_url: Annotated[str, Field(pattern=r"^rediss?://")]
+    # DB와 Valkey 주소. 계정과 비밀번호가 들어 있을 수 있어 SecretStr로 받는다
+    database_url: Annotated[SecretStr, _scheme("postgresql+psycopg://")]
+    redis_url: Annotated[SecretStr, _scheme("redis://", "rediss://")]
     s3_endpoint_url: HttpUrl
     s3_public_endpoint_url: HttpUrl
     s3_region: NonEmpty
@@ -52,7 +91,7 @@ class Settings(BaseSettings):
     # 바꾸면 이전 감사 로그의 해시와 이어지지 않는다
     identifier_hash_secret: Annotated[SecretStr, Field(min_length=32)]
     # 메일 서버. smtp://(평문), smtp+starttls://(STARTTLS), smtps://(TLS). 계정은 주소에 넣는다
-    smtp_url: Annotated[str, Field(pattern=r"^(smtp|smtp\+starttls|smtps)://")]
+    smtp_url: Annotated[SecretStr, _scheme("smtp://", "smtp+starttls://", "smtps://")]
     mail_from: NonEmpty
     # 메일 링크의 프론트 주소. 인증·재설정 링크는 여기에 경로와 ?token=을 붙인다
     frontend_url: HttpUrl
@@ -96,6 +135,15 @@ class Settings(BaseSettings):
     rate_limit_registration_ip: Limit
     rate_limit_mail_ip: Limit
     rate_limit_mail_email: Limit
+
+    @field_validator(*EXAMPLE_SECRETS)
+    @classmethod
+    def _no_example_secret_in_production(cls, value: SecretStr, info: ValidationInfo) -> SecretStr:
+        """운영에서 .env.example의 예시 비밀을 거절한다. app_env는 첫 필드라 먼저 검증된다."""
+        example = EXAMPLE_SECRETS.get(info.field_name or "")
+        if info.data.get("app_env") == "production" and value.get_secret_value() == example:
+            raise ValueError("운영(APP_ENV=production)에서는 .env.example의 예시 값을 쓸 수 없다")
+        return value
 
     def __init__(self) -> None:
         # 값은 환경 변수와 .env에서 온다. 인자 없는 생성자를 선언해 두면 타입 검사기가

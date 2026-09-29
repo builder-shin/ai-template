@@ -29,7 +29,7 @@ EVENT = Event(name="thing.happened", rooms=("a", "b", "c"), payload={"meta": {"n
 @pytest.fixture
 async def worker(realtime: Realtime, infra: Settings) -> AsyncIterator[RedisPublisher]:
     """소켓 서버와 같은 채널의 쓰기 전용 발행기(worker의 것). 테스트가 끝나면 닫는다."""
-    publisher = RedisPublisher(infra.redis_url, channel=realtime.channel)
+    publisher = RedisPublisher(infra.redis_url.get_secret_value(), channel=realtime.channel)
     yield publisher
     await publisher.close()
 

@@ -19,6 +19,7 @@ from alembic.config import Config
 from alembic.util import CommandError
 from botocore.exceptions import ClientError
 from psycopg import sql
+from pydantic import SecretStr
 from sqlalchemy import URL, make_url
 
 from app.core.config import Settings
@@ -64,14 +65,14 @@ def isolated_settings(settings: Settings, target: Target) -> Settings:
     레이트 리밋 한도는 TEST_RATE_LIMIT로 올린다.
     """
     suffix, number = TARGETS[target]
-    url = make_url(settings.database_url)
+    url = make_url(settings.database_url.get_secret_value())
     database = url.set(database=f"{url.database}{suffix}")
-    valkey = urlsplit(settings.redis_url)._replace(path=f"/{number}")
+    valkey = urlsplit(settings.redis_url.get_secret_value())._replace(path=f"/{number}")
     return settings.model_copy(
         update={
             "app_env": "test",
-            "database_url": database.render_as_string(hide_password=False),
-            "redis_url": urlunsplit(valkey),
+            "database_url": SecretStr(database.render_as_string(hide_password=False)),
+            "redis_url": SecretStr(urlunsplit(valkey)),
             **dict.fromkeys(RATE_LIMIT_FIELDS, TEST_RATE_LIMIT),
         }
     )
@@ -79,7 +80,7 @@ def isolated_settings(settings: Settings, target: Target) -> Settings:
 
 def database_names(settings: Settings) -> list[str]:
     """개발, 테스트, E2E DB 이름. 예: app, app_test, app_e2e"""
-    base = make_url(settings.database_url).database or ""
+    base = make_url(settings.database_url.get_secret_value()).database or ""
     return [base, *(f"{base}{suffix}" for suffix, _ in TARGETS.values())]
 
 
@@ -105,7 +106,7 @@ def _conninfo(url: URL, database: str) -> str:
 
 def ensure_databases(settings: Settings) -> list[str]:
     """개발, 테스트, E2E DB가 없으면 만든다. 새로 만든 DB 이름을 돌려준다."""
-    url = make_url(settings.database_url)
+    url = make_url(settings.database_url.get_secret_value())
     created: list[str] = []
     with psycopg.connect(_conninfo(url, "postgres"), autocommit=True) as connection:
         rows = connection.execute("SELECT datname FROM pg_database").fetchall()
@@ -119,8 +120,8 @@ def ensure_databases(settings: Settings) -> list[str]:
 
 def reset_database(settings: Settings) -> None:
     """개발 DB를 지우고 빈 DB로 다시 만든다. 이 PC의 DB가 아니면 거부한다."""
-    url = make_url(settings.database_url)
-    if not is_local(settings.database_url):
+    url = make_url(settings.database_url.get_secret_value())
+    if not is_local(settings.database_url.get_secret_value()):
         raise SystemExit(
             "db:reset은 이 PC의 DB(localhost, 127.0.0.1, ::1)만 지운다. "
             f"DATABASE_URL의 호스트가 {url.host}이다."
@@ -138,15 +139,17 @@ def migrate_disposable(settings: Settings) -> bool:
     이 PC의 _test, _e2e DB)가 아니면 비우지 않고 원래 에러를 그대로 던진다.
     """
     config = Config(toml_file=ROOT / "pyproject.toml")
-    config.attributes["database_url"] = settings.database_url
+    config.attributes["database_url"] = settings.database_url.get_secret_value()
     try:
         command.upgrade(config, "head")
     except CommandError as error:
-        if UNKNOWN_REVISION not in str(error) or not is_disposable(settings.database_url):
+        if UNKNOWN_REVISION not in str(error) or not is_disposable(
+            settings.database_url.get_secret_value()
+        ):
             raise
     else:
         return False
-    url = make_url(settings.database_url)
+    url = make_url(settings.database_url.get_secret_value())
     with psycopg.connect(_conninfo(url, url.database or ""), autocommit=True) as connection:
         connection.execute("DROP SCHEMA public CASCADE")
         connection.execute("CREATE SCHEMA public")
@@ -190,7 +193,7 @@ def _first_line(error: Exception) -> str:
 def unreachable(settings: Settings) -> list[str]:
     """접속하지 못한 인프라를 `이름(주소): 이유`로 돌려준다. 모두 접속되면 빈 목록이다."""
     problems: list[str] = []
-    url = make_url(settings.database_url)
+    url = make_url(settings.database_url.get_secret_value())
     try:
         conninfo = _conninfo(url, url.database or "")
         with psycopg.connect(conninfo, connect_timeout=CONNECT_TIMEOUT) as connection:
@@ -198,8 +201,9 @@ def unreachable(settings: Settings) -> list[str]:
     except psycopg.Error as error:
         where = f"{url.host}:{url.port or 5432}/{url.database}"
         problems.append(f"PostgreSQL({where}): {_first_line(error)}")
-    valkey = urlsplit(settings.redis_url)
-    client = redis.Redis.from_url(settings.redis_url, socket_connect_timeout=CONNECT_TIMEOUT)  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
+    redis_url = settings.redis_url.get_secret_value()
+    valkey = urlsplit(redis_url)
+    client = redis.Redis.from_url(redis_url, socket_connect_timeout=CONNECT_TIMEOUT)  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
     try:
         client.ping()  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
     except redis.RedisError as error:

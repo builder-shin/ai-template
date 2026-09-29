@@ -15,8 +15,8 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
     env: {
       CONFORMANCE_MAILPIT_URL: "http://localhost:28025",
       // compose.yaml의 x-app이 시드하는 관리자(SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD)와 같은 값이다.
-      CONFORMANCE_ADMIN_EMAIL: "admin@example.com",
-      CONFORMANCE_ADMIN_PASSWORD: "admin-password", // betterleaks:allow 개발용 시드 관리자
+      CONFORMANCE_ADMIN_EMAIL: "compose-admin@example.com",
+      CONFORMANCE_ADMIN_PASSWORD: "compose-app-profile-admin-password", // betterleaks:allow compose app 프로필의 시드 관리자
     },
   },
 };

@@ -77,7 +77,7 @@ def infra(settings: Settings) -> Settings:
 
 @pytest.fixture(scope="session")
 async def engine(infra: Settings) -> AsyncIterator[AsyncEngine]:
-    engine = create_engine(infra.database_url)
+    engine = create_engine(infra.database_url.get_secret_value())
     yield engine
     await engine.dispose()
 
@@ -109,7 +109,7 @@ async def db(
 
 @pytest.fixture(scope="session")
 async def redis_client(infra: Settings) -> AsyncIterator[Redis]:
-    client = create_redis(infra.redis_url)
+    client = create_redis(infra.redis_url.get_secret_value())
     yield client
     await client.aclose()
 

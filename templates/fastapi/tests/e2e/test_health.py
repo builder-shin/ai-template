@@ -29,7 +29,7 @@ async def test_ready_sees_database_valkey_and_storage(api: httpx.AsyncClient) ->
 
 async def test_worker_waits_for_jobs_on_the_e2e_queue() -> None:
     """worker는 시작할 때 스트림에 소비자 그룹을 만들고, 잡을 기다리며 소비자로 붙는다."""
-    redis = create_redis(isolated_settings(load_settings(), "e2e").redis_url)
+    redis = create_redis(isolated_settings(load_settings(), "e2e").redis_url.get_secret_value())
     groups: list[dict[str, object]] = []
     try:
         for _ in range(50):

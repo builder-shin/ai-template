@@ -43,7 +43,7 @@ async def seed(sessions: async_sessionmaker[AsyncSession], settings: Settings) -
 
 async def main() -> None:
     settings = load_settings()
-    engine = create_engine(settings.database_url)
+    engine = create_engine(settings.database_url.get_secret_value())
     try:
         done = await seed(session_factory(engine), settings)
     finally:

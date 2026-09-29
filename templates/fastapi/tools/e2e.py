@@ -14,6 +14,7 @@ from pathlib import Path
 
 import httpx
 import redis
+from pydantic import SecretStr
 
 from app.core.config import Settings, load_settings
 from tools.dev import SCHEDULER, WORKER, api
@@ -35,7 +36,12 @@ def overrides(settings: Settings) -> dict[str, str]:
     제공자가 돌아올 주소(API_URL)는 E2E api의 주소다.
     """
     names = ("app_env", "database_url", "redis_url", *RATE_LIMIT_FIELDS)
-    return {name.upper(): str(getattr(settings, name)) for name in names} | {"API_URL": BASE_URL}
+    return {name.upper(): _plain(getattr(settings, name)) for name in names} | {"API_URL": BASE_URL}
+
+
+def _plain(value: object) -> str:
+    """환경 변수로 넘길 값. SecretStr은 str()이 가린 값(**********)이므로 원래 값을 꺼낸다."""
+    return value.get_secret_value() if isinstance(value, SecretStr) else str(value)
 
 
 def prepare(settings: Settings) -> None:
@@ -48,7 +54,7 @@ def prepare(settings: Settings) -> None:
     done = subprocess.run([sys.executable, "-m", "app.seed"], cwd=ROOT, env=env, check=False)
     if done.returncode != 0:
         raise SystemExit("E2E DB를 준비하지 못했다: python -m app.seed")
-    client = redis.Redis.from_url(settings.redis_url)  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
+    client = redis.Redis.from_url(settings.redis_url.get_secret_value())  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
     try:
         client.flushdb()  # pyright: ignore[reportUnknownMemberType]  # 사유: redis-py의 **kwargs에 타입이 없다
     finally:

@@ -48,7 +48,7 @@ def migration_state(settings: Settings) -> tuple[set[str], set[str]]:
     config = Config(toml_file=ROOT / "pyproject.toml")
     heads = set(ScriptDirectory.from_config(config).get_heads())
     engine = create_engine(
-        settings.database_url,
+        settings.database_url.get_secret_value(),
         poolclass=NullPool,
         connect_args={"connect_timeout": CONNECT_TIMEOUT},
     )
@@ -88,7 +88,7 @@ def summary(settings: Settings) -> str:
     else:
         try:
             applied, heads = migration_state(settings)
-            database = make_url(settings.database_url).database or ""
+            database = make_url(settings.database_url.get_secret_value()).database or ""
             lines.append(migration_line(database, applied=applied, heads=heads))
         except Exception as error:
             lines.append(_failure_line("마이그레이션", error))

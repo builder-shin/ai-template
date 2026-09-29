@@ -11,6 +11,7 @@ import pytest
 from alembic.script import ScriptDirectory
 from alembic.util import CommandError
 from psycopg import sql
+from pydantic import SecretStr
 from sqlalchemy import make_url
 
 from app.core.config import Settings
@@ -33,8 +34,8 @@ from tools.infra import (
 # 연결하지 않는 단위 테스트용 설정. 검증을 거치지 않고 필요한 필드만 채운다.
 BASE = Settings.model_construct(
     app_env="development",
-    database_url="postgresql+psycopg://127.0.0.1:25432/app",
-    redis_url="redis://127.0.0.1:26379/0",
+    database_url=SecretStr("postgresql+psycopg://127.0.0.1:25432/app"),
+    redis_url=SecretStr("redis://127.0.0.1:26379/0"),
 )
 
 
@@ -46,8 +47,9 @@ def test_isolated_settings_use_their_own_database_and_valkey_number(
 ) -> None:
     settings = isolated_settings(BASE, target)
     assert settings.app_env == "test"
-    assert settings.database_url == f"postgresql+psycopg://127.0.0.1:25432/{database}"
-    assert settings.redis_url == f"redis://127.0.0.1:26379/{number}"
+    database_url = settings.database_url.get_secret_value()
+    assert database_url == f"postgresql+psycopg://127.0.0.1:25432/{database}"
+    assert settings.redis_url.get_secret_value() == f"redis://127.0.0.1:26379/{number}"
     assert {getattr(settings, name) for name in RATE_LIMIT_FIELDS} == {TEST_RATE_LIMIT}
 
 
@@ -79,7 +81,8 @@ def test_only_local_test_and_e2e_databases_can_be_wiped(url: str, disposable: bo
 
 
 def test_reset_refuses_a_database_outside_this_machine() -> None:
-    remote = BASE.model_copy(update={"database_url": "postgresql+psycopg://db.example.com/app"})
+    remote_url = SecretStr("postgresql+psycopg://db.example.com/app")
+    remote = BASE.model_copy(update={"database_url": remote_url})
     with pytest.raises(SystemExit) as caught:
         reset_database(remote)
     assert str(caught.value) == (
@@ -91,8 +94,8 @@ def test_reset_refuses_a_database_outside_this_machine() -> None:
 def test_preflight_names_what_is_down_and_how_to_fix() -> None:
     down = BASE.model_copy(
         update={
-            "database_url": "postgresql+psycopg://127.0.0.1:1/app_test",
-            "redis_url": "redis://127.0.0.1:1/15",
+            "database_url": SecretStr("postgresql+psycopg://127.0.0.1:1/app_test"),
+            "redis_url": SecretStr("redis://127.0.0.1:1/15"),
         }
     )
     with pytest.raises(SystemExit) as caught:
@@ -123,7 +126,7 @@ def test_bucket_is_created_once_with_cors_for_local_frontends(infra: Settings) -
 
 
 def _conninfo(settings: Settings, database: str | None = None) -> str:
-    url = make_url(settings.database_url).set(drivername="postgresql")
+    url = make_url(settings.database_url.get_secret_value()).set(drivername="postgresql")
     return url.set(database=database or url.database).render_as_string(hide_password=False)
 
 
@@ -134,8 +137,9 @@ def scratch_database(infra: Settings, name: str) -> Generator[Settings]:
     with psycopg.connect(_conninfo(infra, "postgres"), autocommit=True) as connection:
         connection.execute(sql.SQL("CREATE DATABASE {}").format(identifier))
     try:
-        url = make_url(infra.database_url).set(database=name)
-        yield infra.model_copy(update={"database_url": url.render_as_string(hide_password=False)})
+        url = make_url(infra.database_url.get_secret_value()).set(database=name)
+        rendered = SecretStr(url.render_as_string(hide_password=False))
+        yield infra.model_copy(update={"database_url": rendered})
     finally:
         with psycopg.connect(_conninfo(infra, "postgres"), autocommit=True) as connection:
             drop = sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)")

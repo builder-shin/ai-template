@@ -36,7 +36,7 @@ def _import_models() -> None:
 
 def _database_url() -> str:
     url = config.attributes.get("database_url")
-    return url if isinstance(url, str) else load_settings().database_url
+    return url if isinstance(url, str) else load_settings().database_url.get_secret_value()
 
 
 def run_offline() -> None:

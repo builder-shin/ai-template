@@ -92,11 +92,11 @@ def attach_context(
     async def start(state: TaskiqState) -> None:
         realtime = publisher
         if realtime is None:
-            realtime = RedisPublisher(settings.redis_url)
+            realtime = RedisPublisher(settings.redis_url.get_secret_value())
             publishers.append(realtime)
         factory = sessions
         if factory is None:
-            engine = create_engine(settings.database_url)
+            engine = create_engine(settings.database_url.get_secret_value())
             instrument_engine(engine)
             engines.append(engine)
             factory = session_factory(engine, realtime)

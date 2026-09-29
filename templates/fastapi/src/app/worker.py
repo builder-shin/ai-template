@@ -73,7 +73,7 @@ def create_schedule_source(settings: Settings) -> ListRedisScheduleSource:
 
     worker가 넣고 scheduler가 꺼내 보낸다.
     """
-    return ListRedisScheduleSource(settings.redis_url, prefix=SCHEDULE_PREFIX)
+    return ListRedisScheduleSource(settings.redis_url.get_secret_value(), prefix=SCHEDULE_PREFIX)
 
 
 def create_broker(
@@ -109,7 +109,7 @@ def create_broker(
             use_delay_exponent=True,
             schedule_source=create_schedule_source(current),
         )
-        stream = DeleteOnAckStreamBroker(current.redis_url, queue_name=QUEUE)
+        stream = DeleteOnAckStreamBroker(current.redis_url.get_secret_value(), queue_name=QUEUE)
         broker = stream.with_middlewares(retry)
     if current.otel_enabled:
         # 잡을 보내고 실행할 때 span을 만들고, 보낸 쪽의 trace를 잡에 이어 붙인다.

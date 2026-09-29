@@ -101,7 +101,7 @@ def smtp_server(smtp_url: str) -> SmtpServer:
 
 async def send(settings: Settings, mail: Mail) -> None:
     """SMTP_URL의 서버로 보낸다. 실패하면 예외다(잡이 재시도한다)."""
-    server = smtp_server(settings.smtp_url)
+    server = smtp_server(settings.smtp_url.get_secret_value())
     await aiosmtplib.send(
         _message(settings, mail),
         hostname=server.hostname,
