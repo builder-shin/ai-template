@@ -9,8 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.audit import AuditLog
+from app.core.config import Settings
 from app.core.jsonapi.openapi import JsonApiApp
-from app.core.security import digest
+from app.core.security import identifier_hash
 from app.modules.users import UserStatus
 from app.tests.accounts import PASSWORD, Accounts, new_email
 from app.tests.requests import error_codes, error_sources, jsonapi_body
@@ -66,7 +67,10 @@ async def test_password_grant_issues_tokens_and_records_the_login(
 
 
 async def test_wrong_password_and_unknown_email_look_the_same(
-    api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession]
+    api: httpx.AsyncClient,
+    accounts: Accounts,
+    db: async_sessionmaker[AsyncSession],
+    settings: Settings,
 ) -> None:
     user = await accounts.create()
     assert user.email is not None
@@ -77,7 +81,8 @@ async def test_wrong_password_and_unknown_email_look_the_same(
     known, missing = await audit_rows(db)
     assert (known.action, known.target_id) == ("session.login_failed", user.id)
     assert (missing.target_type, missing.target_id) == (None, None)
-    assert missing.details == {"identifierHash": digest(unknown), "reason": "invalid_credentials"}
+    hashed = identifier_hash(unknown, settings.identifier_hash_secret)
+    assert missing.details == {"identifierHash": hashed, "reason": "invalid_credentials"}
 
 
 @pytest.mark.parametrize(

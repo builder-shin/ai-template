@@ -24,7 +24,7 @@ from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.models import ErrorCode
 from app.core.mail import SEND_MAIL
 from app.core.ratelimit import HOUR, Limit, enforce
-from app.core.security import digest
+from app.core.security import identifier_hash
 from app.modules import users
 from app.modules.auth.models import TokenPurpose
 from app.modules.auth.schemas import RegistrationCreateAttributes
@@ -37,7 +37,7 @@ async def mail_request_limits(redis: Redis, settings: Settings, client: Client, 
     await enforce(
         redis, Limit("mail-ip", settings.rate_limit_mail_ip, HOUR), client.ip or "unknown"
     )
-    subject = digest(users.normalize_email(email))
+    subject = identifier_hash(users.normalize_email(email), settings.identifier_hash_secret)
     await enforce(redis, Limit("mail-email", settings.rate_limit_mail_email, HOUR), subject)
 
 

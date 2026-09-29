@@ -159,3 +159,9 @@ auth 모듈의 `service/oauth.py`와 `providers/`다. 제공자는 파일 하나
 - OpenTelemetry는 기본으로 꺼 둔다. `OTEL_ENABLED=true`면 프로세스가 시작할 때 `configure_telemetry`가 tracer를 설정하고 트레이스를 OTLP(HTTP, `OTEL_EXPORTER_OTLP_ENDPOINT`)로 보낸다. 서비스 이름은 `OTEL_SERVICE_NAME`에 역할을 붙인 것이다(예: `app-api`, `app-worker`).
 - 계측: FastAPI(요청), SQLAlchemy와 psycopg(쿼리), Redis(Valkey 명령), httpx(소셜 로그인 제공자 호출), Taskiq(잡 보내기와 실행, broker 미들웨어). python-socketio에는 계측이 없어 연결과 구독 처리에 수동 span(`realtime.connect`, `realtime.subscribe`)을 둔다.
 - 로컬에서 보려면 `docker compose --profile observability up -d`로 Grafana LGTM을 띄우고 `OTEL_ENABLED=true`로 api를 다시 띄운다. 화면은 http://127.0.0.1:23000 이다.
+
+## 설정과 비밀
+
+- 이메일처럼 추측할 수 있는 식별자는 원문 대신 `IDENTIFIER_HASH_SECRET` 키의 HMAC-SHA256(`app.core.security.identifier_hash`)으로 남긴다. 로그인의 식별자별 레이트 리밋 키, 메일 요청의 이메일별 레이트 리밋 키, 로그인 실패 감사 로그의 `identifierHash`가 이 값이다. 키 없는 해시는 흔한 주소 목록으로 되돌릴 수 있다.
+- 이 키를 바꾸면 이전 감사 로그의 `identifierHash`와 새 값이 이어지지 않고, 식별자별 레이트 리밋 창이 새로 시작한다.
+- 무작위 토큰(refresh token, 1회용 토큰, 실시간 티켓, OAuth 1회용 코드)은 추측할 수 없으므로 키 없이 SHA-256(`digest`)만 저장한다.

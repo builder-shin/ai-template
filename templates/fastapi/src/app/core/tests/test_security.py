@@ -19,6 +19,7 @@ from app.core.security import (
     digest,
     hash_password,
     hash_password_async,
+    identifier_hash,
     issue_access_token,
     new_token,
     read_access_token,
@@ -100,3 +101,17 @@ def test_new_tokens_are_long_url_safe_and_distinct() -> None:
 
 def test_digest_is_sha256_hex() -> None:
     assert digest("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+
+
+def test_identifier_hash_is_hmac_sha256_hex() -> None:
+    fox = "The quick brown fox jumps over the lazy dog"
+    expected = "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
+    assert identifier_hash(fox, SecretStr("key")) == expected
+
+
+def test_identifier_hash_depends_on_the_key() -> None:
+    email = "someone@example.com"
+    hashed = identifier_hash(email, SECRET)
+    assert hashed == identifier_hash(email, SECRET)
+    assert hashed != identifier_hash(email, SecretStr("t" * 32))
+    assert hashed != digest(email)

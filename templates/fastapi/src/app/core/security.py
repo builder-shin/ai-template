@@ -5,10 +5,13 @@
   이벤트 루프는 다른 요청을 처리한다(argon2-cffi는 GIL을 푼다).
 - access token은 HS256 JWT이고 sub(사용자 id), sid(세션 id), iat, exp를 담는다. 수명은 15분이다.
 - refresh token, 인증·재설정 토큰은 32바이트 무작위 값(base64url 43자)이고, DB에는 SHA-256만 둔다.
+- 이메일처럼 추측할 수 있는 식별자는 설정 키의 HMAC-SHA256(identifier_hash)으로 가린다. 키 없는
+  해시는 흔한 주소 목록으로 되돌릴 수 있다.
 """
 
 import asyncio
 import hashlib
+import hmac
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -117,6 +120,15 @@ def new_token() -> str:
 
 
 def digest(value: str) -> str:
-    """SHA-256 16진수. 토큰과 식별자(이메일)를 원문 대신 저장하거나 키로 쓸 때 쓴다."""
+    """SHA-256 16진수. 무작위 토큰을 원문 대신 저장하거나 키로 쓸 때 쓴다."""
     # JSON은 짝 없는 서로게이트도 실어 온다(encode()는 실패한다). 보통 문자열의 결과는 같다.
     return hashlib.sha256(value.encode("utf-8", "surrogatepass")).hexdigest()
+
+
+def identifier_hash(value: str, key: SecretStr) -> str:
+    """식별자(정규화한 이메일)의 HMAC-SHA256 16진수. 레이트 리밋 키와 감사 로그에 원문 대신 쓴다.
+
+    key는 설정의 IDENTIFIER_HASH_SECRET이다. 키를 바꾸면 이전 해시와 이어지지 않는다.
+    """
+    message = value.encode("utf-8", "surrogatepass")
+    return hmac.new(key.get_secret_value().encode(), message, hashlib.sha256).hexdigest()

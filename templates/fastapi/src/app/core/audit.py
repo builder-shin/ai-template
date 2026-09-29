@@ -5,8 +5,8 @@
   서로를 import하게 된다.
 - 행위(action)와 대상 종류(targetType)는 계약의 enum(AuditLogAction, AuditLogTargetType)이다.
   ErrorCode처럼 두 백엔드가 같이 쓰는 어휘라 core에 둔다.
-- metadata에 이메일 같은 개인정보를 넣지 않는다. 식별자가 필요하면 app.core.security.digest로
-  해시만 남긴다(예: 로그인 실패의 identifierHash).
+- metadata에 이메일 같은 개인정보를 넣지 않는다. 식별자가 필요하면
+  app.core.security.identifier_hash로 해시만 남긴다(예: 로그인 실패의 identifierHash).
 - 행위의 트랜잭션이 없는 경우(로그인 실패)는 기록한 뒤 바로 commit한다.
 """
 

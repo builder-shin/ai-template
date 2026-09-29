@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     file_allowed_types: CommaSeparated
     # access token(JWT, HS256)의 서명 키. 32자 이상
     jwt_secret: Annotated[SecretStr, Field(min_length=32)]
+    # 이메일 같은 식별자의 해시(HMAC-SHA256) 키. 32자 이상.
+    # 바꾸면 이전 감사 로그의 해시와 이어지지 않는다
+    identifier_hash_secret: Annotated[SecretStr, Field(min_length=32)]
     # 메일 서버. smtp://(평문), smtp+starttls://(STARTTLS), smtps://(TLS). 계정은 주소에 넣는다
     smtp_url: Annotated[str, Field(pattern=r"^(smtp|smtp\+starttls|smtps)://")]
     mail_from: NonEmpty
