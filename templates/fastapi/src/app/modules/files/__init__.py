@@ -12,6 +12,7 @@ from app.modules.files.service import (
     attachable_file,
     delete_objects,
     file_resources,
+    release,
     remove_unreferenced,
 )
 
@@ -30,5 +31,6 @@ __all__ = [
     "attachable_file",
     "delete_objects",
     "file_resources",
+    "release",
     "remove_unreferenced",
 ]

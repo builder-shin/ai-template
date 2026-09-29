@@ -1,7 +1,10 @@
 """내 정보(/me)의 유스케이스: 이름·로케일·아바타 바꾸기와 탈퇴.
 
 - 아바타는 내가 올린 ready 이미지 파일이어야 한다(files.attachable_file). null이면 아바타를 뺀다.
+  바꾸거나 뺀 아바타는 다른 리소스가 가리키지 않으면 지운다(files.release).
 """
+
+import uuid
 
 from pydantic.experimental.missing_sentinel import MISSING
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +24,7 @@ AVATAR_POINTER = "/data/relationships/avatar/data"
 
 async def update_me(
     session: AsyncSession,
+    storage: Storage,
     actor: Principal,
     *,
     name: str | None = None,
@@ -33,19 +37,24 @@ async def update_me(
     """
     user = await accounts.require_user(session, actor.user_id)
     before = (user.name, user.locale, user.avatar_id)
+    released: uuid.UUID | None = None
     if avatar is not MISSING:
-        if avatar is None:
-            user.avatar_id = None
-        else:
+        new_avatar = None
+        if avatar is not None:
             file = await files.attachable_file(session, actor, avatar, pointer=AVATAR_POINTER)
-            user.avatar_id = file.id
+            new_avatar = file.id
+        if new_avatar != user.avatar_id:
+            released = user.avatar_id
+        user.avatar_id = new_avatar
     if name is not None:
         user.name = name
     if locale is not None:
         user.locale = locale
     if (user.name, user.locale, user.avatar_id) != before:
         events.me_updated(session, [user.id], ["profile"])
+    keys = await files.release(session, [released])
     await session.commit()
+    await files.delete_objects(storage, keys)
     return user
 
 

@@ -37,6 +37,7 @@ from app.core.db import utc_now
 from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.query import Page, SortField
+from app.core.storage import Storage
 from app.modules import files
 from app.modules.posts.models import Post, PostStatus
 
@@ -166,6 +167,7 @@ async def _editable_post(session: AsyncSession, post_id: uuid.UUID, actor: Princ
 
 async def update_post(
     session: AsyncSession,
+    storage: Storage,
     cache: Cache,
     actor: Principal,
     post_id: uuid.UUID,
@@ -175,7 +177,10 @@ async def update_post(
     status: PostStatus | None = None,
     cover: str | MISSING | None = MISSING,
 ) -> Post:
-    """글을 고친다. None인 값과 MISSING인 cover는 그대로 둔다. cover가 None이면 커버를 뺀다."""
+    """글을 고친다. None인 값과 MISSING인 cover는 그대로 둔다. cover가 None이면 커버를 뺀다.
+
+    바꾸거나 뺀 커버는 다른 리소스가 가리키지 않으면 지운다(files.release).
+    """
     post = await _editable_post(session, post_id, actor)
     if status is not None and not policies.can_transition(
         post.status, status, policies.TRANSITIONS
@@ -195,18 +200,31 @@ async def update_post(
     if status is not None and status != post.status:
         post.status = status
         post.published_at = utc_now() if status == PostStatus.PUBLISHED else None
+    released: uuid.UUID | None = None
     if cover is not MISSING:
-        post.cover_image_id = await _cover_id(session, actor, cover)
+        new_cover = await _cover_id(session, actor, cover)
+        if new_cover != post.cover_image_id:
+            released = post.cover_image_id
+        post.cover_image_id = new_cover
     events.updated(session, post, was=was)
+    keys = await files.release(session, [released])
     await session.commit()
+    await files.delete_objects(storage, keys)
     await cache.clear()
     return post
 
 
 async def delete_post(
-    session: AsyncSession, cache: Cache, actor: Principal, client: Client, post_id: uuid.UUID
+    session: AsyncSession,
+    storage: Storage,
+    cache: Cache,
+    actor: Principal,
+    client: Client,
+    post_id: uuid.UUID,
 ) -> None:
+    """글을 지운다. 커버는 다른 리소스가 가리키지 않으면 함께 지운다(files.release)."""
     post = await _editable_post(session, post_id, actor)
+    cover = post.cover_image_id
     await repository.remove(session, post)
     events.deleted(session, post)
     if post.author_id != actor.user_id:
@@ -219,7 +237,9 @@ async def delete_post(
             target=(target_type, post.id),
             metadata={"author": str(post.author_id)},
         )
+    keys = await files.release(session, [cover])
     await session.commit()
+    await files.delete_objects(storage, keys)
     await cache.clear()
 
 

@@ -17,6 +17,8 @@
   file.quota_exceeded다. 만들기는 사용자별 advisory lock으로 줄 세워 동시 요청도 한도를 넘지 않는다.
 - 24시간이 넘도록 pending인 파일은 잡(files.purge_pending, 매시간)이 지운다.
 - 탈퇴한 사용자의 파일 중 다른 리소스가 가리키지 않는 것은 지운다(remove_unreferenced).
+- 관계에서 풀린 파일(바꾸거나 뺀 아바타·커버, 지운 글의 커버)은 다른 리소스가 가리키지 않으면
+  지운다(release). 파일 목록 API가 없어 풀린 파일은 쓸 곳이 없다. 소유자가 탈퇴했어도 같다.
   무엇이 파일을 가리키는지는 다른 모듈이 등록한 참조 확인(add_reference_check)으로 안다.
 """
 
@@ -277,19 +279,36 @@ async def delete_file(
     await delete_objects(storage, [key])
 
 
+async def _remove_loose(session: AsyncSession, candidates: Sequence[File]) -> list[str]:
+    """candidates 중 어떤 리소스도 가리키지 않는 파일의 행을 지우고 객체 키를 돌려준다."""
+    ids = [file.id for file in candidates]
+    referenced: set[uuid.UUID] = set()
+    for check in _reference_checks:
+        referenced |= await check(session, ids)
+    loose = [file for file in candidates if file.id not in referenced]
+    await repository.remove_many(session, [file.id for file in loose])
+    return [file.key for file in loose]
+
+
 async def remove_unreferenced(session: AsyncSession, owner_id: uuid.UUID) -> list[str]:
     """소유자의 파일 중 어떤 리소스도 가리키지 않는 것의 행을 지우고 객체 키를 돌려준다.
 
     commit하지 않는다. commit한 뒤에 delete_objects로 객체를 지운다(탈퇴).
     """
-    owned = await repository.owned_by(session, owner_id)
-    ids = [file.id for file in owned]
-    referenced: set[uuid.UUID] = set()
-    for check in _reference_checks:
-        referenced |= await check(session, ids)
-    unreferenced = [file for file in owned if file.id not in referenced]
-    await repository.remove_many(session, [file.id for file in unreferenced])
-    return [file.key for file in unreferenced]
+    return await _remove_loose(session, await repository.owned_by(session, owner_id))
+
+
+async def release(session: AsyncSession, file_ids: Iterable[uuid.UUID | None]) -> list[str]:
+    """관계에서 풀린 파일을 다른 리소스가 가리키지 않으면 지우고 객체 키를 돌려준다.
+
+    파일을 가리키던 리소스를 바꾸거나 지운 뒤에 부른다(None인 id는 건너뛴다). 먼저 flush해서
+    참조 확인이 바뀐 관계를 본다. commit하지 않는다. commit한 뒤에 delete_objects로 객체를 지운다.
+    """
+    ids = sorted({file_id for file_id in file_ids if file_id is not None})
+    if not ids:
+        return []
+    await session.flush()
+    return await _remove_loose(session, await repository.get_many(session, ids))
 
 
 async def purge_pending(session: AsyncSession, storage: Storage, now: datetime) -> int:

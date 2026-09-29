@@ -166,6 +166,19 @@ async def test_an_avatar_must_be_my_uploaded_image(
         assert error_sources(response) == [{"pointer": AVATAR_POINTER}]
 
 
+async def test_a_replaced_or_removed_avatar_is_deleted(
+    api: httpx.AsyncClient, accounts: Accounts, storage: Storage
+) -> None:
+    user = await accounts.create()
+    headers = await accounts.sign_in(user)
+    first, second = await upload_file(api, headers), await upload_file(api, headers)
+    for file_id in (first["id"], second["id"], None):
+        response = await api.patch(ME, **jsonapi_body(avatar_update(user.id, file_id), headers))
+        assert response.status_code == 200, response.text
+    for image in (first, second):
+        assert await storage.size(f"files/{image['id']}") is None
+
+
 async def test_deleting_anonymizes_and_closes_the_account(
     api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession]
 ) -> None:

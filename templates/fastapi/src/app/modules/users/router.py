@@ -190,7 +190,7 @@ async def update_me(
     if attributes is not MISSING:
         name = None if attributes.name is MISSING else attributes.name
         locale = None if attributes.locale is MISSING else attributes.locale
-    await profile.update_me(session, actor, name=name, locale=locale, avatar=avatar)
+    await profile.update_me(session, storage, actor, name=name, locale=locale, avatar=avatar)
     return render(await me_document(session, storage, registry, actor))
 
 

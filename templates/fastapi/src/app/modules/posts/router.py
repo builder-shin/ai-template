@@ -191,6 +191,7 @@ async def create_post(
 async def update_post(
     post_id: PostId,
     session: SessionDep,
+    storage: StorageDep,
     redis: RedisDep,
     actor: PrincipalDep,
     document: JsonApiBody[PostUpdateDocument],
@@ -208,6 +209,7 @@ async def update_post(
         status = None if data.attributes.status is MISSING else data.attributes.status
     post = await service.update_post(
         session,
+        storage,
         service.posts_cache(redis),
         actor,
         post_id,
@@ -223,9 +225,11 @@ async def update_post(
 async def delete_post(
     post_id: PostId,
     session: SessionDep,
+    storage: StorageDep,
     redis: RedisDep,
     actor: PrincipalDep,
     client: ClientDep,
 ) -> Response:
-    await service.delete_post(session, service.posts_cache(redis), actor, client, post_id)
+    cache = service.posts_cache(redis)
+    await service.delete_post(session, storage, cache, actor, client, post_id)
     return Response(status_code=204)

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.modules.posts.policies as policies
 from app.core.audit import AuditLog
+from app.core.storage import Storage
 from app.modules.posts.models import PostStatus
 from app.tests.accounts import Accounts
 from app.tests.requests import error_codes, error_sources, jsonapi_body
@@ -110,6 +111,38 @@ async def test_a_cover_is_my_uploaded_image(api: httpx.AsyncClient, accounts: Ac
     assert response.json()["data"]["relationships"]["coverImage"] == {"data": None}
 
 
+async def test_a_replaced_or_removed_cover_is_deleted(
+    api: httpx.AsyncClient, accounts: Accounts, storage: Storage
+) -> None:
+    headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
+    first, second = await upload_file(api, headers), await upload_file(api, headers)
+    post = await create(api, headers, cover=first["id"])
+    item = f"{POSTS}/{post['id']}"
+    for cover in (second["id"], None):
+        data = None if cover is None else {"type": "files", "id": cover}
+        changed = update_document(post["id"], relationships={"coverImage": {"data": data}})
+        assert (await api.patch(item, **jsonapi_body(changed, headers))).status_code == 200
+    for image in (first, second):
+        assert await storage.size(f"files/{image['id']}") is None
+        gone = await api.get(f"/api/v1/files/{image['id']}", headers=headers)
+        assert gone.status_code == 404
+
+
+async def test_a_cover_that_is_also_my_avatar_stays(
+    api: httpx.AsyncClient, accounts: Accounts
+) -> None:
+    user = await accounts.create(permissions=WRITE)
+    headers = await accounts.sign_in(user)
+    image = await upload_file(api, headers)
+    avatar = {"avatar": {"data": {"type": "files", "id": image["id"]}}}
+    me = {"data": {"type": "users", "id": str(user.id), "relationships": avatar}}
+    assert (await api.patch("/api/v1/me", **jsonapi_body(me, headers))).status_code == 200
+    post = await create(api, headers, cover=image["id"])
+    assert (await api.delete(f"{POSTS}/{post['id']}", headers=headers)).status_code == 204
+    kept = await api.get(f"/api/v1/files/{image['id']}", headers=headers)
+    assert kept.status_code == 200
+
+
 async def test_the_body_is_at_most_100000_characters(
     api: httpx.AsyncClient, accounts: Accounts
 ) -> None:
@@ -151,7 +184,7 @@ async def test_an_admin_deleting_someone_elses_post_is_audited(
     assert (await api.get(f"{POSTS}/{theirs['id']}", headers=mine)).status_code == 404
 
 
-async def test_a_post_and_its_cover_stay_when_the_author_leaves(
+async def test_the_cover_stays_after_the_author_leaves_until_it_is_deleted(
     api: httpx.AsyncClient, accounts: Accounts
 ) -> None:
     headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
@@ -161,3 +194,6 @@ async def test_a_post_and_its_cover_stay_when_the_author_leaves(
     body = (await api.get(f"{POSTS}/{post['id']}", params={"include": "author"})).json()
     assert body["included"][0]["attributes"] == {"name": None}
     assert (await api.get(f"/api/v1/files/{image['id']}")).status_code == 200
+    admin = await accounts.sign_in(await accounts.admin())
+    assert (await api.delete(f"{POSTS}/{post['id']}", headers=admin)).status_code == 204
+    assert (await api.get(f"/api/v1/files/{image['id']}", headers=admin)).status_code == 404
