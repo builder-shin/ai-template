@@ -123,6 +123,7 @@ def test_create_declares_403_and_409_once(spec: dict[str, Any]) -> None:
         "403",
         "406",
         "409",
+        "413",
         "415",
         "422",
         "429",

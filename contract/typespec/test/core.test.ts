@@ -13,6 +13,7 @@ import {
 const ERROR_CODES = [
   "jsonapi.unsupported_media_type",
   "jsonapi.not_acceptable",
+  "jsonapi.content_too_large",
   "jsonapi.invalid_document",
   "jsonapi.invalid_query",
   "jsonapi.unsupported_include",
@@ -97,6 +98,13 @@ describe("생성·수정 응답 (JSON:API 1.1)", () => {
     const missing = operations()
       .filter(({ method }) => method === "post")
       .filter(({ op }) => !("403" in op.responses && "409" in op.responses))
+      .map(({ key }) => key);
+    expect(missing).toEqual([]);
+  });
+
+  it("본문을 받는 operation은 413(본문이 1 MiB를 넘는다)을 선언한다", () => {
+    const missing = operations()
+      .filter(({ op }) => op.requestBody !== undefined && !("413" in op.responses))
       .map(({ key }) => key);
     expect(missing).toEqual([]);
   });

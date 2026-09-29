@@ -26,11 +26,12 @@ from app.modules.users import UserPublicResource
 
 PostType = Literal["posts"]
 Title = Annotated[str, Field(min_length=1, max_length=200)]
+Body = Annotated[str, Field(max_length=100_000)]
 
 
 class PostAttributes(JsonApiModel):
     title: Title
-    body: Annotated[str, Field(description="마크다운 본문.")]
+    body: Annotated[str, Field(description="마크다운 본문.", max_length=100_000)]
     status: PostStatus
     published_at: Annotated[
         datetime | None, Field(description="발행하면 채워지고, 발행을 취소하면 null이 된다.")
@@ -103,13 +104,13 @@ def post_resource(post: Post) -> PostResource:
 
 class PostCreateAttributes(JsonApiModel):
     title: Title
-    body: str
+    body: Body
     status: Annotated[Omittable[PostStatus], Field(description="생략하면 draft.")] = MISSING
 
 
 class PostUpdateAttributes(JsonApiModel):
     title: Omittable[Title] = MISSING
-    body: Omittable[str] = MISSING
+    body: Omittable[Body] = MISSING
     status: Annotated[
         Omittable[PostStatus],
         Field(

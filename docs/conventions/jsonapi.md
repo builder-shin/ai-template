@@ -77,27 +77,29 @@
 
 1. 429 `rate_limit.exceeded`: IP별 전역 요청 한도
 2. 415, 406: 콘텐츠 협상
-3. 400 `jsonapi.invalid_document`: 본문이 JSON이 아니다
-4. 401, 403: 인증과 권한(operation의 `security`, `x-permission`)
-5. 400: 쿼리 파라미터(`jsonapi.invalid_query`, `jsonapi.unsupported_include`, `jsonapi.unsupported_sort`)
-6. 본문과 경로 검증: 문서 구조 400, `type` 불일치 409, 클라이언트가 만든 `id` 403, 필드 422, 경로의 id 형식 404. 이 단계에서 상태가 둘 이상 섞이면 가장 일반적인 400으로 응답하고, 에러 객체는 모두 담는다.
-7. 엄격한 요청 한도(로그인, 가입, 메일 발송 요청)의 429
-8. 도메인 에러: 없는 리소스 404, 상태 충돌 409, 도메인 규칙 422 등
+3. 413 `jsonapi.content_too_large`: 요청 본문이 1 MiB(1,048,576바이트)를 넘는다. `Content-Length`가 넘으면 본문을 읽지 않고, 길이를 알리지 않은 본문은 읽으면서 센다.
+4. 400 `jsonapi.invalid_document`: 본문이 JSON이 아니다
+5. 401, 403: 인증과 권한(operation의 `security`, `x-permission`)
+6. 400: 쿼리 파라미터(`jsonapi.invalid_query`, `jsonapi.unsupported_include`, `jsonapi.unsupported_sort`)
+7. 본문과 경로 검증: 문서 구조 400, `type` 불일치 409, 클라이언트가 만든 `id` 403, 필드 422, 경로의 id 형식 404. 이 단계에서 상태가 둘 이상 섞이면 가장 일반적인 400으로 응답하고, 에러 객체는 모두 담는다.
+8. 엄격한 요청 한도(로그인, 가입, 메일 발송 요청, 비밀번호 변경)의 429
+9. 도메인 에러: 없는 리소스 404, 상태 충돌 409, 도메인 규칙 422 등
 
 ### 상태 코드 → 에러 코드
 
 라우팅, 인증 미들웨어 등 프레임워크나 공통 계층이 JSON:API 문서 없이 HTTP 상태만 내는 에러는 그 상태로 에러 코드를 정한다. 두 백엔드 모두 이 표를 따른다.
 
-| 상태                                           | 코드                       |
-| ---------------------------------------------- | -------------------------- |
-| 400                                            | `jsonapi.invalid_document` |
-| 401                                            | `auth.unauthenticated`     |
-| 403                                            | `permission.denied`        |
-| 404, 그리고 `Allow` 헤더 없이 404로 답하는 405 | `resource.not_found`       |
-| 409                                            | `resource.conflict`        |
-| 429                                            | `rate_limit.exceeded`      |
-| 503                                            | `service.unavailable`      |
-| 그 밖의 상태                                   | 500 `internal.unexpected`  |
+| 상태                                           | 코드                        |
+| ---------------------------------------------- | --------------------------- |
+| 400                                            | `jsonapi.invalid_document`  |
+| 401                                            | `auth.unauthenticated`      |
+| 403                                            | `permission.denied`         |
+| 404, 그리고 `Allow` 헤더 없이 404로 답하는 405 | `resource.not_found`        |
+| 409                                            | `resource.conflict`         |
+| 413                                            | `jsonapi.content_too_large` |
+| 429                                            | `rate_limit.exceeded`       |
+| 503                                            | `service.unavailable`       |
+| 그 밖의 상태                                   | 500 `internal.unexpected`   |
 
 ## 인증과 권한 표기
 

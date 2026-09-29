@@ -110,6 +110,17 @@ async def test_a_cover_is_my_uploaded_image(api: httpx.AsyncClient, accounts: Ac
     assert response.json()["data"]["relationships"]["coverImage"] == {"data": None}
 
 
+async def test_the_body_is_at_most_100000_characters(
+    api: httpx.AsyncClient, accounts: Accounts
+) -> None:
+    headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
+    longest = await api.post(POSTS, **jsonapi_body(create_document(body="가" * 100_000), headers))
+    assert longest.status_code == 201, longest.text[:200]
+    too_long = await api.post(POSTS, **jsonapi_body(create_document(body="가" * 100_001), headers))
+    assert (too_long.status_code, error_codes(too_long)) == (422, ["validation.too_long"])
+    assert error_sources(too_long) == [{"pointer": "/data/attributes/body"}]
+
+
 async def test_the_body_id_must_match_the_path(api: httpx.AsyncClient, accounts: Accounts) -> None:
     headers = await accounts.sign_in(await accounts.create(permissions=WRITE))
     post = await create(api, headers)

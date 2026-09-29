@@ -562,7 +562,7 @@ export interface components {
          * @description 기계가 읽는 에러 코드. 형식은 `<영역>.<snake_case 사유>`. 새 코드는 docs/conventions/error-codes.md에도 추가한다.
          * @enum {string}
          */
-        ErrorCode: "jsonapi.unsupported_media_type" | "jsonapi.not_acceptable" | "jsonapi.invalid_document" | "jsonapi.invalid_query" | "jsonapi.unsupported_include" | "jsonapi.unsupported_sort" | "validation.required" | "validation.too_short" | "validation.too_long" | "validation.invalid_format" | "validation.out_of_range" | "validation.invalid_choice" | "validation.already_taken" | "auth.unauthenticated" | "auth.invalid_credentials" | "auth.token_expired" | "auth.token_invalid" | "auth.refresh_token_reused" | "auth.oauth_code_invalid" | "auth.reauthentication_required" | "auth.oauth_denied" | "auth.oauth_failed" | "auth.email_not_verified" | "auth.account_deactivated" | "auth.verification_token_invalid" | "permission.denied" | "role.system_role_protected" | "role.last_admin_protected" | "resource.not_found" | "resource.conflict" | "post.invalid_transition" | "file.too_large" | "file.type_not_allowed" | "file.upload_incomplete" | "rate_limit.exceeded" | "internal.unexpected" | "service.unavailable";
+        ErrorCode: "jsonapi.unsupported_media_type" | "jsonapi.not_acceptable" | "jsonapi.content_too_large" | "jsonapi.invalid_document" | "jsonapi.invalid_query" | "jsonapi.unsupported_include" | "jsonapi.unsupported_sort" | "validation.required" | "validation.too_short" | "validation.too_long" | "validation.invalid_format" | "validation.out_of_range" | "validation.invalid_choice" | "validation.already_taken" | "auth.unauthenticated" | "auth.invalid_credentials" | "auth.token_expired" | "auth.token_invalid" | "auth.refresh_token_reused" | "auth.oauth_code_invalid" | "auth.reauthentication_required" | "auth.oauth_denied" | "auth.oauth_failed" | "auth.email_not_verified" | "auth.account_deactivated" | "auth.verification_token_invalid" | "permission.denied" | "role.system_role_protected" | "role.last_admin_protected" | "resource.not_found" | "resource.conflict" | "post.invalid_transition" | "file.too_large" | "file.type_not_allowed" | "file.upload_incomplete" | "rate_limit.exceeded" | "internal.unexpected" | "service.unavailable";
         ErrorDocument: {
             errors: components["schemas"]["ErrorObject"][];
             meta: {
@@ -1601,6 +1601,15 @@ export interface operations {
                 };
             };
             /** @description Client error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
             415: {
                 headers: {
                     [name: string]: unknown;
@@ -1699,6 +1708,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1814,6 +1832,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2138,6 +2165,15 @@ export interface operations {
                 };
             };
             /** @description Client error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
             415: {
                 headers: {
                     [name: string]: unknown;
@@ -2433,6 +2469,15 @@ export interface operations {
                 };
             };
             /** @description Client error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
             415: {
                 headers: {
                     [name: string]: unknown;
@@ -2671,6 +2716,15 @@ export interface operations {
                 };
             };
             /** @description Client error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
             415: {
                 headers: {
                     [name: string]: unknown;
@@ -2767,6 +2821,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2873,6 +2936,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3186,6 +3258,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3513,6 +3594,15 @@ export interface operations {
                 };
             };
             /** @description Client error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
             415: {
                 headers: {
                     [name: string]: unknown;
@@ -3628,6 +3718,15 @@ export interface operations {
                 };
             };
             /** @description Client error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
             415: {
                 headers: {
                     [name: string]: unknown;
@@ -3726,6 +3825,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3933,6 +4041,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4266,6 +4383,15 @@ export interface operations {
                 };
             };
             /** @description Client error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
             415: {
                 headers: {
                     [name: string]: unknown;
@@ -4373,6 +4499,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4579,6 +4714,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5078,6 +5222,15 @@ export interface operations {
             };
             /** @description The request conflicts with the current state of the server. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };

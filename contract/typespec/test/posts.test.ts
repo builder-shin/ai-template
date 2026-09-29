@@ -68,6 +68,12 @@ describe("골든 모듈 posts (§4.9)", () => {
     ]);
   });
 
+  it("본문(body)은 100,000자까지다(속성, 생성, 수정)", () => {
+    for (const name of ["PostAttributes", "PostCreateAttributes", "PostUpdateAttributes"]) {
+      expect(schema(name).properties?.body).toMatchObject({ maxLength: 100000 });
+    }
+  });
+
   it("생성·수정 문서를 쓰고 수정은 409와 422를 선언한다", () => {
     expect(requestRef(operation("post", COLLECTION))).toBe("PostCreateDocument");
     const update = operation("patch", ITEM);

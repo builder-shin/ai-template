@@ -20,7 +20,7 @@ model PostAttributes {
   @minLength(1) @maxLength(200) title: string;
 
   /** 마크다운 본문. */
-  body: string;
+  @maxLength(100000) body: string;
 
   status: PostStatus;
 
@@ -38,7 +38,7 @@ model PostRelationships {
 
 model PostCreateAttributes {
   @minLength(1) @maxLength(200) title: string;
-  body: string;
+  @maxLength(100000) body: string;
 
   /** 생략하면 draft. */
   status?: PostStatus;
@@ -46,7 +46,7 @@ model PostCreateAttributes {
 
 model PostUpdateAttributes {
   @minLength(1) @maxLength(200) title?: string;
-  body?: string;
+  @maxLength(100000) body?: string;
 
   /** draft ↔ published 전이. 허용되지 않는 전이는 post.invalid_transition(422). */
   status?: PostStatus;

@@ -324,6 +324,7 @@ class ErrorCode(StrEnum):
 
     JSONAPI_UNSUPPORTED_MEDIA_TYPE = "jsonapi.unsupported_media_type"
     JSONAPI_NOT_ACCEPTABLE = "jsonapi.not_acceptable"
+    JSONAPI_CONTENT_TOO_LARGE = "jsonapi.content_too_large"
     JSONAPI_INVALID_DOCUMENT = "jsonapi.invalid_document"
     JSONAPI_INVALID_QUERY = "jsonapi.invalid_query"
     JSONAPI_UNSUPPORTED_INCLUDE = "jsonapi.unsupported_include"

@@ -10,6 +10,7 @@ API 에러 객체의 `code` 값 목록이다. 원본은 `contract/typespec/src/e
 | --------------------------------- | ---------- | -------------------------------------------------------------------------------------------------- |
 | `jsonapi.unsupported_media_type`  | 415        | 요청 Content-Type이 JSON:API 미디어 타입이 아니다                                                  |
 | `jsonapi.not_acceptable`          | 406        | Accept가 JSON:API 미디어 타입을 허용하지 않는다                                                    |
+| `jsonapi.content_too_large`       | 413        | 요청 본문이 1 MiB(1,048,576바이트)를 넘는다                                                        |
 | `jsonapi.invalid_document`        | 400        | 요청 본문이 JSON:API 문서 형식이 아니다                                                            |
 | `jsonapi.invalid_query`           | 400        | 모르는 쿼리 파라미터나 필터다                                                                      |
 | `jsonapi.unsupported_include`     | 400        | 허용하지 않은 include 경로다                                                                       |

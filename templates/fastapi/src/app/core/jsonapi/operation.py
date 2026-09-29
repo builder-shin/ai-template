@@ -45,7 +45,7 @@ REF_TEMPLATE = "#/components/schemas/{model}"
 
 # TypeSpec errors.tsp의 묶음과 같은 이름·구성이다.
 COMMON_ERRORS = (400, 406, 429, 500, 503)
-BODY_ERRORS = (415, 422)
+BODY_ERRORS = (413, 415, 422)
 AUTH_ERRORS = (401, 403)
 NOT_FOUND = (404,)
 CONFLICT = (409,)
@@ -74,6 +74,7 @@ _ERROR_DESCRIPTIONS: Mapping[int, str] = {
     404: "The server cannot find the requested resource.",
     406: "Client error",
     409: "The request conflicts with the current state of the server.",
+    413: "Client error",
     415: "Client error",
     422: "Client error",
     429: "Client error",

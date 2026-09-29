@@ -9,6 +9,7 @@ namespace Platform;
 union ErrorCode {
   "jsonapi.unsupported_media_type",
   "jsonapi.not_acceptable",
+  "jsonapi.content_too_large",
   "jsonapi.invalid_document",
   "jsonapi.invalid_query",
   "jsonapi.unsupported_include",
@@ -121,6 +122,11 @@ alias UnsupportedMediaType = {
   ...ErrorBody;
 };
 
+alias ContentTooLarge = {
+  @statusCode _: 413;
+  ...ErrorBody;
+};
+
 alias UnprocessableEntity = {
   @statusCode _: 422;
   ...ErrorBody;
@@ -150,8 +156,8 @@ alias CommonErrors =
   | InternalServerError
   | ServiceUnavailable;
 
-/** 본문을 받는 엔드포인트에 더해지는 에러. */
-alias BodyErrors = UnsupportedMediaType | UnprocessableEntity;
+/** 본문을 받는 엔드포인트에 더해지는 에러. 요청 본문은 1 MiB(1,048,576바이트)까지이고, 넘으면 413이다. */
+alias BodyErrors = UnsupportedMediaType | ContentTooLarge | UnprocessableEntity;
 
 /** 로그인이 필요한 엔드포인트에 더해지는 에러. */
 alias AuthErrors = Unauthorized | Forbidden;

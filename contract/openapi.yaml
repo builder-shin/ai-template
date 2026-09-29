@@ -296,6 +296,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -372,6 +378,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '409':
           description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
           content:
             application/vnd.api+json:
               schema:
@@ -458,6 +470,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '409':
           description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
           content:
             application/vnd.api+json:
               schema:
@@ -640,6 +658,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '409':
           description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
           content:
             application/vnd.api+json:
               schema:
@@ -892,6 +916,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '409':
           description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
           content:
             application/vnd.api+json:
               schema:
@@ -1176,6 +1206,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -1250,6 +1286,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '409':
           description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
           content:
             application/vnd.api+json:
               schema:
@@ -1330,6 +1372,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '409':
           description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
           content:
             application/vnd.api+json:
               schema:
@@ -1666,6 +1714,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -1869,6 +1923,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -2028,6 +2088,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -2106,6 +2172,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '409':
           description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
           content:
             application/vnd.api+json:
               schema:
@@ -2300,6 +2372,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -2481,6 +2559,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -2648,6 +2732,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -2732,6 +2822,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '409':
           description: The request conflicts with the current state of the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
           content:
             application/vnd.api+json:
               schema:
@@ -3309,6 +3405,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '413':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '415':
           description: Client error
           content:
@@ -3621,6 +3723,7 @@ components:
       enum:
         - jsonapi.unsupported_media_type
         - jsonapi.not_acceptable
+        - jsonapi.content_too_large
         - jsonapi.invalid_document
         - jsonapi.invalid_query
         - jsonapi.unsupported_include
@@ -4193,6 +4296,7 @@ components:
           maxLength: 200
         body:
           type: string
+          maxLength: 100000
           description: 마크다운 본문.
         status:
           $ref: '#/components/schemas/PostStatus'
@@ -4242,6 +4346,7 @@ components:
           maxLength: 200
         body:
           type: string
+          maxLength: 100000
         status:
           $ref: '#/components/schemas/PostStatus'
           description: 생략하면 draft.
@@ -4395,6 +4500,7 @@ components:
           maxLength: 200
         body:
           type: string
+          maxLength: 100000
         status:
           $ref: '#/components/schemas/PostStatus'
           description: draft ↔ published 전이. 허용되지 않는 전이는 post.invalid_transition(422).

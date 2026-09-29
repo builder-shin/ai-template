@@ -70,6 +70,7 @@ _HTTP_ERROR_CODES: Mapping[int, ErrorCode] = {
     403: ErrorCode.PERMISSION_DENIED,
     404: ErrorCode.RESOURCE_NOT_FOUND,
     409: ErrorCode.RESOURCE_CONFLICT,
+    413: ErrorCode.JSONAPI_CONTENT_TOO_LARGE,
     429: ErrorCode.RATE_LIMIT_EXCEEDED,
     503: ErrorCode.SERVICE_UNAVAILABLE,
 }
@@ -297,9 +298,10 @@ async def _http_error_handler(request: Request, exc: Exception) -> Response:
     `/api/` 밖은 FastAPI 기본 형식을 둔다. 상태 → 코드는 다음과 같다.
     400은 jsonapi.invalid_document(예: 본문이 유효한 UTF-8이 아닐 때),
     401은 auth.unauthenticated, 403은 permission.denied, 404와 (404로 다시 쓰는) 405는
-    resource.not_found, 409는 resource.conflict, 429는 rate_limit.exceeded, 503은
-    service.unavailable이다. 그 밖의 상태는 internal.unexpected 500으로 바꾸고 원래 상태를
-    로그에 남긴다. 405를 404로 다시 쓸 때는 헤더(Allow)를 버려 404에 405의 흔적이 남지 않게 한다.
+    resource.not_found, 409는 resource.conflict, 413은 jsonapi.content_too_large, 429는
+    rate_limit.exceeded, 503은 service.unavailable이다. 그 밖의 상태는 internal.unexpected 500으로
+    바꾸고 원래 상태를 로그에 남긴다. 405를 404로 다시 쓸 때는 헤더(Allow)를 버려 404에 405의
+    흔적이 남지 않게 한다.
     """
     if not isinstance(exc, StarletteHTTPException):
         raise exc

@@ -202,6 +202,22 @@ async def test_mapped_http_exception_keeps_status_and_headers() -> None:
     assert response.headers["www-authenticate"] == "Bearer"
 
 
+async def test_http_413_is_content_too_large() -> None:
+    """프레임워크가 내는 413도 jsonapi.content_too_large다."""
+    app = sample_app()
+
+    @app.get("/api/v1/huge")
+    async def huge() -> None:
+        raise HTTPException(413)
+
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+        errors = errors_of(await http.get("/api/v1/huge"), 413)
+    assert errors == [
+        {"status": "413", "code": "jsonapi.content_too_large", "title": "Content Too Large"}
+    ]
+
+
 async def test_unmapped_http_exception_is_500_error_document() -> None:
     """매핑에 없는 상태(418)는 internal.unexpected 500으로 바뀐다."""
     app = sample_app()
