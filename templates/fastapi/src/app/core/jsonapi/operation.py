@@ -23,8 +23,9 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from app.core.access import Auth, access_guard
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.media import JsonApiResponse
-from app.core.jsonapi.models import ErrorCode, ErrorDocument
+from app.core.jsonapi.models import ErrorDocument
 from app.core.jsonapi.openapi import COMPONENTS_EXTENSION
 from app.core.jsonapi.query import (
     PAGE_SIZE_DEFAULT,

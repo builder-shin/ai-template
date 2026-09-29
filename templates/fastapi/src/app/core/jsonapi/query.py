@@ -12,8 +12,8 @@ from fastapi import Request
 from pydantic import BaseModel, ConfigDict, ValidationError
 from pydantic.alias_generators import to_camel
 
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 
 PAGE_SIZE_DEFAULT = 20
 PAGE_SIZE_MAX = 100

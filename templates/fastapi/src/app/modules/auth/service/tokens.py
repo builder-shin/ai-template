@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.auth.repository as repository
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 from app.core.security import digest, new_token
 from app.modules.auth.models import AccountToken, TokenPurpose
 

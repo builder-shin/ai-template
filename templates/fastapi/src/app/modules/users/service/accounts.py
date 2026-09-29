@@ -16,8 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.modules.users.repository as repository
 from app.core.access import Principal
 from app.core.db import utc_now
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode, ResourceIdentifier, ToOne
+from app.core.jsonapi.models import ResourceIdentifier, ToOne
 from app.core.security import hash_password_async
 from app.modules import roles
 from app.modules.users.models import Locale, User, UserStatus

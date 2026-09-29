@@ -35,8 +35,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.modules.files.repository as repository
 from app.core.access import Principal
 from app.core.config import Settings
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode, ResourceIdentifier, ToOne
+from app.core.jsonapi.models import ResourceIdentifier, ToOne
 from app.core.storage import PresignedRequest, Storage
 from app.modules.files.models import File, FileStatus
 from app.modules.files.schemas import (

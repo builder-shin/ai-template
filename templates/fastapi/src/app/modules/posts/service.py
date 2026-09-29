@@ -34,8 +34,8 @@ from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
 from app.core.cache import Cache, schema_shape
 from app.core.clients import Client
 from app.core.db import utc_now
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.query import Page, SortField
 from app.core.storage import Storage
 from app.modules import files

@@ -17,7 +17,7 @@
   - 선언: `Operation(name=..., errors=..., permission=..., description=...)`. 컬렉션은 `CollectionOperation(..., sort=..., filter=<FilterModel>)`이고, 포함 리소스와 필드는 `include=`, `fields=`로 허용한다. operationId는 `<interface>_<name>`이다.
   - 에러 묶음: 인증이 필요하면 `AUTH_ERRORS`, 경로의 리소스가 없을 수 있으면 `NOT_FOUND`, 본문이 있으면 `BODY_ERRORS`, POST는 `CREATE_ERRORS`, PATCH는 `CONFLICT`를 넣고 `COMMON_ERRORS`를 더한다.
   - 라우트: `@<라우터>.route("GET", "/{id}", 선언, response_model=<문서 모델>)`. 쿼리는 `Annotated[CollectionQuery[<필터>], Depends(선언)]`로 받고, 응답은 `render()`로 만든다. PATCH는 `require_matching_id()`로 본문의 id를 확인한다.
-- `service.py`: 유스케이스와 트랜잭션 경계(commit). 에러는 `ApiError(상태, ErrorCode.<코드>, 영어 detail, pointer=...)`로 던진다. 새 에러 코드는 `ErrorCode`(`app.core.jsonapi.models`)에 더한다.
+- `service.py`: 유스케이스와 트랜잭션 경계(commit). 에러는 `ApiError(상태, ErrorCode.<코드>, 영어 detail, pointer=...)`로 던진다. 새 에러 코드는 `ErrorCode`(`app.core.jsonapi.error_codes`)에 더한다.
 - `repository.py`: 쿼리. 정렬 열은 `SORT_COLUMNS`, 페이지는 `page()`를 따른다(posts 참고).
 - 권한이 새로 필요하면 [권한 추가](permission.md), 요청 밖에서 할 일이 있으면 [잡 추가](job.md)를 따른다.
 - `tests/`: `api`와 `accounts` fixture로 성공, 권한 없음(403), 없음(404), 틀린 본문(422)을 확인한다.

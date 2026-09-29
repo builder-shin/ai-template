@@ -25,8 +25,8 @@ from app.core.clients import Client
 from app.core.config import Settings
 from app.core.db import utc_now
 from app.core.jobs import JobQueue
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 from app.core.ratelimit import HOUR, Limit, enforce
 from app.core.security import check_password_async
 from app.modules import users

@@ -10,9 +10,9 @@ from collections.abc import Iterator
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import API_PREFIX, error_object, error_response
 from app.core.jsonapi.media import JSONAPI_MEDIA_TYPE
-from app.core.jsonapi.models import ErrorCode
 
 BODY_METHODS = frozenset({"POST", "PATCH", "PUT"})
 ALLOWED_PARAMETERS = frozenset({"profile"})  # 확장(ext)은 지원하지 않는다

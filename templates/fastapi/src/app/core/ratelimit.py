@@ -18,8 +18,8 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.clients import client_ip
 from app.core.config import Settings
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import API_PREFIX, ApiError, error_response
-from app.core.jsonapi.models import ErrorCode
 
 logger = structlog.get_logger(__name__)
 

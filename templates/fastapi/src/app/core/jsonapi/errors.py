@@ -13,10 +13,10 @@ from pydantic.experimental.missing_sentinel import MISSING
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import Scope
 
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.media import JsonApiResponse
 from app.core.jsonapi.models import (
     CLIENT_ID_ERROR,
-    ErrorCode,
     ErrorDocument,
     ErrorDocumentMeta,
     ErrorObject,

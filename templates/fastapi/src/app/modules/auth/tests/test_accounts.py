@@ -10,8 +10,8 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.modules.auth.service.tokens as tokens
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.openapi import JsonApiApp
 from app.modules.auth.models import AccountToken, TokenPurpose
 from app.modules.roles import Role, UserRole

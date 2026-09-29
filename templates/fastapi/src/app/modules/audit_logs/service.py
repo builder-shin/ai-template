@@ -9,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.audit_logs.repository as repository
 from app.core.audit import AuditLog, AuditLogAction, AuditLogTargetType
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode, ResourceIdentifier, ToOne
+from app.core.jsonapi.models import ResourceIdentifier, ToOne
 from app.core.jsonapi.query import Page, SortField
 from app.modules import users
 from app.modules.audit_logs.schemas import (

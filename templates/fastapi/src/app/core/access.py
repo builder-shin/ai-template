@@ -19,8 +19,8 @@ from fastapi import Depends, FastAPI, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import SessionDep
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 from app.core.permissions import PermissionRegistry
 
 type Auth = Literal["none", "optional", "required"]

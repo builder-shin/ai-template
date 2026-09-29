@@ -8,9 +8,9 @@ import pytest
 from redis.asyncio import Redis
 
 from app.core.config import Settings
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.install import install_jsonapi
-from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.openapi import JsonApiApp
 from app.core.ratelimit import Limit, enforce, hit
 from app.core.redis import create_redis

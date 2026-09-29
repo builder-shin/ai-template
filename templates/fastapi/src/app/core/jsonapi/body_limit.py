@@ -14,8 +14,8 @@
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import API_PREFIX, error_object, error_response
-from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.negotiation import BODY_METHODS
 
 MAX_BODY_SIZE = 1024 * 1024  # 1 MiB

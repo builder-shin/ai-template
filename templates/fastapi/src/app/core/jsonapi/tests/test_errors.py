@@ -8,9 +8,10 @@ import httpx
 import pytest
 from fastapi import HTTPException
 
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError, require_matching_id, validation_error_objects
 from app.core.jsonapi.media import JSONAPI_MEDIA_TYPE
-from app.core.jsonapi.models import ErrorCode, ErrorSource
+from app.core.jsonapi.models import ErrorSource
 from app.core.jsonapi.tests.sample import KNOWN_ID, jsonapi_body, sample_app, widget_document
 
 pytestmark = pytest.mark.anyio

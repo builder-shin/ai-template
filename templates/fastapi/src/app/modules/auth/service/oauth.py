@@ -45,8 +45,8 @@ import app.modules.auth.providers.base as providers
 import app.modules.auth.repository as repository
 from app.core.config import Settings
 from app.core.db import utc_now
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 from app.core.security import digest, new_token
 from app.modules import users
 from app.modules.auth.models import SocialAccount

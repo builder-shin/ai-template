@@ -26,8 +26,8 @@ from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
 from app.core.clients import Client
 from app.core.config import Settings
 from app.core.db import utc_now
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.query import Page, SortField
 from app.core.ratelimit import MINUTE, Limit, enforce
 from app.core.security import check_password_async, digest, identifier_hash

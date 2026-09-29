@@ -25,8 +25,8 @@ from starlette.datastructures import State
 
 import app.modules.realtime.service as service
 from app.core.access import Principal
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import error_object
-from app.core.jsonapi.models import ErrorCode
 from app.core.jsonvalue import is_object
 from app.core.permissions import PermissionRegistry
 from app.core.realtime import Channel, Realtime, user_room

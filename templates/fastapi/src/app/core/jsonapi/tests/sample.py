@@ -19,6 +19,7 @@ from pydantic.experimental.missing_sentinel import MISSING
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.access import Principal, install_access
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
 from app.core.jsonapi.install import install_jsonapi
 from app.core.jsonapi.media import JSONAPI_MEDIA_TYPE, JsonApiBody
@@ -27,7 +28,6 @@ from app.core.jsonapi.models import (
     CollectionMeta,
     CreateDocument,
     Document,
-    ErrorCode,
     Int32,
     JsonApiModel,
     Omittable,

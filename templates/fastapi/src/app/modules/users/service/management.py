@@ -15,8 +15,8 @@ import app.modules.users.service.accounts as accounts
 from app.core.access import Principal
 from app.core.audit import AuditLogAction, AuditLogTargetType, record_audit
 from app.core.clients import Client
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.query import Page, SortField
 from app.core.permissions import PermissionRegistry
 from app.modules import roles

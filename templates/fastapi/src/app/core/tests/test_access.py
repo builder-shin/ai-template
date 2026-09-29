@@ -18,8 +18,8 @@ from app.core.access import (
     PrincipalDep,
     require_recent_login,
 )
+from app.core.jsonapi.error_codes import ErrorCode
 from app.core.jsonapi.errors import ApiError
-from app.core.jsonapi.models import ErrorCode
 from app.core.jsonapi.operation import COMMON_ERRORS, JsonApiRouter, Operation
 from app.core.jsonapi.tests.sample import ADA, MANAGER_TOKEN, MEMBER_TOKEN, sample_app
 from app.core.permissions import Permission, PermissionRegistry
