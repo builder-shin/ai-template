@@ -32,6 +32,7 @@ FastAPI의 공식 skill은 `.claude/skills/fastapi/SKILL.md`에 있다. FastAPI 
 | `opentelemetry-api` | 1.45.0 | 트레이스 API(`app.core.telemetry`, Socket.IO 수동 span) | https://opentelemetry-python.readthedocs.io/en/stable/ |
 | `opentelemetry-sdk` | 1.45.0 | tracer provider와 span 내보내기 | https://opentelemetry-python.readthedocs.io/en/stable/sdk/ |
 | `opentelemetry-exporter-otlp-proto-http` | 1.45.0 | OTLP(HTTP)로 내보내기 | https://opentelemetry-python.readthedocs.io/en/stable/exporter/otlp/otlp.html |
+| `opentelemetry-instrumentation` | 0.66b0 | 계측 유틸리티(`suppress_instrumentation`, `health.py`가 준비 검사 동안 계측을 끈다) | https://opentelemetry-python-contrib.readthedocs.io/en/latest/ |
 | `opentelemetry-instrumentation-fastapi` | 0.66b0 | 요청 span | https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/fastapi/fastapi.html |
 | `opentelemetry-instrumentation-sqlalchemy` | 0.66b0 | SQLAlchemy 쿼리 span(엔진마다) | https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/sqlalchemy/sqlalchemy.html |
 | `opentelemetry-instrumentation-psycopg` | 0.66b0 | psycopg 쿼리 span | https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/psycopg/psycopg.html |
@@ -53,6 +54,7 @@ FastAPI의 공식 skill은 `.claude/skills/fastapi/SKILL.md`에 있다. FastAPI 
 | `nodejs-wheel-binaries` | 24.19.0 | 계약 린트를 돌리는 Node              | https://github.com/njzjz/nodejs-wheel          |
 | `types-boto3-lite`      | 1.43.93 | boto3의 S3 타입                      | https://youtype.github.io/types_boto3_docs/    |
 | `aiohttp` | 3.14.3 | 테스트의 Socket.IO 클라이언트(`app.tests.sockets`) | https://docs.aiohttp.org/en/v3.14.3/ |
+| `python-dotenv` | 1.2.3 | `.env.example`의 값을 읽는다(`core/tests/test_config.py`) | https://saurabh-kumar.com/python-dotenv/ |
 
 ## 이미지와 바이너리
 

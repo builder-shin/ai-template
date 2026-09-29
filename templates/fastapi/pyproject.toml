@@ -26,6 +26,7 @@ dependencies = [
     "opentelemetry-api==1.45.0",
     "opentelemetry-sdk==1.45.0",
     "opentelemetry-exporter-otlp-proto-http==1.45.0",
+    "opentelemetry-instrumentation==0.66b0",
     "opentelemetry-instrumentation-fastapi==0.66b0",
     "opentelemetry-instrumentation-sqlalchemy==0.66b0",
     "opentelemetry-instrumentation-psycopg==0.66b0",
@@ -45,6 +46,7 @@ dev = [
     "nodejs-wheel-binaries==24.19.0",
     "types-boto3-lite[s3]==1.43.93",
     "aiohttp==3.14.3",
+    "python-dotenv==1.2.3",
 ]
 
 [build-system]

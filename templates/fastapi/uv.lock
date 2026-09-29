@@ -150,6 +150,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-psycopg" },
@@ -179,6 +180,7 @@ dev = [
     { name = "nodejs-wheel-binaries" },
     { name = "poethepoet" },
     { name = "pytest" },
+    { name = "python-dotenv" },
     { name = "ruff" },
     { name = "types-boto3-lite", extra = ["s3"] },
 ]
@@ -195,6 +197,7 @@ requires-dist = [
     { name = "jinja2", specifier = "==3.1.6" },
     { name = "opentelemetry-api", specifier = "==1.45.0" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.0" },
+    { name = "opentelemetry-instrumentation", specifier = "==0.66b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.66b0" },
     { name = "opentelemetry-instrumentation-httpx", specifier = "==0.66b0" },
     { name = "opentelemetry-instrumentation-psycopg", specifier = "==0.66b0" },
@@ -224,6 +227,7 @@ dev = [
     { name = "nodejs-wheel-binaries", specifier = "==24.19.0" },
     { name = "poethepoet", specifier = "==0.48.0" },
     { name = "pytest", specifier = "==9.1.1" },
+    { name = "python-dotenv", specifier = "==1.2.3" },
     { name = "ruff", specifier = "==0.16.9" },
     { name = "types-boto3-lite", extras = ["s3"], specifier = "==1.43.93" },
 ]
