@@ -106,12 +106,12 @@ class Gateway:
             return None
         return self.channels.get(subscription.channel.root)
 
-    async def _principal(self, sid: str) -> Principal | None:
-        """소켓 세션에 저장된 로그인 사용자의 Principal. 세션이 없거나(익명) 끝났으면 None이다.
+    async def _session_data(self, sid: str) -> Mapping[str, Any]:
+        """소켓 세션에 저장된 데이터. sid가 이미 끊긴 연결이면 get_session이 KeyError를 낸다."""
+        return await self.server.get_session(sid)
 
-        sid가 이미 끊긴 연결이면 get_session이 KeyError를 낸다(부르는 쪽이 본다).
-        """
-        saved = await self.server.get_session(sid)
+    async def _principal_for(self, saved: Mapping[str, Any]) -> Principal | None:
+        """저장된 소켓 세션 데이터가 가리키는 로그인 사용자의 Principal. 없으면(익명) None이다."""
         if USER_KEY not in saved:
             return None
         async with self._sessions() as session:
@@ -121,6 +121,13 @@ class Gateway:
                 uuid.UUID(saved[USER_KEY]),
                 uuid.UUID(saved[SESSION_KEY]),
             )
+
+    async def _principal(self, sid: str) -> Principal | None:
+        """소켓 세션에 저장된 로그인 사용자의 Principal. 세션이 없거나(익명) 끝났으면 None이다.
+
+        sid가 이미 끊긴 연결이면 get_session이 KeyError를 낸다(부르는 쪽이 본다).
+        """
+        return await self._principal_for(await self._session_data(sid))
 
     async def recheck(self, user_ids: Sequence[uuid.UUID]) -> None:
         """이 인스턴스에 있는 user_ids의 연결을 다시 검사해 자격을 잃은 연결을 끊는다.
@@ -142,13 +149,15 @@ class Gateway:
         """연결의 세션이 살아 있고, 구독한 채널의 권한을 모두 가졌는가.
 
         recheck는 로그인한 연결(user:{id} 룸의 참가자)만 넘기므로 principal은 늘 있어야 한다.
-        검사하는 동안 스스로 끊긴 연결은 get_session이 KeyError를 내는데, 더 끊을 것이 없으니
-        허용으로 본다.
+        검사하는 동안 스스로 끊긴 연결은 self.server.get_session이 KeyError를 내는데, 더 끊을
+        것이 없으니 허용으로 본다. 그 KeyError만 이렇게 보고, 그 뒤(세션 조회 등)에서 나는
+        KeyError는 다른 문제이니 그대로 던진다.
         """
         try:
-            principal = await self._principal(sid)
+            saved = await self._session_data(sid)
         except KeyError:
             return True
+        principal = await self._principal_for(saved)
         if principal is None:
             return False
         for room in self.server.rooms(sid):

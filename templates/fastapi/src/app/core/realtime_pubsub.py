@@ -119,6 +119,15 @@ class ControlChannel:
                 logger.warning("realtime_control_unavailable", error=repr(error), retry_in=delay)
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, RETRY_MAX)
+            except Exception:
+                # RedisError가 아닌 예외도 여기서 잡아 python-socketio의 수신처럼 다시
+                # 구독한다. 안 그러면 이 태스크가 조용히 끝나 재검사(H12) 알림을 놓친다.
+                # asyncio.CancelledError는 BaseException이라 여기서 잡히지 않고 취소가
+                # 그대로 전해진다.
+                self.listening.clear()
+                logger.exception("realtime_control_failed", retry_in=delay)
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, RETRY_MAX)
 
     async def _handle(self, data: object) -> None:
         if not isinstance(data, str | bytes):
