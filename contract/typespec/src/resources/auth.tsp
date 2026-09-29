@@ -181,7 +181,7 @@ interface PasswordResets {
 @tag("passwords")
 @useAuth(BearerAuth)
 interface PasswordChanges {
-  /** 현재 세션을 뺀 나머지 세션을 폐기한다. */
+  /** 현재 세션을 뺀 나머지 세션을 폐기하고 남은 비밀번호 재설정 토큰을 지운다. 사용자별 엄격한 레이트 리밋이 있다. */
   @post
   create(...JsonApi.Body<PasswordChangeCreateDocument>):
     | JsonApi.Created<PasswordChangeDocument>

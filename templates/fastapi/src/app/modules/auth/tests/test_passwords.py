@@ -11,12 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.audit import AuditLog
 from app.core.config import Settings
+from app.core.db import utc_now
 from app.core.jobs import JobContext
+from app.core.jsonapi.openapi import JsonApiApp
 from app.core.realtime import RecordingPublisher
 from app.core.security import digest
 from app.core.storage import Storage
 from app.modules.auth.jobs import purge_credentials
 from app.modules.auth.models import AccountToken, LoginSession, RefreshToken, TokenPurpose
+from app.modules.auth.service import tokens
 from app.modules.users import User
 from app.tests.accounts import PASSWORD, Accounts, new_email
 from app.tests.requests import error_codes, error_sources, jsonapi_body
@@ -121,6 +124,45 @@ async def test_change_needs_the_current_password_and_keeps_this_session(
     assert (await api.get("/api/v1/sessions", headers=other)).status_code == 401
     assert (await log_in(api, user.email, NEW_PASSWORD)).status_code == 201
     assert await actions(db) == ["user.password_changed", "session.login_succeeded"]
+
+
+async def test_change_drops_reset_tokens_asked_for_before_it(
+    api: httpx.AsyncClient,
+    accounts: Accounts,
+    db: async_sessionmaker[AsyncSession],
+    mailbox: Mailpit,
+) -> None:
+    user = await accounts.create()
+    assert user.email is not None
+    token = await reset_token(api, mailbox, user.email)
+    async with db() as session:
+        tokens.issue(session, user.id, TokenPurpose.EMAIL_VERIFICATION, utc_now())
+        await session.commit()
+    headers = await accounts.sign_in(user)
+    response = await api.post("/api/v1/password-changes", **jsonapi_body(change(PASSWORD), headers))
+    assert response.status_code == 201, response.text
+    stale = await api.post(
+        "/api/v1/password-resets", **jsonapi_body(reset(token, "other-password"))
+    )
+    assert (stale.status_code, error_codes(stale)) == (422, ["auth.verification_token_invalid"])
+    async with db() as session:
+        left = select(AccountToken.purpose).where(AccountToken.user_id == user.id)
+        assert list(await session.scalars(left)) == [TokenPurpose.EMAIL_VERIFICATION]
+
+
+async def test_change_is_rate_limited_per_user(
+    app: JsonApiApp, api: httpx.AsyncClient, accounts: Accounts
+) -> None:
+    app.state.settings = app.state.settings.model_copy(
+        update={"rate_limit_password_change_user": 2}
+    )
+    headers = await accounts.sign_in(await accounts.create())
+    wrong = jsonapi_body(change("not-my-password"), headers)
+    statuses = [(await api.post("/api/v1/password-changes", **wrong)).status_code for _ in range(3)]
+    assert statuses == [401, 401, 429]
+    other = await accounts.sign_in(await accounts.create())
+    elsewhere = jsonapi_body(change("not-my-password"), other)
+    assert (await api.post("/api/v1/password-changes", **elsewhere)).status_code == 401
 
 
 async def test_accounts_without_a_password_cannot_change_it(

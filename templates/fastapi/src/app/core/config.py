@@ -128,13 +128,15 @@ class Settings(BaseSettings):
     otel_enabled: bool
     otel_service_name: NonEmpty
     otel_exporter_otlp_endpoint: HttpUrl
-    # 레이트 리밋. 전역과 로그인은 분당, 가입과 메일 요청(인증 메일 재발송, 재설정 요청)은 시간당
+    # 레이트 리밋. 전역과 로그인은 분당, 가입과 메일 요청(인증 메일 재발송, 재설정 요청)과
+    # 비밀번호 변경(사용자별)은 시간당
     rate_limit_global: Limit
     rate_limit_login_ip: Limit
     rate_limit_login_identifier: Limit
     rate_limit_registration_ip: Limit
     rate_limit_mail_ip: Limit
     rate_limit_mail_email: Limit
+    rate_limit_password_change_user: Limit
 
     @field_validator(*EXAMPLE_SECRETS)
     @classmethod

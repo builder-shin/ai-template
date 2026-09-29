@@ -61,7 +61,10 @@ CHANGE = Operation(
     name="create",
     status_code=201,
     errors=AUTH_ERRORS + CONFLICT + BODY_ERRORS + COMMON_ERRORS,
-    description="현재 세션을 뺀 나머지 세션을 폐기한다.",
+    description=(
+        "현재 세션을 뺀 나머지 세션을 폐기하고 남은 비밀번호 재설정 토큰을 지운다. "
+        "사용자별 엄격한 레이트 리밋이 있다."
+    ),
 )
 
 
@@ -98,14 +101,23 @@ async def reset_password(
 
 @changes.route("POST", "", CHANGE, response_model=PasswordChangeDocument)
 async def change_password(
+    request: Request,
     session: SessionDep,
+    redis: RedisDep,
     actor: PrincipalDep,
     client: ClientDep,
     document: JsonApiBody[PasswordChangeCreateDocument],
 ) -> Response:
+    settings: Settings = request.app.state.settings
     attributes = document.data.attributes
     created_at = await service.change_password(
-        session, actor, client, attributes.current_password, attributes.new_password
+        session,
+        redis,
+        settings,
+        actor,
+        client,
+        attributes.current_password,
+        attributes.new_password,
     )
     resource = PasswordChangeResource(
         type="password-changes",
