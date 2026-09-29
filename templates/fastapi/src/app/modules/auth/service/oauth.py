@@ -1,7 +1,8 @@
 """소셜 로그인(스펙 §6.2): authorize, callback, 1회용 코드.
 
 - authorize: redirectUri를 설정의 허용 목록(OAUTH_REDIRECT_URIS)으로 검사한다(아니면 400).
-  codeChallenge(BFF가 만든 code verifier의 S256, base64url 43자)도 형식을 검사한다(아니면 400).
+  codeChallenge(BFF가 만든 code verifier의 S256, base64url 43자)의 형식은 라우트 선언
+  (`QueryParameter.pattern`, `router/oauth.py`)이 검사한다(아니면 400).
   state, PKCE verifier, redirectUri, codeChallenge, 제공자를 Valkey에 10분 두고 제공자 로그인
   화면 주소를 돌려준다.
 - callback: state를 꺼내면서 지운다. 없거나 만료됐거나 다른 제공자의 것이면 돌려보낼 곳을
