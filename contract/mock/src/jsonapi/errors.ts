@@ -109,6 +109,22 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * 요청 문서 검증 에러(FastAPI의 RequestValidationError를 에러 문서로 옮긴 결과). 에러 객체가 여럿일
+ * 수 있고, status는 응답 상태다(객체들의 상태가 섞이면 400). validation.ts가 만든다.
+ */
+export class RequestValidationError extends Error {
+  readonly status: ErrorStatus;
+  readonly errors: readonly ErrorObject[];
+
+  constructor(status: ErrorStatus, errors: readonly ErrorObject[]) {
+    super(errors.map((error) => `${error.code} ${error.source?.pointer ?? ""}`).join(", "));
+    this.name = "RequestValidationError";
+    this.status = status;
+    this.errors = errors;
+  }
+}
+
 /** 에러 문서 응답. meta.traceId는 그 요청의 trace id다. */
 export function errorResponse(
   c: Context<AppEnv>,
@@ -120,12 +136,15 @@ export function errorResponse(
 }
 
 /**
- * onError. ApiError는 그 에러 문서로 바꾼다. 예상하지 못한 예외는 500 internal.unexpected이고,
- * 원인은 trace id와 함께 로그에만 남긴다.
+ * onError. ApiError와 RequestValidationError는 그 에러 문서로 바꾼다. 예상하지 못한 예외는
+ * 500 internal.unexpected이고, 원인은 trace id와 함께 로그에만 남긴다.
  */
 export const handleError: ErrorHandler<AppEnv> = (error, c) => {
   if (error instanceof ApiError) {
     return errorResponse(c, error.status, [error.toErrorObject()], error.headers);
+  }
+  if (error instanceof RequestValidationError) {
+    return errorResponse(c, error.status, error.errors);
   }
   console.error(`[mock] unexpected_error trace_id=${traceIdOf(c)}`, error);
   return errorResponse(c, 500, [errorObject(500, "internal.unexpected")]);
