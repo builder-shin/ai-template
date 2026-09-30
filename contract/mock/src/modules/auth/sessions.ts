@@ -35,6 +35,7 @@ import {
   activeSession,
   type IssuedTokens,
   issue,
+  live,
   openSession,
   refreshTokenRow,
   unauthorized,
@@ -167,11 +168,6 @@ export function signIn(
     case "oauthCode":
       return oauthCode(state, client, grant);
   }
-}
-
-/** 사용자의 폐기되지 않고 만료되지 않은 세션인가. */
-function live(login: LoginSessionRow, userId: string, now: Instant): boolean {
-  return login.userId === userId && login.revokedAt === null && login.expiresAt > now;
 }
 
 /** 내 살아 있는 세션 한 페이지와 전체 개수. 기본 정렬은 최근에 쓴 순서다. */

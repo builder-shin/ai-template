@@ -38,6 +38,11 @@ export function unauthorized(code: ErrorCode, detail: string): ApiError {
   return new ApiError(401, code, detail);
 }
 
+/** 사용자의 폐기되지 않고 만료되지 않은 세션인가. 인증기와 sessions.ts가 같은 조건으로 본다. */
+export function live(login: LoginSessionRow, userId: string, now: Instant): boolean {
+  return login.userId === userId && login.revokedAt === null && login.expiresAt > now;
+}
+
 /** 폐기되지도 만료되지도 않았고 사용자가 활성인 세션. 인증기가 요청마다 부른다. */
 export function activeSession(
   store: Store,
@@ -47,8 +52,8 @@ export function activeSession(
 ): LoginSessionRow | undefined {
   const login = store.sessions.get(sessionId);
   const active = store.users.get(userId)?.status === "active";
-  const live = login?.userId === userId && login.revokedAt === null && login.expiresAt > now;
-  return live && active ? login : undefined;
+  const alive = login !== undefined && live(login, userId, now);
+  return alive && active ? login : undefined;
 }
 
 /**
