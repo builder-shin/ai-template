@@ -4,12 +4,15 @@
  */
 
 import { type Clock, systemClock } from "./core/clock.ts";
+import { createExpiringMap } from "./core/expiring.ts";
 import { createRateLimiter, type RateLimiter } from "./core/rate-limit.ts";
 import { createRealtimeHub, type RealtimeHub } from "./core/realtime.ts";
 import { createOutbox, type Outbox } from "./mail/outbox.ts";
+import type { OAuthStore } from "./modules/auth/model.ts";
 import { createFileRegistry, type FileRegistry } from "./modules/files/registry.ts";
 import type { MembersChanged } from "./modules/roles/management.ts";
 import type { AccountCloser } from "./modules/users/accounts.ts";
+import { createOAuthServer, type OAuthServer } from "./oauth-server/server.ts";
 import { createStorage, type Storage } from "./storage/bucket.ts";
 import { createStore, type Store } from "./store.ts";
 
@@ -26,6 +29,10 @@ export interface MockState {
   readonly outbox: Outbox;
   /** 가짜 스토리지의 버킷(객체와 presigned URL). */
   readonly storage: Storage;
+  /** 소셜 로그인의 state(10분)와 1회용 코드(60초). FastAPI가 Valkey에 두는 값이다. */
+  readonly oauth: OAuthStore;
+  /** 가짜 OAuth 서버(google, kakao, naver의 인가 코드와 프로필). */
+  readonly oauthServer: OAuthServer;
   /** 파일 읽기 규칙, 참조 확인, 삭제 처리. 파일을 가리키는 모듈이 앱을 조립할 때 등록한다. */
   readonly fileRegistry: FileRegistry;
   /** 계정을 닫을 때(비활성화, 탈퇴) 부를 처리. auth가 앱을 조립할 때 등록한다. */
@@ -47,6 +54,8 @@ export function createState(options: StateOptions = {}): MockState {
     realtime: createRealtimeHub(),
     outbox: createOutbox(),
     storage: createStorage(clock),
+    oauth: { states: createExpiringMap(clock), codes: createExpiringMap(clock) },
+    oauthServer: createOAuthServer(clock),
     fileRegistry: createFileRegistry(),
     accountClosers: [],
     membersChanged: [],

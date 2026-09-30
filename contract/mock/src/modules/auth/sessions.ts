@@ -8,8 +8,12 @@
  *   해시만)를 남긴다.
  * - refreshToken grant: refresh token을 회전한다. 이미 쓴 토큰이 다시 오면 그 세션을 폐기하고 401
  *   auth.refresh_token_reused다.
- * - oauthCode grant: 소셜 로그인 콜백이 프론트로 넘긴 1회용 코드다. 코드를 만드는 소셜 로그인 흐름이
- *   아직 없어, FastAPI가 모르는 코드에 답하는 것처럼 모든 코드가 401 auth.oauth_code_invalid다.
+ * - oauthCode grant: 소셜 로그인 콜백이 프론트로 넘긴 1회용 코드(60초)와, authorize에 보낸
+ *   codeChallenge를 만든 codeVerifier다(oauth.ts). 코드가 틀렸거나 만료됐거나 이미 썼거나, codeVerifier가
+ *   RFC 7636 모양(43~128자)이 아니거나 codeChallenge를 만들지 못하면 401 auth.oauth_code_invalid다.
+ *   코드는 꺼내면서 지우므로 verifier가 틀려도 다시 쓸 수 없다. 그사이 비활성화된 계정은 403
+ *   auth.account_deactivated, 탈퇴한 계정은 401 auth.oauth_code_invalid다. 성공은 감사 로그
+ *   (session.login_succeeded, method oauth와 provider)를 남긴다.
  */
 
 import type { MockConfig } from "../../config.ts";
@@ -38,15 +42,36 @@ import {
 import { sessionRevoked } from "./events.ts";
 import { authLimits, emailSubject, ipSubject } from "./limits.ts";
 import type { LoginSessionRow } from "./model.ts";
+import { consumeCode, verifies } from "./oauth.ts";
 
 type SessionGrant = components["schemas"]["SessionGrant"];
 type SessionPasswordGrant = components["schemas"]["SessionPasswordGrant"];
+type SessionOAuthCodeGrant = components["schemas"]["SessionOAuthCodeGrant"];
 export type SessionRevocationScope = components["schemas"]["SessionRevocationScope"];
 
 const SESSION_DEFAULT_SORT: readonly SortField[] = [{ name: "lastUsedAt", descending: true }];
 
 function userTarget(userId: string): AuditRecord["target"] {
   return { type: "users", id: userId };
+}
+
+/** 세션을 열고 로그인 성공을 감사 로그에 남긴다. metadata는 로그인 방법이다. */
+function openAudited(
+  state: MockState,
+  client: Client,
+  userId: string,
+  metadata: Readonly<Record<string, string>>,
+): IssuedTokens {
+  const issued = openSession(state.store, userId, client.userAgent, state.clock.now());
+  const record: AuditRecord = {
+    action: "session.login_succeeded",
+    actorId: userId,
+    ipAddress: client.ip,
+    target: userTarget(userId),
+    metadata,
+  };
+  recordAudit(state.store, record, state.clock.now());
+  return issued;
 }
 
 function loginFailed(
@@ -89,16 +114,7 @@ function password(
     loginFailed(state, client, user, identifier, "email_not_verified");
     throw new ApiError(403, "auth.email_not_verified", "The email is not verified yet.");
   }
-  const issued = openSession(state.store, user.id, client.userAgent, state.clock.now());
-  const record: AuditRecord = {
-    action: "session.login_succeeded",
-    actorId: user.id,
-    ipAddress: client.ip,
-    target: userTarget(user.id),
-    metadata: { method: "password" },
-  };
-  recordAudit(state.store, record, state.clock.now());
-  return issued;
+  return openAudited(state, client, user.id, { method: "password" });
 }
 
 function refresh(state: MockState, refreshToken: string): IssuedTokens {
@@ -123,12 +139,18 @@ function refresh(state: MockState, refreshToken: string): IssuedTokens {
   return issue(store, login, token, now);
 }
 
-/**
- * oauthCode grant. 소셜 로그인 흐름(authorize → 제공자 → callback)이 1회용 코드를 만들면 여기서 코드와
- * code verifier를 확인하고 세션을 연다. 그 흐름을 더하기 전에는 받을 수 있는 코드가 없다.
- */
-function oauthCode(): never {
-  throw unauthorized("auth.oauth_code_invalid", "The sign-in code is wrong or has expired.");
+/** oauthCode grant: 소셜 로그인의 1회용 코드와 그 codeChallenge를 만든 codeVerifier로 세션을 연다. */
+function oauthCode(state: MockState, client: Client, grant: SessionOAuthCodeGrant): IssuedTokens {
+  const invalid = () =>
+    unauthorized("auth.oauth_code_invalid", "The sign-in code is wrong or has expired.");
+  const found = consumeCode(state, grant.code);
+  if (found === undefined || !verifies(found.codeChallenge, grant.codeVerifier)) throw invalid();
+  const user = state.store.users.get(found.userId);
+  if (user === undefined || user.status === "deleted") throw invalid();
+  if (user.status !== "active") {
+    throw new ApiError(403, "auth.account_deactivated", "The account is deactivated.");
+  }
+  return openAudited(state, client, user.id, { method: "oauth", provider: found.provider });
 }
 
 export function signIn(
@@ -143,7 +165,7 @@ export function signIn(
     case "refreshToken":
       return refresh(state, grant.refreshToken);
     case "oauthCode":
-      return oauthCode();
+      return oauthCode(state, client, grant);
   }
 }
 

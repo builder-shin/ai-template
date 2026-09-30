@@ -46,12 +46,21 @@ export interface MockConfig {
    * 가짜 스토리지의 presigned URL(<API_URL>/_storage/...)이 이 주소를 쓴다.
    */
   readonly apiUrl: string;
-  /** 테스트 통로(/_test, /_mock)를 여는가(MOCK_TEST_ENDPOINTS). */
+  /**
+   * 테스트 통로(/_test, /_mock)를 여는가(MOCK_TEST_ENDPOINTS). 가짜 OAuth 서버(/_mock/oauth)도 테스트
+   * 통로라, 끄면 소셜 로그인은 제공자 화면이 없어 끝나지 않는다(FastAPI에서 모의 OAuth 서버를 띄우지
+   * 않은 것과 같다).
+   */
   readonly testEndpoints: boolean;
   /** 시작할 때 시드하는 관리자(SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD). FastAPI의 시드와 같은 변수다. */
   readonly seedAdmin: SeedAdmin;
   /** 메일 링크의 프론트 주소(FRONTEND_URL). 인증·재설정 링크는 여기에 경로와 ?token=을 붙인다. */
   readonly frontendUrl: string;
+  /**
+   * 소셜 로그인 뒤 돌아갈 프론트 콜백 주소(OAUTH_REDIRECT_URIS, 쉼표로 구분). authorize의 redirectUri가
+   * 이 가운데 하나와 글자까지 같아야 한다.
+   */
+  readonly oauthRedirectUris: readonly string[];
   /** 이메일 같은 식별자의 해시(HMAC-SHA256) 키(IDENTIFIER_HASH_SECRET). 32자 이상. */
   readonly identifierHashSecret: string;
   /** 엄격한 레이트 리밋의 한도(RATE_LIMIT_*). */
@@ -71,6 +80,7 @@ export const DEFAULT_CONFIG: MockConfig = {
   testEndpoints: true,
   seedAdmin: { email: "admin@example.com", password: "admin-password" }, // betterleaks:allow 개발용 기본 시드 관리자
   frontendUrl: "http://localhost:3000",
+  oauthRedirectUris: ["http://localhost:3000/oauth/callback"],
   identifierHashSecret: "local-development-only-identifier-hash-key", // betterleaks:allow 개발용 기본 키
   rateLimits: {
     loginIp: 10,
@@ -212,6 +222,11 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
       ),
     },
     frontendUrl: read("FRONTEND_URL", defaults.frontendUrl, httpUrl),
+    oauthRedirectUris: read(
+      "OAUTH_REDIRECT_URIS",
+      defaults.oauthRedirectUris,
+      commaSeparated(httpUrl),
+    ),
     identifierHashSecret: read(
       "IDENTIFIER_HASH_SECRET",
       defaults.identifierHashSecret,

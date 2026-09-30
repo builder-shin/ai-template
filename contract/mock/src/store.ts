@@ -13,6 +13,7 @@ import type {
   AccountTokenRow,
   LoginSessionRow,
   RefreshTokenRow,
+  SocialAccountRow,
 } from "./modules/auth/model.ts";
 import type { FileRow } from "./modules/files/model.ts";
 import type { PostRow } from "./modules/posts/model.ts";
@@ -34,6 +35,8 @@ export interface Store {
   readonly accessTokens: Map<string, AccessTokenRow>;
   /** 1회용 계정 토큰. 키는 토큰의 digest다. */
   readonly accountTokens: Map<string, AccountTokenRow>;
+  /** 소셜 로그인 연결. 키는 id다. */
+  readonly socialAccounts: Map<string, SocialAccountRow>;
   /** 파일(메타데이터). 키는 id다. 객체는 가짜 스토리지(MockState.storage)에 있다. */
   readonly files: Map<string, FileRow>;
   /** 글. 키는 id다. */
@@ -51,6 +54,7 @@ export function createStore(): Store {
     refreshTokens: new Map(),
     accessTokens: new Map(),
     accountTokens: new Map(),
+    socialAccounts: new Map(),
     files: new Map(),
     posts: new Map(),
     auditLogs: [],

@@ -8,7 +8,8 @@
  *
  * 앱을 만들 때 시드를 넣고 모듈 사이의 처리를 건다(seed.ts, modules/registry.ts). 모듈의 API는
  * 계약의 operationId로 JSON:API 라우터에 단다(jsonapi/router.ts). 가짜 스토리지(/_storage)는 늘
- * 붙고, 테스트 통로(/_test)는 MOCK_TEST_ENDPOINTS가 켜져 있을 때만 붙는다.
+ * 붙고, 테스트 통로(/_test/mail, 가짜 OAuth 서버 /_mock/oauth)는 MOCK_TEST_ENDPOINTS가 켜져 있을 때만
+ * 붙는다.
  */
 
 import { Hono } from "hono";
@@ -27,6 +28,8 @@ import { postRoutes } from "./modules/posts/routes.ts";
 import { connectModules } from "./modules/registry.ts";
 import { roleRoutes } from "./modules/roles/routes.ts";
 import { userRoutes } from "./modules/users/routes.ts";
+import { oauthServerRoutes } from "./oauth-server/routes.ts";
+import { OAUTH_SERVER_PATH } from "./oauth-server/server.ts";
 import { seed } from "./seed.ts";
 import { createState, type MockState } from "./state.ts";
 import { STORAGE_PATH } from "./storage/bucket.ts";
@@ -53,6 +56,7 @@ export function createApp(config: MockConfig, state: MockState = createState()):
   app.route(STORAGE_PATH, storageRoutes(config, state.storage));
   if (config.testEndpoints) {
     app.route("/_test/mail", mailTestRoutes(state.outbox));
+    app.route(OAUTH_SERVER_PATH, oauthServerRoutes(state.oauthServer));
   }
   app.notFound(handleNotFound);
   app.onError(handleError);

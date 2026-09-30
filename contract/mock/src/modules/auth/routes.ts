@@ -1,8 +1,9 @@
 /**
  * auth의 API: 가입(Registrations), 인증 메일 재발송(EmailVerificationRequests), 이메일 인증
  * (EmailVerifications), 세션(Sessions), 다른 기기·전체 로그아웃(SessionRevocations), 비밀번호
- * 재설정 요청(PasswordResetRequests), 재설정(PasswordResets), 변경(PasswordChanges).
- * 규칙은 서비스(accounts.ts, sessions.ts, passwords.ts)에 있고, 여기서는 요청을 넘기고 문서를 만든다.
+ * 재설정 요청(PasswordResetRequests), 재설정(PasswordResets), 변경(PasswordChanges), 소셜 로그인의
+ * 리다이렉트(OAuth). 규칙은 서비스(accounts.ts, sessions.ts, passwords.ts, oauth.ts)에 있고, 여기서는
+ * 요청을 넘기고 문서나 리다이렉트를 만든다.
  */
 
 import type { MockConfig } from "../../config.ts";
@@ -10,12 +11,15 @@ import { clientOf } from "../../core/client.ts";
 import { formatInstant } from "../../core/clock.ts";
 import { uuid7 } from "../../core/ids.ts";
 import type { components } from "../../generated/api.ts";
+import { redirectResponse } from "../../jsonapi/redirect.ts";
 import { pagination, render } from "../../jsonapi/rendering.ts";
 import type { JsonApiRouter } from "../../jsonapi/router.ts";
 import type { MockState } from "../../state.ts";
+import { localeFrom } from "../users/accounts.ts";
 import { register, requestVerification, verifyEmail } from "./accounts.ts";
 import type { IssuedTokens } from "./credentials.ts";
 import type { LoginSessionRow } from "./model.ts";
+import { authorize, callback } from "./oauth.ts";
 import { changePassword, requestReset, resetPassword } from "./passwords.ts";
 import { listSessions, revokeSession, revokeSessions, signIn } from "./sessions.ts";
 
@@ -169,8 +173,22 @@ function passwordRoutes(api: JsonApiRouter, config: MockConfig, state: MockState
   });
 }
 
+/** 소셜 로그인: 제공자로 보내고(authorize), 제공자가 돌아오면 프론트 콜백으로 보낸다(callback). */
+function oauthRoutes(api: JsonApiRouter, config: MockConfig, state: MockState): void {
+  api.redirect("OAuth_authorize", { callback: false }, ({ path, query }) => {
+    const { redirectUri, codeChallenge } = query;
+    return redirectResponse(authorize(state, config, path.provider, redirectUri, codeChallenge));
+  });
+
+  api.redirect("OAuth_callback", { callback: true }, ({ c, path, query }) => {
+    const locale = localeFrom(c.req.header("accept-language"));
+    return redirectResponse(callback(state, config, path.provider, query, locale));
+  });
+}
+
 export function authRoutes(api: JsonApiRouter, config: MockConfig, state: MockState): void {
   accountRoutes(api, config, state);
   sessionRoutes(api, config, state);
   passwordRoutes(api, config, state);
+  oauthRoutes(api, config, state);
 }

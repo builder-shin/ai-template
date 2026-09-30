@@ -21,6 +21,7 @@ describe("loadConfig", () => {
       testEndpoints: true,
       seedAdmin: { email: "admin@example.com", password: "admin-password" }, // betterleaks:allow 개발용 기본 시드 관리자
       frontendUrl: "http://localhost:3000",
+      oauthRedirectUris: ["http://localhost:3000/oauth/callback"],
       identifierHashSecret: "local-development-only-identifier-hash-key", // betterleaks:allow 개발용 기본 키
       rateLimits: {
         loginIp: 10,
@@ -47,6 +48,8 @@ describe("loadConfig", () => {
       SEED_ADMIN_EMAIL: " root@example.com ",
       SEED_ADMIN_PASSWORD: "conformance-admin-password", // betterleaks:allow 테스트용 가짜 비밀번호
       FRONTEND_URL: "https://web.example.com/",
+      OAUTH_REDIRECT_URIS:
+        " https://web.example.com/auth/oauth/callback,,http://localhost:3000/cb ",
       IDENTIFIER_HASH_SECRET: "k".repeat(32),
       RATE_LIMIT_LOGIN_IP: "1000000",
       RATE_LIMIT_LOGIN_IDENTIFIER: "2",
@@ -65,6 +68,10 @@ describe("loadConfig", () => {
       testEndpoints: false,
       seedAdmin: { email: "root@example.com", password: "conformance-admin-password" }, // betterleaks:allow 테스트용 가짜 비밀번호
       frontendUrl: "https://web.example.com/",
+      oauthRedirectUris: [
+        "http://localhost:3000/cb",
+        "https://web.example.com/auth/oauth/callback",
+      ],
       identifierHashSecret: "k".repeat(32),
       rateLimits: {
         loginIp: 1_000_000,
@@ -114,6 +121,7 @@ describe("loadConfig", () => {
       SEED_ADMIN_EMAIL: "admin",
       SEED_ADMIN_PASSWORD: "short", // betterleaks:allow 테스트용 가짜 비밀번호
       FRONTEND_URL: "localhost:3000",
+      OAUTH_REDIRECT_URIS: "http://localhost:3000/cb,myapp://callback",
       IDENTIFIER_HASH_SECRET: "too-short", // betterleaks:allow 테스트용 가짜 키
       RATE_LIMIT_LOGIN_IP: "0",
       FILE_MAX_SIZE: "10MB",
@@ -127,6 +135,7 @@ describe("loadConfig", () => {
       "설정 오류: SEED_ADMIN_EMAIL — 이메일 주소여야 한다(현재: admin).",
       "설정 오류: SEED_ADMIN_PASSWORD — 8자 이상이어야 한다.",
       "설정 오류: FRONTEND_URL — http:// 또는 https://로 시작하는 주소여야 한다(현재: localhost:3000).",
+      "설정 오류: OAUTH_REDIRECT_URIS — http:// 또는 https://로 시작하는 주소여야 한다(현재: myapp://callback).",
       "설정 오류: IDENTIFIER_HASH_SECRET — 32자 이상이어야 한다.",
       "설정 오류: RATE_LIMIT_LOGIN_IP — 1 이상의 정수여야 한다(현재: 0).",
       "설정 오류: FILE_MAX_SIZE — 1 이상의 정수여야 한다(현재: 10MB).",
