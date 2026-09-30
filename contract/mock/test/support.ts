@@ -98,3 +98,10 @@ export function realtimeLog(state: MockState): unknown[] {
   });
   return log;
 }
+
+/** 저장소의 사용자 행. 없으면 테스트를 멈춘다. */
+export function stored(state: MockState, userId: string) {
+  const user = state.store.users.get(userId);
+  if (user === undefined) throw new Error("사용자가 없다");
+  return user;
+}

@@ -21,7 +21,7 @@ import {
   type SignedIn,
   signIn,
 } from "./accounts.ts";
-import { codesOf, errorsOf, realtimeLog, testApp, testClock } from "./support.ts";
+import { codesOf, errorsOf, realtimeLog, stored, testApp, testClock } from "./support.ts";
 import { uploadFile } from "./uploads.ts";
 
 type App = ReturnType<typeof testApp>["app"];
@@ -30,12 +30,6 @@ const ME = "/api/v1/me";
 
 function leave(app: App, user: SignedIn): Promise<Response> {
   return send(app, "DELETE", ME, { token: user.accessToken });
-}
-
-function stored(state: MockState, userId: string) {
-  const user = state.store.users.get(userId);
-  if (user === undefined) throw new Error("사용자가 없다");
-  return user;
 }
 
 /** 폐기하지 않은 세션 수와 남은 1회용 토큰 수. */

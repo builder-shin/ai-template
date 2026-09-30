@@ -7,9 +7,8 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "../src/config.ts";
 import { publicUsers } from "../src/modules/users/public.ts";
-import type { MockState } from "../src/state.ts";
 import { newUser, send, type SignedIn } from "./accounts.ts";
-import { errorsOf, realtimeLog, TIMESTAMP, testApp } from "./support.ts";
+import { errorsOf, realtimeLog, stored, TIMESTAMP, testApp } from "./support.ts";
 import { FILES, uploadFile } from "./uploads.ts";
 
 type App = ReturnType<typeof testApp>["app"];
@@ -44,12 +43,6 @@ async function updated(app: App, user: SignedIn, document: unknown): Promise<MeD
   const response = await patchMe(app, user, document);
   expect(response.status, await response.clone().text()).toBe(200);
   return (await response.json()) as MeDocument;
-}
-
-function stored(state: MockState, userId: string) {
-  const user = state.store.users.get(userId);
-  if (user === undefined) throw new Error("사용자가 없다");
-  return user;
 }
 
 describe("PATCH /me", () => {
