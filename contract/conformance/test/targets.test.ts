@@ -49,6 +49,15 @@ describe("resolveAdmin", () => {
 describe("resolveMailbox", () => {
   it("Mailpit 주소가 없으면 예시와 함께 알린다", () => {
     expect(() => resolveMailbox({})).toThrow(/CONFORMANCE_MAILPIT_URL/);
+    expect(() => resolveMailbox({ CONFORMANCE_TARGET: "fastapi" })).toThrow(
+      /CONFORMANCE_MAILPIT_URL/,
+    );
+  });
+
+  it("목 대상은 Mailpit 없이 대상 주소의 테스트 통로를 쓴다", () => {
+    const env = { CONFORMANCE_TARGET: "mock", CONFORMANCE_BASE_URL: "http://localhost:4010" };
+    expect(() => resolveMailbox(env)).not.toThrow();
+    expect(() => resolveMailbox({ CONFORMANCE_TARGET: "mock" })).toThrow(/CONFORMANCE_BASE_URL/);
   });
 });
 

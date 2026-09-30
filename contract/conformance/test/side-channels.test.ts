@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { MAIL_LINKS } from "../src/side-channels.ts";
 import { createMailpitMailbox } from "../src/side-channels/mailpit.ts";
+import { createMockMailbox } from "../src/side-channels/mock-mailbox.ts";
 import { createMockOAuthDriver, mockClaims } from "../src/side-channels/oauth.ts";
 
 function json(value: unknown): Response {
@@ -111,6 +112,74 @@ describe("Mailpit 메일함", () => {
     await expect(mailbox.latest("nobody@example.com", { timeoutMs: 20 })).rejects.toThrow(
       "nobody@example.com",
     );
+  });
+});
+
+const MOCK_VERIFY = {
+  id: "a",
+  to: "user@example.com",
+  subject: "Verify",
+  text: "go /verify-email?token=abc",
+  receivedAt: "2026-09-27T05:00:00.000Z",
+};
+const MOCK_WELCOME = {
+  id: "b",
+  to: "user@example.com",
+  subject: "Welcome",
+  text: "hello",
+  receivedAt: "2026-09-27T05:00:01.000Z",
+};
+
+/** 목의 /_test/mail 흉내. 목처럼 최신순으로 돌려준다. */
+function mockMailStub(stored: readonly unknown[], calls: string[] = []) {
+  return (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    calls.push(`${init?.method ?? "GET"} ${url}`);
+    if (init?.method === "DELETE") return Promise.resolve(new Response(null, { status: 204 }));
+    return Promise.resolve(json({ messages: stored }));
+  };
+}
+
+describe("목 메일함", () => {
+  it("받는 사람으로 거른 목록에서 가장 최근 메일을 읽는다", async () => {
+    const calls: string[] = [];
+    const mailbox = createMockMailbox("http://mock.test/", {
+      fetch: mockMailStub([MOCK_WELCOME, MOCK_VERIFY], calls),
+    });
+    expect(await mailbox.latest("user@example.com")).toEqual(MOCK_WELCOME);
+    expect(calls).toEqual([`GET http://mock.test/_test/mail?to=user%40example.com`]);
+  });
+
+  it("linkPath와 after로 메일을 가린다", async () => {
+    const mailbox = createMockMailbox("http://mock.test", {
+      fetch: mockMailStub([MOCK_WELCOME, MOCK_VERIFY]),
+      pollMs: 5,
+    });
+    const verify = await mailbox.latest("user@example.com", {
+      linkPath: MAIL_LINKS.emailVerification,
+    });
+    expect(verify.id).toBe("a");
+    await expect(
+      mailbox.latest("user@example.com", {
+        after: verify,
+        linkPath: MAIL_LINKS.emailVerification,
+        timeoutMs: 20,
+      }),
+    ).rejects.toThrow("user@example.com");
+  });
+
+  it("clear는 보관함을 비운다", async () => {
+    const calls: string[] = [];
+    const mailbox = createMockMailbox("http://mock.test", { fetch: mockMailStub([], calls) });
+    await mailbox.clear();
+    expect(calls).toEqual(["DELETE http://mock.test/_test/mail"]);
+  });
+
+  it("테스트 통로가 꺼져 있으면(404) 켜라고 알린다", async () => {
+    const notFound = () => Promise.resolve(new Response(null, { status: 404 }));
+    const mailbox = createMockMailbox("http://mock.test", { fetch: notFound });
+    await expect(mailbox.clear()).rejects.toThrow("MOCK_TEST_ENDPOINTS");
+    await expect(mailbox.latest("user@example.com")).rejects.toThrow("MOCK_TEST_ENDPOINTS");
   });
 });
 

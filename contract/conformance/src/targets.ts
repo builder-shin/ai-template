@@ -1,5 +1,6 @@
 import type { Mailbox } from "./side-channels.ts";
 import { createMailpitMailbox } from "./side-channels/mailpit.ts";
+import { createMockMailbox } from "./side-channels/mock-mailbox.ts";
 
 export const TARGET_NAMES = ["fastapi", "nestjs", "mock"] as const;
 
@@ -47,8 +48,12 @@ export function resolveAdmin(env: Readonly<Record<string, string | undefined>>):
   return { email, password };
 }
 
-/** 대상이 보낸 메일을 읽는 메일함. 실제 백엔드는 Mailpit(CONFORMANCE_MAILPIT_URL)이다. */
+/**
+ * 대상이 보낸 메일을 읽는 메일함. 목(CONFORMANCE_TARGET=mock)은 목의 테스트 통로
+ * (CONFORMANCE_BASE_URL의 /_test/mail)이고, 실제 백엔드는 Mailpit(CONFORMANCE_MAILPIT_URL)이다.
+ */
 export function resolveMailbox(env: Readonly<Record<string, string | undefined>>): Mailbox {
+  if (env.CONFORMANCE_TARGET === "mock") return createMockMailbox(resolveTarget(env).baseUrl);
   const url = env.CONFORMANCE_MAILPIT_URL;
   if (url === undefined || !URL.canParse(url)) {
     throw new Error("CONFORMANCE_MAILPIT_URL에 Mailpit 주소를 넣는다. 예: http://localhost:28025");
