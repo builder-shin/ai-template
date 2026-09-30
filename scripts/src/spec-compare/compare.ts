@@ -1,4 +1,4 @@
-/** 백엔드가 내보낸 OpenAPI가 계약과 같은 이름·경로를 쓰는지 비교한다. 구조 호환은 breaking.ts(oasdiff)가 본다. */
+/** 백엔드가 내보낸 OpenAPI가 계약과 같은 이름·경로·응답 상태를 쓰는지 비교한다. 구조 호환은 breaking.ts(oasdiff)가 본다. */
 
 export interface OpenApiLike {
   readonly paths?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
@@ -10,6 +10,10 @@ export interface Comparison {
   readonly missingSchemas: readonly string[];
   readonly missingOperations: readonly string[];
   readonly extraOperations: readonly string[];
+  /** 같은 operation에서 계약에만 있는 응답 상태. 예: "DELETE /api/v1/me 422" */
+  readonly missingStatuses: readonly string[];
+  /** 같은 operation에서 구현에만 있는 응답 상태. 예: "GET /api/v1/oauth/{}/authorize 406" */
+  readonly extraStatuses: readonly string[];
   /** 구현에 없거나 계약과 다른 실시간 항목. 예: "x-realtime-events: post.created" */
   readonly realtimeMismatches: readonly string[];
 }
@@ -28,14 +32,39 @@ export function normalizePath(path: string): string {
   return path.replace(/\{[^}]+\}/g, "{}");
 }
 
+/** 두 스펙에서 같은 operation을 짝짓는 키. 예: GET /api/v1/posts/{} */
+function operationKey(method: string, path: string): string {
+  return `${method.toUpperCase()} ${normalizePath(path)}`;
+}
+
 export function operationKeys(spec: OpenApiLike): Set<string> {
   const keys = new Set<string>();
   for (const [path, item] of Object.entries(spec.paths ?? {})) {
     for (const method of Object.keys(item).filter((key) => METHODS.has(key))) {
-      keys.add(`${method.toUpperCase()} ${normalizePath(path)}`);
+      keys.add(operationKey(method, path));
     }
   }
   return keys;
+}
+
+/** operation의 응답 선언(responses)의 키. 응답 선언이 없으면 빈 배열이다. */
+function declaredStatuses(operation: unknown): string[] {
+  if (typeof operation !== "object" || operation === null) return [];
+  const responses = (operation as Record<string, unknown>).responses;
+  return typeof responses === "object" && responses !== null ? Object.keys(responses) : [];
+}
+
+/** operation마다 선언한 응답 상태의 집합. 키는 operationKeys와 같다. */
+export function responseStatuses(spec: OpenApiLike): Map<string, Set<string>> {
+  const statuses = new Map<string, Set<string>>();
+  for (const [path, item] of Object.entries(spec.paths ?? {})) {
+    for (const [method, operation] of Object.entries(item)) {
+      if (METHODS.has(method)) {
+        statuses.set(operationKey(method, path), new Set(declaredStatuses(operation)));
+      }
+    }
+  }
+  return statuses;
 }
 
 const SCHEMA_REF_PREFIX = "#/components/schemas/";
@@ -50,8 +79,7 @@ export function restrictToImplemented(
   for (const [path, item] of Object.entries(contract.paths ?? {})) {
     const kept = Object.fromEntries(
       Object.entries(item).filter(
-        ([key]) =>
-          !METHODS.has(key) || implemented.has(`${key.toUpperCase()} ${normalizePath(path)}`),
+        ([key]) => !METHODS.has(key) || implemented.has(operationKey(key, path)),
       ),
     );
     if (Object.keys(kept).some((key) => METHODS.has(key))) paths[path] = kept;
@@ -134,6 +162,28 @@ export function realtimeMismatches(contract: OpenApiLike, implementation: OpenAp
   return mismatches;
 }
 
+/**
+ * 양쪽에 모두 있는 operation마다 응답 상태 집합이 같은가. 항목 예: "DELETE /api/v1/me 422"
+ * oasdiff는 성공 상태를 뺀 것만 깨는 변경(error)으로 보고, 에러 상태를 더하거나 뺀 것은 info로 둔다.
+ * 그래서 선언을 한쪽만 고친 것을 여기서 잡는다.
+ * 한쪽에만 있는 operation은 missingOperations와 extraOperations가 알리므로 여기서는 보지 않는다.
+ */
+export function statusDifferences(
+  contract: OpenApiLike,
+  implementation: OpenApiLike,
+): Pick<Comparison, "missingStatuses" | "extraStatuses"> {
+  const implemented = responseStatuses(implementation);
+  const missing: string[] = [];
+  const extra: string[] = [];
+  for (const [key, expected] of responseStatuses(contract)) {
+    const actual = implemented.get(key);
+    if (actual === undefined) continue;
+    for (const status of expected) if (!actual.has(status)) missing.push(`${key} ${status}`);
+    for (const status of actual) if (!expected.has(status)) extra.push(`${key} ${status}`);
+  }
+  return { missingStatuses: missing.sort(), extraStatuses: extra.sort() };
+}
+
 export interface CompareOptions {
   /** 구현에 있는 operation만 비교한다(구현 도중). 스키마는 그 operation에서 닿는 것만 요구한다. */
   readonly subset?: boolean;
@@ -142,6 +192,7 @@ export interface CompareOptions {
 /**
  * 계약의 스키마 이름은 모두 구현에 있어야 한다(구현의 보조 스키마가 더 있는 것은 괜찮다).
  * operation 집합은 정확히 같아야 한다. 경로 파라미터 이름은 달라도 된다.
+ * 같은 operation은 응답 상태 집합도 정확히 같아야 한다(statusDifferences).
  * 계약의 실시간 항목은 구현에 같은 모양으로 있어야 한다(realtimeMismatches).
  * 부분 모드는 구현에 있는 operation만 남긴 계약과 비교한다. 계약에 없는 operation은 여전히 문제다.
  * 부분 모드는 실시간 항목을 보지 않는다.
@@ -169,6 +220,7 @@ export function compareSpecs(
     extraOperations: [...implementedOperations]
       .filter((key) => !contractOperations.has(key))
       .sort(),
+    ...statusDifferences(target, implementation),
     realtimeMismatches: options.subset === true ? [] : realtimeMismatches(contract, implementation),
   };
 }
@@ -182,6 +234,14 @@ export function describeComparison(result: Comparison): string[] {
     ...result.extraOperations.map(
       (key) =>
         `${key}는 계약에 없다. 플랫폼 기능이면 계약(contract/typespec)에 먼저 추가하고, 프로젝트 전용 기능이면 생성된 프로젝트에서 만든다.`,
+    ),
+    ...result.missingStatuses.map(
+      (item) =>
+        `${item} 응답이 구현 스펙에 없다. 계약이 operation에 선언한 응답 상태는 구현도 모두 선언한다.`,
+    ),
+    ...result.extraStatuses.map(
+      (item) =>
+        `${item} 응답은 계약에 없다. 백엔드가 실제로 내는 상태면 계약(contract/typespec)에 먼저 선언하고, 아니면 구현의 선언에서 뺀다.`,
     ),
     ...result.realtimeMismatches.map(
       (item) => `${item}가 구현 스펙에 없거나 계약과 다르다. 계약의 실시간 선언과 같게 낸다.`,
