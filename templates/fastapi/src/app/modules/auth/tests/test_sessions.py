@@ -78,6 +78,7 @@ async def test_wrong_password_and_unknown_email_look_the_same(
     for email, password in ((user.email, "wrong-password"), (unknown, PASSWORD)):
         response = await api.post(SESSIONS, **jsonapi_body(password_grant(email, password)))
         assert (response.status_code, error_codes(response)) == (401, ["auth.invalid_credentials"])
+        assert response.headers["www-authenticate"] == "Bearer"
     known, missing = await audit_rows(db)
     assert (known.action, known.target_id) == ("session.login_failed", user.id)
     assert (missing.target_type, missing.target_id) == (None, None)
@@ -128,6 +129,7 @@ async def test_refresh_rotates_and_reuse_revokes_the_session(
         SESSIONS, **jsonapi_body(grant(grantType="refreshToken", refreshToken=old))
     )
     assert (reused.status_code, error_codes(reused)) == (401, ["auth.refresh_token_reused"])
+    assert reused.headers["www-authenticate"] == "Bearer"
     after = await api.get(SESSIONS, headers=bearer(second))
     assert (after.status_code, error_codes(after)) == (401, ["auth.token_invalid"])
 
@@ -192,6 +194,8 @@ async def test_bad_grants(
 ) -> None:
     response = await api.post(SESSIONS, **jsonapi_body(grant(**attributes)))
     assert (response.status_code, error_codes(response)) == (status, [code])
+    # 틀린 grant의 401도 challenge를 담는다(RFC 9110). 검증 오류(422)에는 없다.
+    assert response.headers.get("www-authenticate") == ("Bearer" if status == 401 else None)
     if pointer is not None:
         assert error_sources(response) == [{"pointer": pointer}]
 

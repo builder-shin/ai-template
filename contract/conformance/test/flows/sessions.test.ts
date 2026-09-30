@@ -39,6 +39,7 @@ describe(`세션 (${target.name})`, () => {
       },
     });
     expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toMatch(/^Bearer/);
     expect(codes(error)).toEqual(["auth.invalid_credentials"]);
   });
 
@@ -68,6 +69,7 @@ describe(`세션 (${target.name})`, () => {
 
     const reused = await refresh(user.refreshToken);
     expect(reused.response.status).toBe(401);
+    expect(reused.response.headers.get("www-authenticate")).toMatch(/^Bearer/);
     expect(codes(reused.error)).toEqual(["auth.refresh_token_reused"]);
     expect(await meStatus(next?.accessToken ?? "")).toBe(401);
     expect((await refresh(next?.refreshToken ?? "")).response.status).toBe(401);

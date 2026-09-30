@@ -90,6 +90,7 @@ describe("password grant", () => {
       const response = await send(app, "POST", SESSIONS, {
         document: passwordGrant(email, password),
       });
+      expect(response.headers.get("www-authenticate")).toBe("Bearer");
       expect(await errorsOf(response, 401)).toEqual([
         {
           status: "401",
@@ -183,6 +184,7 @@ describe("refreshToken grant", () => {
     const reused = await send(app, "POST", SESSIONS, {
       document: refreshGrant(first.refreshToken),
     });
+    expect(reused.headers.get("www-authenticate")).toBe("Bearer");
     expect(await errorsOf(reused, 401)).toEqual([
       {
         status: "401",
@@ -275,10 +277,10 @@ describe("틀린 grant", () => {
     ],
   ])("%j → %i %s", async (attributes, status, code, pointer) => {
     const { app } = testApp();
-    const errors = await errorsOf(
-      await send(app, "POST", SESSIONS, { document: grant(attributes) }),
-      status,
-    );
+    const response = await send(app, "POST", SESSIONS, { document: grant(attributes) });
+    // 틀린 grant의 401도 challenge를 담는다(RFC 9110). 검증 오류(422)에는 없다.
+    expect(response.headers.get("www-authenticate")).toBe(status === 401 ? "Bearer" : null);
+    const errors = await errorsOf(response, status);
     expect(errors.map((error) => error.code)).toEqual([code]);
     if (pointer !== null) expect(errors[0]?.source).toEqual({ pointer });
   });

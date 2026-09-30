@@ -243,7 +243,7 @@ describe("변경", () => {
     const reasons = revokedReasons(state, current.userId);
     const token = current.accessToken;
     const wrong = await send(app, "POST", CHANGES, { document: change(WRONG_PASSWORD), token });
-    expect(wrong.headers.get("www-authenticate")).toBeNull();
+    expect(wrong.headers.get("www-authenticate")).toBe("Bearer");
     expect(await errorsOf(wrong, 401)).toEqual([
       {
         status: "401",

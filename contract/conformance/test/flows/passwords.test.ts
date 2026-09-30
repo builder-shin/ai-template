@@ -81,6 +81,7 @@ describe(`비밀번호 (${target.name})`, () => {
     const wrongPassword = "wrong-password"; // betterleaks:allow 틀린 비밀번호
     const wrong = await change(wrongPassword, NEW_PASSWORD);
     expect(wrong.response.status).toBe(401);
+    expect(wrong.response.headers.get("www-authenticate")).toMatch(/^Bearer/);
     expect(problems(wrong.error)).toEqual([
       ["auth.invalid_credentials", "/data/attributes/currentPassword"],
     ]);

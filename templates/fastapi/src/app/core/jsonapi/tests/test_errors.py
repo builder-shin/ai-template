@@ -1,5 +1,5 @@
 """에러 문서: 필드별 422와 포인터, 문서 구조 400, type 불일치 409, 클라이언트 id 403,
-/api/ 아래 404, 예상하지 못한 예외의 500, detail의 짝 없는 서로게이트."""
+/api/ 아래 404, 예상하지 못한 예외의 500, detail의 짝 없는 서로게이트, 401의 challenge."""
 
 import uuid
 from typing import Any
@@ -235,6 +235,50 @@ async def test_mapped_http_exception_keeps_status_and_headers() -> None:
     errors = errors_of(response, 401)
     assert errors == [{"status": "401", "code": "auth.unauthenticated", "title": "Unauthorized"}]
     assert response.headers["www-authenticate"] == "Bearer"
+
+
+STEP_UP = 'Bearer error="insufficient_user_authentication", max_age=600'
+
+
+@pytest.mark.parametrize(
+    ("raised", "status", "challenges"),
+    [
+        (ApiError(401, ErrorCode.AUTH_INVALID_CREDENTIALS), 401, ["Bearer"]),
+        (HTTPException(401), 401, ["Bearer"]),
+        # 이미 challenge가 있으면(재인증의 step-up) 이름의 대소문자와 관계없이 그것만 둔다.
+        (
+            ApiError(
+                401, ErrorCode.AUTH_REAUTHENTICATION_REQUIRED, headers={"WWW-Authenticate": STEP_UP}
+            ),
+            401,
+            [STEP_UP],
+        ),
+        (
+            ApiError(401, ErrorCode.AUTH_TOKEN_INVALID, headers={"www-authenticate": STEP_UP}),
+            401,
+            [STEP_UP],
+        ),
+        (ApiError(403, ErrorCode.PERMISSION_DENIED), 403, []),
+    ],
+)
+async def test_every_401_carries_a_challenge(
+    raised: Exception, status: int, challenges: list[str]
+) -> None:
+    """RFC 9110: 401은 WWW-Authenticate를 담는다(MUST). 인증 의존성을 거치지 않는 401(본문의
+    자격 증명이 틀림)도 같다. 없으면 Bearer(RFC 6750)를 더하고, 401이 아니면 더하지 않는다."""
+    app = sample_app()
+
+    @app.get("/api/v1/guarded")
+    async def guarded() -> None:
+        raise raised
+
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+        response = await http.get("/api/v1/guarded")
+    assert (response.status_code, response.headers.get_list("www-authenticate")) == (
+        status,
+        challenges,
+    )
 
 
 async def test_http_413_is_content_too_large() -> None:

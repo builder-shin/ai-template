@@ -1,4 +1,7 @@
-"""모든 예외를 JSON:API 에러 문서(ErrorDocument)로 바꾼다. meta.traceId는 그 요청의 trace id다."""
+"""모든 예외를 JSON:API 에러 문서(ErrorDocument)로 바꾼다. meta.traceId는 그 요청의 trace id다.
+
+401 응답은 늘 WWW-Authenticate를 담는다(error_response).
+"""
 
 import re
 from collections.abc import Iterable, Mapping, Sequence
@@ -135,15 +138,29 @@ def error_object(
     )
 
 
+def _with_challenge(status: int, headers: Mapping[str, str] | None) -> Mapping[str, str] | None:
+    """401이면 WWW-Authenticate가 있게 한다(RFC 9110 §15.5.2 MUST).
+
+    인증 의존성을 거치지 않는 401(본문의 자격 증명이 틀린 로그인, 비밀번호 변경 등)도 담는다.
+    없으면 Bearer를 더하고(API의 인증 방식은 Bearer 하나다. RFC 6750 §3은 error 없는 Bearer를
+    허용한다), 이미 있으면(재인증의 step-up challenge) 이름의 대소문자와 관계없이 그대로 둔다.
+    """
+    if status != 401 or any(name.lower() == "www-authenticate" for name in headers or {}):
+        return headers
+    return {**(headers or {}), "WWW-Authenticate": "Bearer"}
+
+
 def error_response(
     scope: Scope,
     status: int,
     errors: Sequence[ErrorObject],
     headers: Mapping[str, str] | None = None,
 ) -> JsonApiResponse:
+    """에러 문서 응답. 모든 에러 핸들러와 미들웨어가 쓰고, 401은 늘 challenge를 담는다."""
     meta = ErrorDocumentMeta(trace_id=trace_id_of(scope))
     document = ErrorDocument(errors=list(errors), meta=meta)
-    return JsonApiResponse(document.model_dump(mode="json"), status_code=status, headers=headers)
+    content = document.model_dump(mode="json")
+    return JsonApiResponse(content, status_code=status, headers=_with_challenge(status, headers))
 
 
 def require_matching_id(document_id: str, resource_id: object) -> None:

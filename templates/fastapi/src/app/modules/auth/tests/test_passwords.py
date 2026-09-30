@@ -118,6 +118,7 @@ async def test_change_needs_the_current_password_and_keeps_this_session(
     )
     assert (wrong.status_code, error_codes(wrong)) == (401, ["auth.invalid_credentials"])
     assert error_sources(wrong) == [{"pointer": "/data/attributes/currentPassword"}]
+    assert wrong.headers["www-authenticate"] == "Bearer"
     response = await api.post("/api/v1/password-changes", **jsonapi_body(change(PASSWORD), current))
     assert response.status_code == 201, response.text
     assert (await api.get("/api/v1/sessions", headers=current)).status_code == 200

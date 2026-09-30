@@ -1,5 +1,5 @@
 /**
- * 에러 문서: 없는 경로의 404, 예상하지 못한 예외의 500, ApiError의 모양과 헤더.
+ * 에러 문서: 없는 경로의 404, 예상하지 못한 예외의 500, ApiError의 모양과 헤더, 401의 challenge.
  * FastAPI 템플릿의 test_errors.py 가운데 공통 계층에 해당하는 경우를 본다.
  */
 
@@ -82,6 +82,35 @@ describe("예외", () => {
         meta: { params: { min: 1 } },
       },
     ]);
+  });
+
+  it("401은 늘 WWW-Authenticate를 담는다: 없으면 Bearer를 더하고, 있으면(재인증의 step-up) 이름의 대소문자와 관계없이 그것만 둔다", async () => {
+    const stepUp = 'Bearer error="insufficient_user_authentication", max_age=600';
+    const cases: [ApiError, string | null][] = [
+      [new ApiError(401, "auth.invalid_credentials"), "Bearer"],
+      [
+        new ApiError(401, "auth.reauthentication_required", undefined, {
+          headers: { "WWW-Authenticate": stepUp },
+        }),
+        stepUp,
+      ],
+      [
+        new ApiError(401, "auth.token_invalid", undefined, {
+          headers: { "www-authenticate": stepUp },
+        }),
+        stepUp,
+      ],
+      [new ApiError(403, "permission.denied"), null],
+    ];
+    for (const [raised, challenge] of cases) {
+      const { app } = testApp();
+      app.get("/api/v1/guarded", () => {
+        throw raised;
+      });
+      const response = await app.request("/api/v1/guarded");
+      expect(response.status, raised.code).toBe(raised.status);
+      expect(response.headers.get("www-authenticate"), raised.code).toBe(challenge);
+    }
   });
 });
 

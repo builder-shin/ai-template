@@ -192,6 +192,7 @@ describe(`소셜 로그인 (${target.name})`, () => {
     expect(code).not.toBeNull();
     const wrongVerifier = await signInWith(code, `not-${back.codeVerifier}`);
     expect(wrongVerifier.response.status).toBe(401);
+    expect(wrongVerifier.response.headers.get("www-authenticate")).toMatch(/^Bearer/);
     expect(codes(wrongVerifier.error)).toEqual(["auth.oauth_code_invalid"]);
     const rightVerifier = await signInWith(code, back.codeVerifier);
     expect(rightVerifier.response.status).toBe(401);

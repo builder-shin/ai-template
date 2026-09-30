@@ -4,6 +4,7 @@
  * - 에러 객체는 status(문자열), code, title(HTTP 이유 문구), detail, source.pointer 또는
  *   source.parameter, meta.params를 이 순서로 담는다. 값이 없는 멤버는 넣지 않는다.
  * - 문서는 { errors, meta: { traceId } }이고 Content-Type은 application/vnd.api+json이다.
+ * - 401은 늘 WWW-Authenticate를 담는다(없으면 Bearer).
  * - 에러 코드는 계약에서 생성한 타입(ErrorCode)만 쓴다. 코드를 더하려면 계약을 고치고 gen한다.
  */
 
@@ -125,14 +126,31 @@ export class RequestValidationError extends Error {
   }
 }
 
-/** 에러 문서 응답. meta.traceId는 그 요청의 trace id다. */
+/**
+ * 401이면 WWW-Authenticate가 있게 한다(RFC 9110 §15.5.2 MUST, FastAPI의 _with_challenge). 인증 검사를
+ * 거치지 않는 401(본문의 자격 증명이 틀린 로그인, 비밀번호 변경 등)도 담는다. 없으면 Bearer를 더하고,
+ * 이미 있으면(재인증의 step-up challenge) 이름의 대소문자와 관계없이 그대로 둔다.
+ */
+function withChallenge(
+  status: ErrorStatus,
+  headers: Readonly<Record<string, string>> = {},
+): Readonly<Record<string, string>> {
+  const challenged = Object.keys(headers).some((name) => name.toLowerCase() === "www-authenticate");
+  return status !== 401 || challenged ? headers : { ...headers, "WWW-Authenticate": "Bearer" };
+}
+
+/**
+ * 에러 문서 응답(FastAPI의 error_response). meta.traceId는 그 요청의 trace id다. onError와 공통 계층의
+ * 미들웨어가 모두 쓰고, 401은 늘 challenge를 담는다(withChallenge).
+ */
 export function errorResponse(
   c: Context<AppEnv>,
   status: ErrorStatus,
   errors: readonly ErrorObject[],
   headers?: Readonly<Record<string, string>>,
 ): Response {
-  return jsonApiResponse({ errors, meta: { traceId: traceIdOf(c) } }, status, headers);
+  const document = { errors, meta: { traceId: traceIdOf(c) } };
+  return jsonApiResponse(document, status, withChallenge(status, headers));
 }
 
 /**
