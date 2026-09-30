@@ -4,10 +4,11 @@
  *
  * - 시스템 역할 admin, member
  * - 관리자 계정: 설정의 SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD. 이메일 인증을 마쳤고 admin 역할만 가진다.
- * - 예제 글(관리자가 쓴 글 셋)은 posts 모듈이 더한다.
+ * - 예제 글: 관리자가 쓴 글 셋(발행 둘, 초안 하나). 관리자에게 글이 하나도 없을 때만 만든다.
  */
 
 import type { MockConfig } from "./config.ts";
+import { ensureExamplePosts } from "./modules/posts/examples.ts";
 import { ADMIN_ROLE } from "./modules/roles/model.ts";
 import { ensureSystemRoles } from "./modules/roles/service.ts";
 import { createAccount, findAccount } from "./modules/users/accounts.ts";
@@ -21,8 +22,9 @@ export function seed(state: MockState, config: MockConfig): string[] {
   const now = state.clock.now();
   const done = ensureSystemRoles(state.store, now).map((name) => `역할 ${name}`);
   const email = normalizeEmail(config.seedAdmin.email);
-  if (findAccount(state.store, email) === undefined) {
-    const admin = {
+  let admin = findAccount(state.store, email);
+  if (admin === undefined) {
+    const account = {
       email,
       password: config.seedAdmin.password,
       name: ADMIN_NAME,
@@ -30,8 +32,9 @@ export function seed(state: MockState, config: MockConfig): string[] {
       verified: true,
       roleNames: [ADMIN_ROLE],
     };
-    createAccount(state.store, admin, now);
+    admin = createAccount(state.store, account, now);
     done.push(`관리자 ${email}`);
   }
+  done.push(...ensureExamplePosts(state, admin.id).map((title) => `글 ${title}`));
   return done;
 }

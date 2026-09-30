@@ -4,7 +4,7 @@
  *
  * - 목의 처리는 한 요청 안에서 await 없이 끝나므로 트랜잭션이 필요 없다. 여러 행을 바꾸는 처리는
  *   검사를 모두 마친 뒤에 바꾼다(FastAPI에서 예외가 나면 롤백되는 것과 같은 결과가 되게).
- * - 모듈을 더하면(posts 등) 그 모듈의 테이블을 여기에 더하고 createStore에서 만든다.
+ * - 모듈을 더하면 그 모듈의 테이블을 여기에 더하고 createStore에서 만든다.
  */
 
 import type { AuditLogRow } from "./core/audit.ts";
@@ -15,6 +15,7 @@ import type {
   RefreshTokenRow,
 } from "./modules/auth/model.ts";
 import type { FileRow } from "./modules/files/model.ts";
+import type { PostRow } from "./modules/posts/model.ts";
 import type { RoleRow } from "./modules/roles/model.ts";
 import type { UserRow } from "./modules/users/model.ts";
 
@@ -35,6 +36,8 @@ export interface Store {
   readonly accountTokens: Map<string, AccountTokenRow>;
   /** 파일(메타데이터). 키는 id다. 객체는 가짜 스토리지(MockState.storage)에 있다. */
   readonly files: Map<string, FileRow>;
+  /** 글. 키는 id다. */
+  readonly posts: Map<string, PostRow>;
   /** 감사 로그. 기록한 순서다. */
   readonly auditLogs: AuditLogRow[];
 }
@@ -49,6 +52,7 @@ export function createStore(): Store {
     accessTokens: new Map(),
     accountTokens: new Map(),
     files: new Map(),
+    posts: new Map(),
     auditLogs: [],
   };
 }

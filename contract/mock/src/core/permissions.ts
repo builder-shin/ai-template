@@ -35,10 +35,31 @@ export function isPermissionCode(code: string): code is PermissionCode {
   return Object.hasOwn(DECLARED, code);
 }
 
-/** 문자열 순서. 권한 코드와 역할 이름을 FastAPI의 sorted()와 같은 순서로 늘어놓는다. */
+/** 서로게이트(U+D800–U+DFFF)의 첫 코드 단위. 이보다 작은 코드 단위는 코드 포인트와 순서가 같다. */
+const SURROGATE_START = 0xd800;
+/** 서로게이트 다음(U+E000–U+FFFF)의 첫 코드 단위. */
+const AFTER_SURROGATES = 0xe000;
+
+/** U+D800 이상인 코드 단위의 코드 포인트 순위: 서로게이트를 U+E000–U+FFFF 뒤로 옮긴다. */
+function codePointRank(unit: number): number {
+  return unit >= AFTER_SURROGATES ? unit - 0x800 : unit + 0x2000;
+}
+
+/**
+ * 문자열 순서: 코드 포인트 순서다. FastAPI의 sorted()(Python의 str 비교)와 FastAPI 개발 DB의 ORDER BY가
+ * 이 순서다(core/listing.ts). 권한 코드, 역할 이름, id를 늘어놓을 때와 목록의 문자열 정렬이 쓴다.
+ * JavaScript의 <는 UTF-16 코드 단위로 비교해 BMP 밖의 글자(서로게이트 쌍)가 U+E000–U+FFFF보다 앞서므로,
+ * 처음 다른 코드 단위가 둘 다 U+D800 이상이면 서로게이트를 그 뒤로 옮겨 비교한다.
+ */
 export function compareText(left: string, right: string): number {
-  if (left === right) return 0;
-  return left < right ? -1 : 1;
+  const length = Math.min(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const [a, b] = [left.charCodeAt(index), right.charCodeAt(index)];
+    if (a === b) continue;
+    if (a < SURROGATE_START || b < SURROGATE_START) return a - b;
+    return codePointRank(a) - codePointRank(b);
+  }
+  return left.length - right.length;
 }
 
 /** 등록된 권한. 코드 순이다(FastAPI의 PermissionRegistry). */

@@ -1,6 +1,6 @@
 /**
- * 공통 도구: 시각의 모양, UUID, 레이트 리밋 윈도, 클라이언트 IP, 실시간 허브. FastAPI 템플릿과 같은 값을
- * 내는지 본다.
+ * 공통 도구: 시각의 모양, UUID, 레이트 리밋 윈도, 클라이언트 IP, 실시간 허브, 문자열과 목록의 순서.
+ * FastAPI 템플릿과 같은 값을 내는지 본다.
  */
 
 import { Hono } from "hono";
@@ -9,6 +9,8 @@ import type { AppEnv } from "../src/context.ts";
 import { clientOf } from "../src/core/client.ts";
 import { formatInstant, HOUR, SECOND, systemClock } from "../src/core/clock.ts";
 import { parsePythonUuid, parseUuid, uuid7 } from "../src/core/ids.ts";
+import { ordered } from "../src/core/listing.ts";
+import { compareText } from "../src/core/permissions.ts";
 import { createRateLimiter } from "../src/core/rate-limit.ts";
 import { createRealtimeHub, type RealtimeHub } from "../src/core/realtime.ts";
 import { checkPassword, digest, hashPassword } from "../src/core/security.ts";
@@ -227,5 +229,27 @@ describe("실시간 허브", () => {
   it("비동기 함수는 받지 않는다", () => {
     const hub = createRealtimeHub();
     expect(() => hub.batch(async () => Promise.resolve())).toThrow("동기 함수");
+  });
+});
+
+describe("문자열과 목록의 순서", () => {
+  it("문자열은 코드 포인트 순서다: BMP 밖의 글자가 U+E000–U+FFFF 뒤에 온다", () => {
+    const words = ["😀a", "（", "😀", "가", "\u{E000}", "a", ""];
+    expect(words.toSorted(compareText)).toEqual(["", "a", "가", "\u{E000}", "（", "😀", "😀a"]);
+    expect(["\u{1F601}", "\u{1F600}"].toSorted(compareText)).toEqual(["\u{1F600}", "\u{1F601}"]);
+  });
+
+  it("ordered는 문자열을 코드 포인트 순서로, null을 가장 큰 값으로 늘어놓고 같으면 id로 가른다", () => {
+    const rows = [
+      { id: "3", title: "😀" },
+      { id: "1", title: "（" },
+      { id: "2", title: null },
+      { id: "0", title: "（" },
+    ];
+    const columns = { title: (row: (typeof rows)[number]) => row.title };
+    const ids = (descending: boolean) =>
+      ordered(rows, [{ name: "title", descending }], columns, []).map((row) => row.id);
+    expect(ids(false)).toEqual(["0", "1", "3", "2"]);
+    expect(ids(true)).toEqual(["2", "3", "0", "1"]);
   });
 });
