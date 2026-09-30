@@ -3,17 +3,39 @@
 import { expect } from "vitest";
 import { createApp } from "../src/app.ts";
 import { DEFAULT_CONFIG, type MockConfig } from "../src/config.ts";
+import type { Clock, Instant } from "../src/core/clock.ts";
 import type { ErrorObject } from "../src/jsonapi/errors.ts";
 import { JSONAPI_MEDIA_TYPE } from "../src/jsonapi/media.ts";
-import { createState, type MockState } from "../src/state.ts";
+import { createState, type MockState, type StateOptions } from "../src/state.ts";
 
 export const TRACE_ID = /^[0-9a-f]{32}$/;
+/** 목이 내보내는 시각(Pydantic과 같은 모양). */
+export const TIMESTAMP = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{6})?Z$/;
 
-/** 기본 설정으로 만든 앱과 그 메모리 상태. overrides로 설정 일부를 바꾼다. */
-export function testApp(overrides: Partial<MockConfig> = {}) {
-  const state: MockState = createState();
-  const app = createApp({ ...DEFAULT_CONFIG, ...overrides }, state);
-  return { app, state };
+/** 시간을 앞으로 돌릴 수 있는 시계. 부를 때마다 1마이크로초씩 간다(시스템 시계처럼 단조 증가). */
+export interface TestClock extends Clock {
+  advance(duration: number): void;
+}
+
+export function testClock(start: Instant = Date.UTC(2026, 8, 30) * 1000): TestClock {
+  let current = start;
+  return {
+    now() {
+      current += 1;
+      return current;
+    },
+    advance(duration) {
+      current += duration;
+    },
+  };
+}
+
+/** 기본 설정으로 만든 앱과 그 메모리 상태. overrides로 설정 일부를, options로 시계를 바꾼다. */
+export function testApp(overrides: Partial<MockConfig> = {}, options: StateOptions = {}) {
+  const state: MockState = createState(options);
+  const config: MockConfig = { ...DEFAULT_CONFIG, ...overrides };
+  const app = createApp(config, state);
+  return { app, state, config };
 }
 
 /**

@@ -52,6 +52,12 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
       MOCK_TEST_ENDPOINTS: "true",
       SEED_ADMIN_EMAIL: MOCK_ADMIN.email,
       SEED_ADMIN_PASSWORD: MOCK_ADMIN.password,
+      // 흐름은 한 IP에서 가입과 로그인을 많이 하므로 FastAPI의 compose처럼 한도를 크게 둔다.
+      RATE_LIMIT_LOGIN_IP: "1000000",
+      RATE_LIMIT_LOGIN_IDENTIFIER: "1000000",
+      RATE_LIMIT_REGISTRATION_IP: "1000000",
+      RATE_LIMIT_MAIL_IP: "1000000",
+      RATE_LIMIT_MAIL_EMAIL: "1000000",
     },
     baseUrl: "http://localhost:4010",
     // 메일은 목의 테스트 통로(/_test/mail)로 읽는다. 적합성 키트가 CONFORMANCE_TARGET=mock을 보고 고른다.

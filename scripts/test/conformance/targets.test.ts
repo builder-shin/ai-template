@@ -62,6 +62,20 @@ describe("적합성 대상", () => {
     expect(mock.baseUrl).toBe("http://localhost:4010");
   });
 
+  it("목의 엄격한 레이트 리밋은 FastAPI의 compose처럼 크게 둔다", () => {
+    const limits = Object.entries(processTarget("mock").processEnv).filter(([name]) =>
+      name.startsWith("RATE_LIMIT_"),
+    );
+    expect(limits.map(([name]) => name)).toEqual([
+      "RATE_LIMIT_LOGIN_IP",
+      "RATE_LIMIT_LOGIN_IDENTIFIER",
+      "RATE_LIMIT_REGISTRATION_IP",
+      "RATE_LIMIT_MAIL_IP",
+      "RATE_LIMIT_MAIL_EMAIL",
+    ]);
+    expect(new Set(limits.map(([, value]) => value))).toEqual(new Set(["1000000"]));
+  });
+
   it("목이 시드하는 관리자로 흐름이 로그인하고, 메일은 Mailpit 없이 읽는다", () => {
     const mock = processTarget("mock");
     const env = testEnv(mock);

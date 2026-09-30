@@ -1,6 +1,7 @@
 /**
  * 계약(contract/openapi.yaml)의 컴포넌트 스키마. 시작할 때 한 번 읽어 Ajv(JSON Schema 2020-12,
- * ajv-formats)에 등록한다. 요청 문서 검증(validation.ts)과 에러의 위치·순서 계산이 쓴다.
+ * ajv-formats)에 등록한다. 요청 문서 검증(validation.ts)과 에러의 위치·순서 계산이 쓴다. 읽은 계약
+ * 문서(contract)는 operation 선언(operations.ts)도 쓴다.
  *
  * - 계약 안의 `#/components/schemas/X` 참조는 등록한 스키마의 `contract#/$defs/X`로 바꾼다.
  * - 판별 유니온(oneOf + discriminator, 예: SessionGrant)은 Ajv의 discriminator로 검증한다. Ajv는
@@ -29,9 +30,17 @@ const CONTRACT_PATH = fileURLToPath(new URL("../../../openapi.yaml", import.meta
 const COMPONENT_PREFIX = "#/components/schemas/";
 const CONTRACT_ID = "contract";
 
-function loadSchemas(): Readonly<Record<string, SchemaObject>> {
+function loadContract(): SchemaObject {
   const contract: unknown = parse(readFileSync(CONTRACT_PATH, "utf8"));
-  const components = isRecord(contract) ? contract.components : undefined;
+  if (!isRecord(contract)) throw new Error(`${CONTRACT_PATH}가 OpenAPI 문서가 아니다.`);
+  return contract;
+}
+
+/** 계약 문서(openapi.yaml)를 읽은 값. 경로(operations.ts)와 스키마를 여기서 읽는다. */
+export const contract = loadContract();
+
+function loadSchemas(): Readonly<Record<string, SchemaObject>> {
+  const components = contract.components;
   const schemas = isRecord(components) ? components.schemas : undefined;
   if (!isRecord(schemas)) throw new Error(`${CONTRACT_PATH}에 components.schemas가 없다.`);
   return Object.fromEntries(

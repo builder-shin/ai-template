@@ -6,7 +6,8 @@
  * 3. 본문 한도(413)
  * 4. 라우트. `/api/` 아래의 없는 경로와 허용하지 않은 메서드는 404 resource.not_found다.
  *
- * 테스트 통로(/_test)는 MOCK_TEST_ENDPOINTS가 켜져 있을 때만 붙는다.
+ * 앱을 만들 때 시드를 넣는다(seed.ts). 모듈의 API는 계약의 operationId로 JSON:API 라우터에 단다
+ * (jsonapi/router.ts). 테스트 통로(/_test)는 MOCK_TEST_ENDPOINTS가 켜져 있을 때만 붙는다.
  */
 
 import { Hono } from "hono";
@@ -16,17 +17,26 @@ import { healthRoutes } from "./health.ts";
 import { bodyLimitMiddleware } from "./jsonapi/body-limit.ts";
 import { handleError, handleNotFound } from "./jsonapi/errors.ts";
 import { negotiationMiddleware } from "./jsonapi/negotiation.ts";
+import { createJsonApiRouter } from "./jsonapi/router.ts";
+import { createAuthenticator } from "./modules/auth/credentials.ts";
+import { authRoutes } from "./modules/auth/routes.ts";
+import { meRoutes } from "./modules/users/me.ts";
+import { seed } from "./seed.ts";
 import { createState, type MockState } from "./state.ts";
 import { mailTestRoutes } from "./test-endpoints/mail.ts";
 import { traceIdMiddleware } from "./trace-id.ts";
 
 /** 앱을 만든다. state를 주지 않으면 빈 상태로 시작한다(테스트는 상태를 넘겨 들여다본다). */
 export function createApp(config: MockConfig, state: MockState = createState()): Hono<AppEnv> {
+  seed(state, config);
   const app = new Hono<AppEnv>();
   app.use(traceIdMiddleware);
   app.use(negotiationMiddleware);
   app.use(bodyLimitMiddleware);
   app.route("/health", healthRoutes());
+  const api = createJsonApiRouter(app, createAuthenticator(state));
+  authRoutes(api, config, state);
+  meRoutes(api, state);
   if (config.testEndpoints) {
     app.route("/_test/mail", mailTestRoutes(state.outbox));
   }
