@@ -1,12 +1,13 @@
 # Next.js web 템플릿 설계 (하위 프로젝트 2)
 
 - 작성일: 2026-09-30
-- 상태: 승인됨(2026-09-30)
+- 상태: 승인됨(2026-09-30). W1(목 서버) 구현 완료
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 2로 미룬 결정을 내리고, `templates/nextjs`, 목 서버(`contract/mock`), 이번 사이클의 저장소 변경을 설계한다.
   - 기반 설계의 규칙은 그대로 따른다: 플랫폼 기능(§4), API 규약(§5), 하네스(§6), 인프라와 품질(§7).
   - 백엔드의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md)와 [보강 설계](2026-09-29-fastapi-hardening-design.md)다. 목 서버는 그 동작을 따른다.
-- 다음 단계: W1(목 서버) 구현 계획
+- 구현 계획: [W1](../plans/2026-09-30-nextjs-w1.md)
+- 다음 단계: FastAPI·계약 보정(§12.1) 뒤 W2(web 뼈대)
 
 ## 1. 목표와 범위
 
@@ -88,14 +89,13 @@ templates/nextjs/
 ├── .claude/                  # hooks, settings.json, skills
 ├── .mcp.json                 # next-devtools-mcp (버전 고정)
 ├── lefthook.yml, .env.example, package.json, next.config.ts, Dockerfile
-├── contract/                 # TypeSpec 원본과 openapi.yaml (저장소에서 sync한 사본)
-├── mock/                     # 목 서버 (저장소에서 sync한 사본)
+├── contract/                 # TypeSpec 원본, openapi.yaml, mock/ (저장소에서 sync한 사본)
 ├── messages/                 # ko.json, en.json
 ├── src/
 │   ├── proxy.ts              # 로케일 라우팅, 로그인 필요 경로, 토큰 갱신
 │   ├── app/
 │   │   ├── [locale]/…        # 화면
-│   │   └── auth/oauth/…      # 소셜 로그인 route handler (로케일 밖)
+│   │   └── oauth/…           # 소셜 로그인 route handler (로케일 밖)
 │   ├── features/<기능>/      # posts(골든), auth, me, sessions: 컴포넌트, actions.ts, queries.ts, index.ts(공개 인터페이스)
 │   ├── lib/
 │   │   ├── api/              # 클라이언트, 생성 타입, JSON:API 도우미, 에러
@@ -179,13 +179,13 @@ templates/nextjs/
 
 ### 5.6 소셜 로그인
 
-1. 로그인 화면의 제공자 버튼은 route handler(`/auth/oauth/<제공자>/start`)로 간다.
+1. 로그인 화면의 제공자 버튼은 route handler(`/oauth/<제공자>/start`)로 간다.
 2. handler가 code verifier(RFC 7636)를 만들고, 제공자와 `returnTo`와 함께 암호화한 단기 쿠키(10분)에 둔다. 브라우저를 백엔드의 `GET /api/v1/oauth/<제공자>/authorize?redirectUri=<web 콜백>&codeChallenge=<S256>`으로 보낸다.
-3. 콜백 handler(`/auth/oauth/callback`)는 verifier 쿠키가 없거나 제공자가 다르면 거부한다(로그인 CSRF 방지, 기반 설계 §4.2).
+3. 콜백 handler(`/oauth/callback`)는 verifier 쿠키가 없거나 제공자가 다르면 거부한다(로그인 CSRF 방지, 기반 설계 §4.2).
 4. 쿠키가 맞으면 서버 간 호출로 `POST /sessions`(grantType `oauthCode`, `codeVerifier`)를 부르고, 세션 쿠키를 만들고, verifier 쿠키를 지우고, `returnTo`로 보낸다.
 5. `error`가 오면(`auth.oauth_denied`, `auth.oauth_failed`) 로그인 화면에 번역한 안내를 띄운다.
 
-- web 콜백 주소는 백엔드의 `redirectUri` 허용 목록에 있어야 한다(§11.2).
+- web 콜백 주소(`/oauth/callback`)는 백엔드의 `redirectUri` 허용 목록에 있어야 한다(§11.2). FastAPI·목의 기본 `OAUTH_REDIRECT_URIS`와 적합성 스위트의 프론트 콜백이 이미 `http://localhost:3000/oauth/callback`이다.
 
 ### 5.7 보안
 
@@ -296,51 +296,71 @@ templates/nextjs/
 
 ### 8.2 구성
 
-- 위치는 `contract/mock/`(저장소 pnpm 워크스페이스 패키지)이다. TypeScript를 Node 24에서 `tsx`로 바로 실행한다.
+- 위치는 `contract/mock/`(저장소 pnpm 워크스페이스 패키지, `@ai-template/mock`)이다. TypeScript를 Node 24에서 `tsx`로 바로 실행한다.
 - Hono와 `@hono/node-server`가 HTTP를, 같은 `node:http` 서버에 붙인 socket.io가 실시간을 맡는다. 포트 하나(기본 4010)에 API, Socket.IO, 가짜 스토리지, 테스트 통로가 함께 뜬다.
 - 모듈은 백엔드와 같은 단위(auth, users, roles, files, posts, audit-logs, realtime)로 나눈다. JSON:API 공통 층(문서 렌더링, 에러, 쿼리 해석, 미디어 타입 협상, 본문 한도)은 따로 둔다.
 - 목의 타입은 web과 같은 `openapi.yaml`에서 생성한다.
+- 설정은 환경 변수다. 없거나 비면 기본값을 쓰고, 틀리면 변수마다 한 줄씩 알리고 멈춘다(`src/config.ts`).
+  - 서버: `PORT`(기본 4010), `API_URL`(기본 `http://localhost:<PORT>`, presigned URL·OAuth 화면이 쓰는 목의 주소), `MOCK_TEST_ENDPOINTS`(기본 켜짐)
+  - 시드 관리자: `SEED_ADMIN_EMAIL`(기본 admin@example.com), `SEED_ADMIN_PASSWORD`(8자 이상)
+  - 프론트 연동: `FRONTEND_URL`(기본 `http://localhost:3000`, 메일 링크), `OAUTH_REDIRECT_URIS`(기본 `http://localhost:3000/oauth/callback`, 쉼표 목록)
+  - 식별자 해시: `IDENTIFIER_HASH_SECRET`(32자 이상)
+  - 레이트 리밋: `RATE_LIMIT_GLOBAL`(IP·분당, 기본 600), `RATE_LIMIT_LOGIN_IP`(분당 10), `RATE_LIMIT_LOGIN_IDENTIFIER`(이메일 해시·분당 5), `RATE_LIMIT_REGISTRATION_IP`(IP·시간당 10), `RATE_LIMIT_MAIL_IP`(시간당 5), `RATE_LIMIT_MAIL_EMAIL`(시간당 3), `RATE_LIMIT_PASSWORD_CHANGE_USER`(사용자·시간당 5)
+  - 파일 한도: `FILE_MAX_SIZE`(기본 10MiB), `FILE_ALLOWED_TYPES`(기본 gif·jpeg·png·webp), `FILE_USER_QUOTA`(기본 1GiB)
+  - CORS·Origin: `STORAGE_ALLOWED_ORIGINS`(기본 `http://localhost:3000`, `http://localhost:3001`), `REALTIME_ALLOWED_ORIGINS`(기본 `http://localhost:3000`)
 
 ### 8.3 요청 검증
 
 - 요청 문서는 `openapi.yaml`의 JSON Schema로 Ajv(2020-12)가 검증한다. 실패는 `validation.*` 코드와 JSON pointer로 옮긴다.
 - 계약이 바뀌면 목의 검증도 저절로 따라간다.
-- 옮긴 결과가 FastAPI의 동작(적합성 스위트의 기대)과 같은지는 W1 프로토타입에서 확인한다(§13 #1).
+- 옮긴 결과는 적합성 스위트에서 FastAPI의 동작과 같음을 확인했다. 몇 가지 경계(정수 자리의 숫자 문자열, 판별 유니온 오류의 pointer, UTF-16 짝 없는 서로게이트)는 FastAPI(Pydantic)의 특이 동작 대신 계약대로 한다(§8.9).
 
 ### 8.4 데이터와 토큰
 
 - 데이터는 프로세스 메모리에 두어 재시작하면 초기화된다.
 - 시작할 때 FastAPI와 같은 시드(admin·member 역할, 관리자, 예제 글)를 넣는다. 관리자 계정은 환경 변수로 받는다.
-- 토큰은 불투명한 무작위 문자열이어도 된다. 만료 시각은 계약의 세션 응답(`accessTokenExpiresAt`, `refreshTokenExpiresAt`)으로 알리고, 수명(access 15분, refresh 30일)은 FastAPI와 같다. BFF(§5.2)는 이 값만 보므로 두 백엔드에서 똑같이 동작한다.
+- 토큰은 불투명한 무작위 문자열이다(JWT가 아니다). 만료 시각은 계약의 세션 응답(`accessTokenExpiresAt`, `refreshTokenExpiresAt`)으로 알리고, 수명(access 15분, refresh 30일)은 FastAPI와 같다. BFF(§5.2)는 이 값만 보므로 두 백엔드에서 똑같이 동작한다.
 - refresh token의 회전과 재사용 감지, 이메일 인증·재설정 토큰, 소셜 로그인의 1회용 코드는 FastAPI와 같은 규칙이다.
-- 비밀번호는 가벼운 해시로 둔다(운영용이 아니다).
+- 비밀번호는 가벼운 해시(scrypt)로 둔다(운영용이 아니다).
 
 ### 8.5 파일
 
-- `meta.upload`의 presigned URL은 목의 가짜 스토리지(`PUT /_storage/...`)를 가리킨다. 서명과 만료를 검사하고, web Origin의 CORS를 허용한다.
-- `ready`로 바꿀 때 객체가 있는지와 크기를 확인한다. 한도, 풀린 파일 정리는 FastAPI와 같다.
+- `meta.upload`의 presigned URL은 `<API_URL>/_storage/files/<파일 id>?expires=<Unix 초>&signature=<HMAC-SHA256>`이다(PUT, 15분 수명). 서명은 메서드·키·만료에 더해 업로드는 Content-Type·Content-Length도 포함하므로, 선언과 다른 타입이나 크기의 본문은 거절된다(서명 불일치 403 SignatureDoesNotMatch, 만료 403 AccessDenied, S3 스타일 XML 에러).
+- `/_storage`는 테스트 통로와 무관하게 늘 뜨고, `STORAGE_ALLOWED_ORIGINS`(기본 `http://localhost:3000`, `http://localhost:3001`)에 GET·PUT·HEAD와 ETag 노출을 허용하는 CORS를 연다. FastAPI 템플릿이 개발 버킷에 거는 CORS와 같다.
+- `ready`로 바꿀 때 객체가 있는지와 크기를 확인한다(다르면 422 `file.upload_incomplete`이고, 크기가 다른 객체는 지운다). 업로드 한도(크기, 타입, 사용자별 쿼터)와 풀린 파일 정리는 FastAPI와 같다.
 
 ### 8.6 실시간
 
-- 티켓 인증, `user:{id}` 룸, `posts`·`posts:all` 구독과 ack, 이벤트, 세션 폐기·역할 변경 때의 재검사와 연결 끊기를 구현한다.
-- 목은 프로세스가 하나라 제어 채널 없이 바로 처리한다.
+- Socket.IO는 API와 같은 포트, 클라이언트 기본 경로(`/socket.io/`)에 붙는다. 전송은 WebSocket만 받는다(그 밖의 요청은 400).
+- 브라우저 연결은 Origin이 `REALTIME_ALLOWED_ORIGINS`(기본 `http://localhost:3000`)에 있어야 핸드셰이크가 된다(Origin 헤더가 없는 연결은 항상 받는다).
+- 인증은 `auth.ticket`이다. 티켓은 30초짜리 1회용이라, web은 연결·재연결마다 `POST /realtime-tickets`로 새 티켓을 받아야 한다. `socket.io-client`의 `auth`는 정적 값이 아니라 콜백으로 줘서 매번 새 티켓을 넣는다.
+- 티켓이 틀렸거나 만료됐거나 세션이 끝났으면 연결을 거부한다. 클라이언트는 `connect_error`를 받고, `error.message`가 에러 코드(`auth.token_invalid`), `error.data`가 ErrorObject다.
+- 세션을 폐기하거나 역할·상태가 바뀌면 서버가 그 사용자의 연결(`user:{id}` 룸)을 다시 검사해 구독한 채널(`posts`, `posts:all`)의 권한을 잃은 연결을 끊는다. 클라이언트는 `io server disconnect`를 받는데, socket.io-client는 이 사유로 끊기면 자동 재연결하지 않으므로 web이 새 티켓으로 직접 다시 연결해야 한다(§6.7).
+- 목은 프로세스가 하나라 제어 채널 없이 재검사를 바로 처리한다(FastAPI는 Valkey pub/sub로 여러 인스턴스에 알린다).
 
 ### 8.7 테스트 통로
 
-`MOCK_TEST_ENDPOINTS`(기본 켜짐)일 때만 연다.
+`MOCK_TEST_ENDPOINTS`(기본 켜짐)일 때만 연다. `/_storage`(§8.5)는 이것과 무관하게 늘 뜬다.
 
-- 메일 수신함: 적합성과 E2E가 인증·재설정 메일을 읽는 JSON API(`/_test/mail`). 사람이 보는 목록 화면(`/_mock/mail`)도 둔다. 단독 개발에서 Mailpit 역할을 한다.
-- 소셜 로그인
-  - 테스트가 다음 로그인의 신원(클레임)을 미리 정하는 엔드포인트(`/_test/oauth/...`)
-  - 사람이 신원을 고르는 가짜 제공자 화면(`/_mock/oauth/...`)
-  - FastAPI 쪽 모의 OAuth 서버와 같은 흐름(authorize → 제공자 → callback → 1회용 코드)을 탄다.
-- 적합성 키트에 `mock` 대상의 부수 채널 어댑터를 이 통로로 더한다. `pnpm conformance mock`은 Docker 없이 목 프로세스만 띄워 돈다.
+- 메일: `GET /_test/mail[?to=주소]`가 보낸 메일을 최신순 JSON(`{ messages: [...] }`)으로 준다. `DELETE /_test/mail`은 모두 지운다(204). 적합성과 E2E가 이 JSON으로 인증·재설정 메일을 읽는다(Mailpit 대신). 사람이 보는 화면은 `/_mock/mail`이고, `POST /_mock/mail/clear`가 보관함을 비운다.
+- 소셜 로그인: 가짜 제공자(google, kakao, naver)의 로그인 화면이 `/_mock/oauth/{provider}/authorize`다. FastAPI가 개발·테스트에 쓰는 모의 OAuth 서버(navikt/mock-oauth2-server)의 인가 코드 흐름과 로그인 폼을 흉내 낸다.
+  - `GET`: 인가 요청(response_type, client_id, redirect_uri, code_challenge 등)이 틀리면 400 안내, 맞으면 로그인 폼이다.
+  - `POST`(같은 주소, 폼 필드): `username`(필수, 프로필의 `sub`가 된다), `claims`(있으면 이 JSON 객체를 그대로 프로필로 쓴다), `name`·`email`·`emailVerified`(claims가 없을 때 제공자 모양으로 조합), `error`(있으면 로그인하지 않고 이 값으로 거부). 틀리면 400으로 폼을 다시 보여 준다. 모르는 제공자는 404다. 필드의 전체 설명은 `contract/mock/AGENTS.md`다.
+  - 적합성 키트는 이 폼에 `username`과 `claims`를 바로 POST해서 로그인을 흉내 낸다(사람이 미리 신원을 정해 두는 별도 JSON 엔드포인트는 없다).
+- 적합성 키트의 `mock` 대상은 이 통로들을 부수 채널로 쓴다. `pnpm conformance mock`이 `pnpm --filter @ai-template/mock run start`로 목 프로세스만 띄워 돌리고(Docker 불필요), CI의 `conformance-mock` 작업이 이를 돌린다.
 
 ### 8.8 web 템플릿과의 관계
 
-- `pnpm sync`가 `contract/mock`, `contract/openapi.yaml`, `contract/typespec`을 web 템플릿의 `mock/`과 `contract/`로 복사한다. 저장소 CI는 사본이 원본과 같은지 본다.
+- `pnpm sync`가 `contract/mock`, `contract/openapi.yaml`, `contract/typespec`을 그대로 web 템플릿의 `contract/`(`contract/mock/`, `contract/openapi.yaml`, `contract/typespec/`) 아래로 복사한다. 목이 `../openapi.yaml`을 패키지 기준 상대 경로로 읽으므로 계약 사본 옆(`contract/mock/`)에 있어야 한다. 저장소 CI는 사본이 원본과 같은지 본다.
 - 단독 web 프로젝트가 API를 넓힐 때는 TypeSpec을 고치고 `pnpm gen`으로 `openapi.yaml`과 타입을 다시 만든 뒤, 목에 핸들러를 더한다(레시피).
 - 조합 프로젝트에서는 백엔드의 `openapi.json`이 원본이고, 목은 프론트만 개발할 때 쓴다.
+
+### 8.9 FastAPI와 다른 점 (요약)
+
+- access token은 불투명한 문자열(JWT 아님)이고, 비밀번호 해시(scrypt)·소셜 로그인 제공자·스토리지는 개발용이다(재시작하면 옛 presigned URL이 맞지 않는다).
+- 메일은 요청 안에서 바로 보관함에 들어간다(FastAPI는 요청 뒤 잡으로 보낸다).
+- 요청 검증의 몇 가지 경계(§8.3)는 FastAPI(Pydantic)를 그대로 흉내 내지 않고 계약대로 한다.
+- 전체 목록은 `contract/mock/AGENTS.md`의 "FastAPI와 다른 점"이다.
 
 ## 9. 하네스
 
@@ -392,7 +412,7 @@ DB가 없으므로 `db:*`는 두지 않는다(기반 설계 §6.2).
 ### 9.6 생성물
 
 - `src/lib/api/schema.d.ts`, 실시간 이벤트 타입, 에러 코드 목록, `contract/openapi.yaml`(TypeSpec 컴파일 결과)
-- 저장소의 사본(`contract/`, `mock/`)은 템플릿 저장소에서는 동기화 대상이다. 생성한 프로젝트에서는 그 프로젝트의 소스가 된다.
+- 저장소의 사본(`contract/`, 그 아래 `contract/mock/` 포함)은 템플릿 저장소에서는 동기화 대상이다. 생성한 프로젝트에서는 그 프로젝트의 소스가 된다.
 
 ### 9.7 생성기, 레시피, skill
 
@@ -406,7 +426,7 @@ DB가 없으므로 `db:*`는 두지 않는다(기반 설계 §6.2).
 
 - 루트 AGENTS.md(200줄 이하): 명령, 구조 지도, 핵심 규칙(BFF, 경계, 폼, 로딩 표시, i18n), 완료 기준, 문서 링크
 - 설치 버전의 문서를 보라는 규칙: Next.js는 `node_modules/next/dist/docs`, 다른 라이브러리는 `docs/stack.md`의 버전과 링크
-- 폴더별 AGENTS.md: `src/features/`, `src/lib/`, `mock/`, `e2e/`
+- 폴더별 AGENTS.md: `src/features/`, `src/lib/`, `contract/mock/`, `e2e/`
 - 모든 AGENTS.md 옆에 `@AGENTS.md` 한 줄짜리 CLAUDE.md
 
 ## 10. 템플릿 테스트
@@ -454,12 +474,28 @@ web이 실제 백엔드에 붙으려면 다음이 FastAPI 설정에 있어야 �
 
 | #   | 내용                                                                                                                                         | 완료 기준                                   |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| W1  | 목 서버(§8), 적합성 `mock` 대상과 부수 채널 어댑터, CI 작업                                                                                  | `pnpm conformance mock` 전체 통과           |
+| W1  | 목 서버(§8), 적합성 `mock` 대상과 부수 채널 어댑터, CI 작업                                                                                  | `pnpm conformance mock` 전체 통과 — 상태: 완료(2026-09-30) |
 | W2  | web 뼈대: 하네스(§9), BFF 세션·토큰 갱신·API 클라이언트·JSON:API 도우미(§5), i18n, 레이아웃, 인증 화면(§6.2), 목과 함께 도는 `setup`·`dev`, sync | web `check`, 인증 E2E가 목에서 통과        |
 | W3  | 기능 화면: 글(§6.1, §6.6), 내 정보·세션·탈퇴(§6.3~§6.5), 소셜 로그인, 실시간(§6.7), 업로드(§6.8), `gen:feature`                                | 기능 E2E가 목에서 통과                      |
 | W4  | E2E의 FastAPI 대상, FastAPI 설정 보강(§11.2), CI, 레시피·skill·문서, Docker 이미지                                                              | §1.2의 완료 조건                            |
 
 각 마일스톤은 main의 사본에서 프로토타입을 먼저 만들어 태스크별 커밋으로 검증하고, 그 커밋에서 계획을 조립한 뒤 SDD로 실행한다(FastAPI 사이클과 같다).
+
+### 12.1 W1에서 찾은 FastAPI·계약 문제
+
+W1에서 목을 FastAPI와 맞추면서 찾았다. W2를 시작하기 전에 보정한다(다음 단계).
+
+- FastAPI: 검증 에러의 pointer가 필드 이름이 grant 종류와 같으면 어긋난다(password grant: `/data/attributes/password/email`, `/data/attributes/password/password`. refresh grant: `/data/attributes/refreshToken/refreshToken`). `core/jsonapi/errors.py`의 `document_path`.
+- FastAPI: 짝 없는 서로게이트가 500을 낸다. 로그인의 `password`·`currentPassword`(Argon2 검증이 `UnicodeEncodeError`), 입력을 그대로 돌려주는 에러 응답(`data.id` 불일치 409 detail, 파일의 "존재하지 않거나 내 것이 아니다" detail), 아마 역할 설명 저장(PostgreSQL)도 같다.
+- FastAPI: 자격 증명이 틀린 401 응답에 `WWW-Authenticate`가 없다(RFC 9110은 모든 401에 요구한다).
+- FastAPI: `REALTIME_ALLOWED_ORIGINS`를 검증하지 않는다(끝의 슬래시 하나가 모든 브라우저를 조용히 거부하고, `*`는 전부 허용한다).
+- FastAPI: 실시간 `subscribe`·`unsubscribe`에 페이로드를 둘 이상 보내면 백그라운드 태스크에서 `TypeError`가 나고 ack가 오지 않는다.
+- FastAPI: 정수 필드에 `"size": "10"`처럼 숫자 문자열을 받아들인다(Pydantic lax 모드). 계약은 integer다.
+- FastAPI: `revokedCount`가 `GET /sessions`에는 보이지 않는 만료된 세션까지 센다.
+- FastAPI: `attributes` 없는 `PATCH /roles/{id}`는 권한 검사를 건너뛰고 200을 주는데, `attributes: {}`는 403이다.
+- 계약: `DELETE /me`가 422 `role.last_admin_protected`를 줄 수 있는데 operation은 422를 선언하지 않는다.
+- 계약: 리다이렉트 operation(`oauth`의 authorize, callback)이 JSON:API 협상이 낼 수 있는 406을 선언하지 않는다.
+- 계약 문서: `PostStatus` 스키마의 설명이 `posts.tsp` 파일 머리말이고, 글 이벤트 문서 셋(`PostCreatedEventDocument`, `PostUpdatedEventDocument`, `PostPublishedEventDocument`)은 범용 Document 설명을 그대로 쓴다.
 
 ## 13. 계획 단계에서 확인할 것
 
