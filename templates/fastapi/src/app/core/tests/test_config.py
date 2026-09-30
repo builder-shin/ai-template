@@ -62,6 +62,80 @@ def test_file_types_are_a_comma_separated_list(
         load_settings()
 
 
+def test_realtime_origins_become_the_origins_browsers_send(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """경로, 쿼리, 조각, 계정과 기본 포트는 떼고 호스트는 소문자로 쓴다. 겹치는 값은 하나다."""
+    write_dotenv(tmp_path)
+    assert load_settings().realtime_allowed_origins == {"http://localhost:3000"}
+    monkeypatch.setenv(
+        "REALTIME_ALLOWED_ORIGINS", " http://LOCALHOST:3000/, https://web.example.com:443,,"
+    )
+    assert load_settings().realtime_allowed_origins == {
+        "http://localhost:3000",
+        "https://web.example.com",
+    }
+    monkeypatch.setenv(
+        "REALTIME_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://localhost:3000/,"
+        "https://someone@admin.example.com:8443/login?next=/#top,"
+        "http://[0:0:0:0:0:0:0:1]:80,http://127.0.0.1:3000",
+    )
+    assert load_settings().realtime_allowed_origins == {
+        "http://localhost:3000",
+        "https://admin.example.com:8443",
+        "http://[::1]",
+        "http://127.0.0.1:3000",
+    }
+
+
+NOT_HTTP = "http:// 또는 https://로 시작하는 주소여야 한다"
+NOT_ASCII = "호스트는 ASCII여야 한다. 국제화 도메인은 punycode(xn--…)로 적는다"
+NOT_AN_ORIGIN = "Origin(http[s]://호스트[:포트])으로 읽을 수 없다"
+
+
+@pytest.mark.parametrize(
+    ("value", "reason"),
+    [
+        ("*", NOT_HTTP),
+        ("localhost:3001", NOT_HTTP),
+        ("ftp://x.example", NOT_HTTP),
+        ("HTTP://localhost:3000", NOT_HTTP),
+        ("http://한국.kr", NOT_ASCII),
+        ("http://:3000", NOT_AN_ORIGIN),
+        ("http://localhost:99999", NOT_AN_ORIGIN),
+        ("http://*.example.com", NOT_AN_ORIGIN),
+        ("http://127.1", NOT_AN_ORIGIN),
+        ("http://[::ffff:127.0.0.1]", NOT_AN_ORIGIN),
+        ("http://[fe80::1%25eth0]", NOT_AN_ORIGIN),
+    ],
+    ids=[
+        "any",
+        "no-scheme",
+        "ftp",
+        "upper-case-scheme",
+        "non-ascii-host",
+        "no-host",
+        "port-out-of-range",
+        "wildcard-host",
+        "short-ipv4",
+        "ipv4-mapped-ipv6",
+        "ipv6-zone",
+    ],
+)
+def test_realtime_origins_refuse_what_is_not_a_browser_origin(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, value: str, reason: str
+) -> None:
+    """*, http(s)가 아닌 값, ASCII가 아닌 호스트, 브라우저가 다르게 적는 호스트는 설정 오류다."""
+    write_dotenv(tmp_path)
+    monkeypatch.setenv("REALTIME_ALLOWED_ORIGINS", f"http://localhost:3000,{value}")
+    with pytest.raises(SystemExit) as caught:
+        load_settings()
+    assert str(caught.value) == (
+        f"설정 오류: REALTIME_ALLOWED_ORIGINS — 값이 틀렸다(Value error, {reason}(현재: {value}))."
+    )
+
+
 def test_reports_each_bad_variable_on_its_own_line(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

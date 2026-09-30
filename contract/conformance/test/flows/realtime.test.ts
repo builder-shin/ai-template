@@ -61,6 +61,26 @@ describe(`실시간 (${target.name})`, () => {
     }
   });
 
+  it("페이로드가 없거나 둘 이상인 subscribe·unsubscribe는 틀린 페이로드라 validation.invalid_choice다", async () => {
+    const socket = await RealtimeClient.connect();
+    try {
+      const posts = { channel: "posts" };
+      for (const message of ["subscribe", "unsubscribe"] as const) {
+        for (const payloads of [[], [posts, posts]]) {
+          const wrong = await socket.ack(message, ...payloads);
+          expect([wrong.ok, wrong.error?.status, wrong.error?.code, wrong.error?.source]).toEqual([
+            false,
+            "422",
+            "validation.invalid_choice",
+            { pointer: "/channel" },
+          ]);
+        }
+      }
+    } finally {
+      socket.close();
+    }
+  });
+
   it("posts는 발행된 글의 이벤트만, posts:all은 초안의 이벤트까지 받는다", async () => {
     const [manager, author] = await Promise.all([signInAdmin(), newUser()]);
     const everything = await RealtimeClient.connect({ ticket: await ticketFor(manager) });

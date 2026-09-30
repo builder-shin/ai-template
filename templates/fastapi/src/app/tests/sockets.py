@@ -101,7 +101,11 @@ class SocketClient:
         return False
 
     async def call(self, event: str, data: Any) -> Any:
-        """메시지를 보내고 서버의 ack를 받는다."""
+        """메시지를 보내고 서버의 ack를 받는다.
+
+        python-socketio 클라이언트는 data가 튜플이면 원소를 하나씩 페이로드로 보내고, None이면
+        페이로드 없이 보낸다.
+        """
         return await self.client.call(event, data, timeout=WAIT)
 
 

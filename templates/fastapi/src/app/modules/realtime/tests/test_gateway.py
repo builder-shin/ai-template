@@ -102,8 +102,15 @@ async def test_every_post_needs_posts_manage(
             assert "posts:all" in realtime.server.rooms(socket.sid)
 
 
-@pytest.mark.parametrize("payload", [{"channel": "secrets"}, {}, "posts", None])
-async def test_unknown_channels_are_invalid_choices(app: JsonApiApp, payload: object) -> None:
+@pytest.mark.parametrize(
+    "payload",
+    [{"channel": "secrets"}, {}, "posts", None, ({"channel": "posts"}, {"channel": "posts"})],
+    ids=["unknown-channel", "no-channel", "not-an-object", "no-payload", "two-payloads"],
+)
+async def test_unknown_channels_and_wrong_payloads_are_invalid_choices(
+    app: JsonApiApp, realtime: Realtime, payload: object
+) -> None:
+    """페이로드가 하나가 아니면(없거나 둘 이상) 틀린 페이로드다. 구독하지 않고 422로 답한다."""
     async with serving(app) as url, connected(url) as socket:
         for message in ("subscribe", "unsubscribe"):
             ack = await socket.call(message, payload)
@@ -111,6 +118,7 @@ async def test_unknown_channels_are_invalid_choices(app: JsonApiApp, payload: ob
             error = ack["error"]
             assert (error["status"], error["code"]) == ("422", "validation.invalid_choice")
             assert error["source"] == {"pointer": "/channel"}
+        assert "posts" not in realtime.server.rooms(socket.sid)
 
 
 async def test_a_logged_out_session_loses_its_connection(

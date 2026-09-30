@@ -6,7 +6,10 @@
   시작하지 않는다.
 """
 
+import ipaddress
+import re
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from pydantic import (
     AfterValidator,
@@ -37,6 +40,74 @@ def _comma_separated(value: object) -> object:
 CommaSeparated = Annotated[
     frozenset[str], NoDecode, BeforeValidator(_comma_separated), Field(min_length=1)
 ]
+
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+# 소문자로 바꾼 호스트 이름에 쓰는 글자: 영문자, 숫자, 하이픈, 밑줄, 점
+_HOST_NAME = re.compile(r"[a-z0-9_.-]+")
+# 브라우저는 마지막 라벨이 숫자(10진수, 0x로 시작하는 16진수)인 호스트를 IPv4 주소로 읽는다
+_NUMBER_LABEL = re.compile(r"[0-9]+|0x[0-9a-f]*")
+
+
+def _origin_host(host: str, *, bracketed: bool) -> str | None:
+    """브라우저가 Origin에 적는 호스트. host는 urlsplit의 hostname(소문자, 대괄호를 뗀 값)이다.
+
+    IPv6는 줄여 쓴 꼴로 바꾼다. 브라우저가 다르게 적는 호스트(줄여 쓴 IPv4, IPv4를 담은 IPv6,
+    zone id, 이름에 쓰지 않는 글자)는 None이다.
+    """
+    if bracketed:
+        try:
+            address = ipaddress.IPv6Address(host)
+        except ValueError:
+            return None
+        if address.ipv4_mapped is not None or address.scope_id is not None:
+            return None
+        return f"[{address.compressed}]"
+    if _HOST_NAME.fullmatch(host) is None:
+        return None
+    if _NUMBER_LABEL.fullmatch(host.removesuffix(".").rpartition(".")[2]):
+        try:
+            ipaddress.IPv4Address(host)
+        except ValueError:
+            return None
+    return host
+
+
+def _origin(value: str) -> str:
+    """값 하나를 브라우저가 보내는 Origin(스킴://호스트[:포트])으로 바꾼다.
+
+    경로, 쿼리, 조각, 계정은 떼고, 호스트는 소문자로, 기본 포트(80, 443)는 뺀다. 브라우저가 다른
+    모양으로 보내는 호스트(ASCII가 아닌 호스트, 줄여 쓴 IPv4 등)는 고쳐 적도록 거절한다.
+    """
+    if not value.startswith(("http://", "https://")):
+        raise ValueError(f"http:// 또는 https://로 시작하는 주소여야 한다(현재: {value})")
+    unreadable = f"Origin(http[s]://호스트[:포트])으로 읽을 수 없다(현재: {value})"
+    try:
+        parts = urlsplit(value)
+        port = parts.port
+    except ValueError:
+        raise ValueError(unreadable) from None
+    hostinfo = parts.netloc.rpartition("@")[2]
+    if not hostinfo.isascii():
+        raise ValueError(
+            f"호스트는 ASCII여야 한다. 국제화 도메인은 punycode(xn--…)로 적는다(현재: {value})"
+        )
+    host = _origin_host(parts.hostname or "", bracketed=hostinfo.startswith("["))
+    if host is None:
+        raise ValueError(unreadable)
+    if port is None or port == _DEFAULT_PORTS[parts.scheme]:
+        return f"{parts.scheme}://{host}"
+    return f"{parts.scheme}://{host}:{port}"
+
+
+def _origins(values: frozenset[str]) -> frozenset[str]:
+    """값마다 Origin으로 바꾼다. 틀린 값이 여럿이면 정렬해서 처음 것을 알린다."""
+    return frozenset(_origin(value) for value in sorted(values))
+
+
+# 브라우저 Origin의 목록(쉼표로 구분). python-engineio는 Origin 헤더를 글자 그대로 비교하고 *를
+# 모두 허용으로 읽는다. 그래서 값마다 브라우저가 보내는 Origin으로 바꾸고(끝에 /가 붙은 값이 모든
+# 브라우저를 막지 않게) *는 거절한다
+Origins = Annotated[CommaSeparated, AfterValidator(_origins)]
 
 
 def _scheme(*schemes: str) -> AfterValidator:
@@ -98,7 +169,7 @@ class Settings(BaseSettings):
     # 메일 링크의 프론트 주소. 인증·재설정 링크는 여기에 경로와 ?token=을 붙인다
     frontend_url: HttpUrl
     # Socket.IO 연결을 받을 브라우저 Origin(쉼표로 구분). 예: http://localhost:3000
-    realtime_allowed_origins: CommaSeparated
+    realtime_allowed_origins: Origins
     # 브라우저가 보는 이 API의 주소. 소셜 로그인 제공자가
     # <API_URL>/api/v1/oauth/<제공자>/callback으로 돌아온다. 제공자 콘솔에 이 콜백 주소를 등록한다
     api_url: HttpUrl

@@ -12,7 +12,11 @@ const WAIT_MS = 5_000;
 
 export interface Ack {
   readonly ok: boolean;
-  readonly error?: { readonly status: string; readonly code: string };
+  readonly error?: {
+    readonly status: string;
+    readonly code: string;
+    readonly source?: { readonly pointer?: string };
+  };
 }
 
 interface Received {
@@ -111,9 +115,12 @@ export class RealtimeClient {
     return this.reason === undefined && this.socket.connected;
   }
 
-  /** subscribe·unsubscribe를 보내고 ack를 받는다. ack는 계약의 RealtimeAck로 검증한다. */
-  async ack(message: "subscribe" | "unsubscribe", payload: unknown): Promise<Ack> {
-    const ack: unknown = await this.socket.timeout(WAIT_MS).emitWithAck(message, payload);
+  /**
+   * subscribe·unsubscribe를 보내고 ack를 받는다. ack는 계약의 RealtimeAck로 검증한다. 페이로드는 보통
+   * 하나이고, 틀린 메시지를 보내려면 없거나 여럿을 준다.
+   */
+  async ack(message: "subscribe" | "unsubscribe", ...payloads: unknown[]): Promise<Ack> {
+    const ack: unknown = await this.socket.timeout(WAIT_MS).emitWithAck(message, ...payloads);
     const problems = validateSchema("RealtimeAck", ack);
     if (problems.length > 0) throw new ContractViolation(problems);
     return ack as Ack;

@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { newUser, send, signIn, userWith } from "./accounts.ts";
 import { writePost } from "./posts.ts";
-import { capturedWarnings, connect, serving, ticketFor } from "./sockets.ts";
+import { connect, serving, ticketFor } from "./sockets.ts";
 
 const DENIED = {
   ok: false,
@@ -96,17 +96,16 @@ describe("구독", () => {
     expect(await socket.call("subscribe")).toEqual(UNKNOWN);
   });
 
-  it("페이로드를 둘 이상 보내면 처리하지도 답하지도 않는다", async () => {
-    const warn = capturedWarnings();
+  it("페이로드가 둘 이상이면 틀린 페이로드다. 처리하지 않고 validation.invalid_choice로 답한다", async () => {
     const { url, realtime } = await serving();
     const socket = await connect(url);
     const posts = { channel: "posts" };
-    const call = socket.socket.timeout(300).emitWithAck("subscribe", posts, posts);
-    await expect(call).rejects.toThrow();
+    expect(await socket.call("subscribe", posts, posts)).toEqual(UNKNOWN);
     expect(socket.rooms(realtime)?.has("posts")).toBe(false);
-    expect(warn).toHaveBeenCalledWith(
-      "[mock] realtime_message_ignored message=subscribe payloads=2",
-    );
+    expect(await socket.call("subscribe", posts)).toEqual({ ok: true });
+    expect(await socket.call("unsubscribe", posts, posts)).toEqual(UNKNOWN);
+    expect(socket.rooms(realtime)?.has("posts")).toBe(true);
+    expect(await socket.call("unsubscribe")).toEqual(UNKNOWN);
   });
 
   it("ack를 기다리지 않는 메시지도 처리한다", async () => {

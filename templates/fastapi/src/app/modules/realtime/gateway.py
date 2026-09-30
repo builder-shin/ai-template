@@ -3,8 +3,9 @@
 - 연결: auth.ticket이 있으면 티켓을 꺼내 지우고(1회용) 그 연결을 user:{id} 룸에 넣는다. 티켓이
   틀렸거나 만료됐거나 세션이 끝났으면 연결을 거부한다. 클라이언트의 connect_error는 message가
   에러 코드(auth.token_invalid), data가 ErrorObject다. 티켓이 없으면 익명 연결이다.
-- subscribe·unsubscribe: 페이로드는 RealtimeSubscription, ack는 RealtimeAck다. 모르는 채널은
-  validation.invalid_choice, 권한이 없으면 permission.denied다. 권한은 구독할 때 DB에서 계산한다.
+- subscribe·unsubscribe: 페이로드는 RealtimeSubscription 하나, ack는 RealtimeAck다. 모르는 채널이나
+  틀린 페이로드(페이로드가 없거나 둘 이상이어도)는 validation.invalid_choice, 권한이 없으면
+  permission.denied다. 권한은 구독할 때 DB에서 계산한다.
 - 재검사: 세션을 폐기하거나 역할·상태를 바꾸면(auth와 users의 queue_recheck) 제어 채널로
   알림이 온다. 이 인스턴스에 있는 그 사용자의 연결을 다시 검사해, 세션이 끝났거나(폐기, 만료, 계정
   비활성화·탈퇴) 구독한 채널의 권한을 잃은 연결을 끊는다. 끊긴 클라이언트는 새 티켓으로 다시
@@ -99,9 +100,15 @@ class Gateway:
         await self.server.enter_room(sid, user_room(principal.user_id))
         logger.info("realtime_connected", user_id=str(principal.user_id))
 
-    def _channel(self, data: object) -> Channel | None:
+    def _channel(self, payloads: Sequence[object]) -> Channel | None:
+        """메시지의 페이로드(RealtimeSubscription 하나)가 가리키는 채널.
+
+        페이로드가 하나가 아니거나(없거나 둘 이상) 틀렸거나 모르는 채널이면 None이다.
+        """
+        if len(payloads) != 1:
+            return None
         try:
-            subscription = RealtimeSubscription.model_validate(data)
+            subscription = RealtimeSubscription.model_validate(payloads[0])
         except ValidationError:
             return None
         return self.channels.get(subscription.channel.root)
@@ -173,12 +180,14 @@ class Gateway:
         principal = await self._principal(sid)
         return principal is not None and channel.permission in principal.permissions
 
-    async def subscribe(self, sid: str, data: object = None) -> Any:
+    async def subscribe(self, sid: str, *payloads: object) -> Any:
+        # python-socketio는 받은 페이로드를 하나씩 인자로 넘긴다. 개수를 가리지 않고 받아야 틀린
+        # 개수에도 ack로 답한다(인자가 맞지 않으면 처리기가 TypeError로 끝나 ack를 보내지 못한다).
         with spans.start_as_current_span("realtime.subscribe"):
-            return await self._subscribe(sid, data)
+            return await self._subscribe(sid, payloads)
 
-    async def _subscribe(self, sid: str, data: object) -> Any:
-        channel = self._channel(data)
+    async def _subscribe(self, sid: str, payloads: Sequence[object]) -> Any:
+        channel = self._channel(payloads)
         if channel is None:
             return _ack(False, ErrorCode.VALIDATION_INVALID_CHOICE, 422, "Unknown channel.")
         if not await self._allowed(sid, channel):
@@ -187,12 +196,12 @@ class Gateway:
         await self.server.enter_room(sid, channel.name)
         return _ack(True)
 
-    async def unsubscribe(self, sid: str, data: object = None) -> Any:
+    async def unsubscribe(self, sid: str, *payloads: object) -> Any:
         with spans.start_as_current_span("realtime.unsubscribe"):
-            return await self._unsubscribe(sid, data)
+            return await self._unsubscribe(sid, payloads)
 
-    async def _unsubscribe(self, sid: str, data: object) -> Any:
-        channel = self._channel(data)
+    async def _unsubscribe(self, sid: str, payloads: Sequence[object]) -> Any:
+        channel = self._channel(payloads)
         if channel is None:
             return _ack(False, ErrorCode.VALIDATION_INVALID_CHOICE, 422, "Unknown channel.")
         await self.server.leave_room(sid, channel.name)

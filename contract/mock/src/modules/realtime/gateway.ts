@@ -4,9 +4,9 @@
  * - 연결: auth.ticket이 있으면 티켓을 꺼내 지우고(1회용) 그 연결을 user:{id} 룸에 넣는다. 티켓이
  *   틀렸거나 만료됐거나 세션이 끝났으면 연결을 거부한다. 클라이언트의 connect_error는 message가 에러
  *   코드(auth.token_invalid), data가 ErrorObject다. 티켓이 없으면(null도) 익명 연결이다.
- * - subscribe·unsubscribe: 페이로드는 RealtimeSubscription, ack는 RealtimeAck다. 모르는 채널이나 틀린
- *   페이로드는 validation.invalid_choice(422), 권한이 없으면 permission.denied(403)이고 source.pointer는
- *   /channel이다. 권한은 구독할 때 계산한다.
+ * - subscribe·unsubscribe: 페이로드는 RealtimeSubscription 하나, ack는 RealtimeAck다. 모르는 채널이나 틀린
+ *   페이로드(페이로드가 없거나 둘 이상이어도)는 validation.invalid_choice(422), 권한이 없으면
+ *   permission.denied(403)이고 source.pointer는 /channel이다. 권한은 구독할 때 계산한다.
  * - 재검사(recheck): 세션을 폐기하거나 역할·상태를 바꾸면 허브가 알린다. 그 사용자의 연결을 다시 검사해
  *   세션이 끝났거나(폐기, 만료, 계정 비활성화·탈퇴) 구독한 채널의 권한을 잃은 연결을 끊는다. 끊긴 클라이언트는
  *   새 티켓으로 다시 붙는다(세션이 끝났으면 티켓 발급이 401이고, 권한을 잃은 채널은 구독이
@@ -132,24 +132,17 @@ function isAnswer(value: unknown): value is Answer {
 }
 
 /**
- * 메시지 하나를 처리하고, 클라이언트가 ack를 기다리면 답한다. 페이로드가 없으면 undefined로 처리한다
- * (FastAPI의 data=None). FastAPI의 처리기는 페이로드를 하나만 받아 둘 이상이면 실패하므로(TypeError), 목도
- * 처리하지도 답하지도 않고 경고만 남긴다.
+ * 메시지 하나를 처리하고, 클라이언트가 ack를 기다리면 답한다. 페이로드는 하나다. 없거나 둘 이상이면 틀린
+ * 페이로드라 처리하지 않고 validation.invalid_choice(422)로 답한다(FastAPI의 Gateway._channel).
  */
-function handleMessage(
-  message: keyof ClientMessages,
-  args: readonly unknown[],
-  work: (payload: unknown) => RealtimeAck,
-): void {
+function handleMessage(args: readonly unknown[], work: (payload: unknown) => RealtimeAck): void {
   const last = args.at(-1);
   const answer = isAnswer(last) ? last : undefined;
   const payloads = answer === undefined ? args : args.slice(0, -1);
-  if (payloads.length > 1) {
-    const count = String(payloads.length);
-    console.warn(`[mock] realtime_message_ignored message=${message} payloads=${count}`);
-    return;
-  }
-  const ack = work(payloads[0]);
+  const ack =
+    payloads.length === 1
+      ? work(payloads[0])
+      : failed(422, "validation.invalid_choice", UNKNOWN_CHANNEL);
   answer?.(ack);
 }
 
@@ -162,10 +155,10 @@ export function attachGateway(io: RealtimeSocketServer, state: MockState): void 
     const { login } = socket.data;
     if (login !== undefined) void socket.join(userRoom(login.userId));
     socket.on("subscribe", (...args) => {
-      handleMessage("subscribe", args, (payload) => subscribe(state, socket, payload));
+      handleMessage(args, (payload) => subscribe(state, socket, payload));
     });
     socket.on("unsubscribe", (...args) => {
-      handleMessage("unsubscribe", args, (payload) => unsubscribe(socket, payload));
+      handleMessage(args, (payload) => unsubscribe(socket, payload));
     });
   });
 }
