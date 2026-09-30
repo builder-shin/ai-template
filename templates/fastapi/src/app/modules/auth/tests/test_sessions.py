@@ -150,6 +150,16 @@ async def test_refresh_rotates_and_reuse_revokes_the_session(
             "auth.oauth_code_invalid",
             None,
         ),
+        (
+            {
+                "grantType": "password",
+                "email": "a@example.com",
+                "password": "\ud800",  # 가짜 비밀번호(짝 없는 서로게이트) betterleaks:allow
+            },
+            401,
+            "auth.invalid_credentials",
+            None,
+        ),
         ({"email": "a@example.com"}, 422, "validation.required", "/data/attributes/grantType"),
         ({"grantType": "magic"}, 422, "validation.invalid_choice", "/data/attributes/grantType"),
         (

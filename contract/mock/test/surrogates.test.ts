@@ -116,6 +116,13 @@ describe("값을 파싱하는 문자열(길이 제약, 선택지)", () => {
       { name: "r", permissions: [LONE] },
       "/data/attributes/permissions/0",
     ],
+    [
+      "역할 설명(길이 제약이 anyOf 밖에 있다)",
+      "RoleCreateDocument",
+      "roles",
+      { name: "r", description: LONE, permissions: [] },
+      "/data/attributes/description",
+    ],
     ["글 제목", "PostCreateDocument", "posts", { title: LONE, body: "" }, "/data/attributes/title"],
     ["글 본문", "PostCreateDocument", "posts", { title: "t", body: LONE }, "/data/attributes/body"],
     [
@@ -153,6 +160,14 @@ describe("값을 파싱하는 문자열(길이 제약, 선택지)", () => {
     expect(await errorsOf(await send("RegistrationCreateDocument", body), 422)).toEqual([
       unreadable("/data/attributes/password"),
       unreadable("/data/attributes/name"),
+    ]);
+  });
+
+  it("역할 설명은 고칠 때도 길이 검사보다 먼저 본다", async () => {
+    const description = `${LONE}${"d".repeat(201)}`;
+    const body = JSON.stringify({ data: { type: "roles", id: ID, attributes: { description } } });
+    expect(await errorsOf(await send("RoleUpdateDocument", body), 422)).toEqual([
+      unreadable("/data/attributes/description"),
     ]);
   });
 
@@ -196,11 +211,6 @@ describe("제약 없는 문자열은 그대로 받는다", () => {
       "파일 콘텐츠 타입",
       "FileCreateDocument",
       create("files", { filename: "a.png", contentType: "image/\ud800", size: 1 }),
-    ],
-    [
-      "역할 설명(길이만 따로 센다)",
-      "RoleCreateDocument",
-      create("roles", { name: "r", description: LONE, permissions: [] }),
     ],
     [
       "관계의 id",

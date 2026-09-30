@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { api, codes, newUser, signIn, target } from "./support.ts";
+import { api, codes, LONE_SURROGATE, newUser, signIn, target, uniqueEmail } from "./support.ts";
 
 function refresh(refreshToken: string) {
   return api().POST("/api/v1/sessions", {
@@ -40,6 +40,22 @@ describe(`세션 (${target.name})`, () => {
     });
     expect(response.status).toBe(401);
     expect(codes(error)).toEqual(["auth.invalid_credentials"]);
+  });
+
+  it("비밀번호에 짝 없는 서로게이트가 있어도 계정이 있든 없든 틀린 비밀번호와 같은 401이다", async () => {
+    const user = await newUser();
+    for (const email of [user.email, uniqueEmail("nobody")]) {
+      const { error, response } = await api().POST("/api/v1/sessions", {
+        body: {
+          data: {
+            type: "sessions",
+            attributes: { grantType: "password", email, password: LONE_SURROGATE },
+          },
+        },
+      });
+      expect(response.status, email).toBe(401);
+      expect(codes(error), email).toEqual(["auth.invalid_credentials"]);
+    }
   });
 
   it("refresh token은 한 번만 쓴다. 쓴 것을 다시 쓰면 그 세션을 통째로 폐기한다", async () => {

@@ -214,6 +214,14 @@ async def test_update_rejects(
             "resource.not_found",
             {"pointer": "/data/relationships/roles/data/1"},
         ),
+        # 없는 역할의 detail은 id를 그대로 담는다. 짝 없는 서로게이트가 있어도 500이 아니다.
+        (
+            target.id,
+            update_document(target.id, roles=["\ud800"]),
+            404,
+            "resource.not_found",
+            {"pointer": "/data/relationships/roles/data/0"},
+        ),
         (
             target.id,
             update_document(uuid.uuid4(), status="active"),

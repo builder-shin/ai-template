@@ -1,6 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { api, codes, newUser, problems, signIn, signInAdmin, target, userWith } from "./support.ts";
+import {
+  api,
+  codes,
+  LONE_SURROGATE,
+  newUser,
+  problems,
+  signIn,
+  signInAdmin,
+  target,
+  userWith,
+} from "./support.ts";
 
 type Status = "active" | "deactivated" | "deleted";
 
@@ -85,6 +95,23 @@ describe(`사용자 관리 (${target.name})`, () => {
     expect(problems(missingRole.error)).toEqual([
       ["resource.not_found", `/data/relationships/roles/data/${String(held.length)}`],
     ]);
+  });
+
+  it("역할 id에 짝 없는 서로게이트가 있어도 없는 역할과 같은 404다", async () => {
+    // 없는 역할의 detail은 id를 그대로 담는다. 응답은 그 글자를 \uXXXX로 이스케이프해야 한다.
+    const [manager, user] = await Promise.all([signInAdmin(), newUser()]);
+    const { error, response } = await manager.api.PATCH("/api/v1/users/{id}", {
+      params: { path: { id: user.userId } },
+      body: {
+        data: {
+          type: "users",
+          id: user.userId,
+          relationships: { roles: { data: [{ type: "roles", id: LONE_SURROGATE }] } },
+        },
+      },
+    });
+    expect(response.status).toBe(404);
+    expect(problems(error)).toEqual([["resource.not_found", "/data/relationships/roles/data/0"]]);
   });
 
   it("자기 자신이나 나보다 권한이 큰 사용자는 바꾸지 못하고, 내 권한을 넘는 역할은 주지 못한다", async () => {

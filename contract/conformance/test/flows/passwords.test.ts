@@ -3,6 +3,7 @@ import { extractToken, MAIL_LINKS } from "../../src/side-channels.ts";
 import {
   api,
   codes,
+  LONE_SURROGATE,
   mailbox,
   NEW_PASSWORD,
   newUser,
@@ -87,6 +88,23 @@ describe(`비밀번호 (${target.name})`, () => {
     expect(short.response.status).toBe(422);
     expect(problems(short.error)).toEqual([
       ["validation.too_short", "/data/attributes/newPassword"],
+    ]);
+    await signIn(user);
+  });
+
+  it("현재 비밀번호에 짝 없는 서로게이트가 있어도 틀린 비밀번호와 같은 401이다", async () => {
+    const user = await newUser();
+    const { error, response } = await user.api.POST("/api/v1/password-changes", {
+      body: {
+        data: {
+          type: "password-changes",
+          attributes: { currentPassword: LONE_SURROGATE, newPassword: NEW_PASSWORD },
+        },
+      },
+    });
+    expect(response.status).toBe(401);
+    expect(problems(error)).toEqual([
+      ["auth.invalid_credentials", "/data/attributes/currentPassword"],
     ]);
     await signIn(user);
   });

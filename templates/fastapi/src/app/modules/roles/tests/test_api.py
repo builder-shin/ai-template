@@ -109,6 +109,19 @@ async def test_create_records_an_audit_log(
             "validation.too_long",
             "/data/attributes/description",
         ),
+        # DB에 저장할 수 없는 짝 없는 서로게이트는 다른 제약 문자열처럼 길이보다 먼저 거절한다.
+        (
+            role_document("x", [], description="\ud800"),
+            422,
+            "validation.invalid_format",
+            "/data/attributes/description",
+        ),
+        (
+            role_document("x", [], description="\ud800" + "d" * 201),
+            422,
+            "validation.invalid_format",
+            "/data/attributes/description",
+        ),
     ],
 )
 async def test_create_rejects(
@@ -147,6 +160,18 @@ async def test_update_renames_and_records(
     assert response.status_code == 200, response.text
     assert response.json()["data"]["attributes"]["name"] == "chief-editor"
     assert await actions(db) == ["role.created", "role.updated"]
+
+
+async def test_update_rejects_a_description_with_a_lone_surrogate(
+    api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession]
+) -> None:
+    auth = await signed_in(accounts, MANAGER)
+    role_id = await create(api, auth, "editor", ["users:read"])
+    document = update_document(role_id, description="\ud800")
+    response = await api.patch(f"{ROLES}/{role_id}", **jsonapi_body(document, auth))
+    assert (response.status_code, error_codes(response)) == (422, ["validation.invalid_format"])
+    assert error_sources(response) == [{"pointer": "/data/attributes/description"}]
+    assert await actions(db) == ["role.created"]
 
 
 async def test_rename_to_a_taken_name_with_new_permissions_is_rejected(

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   api,
   codes,
+  LONE_SURROGATE,
   newUser,
   PASSWORD,
   problems,
@@ -54,6 +55,29 @@ describe(`내 정보 (${target.name})`, () => {
           type: "users",
           id: user.userId,
           relationships: { avatar: { data: { type: "files", id: randomUUID() } } },
+        },
+      },
+    });
+    expect(avatar.response.status).toBe(404);
+    expect(problems(avatar.error)).toEqual([
+      ["resource.not_found", "/data/relationships/avatar/data"],
+    ]);
+  });
+
+  it("본문의 id나 아바타 id에 짝 없는 서로게이트가 있어도 같은 409와 404다", async () => {
+    // 두 에러의 detail은 id를 그대로 담는다. 응답은 그 글자를 \uXXXX로 이스케이프해야 한다.
+    const user = await newUser();
+    const mismatch = await user.api.PATCH("/api/v1/me", {
+      body: { data: { type: "users", id: LONE_SURROGATE, attributes: { name: "남" } } },
+    });
+    expect(mismatch.response.status).toBe(409);
+    expect(problems(mismatch.error)).toEqual([["resource.conflict", "/data/id"]]);
+    const avatar = await user.api.PATCH("/api/v1/me", {
+      body: {
+        data: {
+          type: "users",
+          id: user.userId,
+          relationships: { avatar: { data: { type: "files", id: LONE_SURROGATE } } },
         },
       },
     });

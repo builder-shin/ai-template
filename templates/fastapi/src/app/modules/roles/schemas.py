@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, Field, StringConstraints
 from pydantic.experimental.missing_sentinel import MISSING
-from pydantic_core import PydanticCustomError
+from pydantic_core import PydanticCustomError, PydanticKnownError
 
 from app.core.jsonapi.models import (
     CollectionDocument,
@@ -40,8 +40,20 @@ class PermissionCode(StrEnum):
     POSTS_MANAGE = "posts:manage"
 
 
-def _description_length(value: str | None) -> str | None:
-    if value is not None and len(value) > DESCRIPTION_MAX:
+def _check_description(value: str | None) -> str | None:
+    """역할 설명의 제약. Pydantic이 제약 있는 문자열을 보는 순서(서로게이트, 길이)대로 본다.
+
+    길이를 Field 제약이 아니라 여기서 세므로(RoleDescription) Pydantic은 문자열을 파싱하지 않고
+    짝 없는 서로게이트도 받는다. 그런 값은 DB에 저장할 수 없으므로 길이보다 먼저, 제약 있는
+    문자열과 같은 string_unicode 오류로 거절한다.
+    """
+    if value is None:
+        return None
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise PydanticKnownError("string_unicode") from None
+    if len(value) > DESCRIPTION_MAX:
         raise PydanticCustomError(
             "string_too_long",
             "String should have at most {max_length} characters",
@@ -55,7 +67,7 @@ RoleName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1,
 RoleDescription = Annotated[
     str | None,
     Field(json_schema_extra={"maxLength": DESCRIPTION_MAX}),
-    AfterValidator(_description_length),
+    AfterValidator(_check_description),
 ]
 
 

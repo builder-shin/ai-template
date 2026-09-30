@@ -1,5 +1,5 @@
 """에러 문서: 필드별 422와 포인터, 문서 구조 400, type 불일치 409, 클라이언트 id 403,
-/api/ 아래 404, 예상하지 못한 예외의 500."""
+/api/ 아래 404, 예상하지 못한 예외의 500, detail의 짝 없는 서로게이트."""
 
 import uuid
 from typing import Any
@@ -145,6 +145,23 @@ def test_require_matching_id_rejects_a_different_id_with_409() -> None:
         ErrorCode.RESOURCE_CONFLICT,
         "/data/id",
     )
+
+
+async def test_a_detail_with_a_lone_surrogate_keeps_its_status() -> None:
+    """입력을 그대로 담은 detail(본문의 data.id)에 짝 없는 서로게이트가 있어도 500이
+    아니다. 응답은 그 글자를 \\uXXXX로 이스케이프하고, 파싱하면 원래 detail이다."""
+    app = sample_app()
+
+    @app.get("/api/v1/echo")
+    async def echo() -> None:
+        require_matching_id("x\ud800", uuid.UUID(KNOWN_ID))
+
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+        response = await http.get("/api/v1/echo")
+    [error] = errors_of(response, 409)
+    assert error["detail"] == f"data.id x\ud800 does not match the resource {KNOWN_ID}."
+    assert rb'"detail":"data.id x\ud800 does not match' in response.content
 
 
 async def test_empty_body_is_400(client: httpx.AsyncClient) -> None:

@@ -95,6 +95,14 @@ async def test_update_changes_name_and_locale(api: httpx.AsyncClient, accounts: 
             "resource.not_found",
             "/data/relationships/avatar/data",
         ),
+        # 입력을 그대로 담은 detail에 짝 없는 서로게이트가 들어가도 500이 아니라 같은 에러다.
+        ({"id": "\ud800"}, 409, "resource.conflict", "/data/id"),
+        (
+            {"relationships": {"avatar": {"data": {"type": "files", "id": "\ud800"}}}},
+            404,
+            "resource.not_found",
+            "/data/relationships/avatar/data",
+        ),
     ],
 )
 async def test_update_rejects(

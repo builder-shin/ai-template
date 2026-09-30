@@ -126,6 +126,16 @@ async def test_change_needs_the_current_password_and_keeps_this_session(
     assert await actions(db) == ["user.password_changed", "session.login_succeeded"]
 
 
+async def test_a_current_password_with_a_lone_surrogate_is_a_wrong_password(
+    api: httpx.AsyncClient, accounts: Accounts
+) -> None:
+    """JSON은 짝 없는 서로게이트(\\ud800)도 실어 온다. 500이 아니라 틀린 비밀번호와 같은 401이다."""
+    headers = await accounts.sign_in(await accounts.create())
+    response = await api.post("/api/v1/password-changes", **jsonapi_body(change("\ud800"), headers))
+    assert (response.status_code, error_codes(response)) == (401, ["auth.invalid_credentials"])
+    assert error_sources(response) == [{"pointer": "/data/attributes/currentPassword"}]
+
+
 async def test_change_drops_reset_tokens_asked_for_before_it(
     api: httpx.AsyncClient,
     accounts: Accounts,

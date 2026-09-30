@@ -2,7 +2,8 @@
 
 - 비밀번호는 Argon2id로 해시한다(pwdlib 권장 설정). 해시 하나에 수십 밀리초가 걸린다.
   async 코드는 스레드에서 도는 hash_password_async, check_password_async를 쓴다. 그동안
-  이벤트 루프는 다른 요청을 처리한다(argon2-cffi는 GIL을 푼다).
+  이벤트 루프는 다른 요청을 처리한다(argon2-cffi는 GIL을 푼다). 해시하고 검증할 때 비밀번호는
+  surrogatepass로 인코딩한 바이트다(짝 없는 서로게이트가 있어도 예외가 아니라 틀린 비밀번호다).
 - access token은 HS256 JWT이고 sub(사용자 id), sid(세션 id), iat, exp를 담는다. 수명은 15분이다.
 - refresh token, 인증·재설정 토큰은 32바이트 무작위 값(base64url 43자)이고, DB에는 SHA-256만 둔다.
 - 이메일처럼 추측할 수 있는 식별자는 설정 키의 HMAC-SHA256(identifier_hash)으로 가린다. 키 없는
@@ -46,8 +47,18 @@ class AccessClaims:
     session_id: uuid.UUID
 
 
+def _password_bytes(password: str) -> bytes:
+    """pwdlib에 넘길 비밀번호. surrogatepass로 인코딩한 UTF-8 바이트다.
+
+    JSON은 짝 없는 서로게이트도 실어 오는데 pwdlib(argon2-cffi)의 encode()는 실패한다. 이렇게
+    넘기면 그런 비밀번호도 틀린 비밀번호다. 보통 문자열은 바이트가 같아 str로 만든 기존 해시도
+    그대로 맞는다.
+    """
+    return password.encode("utf-8", "surrogatepass")
+
+
 def hash_password(password: str) -> str:
-    return _password_hash.hash(password)
+    return _password_hash.hash(_password_bytes(password))
 
 
 async def hash_password_async(password: str) -> str:
@@ -66,10 +77,11 @@ def check_password(password: str, hashed: str | None) -> bool:
     해시가 없어도 가짜 해시를 검증해 걸리는 시간을 맞춘다. 응답 시간으로 계정이 있는지
     알아낼 수 없게 하기 위해서다.
     """
+    secret = _password_bytes(password)
     if hashed is None:
-        _password_hash.verify(password, _dummy_hash())
+        _password_hash.verify(secret, _dummy_hash())
         return False
-    return _password_hash.verify(password, hashed)
+    return _password_hash.verify(secret, hashed)
 
 
 async def check_password_async(password: str, hashed: str | None) -> bool:

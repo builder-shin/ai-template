@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   codes,
+  LONE_SURROGATE,
   newUser,
   type PermissionCode,
   problems,
@@ -80,6 +81,22 @@ describe(`역할 (${target.name})`, () => {
     await manager.api.DELETE("/api/v1/roles/{id}", {
       params: { path: { id: first.data?.data.id ?? "" } },
     });
+  });
+
+  it("역할 설명에 짝 없는 서로게이트가 있으면 저장하지 않고 422 validation.invalid_format이다", async () => {
+    const manager = await signInAdmin();
+    const attributes = {
+      name: uniqueName("unreadable"),
+      description: LONE_SURROGATE,
+      permissions: [],
+    };
+    const { error, response } = await manager.api.POST("/api/v1/roles", {
+      body: { data: { type: "roles", attributes } },
+    });
+    expect(response.status).toBe(422);
+    expect(problems(error)).toEqual([
+      ["validation.invalid_format", "/data/attributes/description"],
+    ]);
   });
 
   it("시스템 역할은 지우지 못하고, admin의 권한은 고치지 못한다", async () => {

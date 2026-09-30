@@ -82,7 +82,7 @@
 - 비밀번호 해시(scrypt), 소셜 로그인 제공자(가짜 OAuth 서버), 스토리지(메모리 버킷)는 개발용이다. 재시작하면 옛 presigned URL은 맞지 않는다.
 - 스케줄 잡이 없다. `modules/files/service.ts`의 `purgePending`은 떠 있는 프로세스가 부르지 않아 24시간이 지난 pending 업로드도 계속 사용자 쿼터를 차지한다. 만료된 세션과 토큰도 지우지 않는다(FastAPI는 각각 매일 03:00 UTC, 매시간 정각 잡으로 지운다).
 - 공개 글 목록 첫 페이지를 캐시하지 않는다(FastAPI는 `posts/service.ts`가 60초 캐시한다). 그래서 저자 이름 변경처럼 다른 모듈이 일으킨 변화가 목에는 바로 보이고 FastAPI에는 최대 60초 늦게 보인다.
-- 짝 없는 서로게이트가 있어도 FastAPI가 500을 내는 자리(Pydantic이 파싱하지 않는 문자열이라 값이 그대로 흘러가다 나중에 막히는 자리)를 목은 정상 처리한다: 로그인의 비밀번호(401), 입력을 그대로 돌려주는 에러 detail(data.id 불일치 409, 파일이 없거나 남의 것이라는 404), 역할 설명 저장(201). 이 FastAPI 문제는 고칠 예정이다(설계 §12.1).
+- 비밀번호의 짝 없는 서로게이트를 FastAPI는 surrogatepass로 인코딩해 해시하고, 목의 scrypt(`src/core/security.ts`)는 UTF-8로 인코딩하면서 U+FFFD로 대신한다. 그래서 U+FFFD가 든 비밀번호의 그 자리를 짝 없는 서로게이트로 바꿔 로그인하면 목은 통과하고 FastAPI는 401이다.
 - `REALTIME_ALLOWED_ORIGINS`는 값마다 Origin으로 정규화하고 `*`나 URL이 아닌 값을 설정 오류로 거절한다. FastAPI는 원래 문자열을 그대로 비교해 `*`는 전부 허용으로 본다(값을 검증하지 않는다).
 - 본문 인코딩이 다르다: JSON의 `NaN`·`Infinity`는 목에서 400이다(Python의 `json`은 받아들인다). CESU-8로 짝을 이룬 서로게이트 바이트, UTF-16·UTF-32 본문도 Python의 `json.loads`와 다르게 다룬다(`src/jsonapi/validation.ts`, `src/jsonapi/surrogates.ts`).
 - snake_case 속성 이름을 FastAPI(`validate_by_name`)는 camelCase와 함께 받지만, 목은 스키마에 없는 속성으로 보고 조용히 버린다(`removeAdditional`). 그 속성이 필수면 422가 난다.

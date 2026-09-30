@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
+from pwdlib import PasswordHash
 from pydantic import SecretStr
 
 from app.core.security import (
@@ -47,6 +48,22 @@ def test_password_hash_is_argon2id_and_checks_only_the_right_password() -> None:
 
 def test_missing_hash_never_matches() -> None:
     assert check_password("anything", None) is False
+
+
+def test_lone_surrogates_are_hashed_and_checked_without_errors() -> None:
+    """JSON은 짝 없는 서로게이트(\\ud800)도 실어 온다. 비밀번호는 surrogatepass로 인코딩해 해시하고
+    검증한다. 해시가 있든 없든 예외 없이 틀린 비밀번호이고, U+FFFD로 바꾼 값과도 다르다."""
+    assert check_password("\ud800", None) is False
+    assert check_password("\ud800", hash_password("correct horse")) is False
+    hashed = hash_password("horse\ud800")
+    assert check_password("horse\ud800", hashed) is True
+    assert check_password("horse\ufffd", hashed) is False
+
+
+def test_hashes_made_from_the_str_still_match() -> None:
+    """pwdlib이 str을 UTF-8로 인코딩해 만든 해시(bytes로 넘기기 전의 해시)도 그대로 맞는다."""
+    hashed = PasswordHash.recommended().hash("correct horse 한글")
+    assert check_password("correct horse 한글", hashed) is True
 
 
 async def test_async_password_functions_hash_and_check_in_a_thread() -> None:
