@@ -12,8 +12,10 @@ export interface SeedAdmin {
   readonly password: string;
 }
 
-/** 엄격한 레이트 리밋의 한도. 한 윈도(분이나 시간) 동안 받는 요청 수다. */
+/** 레이트 리밋의 한도. 한 윈도(분이나 시간) 동안 받는 요청 수다. */
 export interface RateLimits {
+  /** 전역: /api/ 아래 모든 요청의 IP별 분당(RATE_LIMIT_GLOBAL). */
+  readonly global: number;
   /** 로그인: IP별 분당(RATE_LIMIT_LOGIN_IP). */
   readonly loginIp: number;
   /** 로그인: 이메일(해시)별 분당(RATE_LIMIT_LOGIN_IDENTIFIER). */
@@ -63,7 +65,7 @@ export interface MockConfig {
   readonly oauthRedirectUris: readonly string[];
   /** 이메일 같은 식별자의 해시(HMAC-SHA256) 키(IDENTIFIER_HASH_SECRET). 32자 이상. */
   readonly identifierHashSecret: string;
-  /** 엄격한 레이트 리밋의 한도(RATE_LIMIT_*). */
+  /** 레이트 리밋의 한도(RATE_LIMIT_*). */
   readonly rateLimits: RateLimits;
   /** 파일 업로드의 한도(FILE_*). */
   readonly files: FileLimits;
@@ -88,6 +90,7 @@ export const DEFAULT_CONFIG: MockConfig = {
   oauthRedirectUris: ["http://localhost:3000/oauth/callback"],
   identifierHashSecret: "local-development-only-identifier-hash-key", // betterleaks:allow 개발용 기본 키
   rateLimits: {
+    global: 600,
     loginIp: 10,
     loginIdentifier: 5,
     registrationIp: 10,
@@ -239,6 +242,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
       secret(MIN_SECRET_LENGTH),
     ),
     rateLimits: {
+      global: rateLimit("RATE_LIMIT_GLOBAL", "global"),
       loginIp: rateLimit("RATE_LIMIT_LOGIN_IP", "loginIp"),
       loginIdentifier: rateLimit("RATE_LIMIT_LOGIN_IDENTIFIER", "loginIdentifier"),
       registrationIp: rateLimit("RATE_LIMIT_REGISTRATION_IP", "registrationIp"),

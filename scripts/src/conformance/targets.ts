@@ -52,7 +52,8 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
       MOCK_TEST_ENDPOINTS: "true",
       SEED_ADMIN_EMAIL: MOCK_ADMIN.email,
       SEED_ADMIN_PASSWORD: MOCK_ADMIN.password,
-      // 흐름은 한 IP에서 가입과 로그인을 많이 하므로 FastAPI의 compose처럼 한도를 크게 둔다.
+      // 흐름은 한 IP에서 요청, 가입, 로그인을 많이 하므로 FastAPI의 compose처럼 한도를 크게 둔다.
+      RATE_LIMIT_GLOBAL: "1000000",
       RATE_LIMIT_LOGIN_IP: "1000000",
       RATE_LIMIT_LOGIN_IDENTIFIER: "1000000",
       RATE_LIMIT_REGISTRATION_IP: "1000000",

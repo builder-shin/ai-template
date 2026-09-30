@@ -24,6 +24,7 @@ describe("loadConfig", () => {
       oauthRedirectUris: ["http://localhost:3000/oauth/callback"],
       identifierHashSecret: "local-development-only-identifier-hash-key", // betterleaks:allow 개발용 기본 키
       rateLimits: {
+        global: 600,
         loginIp: 10,
         loginIdentifier: 5,
         registrationIp: 10,
@@ -52,6 +53,7 @@ describe("loadConfig", () => {
       OAUTH_REDIRECT_URIS:
         " https://web.example.com/auth/oauth/callback,,http://localhost:3000/cb ",
       IDENTIFIER_HASH_SECRET: "k".repeat(32),
+      RATE_LIMIT_GLOBAL: "7",
       RATE_LIMIT_LOGIN_IP: "1000000",
       RATE_LIMIT_LOGIN_IDENTIFIER: "2",
       RATE_LIMIT_REGISTRATION_IP: "3",
@@ -76,6 +78,7 @@ describe("loadConfig", () => {
       ],
       identifierHashSecret: "k".repeat(32),
       rateLimits: {
+        global: 7,
         loginIp: 1_000_000,
         loginIdentifier: 2,
         registrationIp: 3,

@@ -5,10 +5,14 @@
  *   FastAPI는 Valkey 키를 INCR하고 처음 센 때만 EXPIRE를 건다. 목은 메모리에 같은 카운터를 둔다.
  * - 한도를 넘으면 429 rate_limit.exceeded와 Retry-After(윈도가 끝날 때까지 남은 초, 반올림, 1 이상)다.
  *   meta.params.retryAfter에도 같은 값을 담는다.
- * - 엄격한 한도(로그인, 가입, 메일 요청)는 각 모듈의 서비스가 enforce로 건다. 한도 값은 설정에서 온다.
+ * - 전역 한도는 globalRateLimitMiddleware가 /api/ 아래 모든 요청에 IP별로 건다. 엄격한 한도(로그인, 가입,
+ *   메일 요청)는 각 모듈의 서비스가 enforce로 건다. 한도 값은 설정(RATE_LIMIT_*)에서 온다.
  */
 
-import { ApiError } from "../jsonapi/errors.ts";
+import type { MiddlewareHandler } from "hono";
+import type { AppEnv } from "../context.ts";
+import { API_PREFIX, ApiError } from "../jsonapi/errors.ts";
+import { clientIp } from "./client.ts";
 import { type Clock, HOUR, type Instant, MINUTE, SECOND } from "./clock.ts";
 
 /** 윈도 길이. 설정의 한도는 이 윈도마다의 요청 수다. */
@@ -65,4 +69,21 @@ export function tooManyRequests(retryAfter: number): ApiError {
 export function enforce(limiter: RateLimiter, limit: Limit, subject: string): void {
   const retryAfter = limiter.hit(limit, subject);
   if (retryAfter !== undefined) throw tooManyRequests(retryAfter);
+}
+
+/**
+ * /api/ 아래 요청에 IP별 전역 한도(분당 perMinute, RATE_LIMIT_GLOBAL)를 건다(FastAPI의
+ * GlobalRateLimitMiddleware). trace id 안쪽, 콘텐츠 협상 바깥에 달아 협상에 실패하는 요청(415, 406)도
+ * 센다. 없는 경로의 요청도 센다. 주소를 모르면 한 대상("unknown")으로 센다. 넘으면 429를 던지고
+ * onError가 에러 문서로 바꾼다.
+ */
+export function globalRateLimitMiddleware(
+  limiter: RateLimiter,
+  perMinute: number,
+): MiddlewareHandler<AppEnv> {
+  const limit: Limit = { name: "global", limit: perMinute, window: PER_MINUTE };
+  return async (c, next) => {
+    if (c.req.path.startsWith(API_PREFIX)) enforce(limiter, limit, clientIp(c) ?? "unknown");
+    await next();
+  };
 }
