@@ -4,12 +4,16 @@
  */
 
 import { emailProblem } from "./email.ts";
+import { lossy } from "./surrogates.ts";
 
-/** Python str() 모양(None, True, False). Pydantic 메시지가 입력 값을 이렇게 적는다. */
+/**
+ * Python str() 모양(None, True, False). Pydantic 메시지가 입력 값을 이렇게 적는다. 문자열의 짝 없는
+ * 서로게이트는 U+FFFD 셋이 된다(surrogates.ts의 lossy).
+ */
 export function pythonStr(value: unknown): string {
   if (value === null || value === undefined) return "None";
   if (typeof value === "boolean") return value ? "True" : "False";
-  if (typeof value === "string") return value;
+  if (typeof value === "string") return lossy(value);
   return JSON.stringify(value);
 }
 

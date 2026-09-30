@@ -5,8 +5,9 @@
  *
  * 1. Ajv 오류 → Issue. 널 허용(anyOf [X, null])의 null 가지 오류와 anyOf 요약은 버린다. Pydantic은
  *    X의 오류만 낸다.
- * 2. 위치마다 Issue 하나만 남긴다(Pydantic은 필드마다 오류 하나다). 선택지(enum) 오류가 형 오류보다
- *    앞선다. Pydantic의 enum·Literal은 형을 따로 보지 않고 선택지 오류를 낸다.
+ * 2. 위치마다 Issue 하나만 남긴다(Pydantic은 필드마다 오류 하나다). 짝 없는 서로게이트 오류가 가장
+ *    앞서고(Pydantic은 문자열을 읽지 못하면 다른 검사를 하지 않는다, surrogates.ts), 선택지(enum) 오류가
+ *    형 오류보다 앞선다. Pydantic의 enum·Literal은 형을 따로 보지 않고 선택지 오류를 낸다.
  * 3. 상태와 코드는 errors.py의 _body_error 규칙을 따른다.
  * 4. Pydantic처럼 모델 필드 순서(계약의 properties 순서)로, 깊이 우선으로 늘어놓는다.
  */
@@ -30,8 +31,10 @@ import {
   pythonStr,
   typeMessage,
 } from "./pydantic-messages.ts";
+import { UNICODE_MESSAGE, WELL_FORMED } from "./surrogates.ts";
 
 type IssueKind =
+  | "unicode"
   | "missing"
   | "type"
   | "choice"
@@ -58,6 +61,7 @@ interface Issue {
 
 /** 같은 위치의 Issue 가운데 남길 것. 작을수록 앞선다. */
 const PRIORITY: Readonly<Record<IssueKind, number>> = {
+  unicode: 0,
   tag_missing: 0,
   tag_invalid: 0,
   choice: 1,
@@ -174,6 +178,8 @@ function toIssue(error: AjvError, document: unknown, root: SchemaObject): Issue 
     }
     case "discriminator":
       return tagIssue(pointer, params, root, document);
+    case WELL_FORMED:
+      return { pointer, kind: "unicode", message: UNICODE_MESSAGE };
     case "anyOf":
     case "oneOf":
       return undefined;

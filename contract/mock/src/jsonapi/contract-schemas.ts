@@ -10,6 +10,8 @@
  * - 스키마에 없는 멤버는 검증하면서 지운다(removeAdditional). Pydantic 모델이 모르는 필드를 버리는
  *   것(extra="ignore")과 같다. 그래서 검증 함수는 넘긴 값을 바꾼다.
  * - email 형식은 FastAPI(EmailStr)에 가깝게 특수 용도 도메인을 거절한다(email.ts).
+ * - Pydantic이 값을 파싱하는 문자열(제약, 선택지, 날짜·UUID 형식)은 짝 없는 서로게이트를 받지 않는다.
+ *   그런 스키마에 wellFormed 키워드를 붙인다(surrogates.ts).
  */
 
 import { readFileSync } from "node:fs";
@@ -20,6 +22,7 @@ import { parse } from "yaml";
 import { isRecord } from "../json.ts";
 import { isEmail } from "./email.ts";
 import { childValue, pointerSegments } from "./pointer.ts";
+import { parsesString, WELL_FORMED } from "./surrogates.ts";
 
 /** ajv-formats는 CommonJS라 NodeNext에서 플러그인 함수가 default에 있다. */
 const addFormats = ajvFormats.default;
@@ -51,12 +54,17 @@ function loadSchemas(): Readonly<Record<string, SchemaObject>> {
 /** 계약의 components.schemas(원본 그대로). */
 export const contractSchemas = loadSchemas();
 
-/** Ajv에 등록할 모양: 참조를 등록 id로 바꾸고 discriminator.mapping을 뺀다. */
+/**
+ * Ajv에 등록할 모양: 참조를 등록 id로 바꾸고 discriminator.mapping을 뺀다. Pydantic이 파싱하는 문자열
+ * 스키마에는 wellFormed를 붙인다.
+ */
 function forAjv(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(forAjv);
   if (!isRecord(value)) return value;
-  return Object.fromEntries(
-    Object.entries(value).map(([key, item]) => {
+  const wellFormed = parsesString(value) ? [[WELL_FORMED, true]] : [];
+  return Object.fromEntries([
+    ...wellFormed,
+    ...Object.entries(value).map(([key, item]) => {
       if (key === "$ref" && typeof item === "string" && item.startsWith(COMPONENT_PREFIX)) {
         return [key, `${CONTRACT_ID}#/$defs/${item.slice(COMPONENT_PREFIX.length)}`];
       }
@@ -68,7 +76,7 @@ function forAjv(value: unknown): unknown {
       }
       return [key, forAjv(item)];
     }),
-  );
+  ]);
 }
 
 const ajv = new Ajv2020({
@@ -79,6 +87,12 @@ const ajv = new Ajv2020({
 });
 addFormats(ajv);
 ajv.addFormat("email", { type: "string", validate: isEmail });
+ajv.addKeyword({
+  keyword: WELL_FORMED,
+  type: "string",
+  schemaType: "boolean",
+  validate: (wellFormed: boolean, data: string) => !wellFormed || data.isWellFormed(),
+});
 ajv.addSchema({ $id: CONTRACT_ID, $defs: forAjv(contractSchemas) });
 
 /** 계약 컴포넌트 스키마의 검증 함수. 처음 부를 때 컴파일하고 Ajv가 기억한다. */

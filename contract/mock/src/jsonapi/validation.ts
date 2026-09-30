@@ -17,6 +17,7 @@ import { isRecord } from "../json.ts";
 import { contractSchemas, contractValidator } from "./contract-schemas.ts";
 import { normalizeEmail } from "./email.ts";
 import { ApiError, errorObject, RequestValidationError } from "./errors.ts";
+import { decodeBody } from "./surrogates.ts";
 import { documentErrors } from "./validation-errors.ts";
 
 type Schemas = components["schemas"];
@@ -62,19 +63,18 @@ const NORMALIZED_ATTRIBUTES: Partial<
   RoleUpdateDocument: { name: trim },
 };
 
-const UTF8 = new TextDecoder("utf-8", { fatal: true });
-
 /**
  * 본문 바이트를 JSON 값으로 읽는다(FastAPI가 의존성보다 먼저 본문을 파싱하는 단계).
  * - 빈 본문은 null이다. validateDocument가 본문이 없다(400 "Field required", pointer "")고 알린다.
- * - UTF-8이 아니면 400 jsonapi.invalid_document(detail과 source 없음). 앞의 BOM은 지운다.
+ * - UTF-8이 아니면 400 jsonapi.invalid_document(detail과 source 없음). 앞의 BOM은 지운다. UTF-8로
+ *   인코딩한 서로게이트는 짝 없는 서로게이트로 읽는다(Python json.loads의 surrogatepass, surrogates.ts).
  * - JSON이 아니면 400 jsonapi.invalid_document(source 없음).
  */
 export function parseJsonBody(bytes: Uint8Array): unknown {
   if (bytes.byteLength === 0) return null;
   let text: string;
   try {
-    text = UTF8.decode(bytes);
+    text = decodeBody(bytes);
   } catch {
     throw new ApiError(400, "jsonapi.invalid_document");
   }
