@@ -15,6 +15,9 @@
 | 경로                                          | 내용                                                                                                                   |
 | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `src/main.ts`, `src/app.ts`                   | 진입점, 앱 조립(미들웨어 순서가 FastAPI와 같다)                                                                        |
+| `src/context.ts`, `src/trace-id.ts`           | 요청 문맥(`AppEnv`, `Variables.traceId`)과 trace id 규칙(traceparent를 읽어 `meta.traceId`를 정한다)                   |
+| `src/health.ts`                               | 헬스체크(`/health/live`, `/health/ready`)                                                                              |
+| `src/html.ts`, `src/json.ts`                  | 사람이 보는 화면의 HTML 도우미(`escapeHtml`, `htmlPage`)와 JSON 값 도우미(`isRecord`)                                  |
 | `src/config.ts`                               | 설정(환경 변수)                                                                                                        |
 | `src/state.ts`, `src/store.ts`, `src/seed.ts` | 메모리 상태, 테이블, 시드                                                                                              |
 | `src/core/`                                   | 도메인을 모르는 기반: 시계, id, 보안, 클라이언트 IP, 레이트 리밋, 권한, 감사 로그, 목록, 실시간 허브                   |
@@ -22,6 +25,7 @@
 | `src/modules/`                                | FastAPI와 같은 단위의 모듈(auth, users, roles, files, posts, audit-logs, realtime). `registry.ts`가 모듈 사이를 잇는다 |
 | `src/modules/realtime/`                       | 실시간: Socket.IO(`/socket.io`, API와 같은 포트), 티켓, 구독, 연결 재검사                                              |
 | `src/storage/`                                | 가짜 스토리지(presigned URL, `/_storage`)                                                                              |
+| `src/mail/`                                   | 가짜 메일 보관함(발신함). `/_test/mail`, `/_mock/mail`이 읽는다                                                        |
 | `src/oauth-server/`                           | 가짜 OAuth 서버(google, kakao, naver)                                                                                  |
 | `src/test-endpoints/`                         | 테스트 통로(`/_test/mail`, `/_mock/mail`)                                                                              |
 | `test/`                                       | 단위 테스트. 앱을 `app.request`로 부른다(`test/support.ts`의 `testApp`, `testClock`)                                   |
@@ -76,4 +80,14 @@
 - access token은 JWT가 아닌 불투명한 문자열이다. 만료는 세션 응답의 `accessTokenExpiresAt`, `refreshTokenExpiresAt`으로 본다.
 - 메일은 요청 안에서 바로 보관함에 들어가고(FastAPI는 요청 뒤 잡으로 보낸다) 텍스트 본문만 있다.
 - 비밀번호 해시(scrypt), 소셜 로그인 제공자(가짜 OAuth 서버), 스토리지(메모리 버킷)는 개발용이다. 재시작하면 옛 presigned URL은 맞지 않는다.
-- 이메일 형식은 흔한 경우만 email-validator와 같다(`src/jsonapi/email.ts`). 요청 검증의 몇 가지 경계(정수 자리의 숫자 문자열, 판별 유니온 오류의 pointer, UTF-16 본문)는 목이 계약대로 한다(`src/jsonapi/validation.ts`).
+- 스케줄 잡이 없다. `modules/files/service.ts`의 `purgePending`은 떠 있는 프로세스가 부르지 않아 24시간이 지난 pending 업로드도 계속 사용자 쿼터를 차지한다. 만료된 세션과 토큰도 지우지 않는다(FastAPI는 각각 매일 03:00 UTC, 매시간 정각 잡으로 지운다).
+- 공개 글 목록 첫 페이지를 캐시하지 않는다(FastAPI는 `posts/service.ts`가 60초 캐시한다). 그래서 저자 이름 변경처럼 다른 모듈이 일으킨 변화가 목에는 바로 보이고 FastAPI에는 최대 60초 늦게 보인다.
+- 짝 없는 서로게이트가 있어도 FastAPI가 500을 내는 자리(Pydantic이 파싱하지 않는 문자열이라 값이 그대로 흘러가다 나중에 막히는 자리)를 목은 정상 처리한다: 로그인의 비밀번호(401), 입력을 그대로 돌려주는 에러 detail(data.id 불일치 409, 파일이 없거나 남의 것이라는 404), 역할 설명 저장(201). 이 FastAPI 문제는 고칠 예정이다(설계 §12.1).
+- `REALTIME_ALLOWED_ORIGINS`는 값마다 Origin으로 정규화하고 `*`나 URL이 아닌 값을 설정 오류로 거절한다. FastAPI는 원래 문자열을 그대로 비교해 `*`는 전부 허용으로 본다(값을 검증하지 않는다).
+- 본문 인코딩이 다르다: JSON의 `NaN`·`Infinity`는 목에서 400이다(Python의 `json`은 받아들인다). CESU-8로 짝을 이룬 서로게이트 바이트, UTF-16·UTF-32 본문도 Python의 `json.loads`와 다르게 다룬다(`src/jsonapi/validation.ts`, `src/jsonapi/surrogates.ts`).
+- snake_case 속성 이름을 FastAPI(`validate_by_name`)는 camelCase와 함께 받지만, 목은 스키마에 없는 속성으로 보고 조용히 버린다(`removeAdditional`). 그 속성이 필수면 422가 난다.
+- 설정 검증이 FastAPI보다 빡빡하다: `OAUTH_REDIRECT_URIS`의 각 값은 http(s) 주소여야 하고 `SEED_ADMIN_EMAIL`은 이메일 형식이어야 한다. FastAPI는 값을 그대로 받는다(각각 CommaSeparated, 빈 문자열만 아니면 되는 문자열).
+- 끝에 슬래시가 붙은 경로는 목에서 404다(FastAPI/Starlette는 307로 리다이렉트한다).
+- GET만 선언한 라우트에 HEAD로 요청하면 목은 200이다(Hono가 GET 처리기로 넘긴다). FastAPI는 404다.
+- 이메일 형식은 흔한 경우만 email-validator와 같다(`src/jsonapi/email.ts`).
+- 요청 검증의 나머지 몇 가지 경계 — 정수 자리의 숫자 문자열, 판별 유니온 오류의 pointer(예: SessionGrant의 grantType) — 는 FastAPI(Pydantic)의 특이 동작 대신 계약대로 한다(`src/jsonapi/validation.ts`).

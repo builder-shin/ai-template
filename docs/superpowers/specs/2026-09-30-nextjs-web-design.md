@@ -313,7 +313,7 @@ templates/nextjs/
 
 - 요청 문서는 `openapi.yaml`의 JSON Schema로 Ajv(2020-12)가 검증한다. 실패는 `validation.*` 코드와 JSON pointer로 옮긴다.
 - 계약이 바뀌면 목의 검증도 저절로 따라간다.
-- 옮긴 결과는 적합성 스위트에서 FastAPI의 동작과 같음을 확인했다. 몇 가지 경계(정수 자리의 숫자 문자열, 판별 유니온 오류의 pointer, UTF-16 짝 없는 서로게이트)는 FastAPI(Pydantic)의 특이 동작 대신 계약대로 한다(§8.9).
+- 옮긴 결과는 적합성 스위트에서 FastAPI의 동작과 같음을 확인했다. 몇 가지 경계(정수 자리의 숫자 문자열, 판별 유니온 오류의 pointer, UTF-16·32 본문과 CESU-8로 짝을 이룬 서로게이트 바이트)는 FastAPI(Pydantic, Python의 `json`)의 특이 동작 대신 계약대로 한다. 전체 목록은 §8.9다.
 
 ### 8.4 데이터와 토큰
 
@@ -345,13 +345,14 @@ templates/nextjs/
 - 메일: `GET /_test/mail[?to=주소]`가 보낸 메일을 최신순 JSON(`{ messages: [...] }`)으로 준다. `DELETE /_test/mail`은 모두 지운다(204). 적합성과 E2E가 이 JSON으로 인증·재설정 메일을 읽는다(Mailpit 대신). 사람이 보는 화면은 `/_mock/mail`이고, `POST /_mock/mail/clear`가 보관함을 비운다.
 - 소셜 로그인: 가짜 제공자(google, kakao, naver)의 로그인 화면이 `/_mock/oauth/{provider}/authorize`다. FastAPI가 개발·테스트에 쓰는 모의 OAuth 서버(navikt/mock-oauth2-server)의 인가 코드 흐름과 로그인 폼을 흉내 낸다.
   - `GET`: 인가 요청(response_type, client_id, redirect_uri, code_challenge 등)이 틀리면 400 안내, 맞으면 로그인 폼이다.
-  - `POST`(같은 주소, 폼 필드): `username`(필수, 프로필의 `sub`가 된다), `claims`(있으면 이 JSON 객체를 그대로 프로필로 쓴다), `name`·`email`·`emailVerified`(claims가 없을 때 제공자 모양으로 조합), `error`(있으면 로그인하지 않고 이 값으로 거부). 틀리면 400으로 폼을 다시 보여 준다. 모르는 제공자는 404다. 필드의 전체 설명은 `contract/mock/AGENTS.md`다.
+  - `POST`(같은 주소, 폼 필드): `username`(필수, 프로필의 `sub`가 된다), `claims`(있으면 이 JSON 객체를 그 위에 얹어 프로필을 만든다. claims의 `sub`가 username을 이기고, 값이 null인 클레임은 뺀다), `name`·`email`·`emailVerified`(claims가 없을 때 제공자 모양으로 조합), `error`(있으면 로그인하지 않고 이 값으로 거부). 틀리면 400으로 폼을 다시 보여 준다. 모르는 제공자는 404다. 필드의 전체 설명은 `contract/mock/src/oauth-server/routes.ts`의 머리말이다.
   - 적합성 키트는 이 폼에 `username`과 `claims`를 바로 POST해서 로그인을 흉내 낸다(사람이 미리 신원을 정해 두는 별도 JSON 엔드포인트는 없다).
 - 적합성 키트의 `mock` 대상은 이 통로들을 부수 채널로 쓴다. `pnpm conformance mock`이 `pnpm --filter @ai-template/mock run start`로 목 프로세스만 띄워 돌리고(Docker 불필요), CI의 `conformance-mock` 작업이 이를 돌린다.
 
 ### 8.8 web 템플릿과의 관계
 
 - `pnpm sync`가 `contract/mock`, `contract/openapi.yaml`, `contract/typespec`을 그대로 web 템플릿의 `contract/`(`contract/mock/`, `contract/openapi.yaml`, `contract/typespec/`) 아래로 복사한다. 목이 `../openapi.yaml`을 패키지 기준 상대 경로로 읽으므로 계약 사본 옆(`contract/mock/`)에 있어야 한다. 저장소 CI는 사본이 원본과 같은지 본다.
+- **W2에서 정할 것:** `contract/mock`을 파일 그대로 복사하는 것만으로는 뜨지 않는다. 패키지가 자기 밖을 셋 쓴다: `tsconfig.json`이 `../../tsconfig.base.json`을 확장하고, `package.json`의 dev dependency `@ai-template/contract`는 워크스페이스 패키지를 찾으며, `tsx`·`typescript`·`vitest`·`@types/node`는 저장소 루트의(버전을 고정한) devDependencies에서 온다. 그대로 복사만 하면 `tsc -p`가 실패하고 `@ai-template/contract`라는 워크스페이스 패키지가 없어 `pnpm install`이 실패한다. web 템플릿은 적어도 다음을 갖춰야 한다: `contract/*`를 포함하는 pnpm 워크스페이스(계약 패키지를 함께 두거나 그 dev dependency를 고친 것), 템플릿 루트의 `tsconfig.base.json`, 버전을 고정한 루트 dev dependencies. 어떻게 갖출지는 W2 계획이 정한다.
 - 단독 web 프로젝트가 API를 넓힐 때는 TypeSpec을 고치고 `pnpm gen`으로 `openapi.yaml`과 타입을 다시 만든 뒤, 목에 핸들러를 더한다(레시피).
 - 조합 프로젝트에서는 백엔드의 `openapi.json`이 원본이고, 목은 프론트만 개발할 때 쓴다.
 
