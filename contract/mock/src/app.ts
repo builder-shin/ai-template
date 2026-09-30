@@ -25,6 +25,7 @@ import { createAuthenticator } from "./modules/auth/credentials.ts";
 import { authRoutes } from "./modules/auth/routes.ts";
 import { fileRoutes } from "./modules/files/routes.ts";
 import { postRoutes } from "./modules/posts/routes.ts";
+import { realtimeRoutes } from "./modules/realtime/routes.ts";
 import { connectModules } from "./modules/registry.ts";
 import { roleRoutes } from "./modules/roles/routes.ts";
 import { userRoutes } from "./modules/users/routes.ts";
@@ -53,6 +54,7 @@ export function createApp(config: MockConfig, state: MockState = createState()):
   auditLogRoutes(api, state);
   fileRoutes(api, config, state);
   postRoutes(api, config, state);
+  realtimeRoutes(api, state);
   app.route(STORAGE_PATH, storageRoutes(config, state.storage));
   if (config.testEndpoints) {
     app.route("/_test/mail", mailTestRoutes(state.outbox));

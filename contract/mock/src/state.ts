@@ -4,13 +4,14 @@
  */
 
 import { type Clock, systemClock } from "./core/clock.ts";
-import { createExpiringMap } from "./core/expiring.ts";
+import { createExpiringMap, type ExpiringMap } from "./core/expiring.ts";
 import { createRateLimiter, type RateLimiter } from "./core/rate-limit.ts";
 import { createRealtimeHub, type RealtimeHub } from "./core/realtime.ts";
 import { createOutbox, type Outbox } from "./mail/outbox.ts";
 import type { OAuthStore } from "./modules/auth/model.ts";
 import { createFileRegistry, type FileRegistry } from "./modules/files/registry.ts";
 import type { MembersChanged } from "./modules/roles/management.ts";
+import type { RealtimeTicket } from "./modules/realtime/tickets.ts";
 import type { AccountCloser } from "./modules/users/accounts.ts";
 import { createOAuthServer, type OAuthServer } from "./oauth-server/server.ts";
 import { createStorage, type Storage } from "./storage/bucket.ts";
@@ -25,6 +26,8 @@ export interface MockState {
   readonly limiter: RateLimiter;
   /** 실시간 이벤트의 발행 지점. */
   readonly realtime: RealtimeHub;
+  /** 실시간 티켓(30초, 1회용). 키는 티켓의 digest다. FastAPI가 Valkey에 두는 값이다. */
+  readonly realtimeTickets: ExpiringMap<RealtimeTicket>;
   /** 보낸 메일 보관함. */
   readonly outbox: Outbox;
   /** 가짜 스토리지의 버킷(객체와 presigned URL). */
@@ -52,6 +55,7 @@ export function createState(options: StateOptions = {}): MockState {
     store: createStore(),
     limiter: createRateLimiter(clock),
     realtime: createRealtimeHub(),
+    realtimeTickets: createExpiringMap(clock),
     outbox: createOutbox(),
     storage: createStorage(clock),
     oauth: { states: createExpiringMap(clock), codes: createExpiringMap(clock) },
