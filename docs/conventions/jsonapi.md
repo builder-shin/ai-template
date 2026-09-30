@@ -6,7 +6,7 @@
 
 - `/api/v1` 아래의 모든 요청·응답 본문은 JSON:API 문서다. 미디어 타입은 `application/vnd.api+json` 하나만 쓴다.
 - 예외는 두 가지다.
-  - OAuth 리다이렉트(`/api/v1/oauth/{provider}/authorize`, `/callback`): 본문 없이 302로 응답한다. 허용하지 않은 `redirectUri`, 없거나 형식이 틀린 `codeChallenge`, 없거나 만료된 `state`는 400 `jsonapi.invalid_query`(`source.parameter`)다. `POST /sessions`의 `oauthCode` grant는 `codeVerifier`가 있어야 한다. 콜백은 제공자가 덧붙이는 쿼리 파라미터를 받아들인다.
+  - OAuth 리다이렉트(`/api/v1/oauth/{provider}/authorize`, `/callback`): 본문 없이 302로 응답한다. `Accept` 협상은 다른 요청과 같아서 406 `jsonapi.not_acceptable`이 있다(본문이 없어 415는 없다). 허용하지 않은 `redirectUri`, 없거나 형식이 틀린 `codeChallenge`, 없거나 만료된 `state`는 400 `jsonapi.invalid_query`(`source.parameter`)다. `POST /sessions`의 `oauthCode` grant는 `codeVerifier`가 있어야 한다. 콜백은 제공자가 덧붙이는 쿼리 파라미터를 받아들인다.
   - 헬스체크(`/health/live`, `/health/ready`): API 밖에 있고 `application/json`으로 응답한다.
 - 확장(Atomic Operations 등)과 프로필은 쓰지 않는다.
 
@@ -16,6 +16,12 @@
 - `id`는 UUIDv7 문자열이다. 권한(`permissions`)만 권한 코드를 id로 쓴다.
 - 속성과 관계 이름은 camelCase다.
 - 문자열의 `maxLength`(계약과 각 백엔드 스키마)는 유니코드 코드 포인트 수다(JSON Schema, Pydantic과 같다). JavaScript의 `.length`(UTF-16 코드 유닛 수)와 다르므로, NestJS와 목 서버는 코드 포인트 수로 길이를 센다.
+- 요청 문자열에는 짝 없는 UTF-16 서로게이트(JSON의 `\ud800` 같은 이스케이프)가 올 수 있다. 500을 내지 않고 이렇게 다룬다.
+  - 제약(길이, 패턴, 선택지, 날짜·UUID·이메일 같은 형식)이 있는 문자열은 형식 오류다. 길이 같은 다른 검사보다 먼저 본다. 필드는 422 `validation.invalid_format`, `data.type`은 400 `jsonapi.invalid_document`다.
+  - 제약 없는 문자열(토큰, 비밀번호, id)은 받아서 비교한다. 맞지 않으면 틀린 값과 같은 에러다(예: 비밀번호는 401 `auth.invalid_credentials`, 경로와 다른 `data.id`는 409, 없는 관계는 404).
+  - 그런 값을 응답에 담으면(입력을 그대로 담은 에러 `detail`) `\uXXXX`(소문자 16진)로 이스케이프한다. JavaScript `JSON.stringify`와 같은 바이트다.
+  - 그래서 계약에서 저장하는 문자열에는 제약(`maxLength` 등)을 두고, 제약 없는 문자열은 비교에만 쓴다.
+- 정수(`type: integer`) 자리에는 JSON 숫자로 쓴 정수만 받는다. 숫자 문자열(`"10"`)과 불리언은 422 `validation.invalid_format`이다. 소수점이나 지수로 쓴 정수(`10.0`, `1e3`)는 FastAPI가 422로 거절하고 목은 받으므로, 클라이언트는 정수 표기로 보낸다.
 - 관계 전용 엔드포인트(`/relationships/...`)는 두지 않는다. 관계는 리소스를 `PATCH`해서 바꾸고, 관계의 `self` 링크도 내보내지 않는다.
 - 생성은 201과 문서, 삭제는 204로 응답한다. 비동기로 처리하는 생성(인증 메일 재발송, 비밀번호 재설정 요청)은 계정이 있는지 드러내지 않도록 항상 202다.
 - CRUD가 아닌 동작도 리소스로 표현한다. 예: 로그인은 `POST /sessions`, 글 발행은 `PATCH /posts/{id}`로 `status: "published"`.
@@ -64,7 +70,8 @@
 - 에러 응답은 `{ "errors": [...], "meta": { "traceId": "..." } }`이다.
 - 에러 객체는 `status`(문자열), `code`, `title`, `detail`, `source.pointer` 또는 `source.parameter`, `meta.params`를 담는다.
 - `source.pointer`는 RFC 6901 JSON Pointer다. 요청 문서 전체는 빈 문자열 `""`이다(`"/"`는 이름이 빈 문자열인 멤버를 가리킨다).
-- 필드 검증 오류는 필드마다 에러 객체 하나를 만들어 422로 응답한다.
+- 필드 검증 오류는 필드마다 에러 객체 하나를 만들어 422로 응답한다. `source.pointer`는 본문에서 그 값의 실제 위치다. 판별 유니온(`SessionGrant`)의 필드 오류도 판별자 값을 경로에 넣지 않는다(password grant의 이메일 오류는 `/data/attributes/email`).
+- 401 응답은 늘 `WWW-Authenticate`를 담는다(RFC 9110 §15.5.2). 값은 `Bearer`이고, 재인증 요구(`auth.reauthentication_required`)만 RFC 9470의 step-up challenge(`Bearer error="insufficient_user_authentication", max_age=600`)다. 본문의 자격 증명이 틀린 401(로그인, refresh token, 소셜 로그인 코드, 비밀번호 변경)도 같다.
 - JSON:API 1.1이 반드시(MUST) 쓰라는 상태를 따른다.
   - 요청 본문의 `type`이 엔드포인트의 리소스와 다르면 409 `resource.conflict`다(POST와 PATCH 모두). PATCH는 `id`가 경로의 리소스와 달라도 409다. `/api/v1/me`는 로그인한 사용자의 id가 경로의 리소스다.
   - 생성 요청(POST)에 클라이언트가 만든 `id`가 있으면 403 `permission.denied`다. 클라이언트가 만든 id는 받지 않는다.
@@ -113,9 +120,9 @@
 - `x-realtime-events`의 `rooms`는 그 이벤트를 늘 받는 룸이다. `user:{userId}`와 `user:{authorId}`는 해당 사용자(글 이벤트는 작성자)의 `user:{id}` 룸이다. `conditionalRooms`는 조건이 맞을 때만 받는 룸이고 `{ room, when }` 꼴이다. `when`은 `published`(바뀐 뒤 글이 발행 상태)와 `wasPublished`(지우기 전 글이 발행 상태였음) 둘 중 하나다.
 - 발행된 글을 초안으로 돌리면 공개 채널(`posts`)은 `post.unpublished`를 받는다. 페이로드는 리소스 식별자뿐이다(초안의 내용이 공개 채널로 나가지 않는다). `posts:all`과 작성자 룸은 `post.updated`(전체 문서)를 받는다.
 - 페이로드도 JSON:API 문서이고 `components.schemas`에 있다. 그래서 프론트엔드는 같은 생성 과정으로 이벤트 타입을 얻는다.
-- 클라이언트가 보내는 메시지는 `x-realtime-messages`에 적는다. `subscribe`와 `unsubscribe`는 페이로드 `RealtimeSubscription`(`{ channel }`)을 보내고, 서버는 ack `RealtimeAck`로 답한다. 성공이면 `{ ok: true }`, 실패면 `{ ok: false, error }`이고 `error`는 에러 객체다(권한 없음 403 `permission.denied`, 모르는 채널이나 틀린 페이로드 422 `validation.invalid_choice`, `source.pointer`는 `/channel`).
-- 채널 권한은 구독할 때 본다. 세션이 폐기되거나(`session.revoked`) 역할이나 상태가 바뀌면(`me.updated`의 `changed`에 `roles`나 `status`) 서버가 그 사용자의 연결을 다시 검사해, 세션이 끝났거나 구독한 채널의 권한을 잃은 연결을 끊는다. 끊긴 클라이언트는 새 티켓으로 다시 붙는다. 세션이 끝났으면 티켓 발급이 401이고, 권한을 잃은 채널은 구독 ack가 `permission.denied`다.
-- 연결: 전송은 WebSocket만 받는다. 브라우저 연결의 Origin은 허용 목록으로 본다. 로그인한 연결은 `auth.ticket`에 티켓(`POST /realtime-tickets`, 30초, 1회용)을 넣는다. 티켓이 틀렸거나 만료됐거나 세션이 끝났으면 연결을 거부하고, `connect_error`의 message는 `auth.token_invalid`, data는 에러 객체(`status` "401")다. 티켓이 없으면 익명 연결이다.
+- 클라이언트가 보내는 메시지는 `x-realtime-messages`에 적는다. `subscribe`와 `unsubscribe`는 페이로드 `RealtimeSubscription`(`{ channel }`) 하나를 보내고, 서버는 ack `RealtimeAck`로 답한다. 성공이면 `{ ok: true }`, 실패면 `{ ok: false, error }`이고 `error`는 에러 객체다(권한 없음 403 `permission.denied`, 모르는 채널이나 틀린 페이로드 422 `validation.invalid_choice`, `source.pointer`는 `/channel`). 페이로드가 없거나 둘 이상이어도 틀린 페이로드다. 서버는 이때도 ack로 답한다.
+- 채널 권한은 구독할 때 본다. 세션이 폐기되거나(`session.revoked`) 역할이나 상태가 바뀌면(`me.updated`의 `changed`에 `roles`나 `status`) 서버가 그 사용자의 연결을 다시 검사해, 세션이 끝났거나(폐기, 만료) 구독한 채널의 권한을 잃은 연결을 끊는다. 여러 세션을 폐기하는 요청(다른 기기·전체 로그아웃, 비밀번호 변경·재설정, 계정 비활성화·탈퇴)은 폐기한 세션이 없어 `session.revoked`를 보내지 않아도 다시 검사한다. 만료되기 전에 붙은 연결이 남아 있을 수 있기 때문이다. 끊긴 클라이언트는 새 티켓으로 다시 붙는다. 세션이 끝났으면 티켓 발급이 401이고, 권한을 잃은 채널은 구독 ack가 `permission.denied`다.
+- 연결: 전송은 WebSocket만 받는다. 브라우저 연결의 Origin은 허용 목록으로 본다. 허용 목록의 값은 브라우저가 보내는 Origin 꼴(`스킴://호스트[:포트]`. 경로와 끝의 `/`가 없고, 호스트는 소문자이며, 기본 포트를 적지 않는다)이고, Origin 헤더와 글자 그대로 비교한다. 백엔드는 설정 값을 이 꼴로 정규화하고, `*`(모두 허용)와 http(s)가 아닌 값은 설정 오류로 거절한다. 로그인한 연결은 `auth.ticket`에 티켓(`POST /realtime-tickets`, 30초, 1회용)을 넣는다. 티켓이 틀렸거나 만료됐거나 세션이 끝났으면 연결을 거부하고, `connect_error`의 message는 `auth.token_invalid`, data는 에러 객체(`status` "401")다. 티켓이 없으면 익명 연결이다.
 - 이벤트는 쓰기가 commit된 뒤에 나간다. 한 연결이 여러 룸에 있어도 한 번 받는다. `session.revoked`는 그 사용자의 모든 연결이 받으므로(페이로드에 세션 id가 없다) 클라이언트는 자기 세션이 살아 있는지 확인한다. `me.updated`의 `changed`는 `roles`(역할을 받거나 잃음, 가진 역할의 권한이 바뀌거나 역할이 지워짐), `status`(관리자가 상태를 바꿈), `profile`(이름, 로케일, 아바타)이다.
 
 ## 메일 링크

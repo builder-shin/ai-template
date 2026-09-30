@@ -17,7 +17,7 @@
 
 ## 고칠 파일
 
-- `models.py`, `schemas.py`: 속성과 관계. 복사한 title, body, status, author, coverImage는 posts의 것이다. 문서 모델의 이름은 `<단수 Pascal>Resource`, `<단수 Pascal>Document` 꼴을 유지한다.
+- `models.py`, `schemas.py`: 속성과 관계. 복사한 title, body, status, author, coverImage는 posts의 것이다. 문서 모델의 이름은 `<단수 Pascal>Resource`, `<단수 Pascal>Document` 꼴을 유지한다. 새 속성은 [엔드포인트 추가](endpoint.md)의 규칙(정수는 `Int32`·`Int64`, 저장하는 문자열에는 길이 제약)을 따른다.
 - `policies.py`: 보기와 고치기 규칙, 상태 전이 표. 상태가 없는 리소스면 전이 표와 status를 지운다.
 - `service.py`: 유스케이스. 공개 목록 캐시는 예시다. 필요 없으면 지운다.
 - 에러 코드와 감사 행위: 생성 직후에는 posts의 값(`post.invalid_transition`, `post.deleted_by_admin`, 감사 대상 `posts`)을 그대로 쓴다. 새 값을 `ErrorCode`(`app.core.jsonapi.error_codes`), `AuditLogAction`·`AuditLogTargetType`(`app.core.audit`)에 더한 뒤 바꾸고, 테스트의 기대값도 바꾼다.

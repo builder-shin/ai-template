@@ -65,7 +65,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 ### JSON:API
 
 - `/api/v1` 아래 응답은 JSON:API 문서다. 에러는 `ApiError(상태, ErrorCode.<코드>, 영어 detail)`로 던지고, 에러 코드는 `ErrorCode`(계약의 목록)만 쓴다.
-- 문서 모델은 제네릭(`Document[...]`)을 라우트에 직접 쓰지 않고 계약과 같은 이름의 서브클래스를 쓴다. 선택 필드는 `Omittable[T] = MISSING`이다.
+- 문서 모델은 제네릭(`Document[...]`)을 라우트에 직접 쓰지 않고 계약과 같은 이름의 서브클래스를 쓴다. 선택 필드는 `Omittable[T] = MISSING`이다. 정수는 `int`가 아니라 `Int32`·`Int64`(strict)로 쓰고, DB에 저장하는 문자열에는 길이 제약을 둔다(이유는 [엔드포인트 추가](docs/recipes/endpoint.md)의 규칙).
 - 라우트는 `JsonApiRouter.route(메서드, 경로, 선언, response_model=...)`로 만든다. 선언(`Operation`, 컬렉션은 `CollectionOperation`)이 operationId, 에러 응답, 쿼리 허용 목록(include, fields, sort, filter)을 함께 정한다. 쿼리는 `Depends(선언)`으로 받고, 응답은 `render()`로, 페이지는 `pagination()`으로, 포함 리소스는 `load_included()`로 만든다.
 - POST 선언에는 `CREATE_ERRORS`(403, 409), PATCH 선언에는 `CONFLICT`(409)를 넣는다(JSON:API 1.1). PATCH 핸들러는 `require_matching_id()`로 본문의 id가 경로의 리소스와 같은지 본다.
 

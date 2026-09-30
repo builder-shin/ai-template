@@ -12,7 +12,8 @@ import {
 
 /**
  * 사용법: pnpm spec-compare [--subset] <계약 파일> <구현 스펙 파일>
- * 이름·경로 비교와 breaking 검사(oasdiff)를 모두 돌린다. --subset은 구현에 있는 operation만 비교한다.
+ * 이름·경로·operation별 응답 상태·실시간 선언 비교(compare.ts)와 breaking 검사(oasdiff)를 모두 돌린다.
+ * --subset은 구현에 있는 operation만 비교한다.
  */
 const args = process.argv.slice(2);
 const subset = args.includes("--subset");

@@ -22,6 +22,12 @@
 - 권한이 새로 필요하면 [권한 추가](permission.md), 요청 밖에서 할 일이 있으면 [잡 추가](job.md)를 따른다.
 - `tests/`: `api`와 `accounts` fixture로 성공, 권한 없음(403), 없음(404), 틀린 본문(422)을 확인한다.
 
+## 규칙
+
+- 문서 모델의 정수는 `int`가 아니라 `Int32`·`Int64`(`app.core.jsonapi.models`)로 쓴다. 두 별칭은 strict라 계약의 integer처럼 숫자 문자열(`"10"`)과 불리언을 422 `validation.invalid_format`으로 거절한다. `int`는 lax라 둘을 정수로 바꿔 받는다.
+- DB에 저장하는 문자열 필드에는 길이 제약(`Field(max_length=...)`, `StringConstraints(max_length=...)`)을 둔다. 제약이 있는 문자열만 Pydantic이 값을 파싱해 짝 없는 서로게이트(JSON의 `\ud800`)를 422 `validation.invalid_format`으로 거절한다. 제약 없는 `str`은 그 값을 그대로 받고, 저장할 때 psycopg가 UTF-8로 인코딩하지 못해 500이 난다. 제약 없는 문자열은 비교에만 쓴다(토큰, id, 허용 목록과 맞춰 보는 파일의 `contentType`).
+- 계약 모양 때문에 길이를 `json_schema_extra`와 검증기로 따로 세는 필드(널 허용 문자열의 `maxLength`가 `anyOf` 밖에 있는 경우)는 Pydantic이 파싱하지 않는다. 그 검증기가 길이보다 먼저 짝 없는 서로게이트를 `string_unicode`로 거절한다(`roles/schemas.py`의 `RoleDescription`).
+
 ## 확인
 
 - `uv run poe check`가 통과한다.

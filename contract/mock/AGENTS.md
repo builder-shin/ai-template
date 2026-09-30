@@ -80,13 +80,13 @@
 - access token은 JWT가 아닌 불투명한 문자열이다. 만료는 세션 응답의 `accessTokenExpiresAt`, `refreshTokenExpiresAt`으로 본다.
 - 메일은 요청 안에서 바로 보관함에 들어가고(FastAPI는 요청 뒤 잡으로 보낸다) 텍스트 본문만 있다.
 - 비밀번호 해시(scrypt), 소셜 로그인 제공자(가짜 OAuth 서버), 스토리지(메모리 버킷)는 개발용이다. 재시작하면 옛 presigned URL은 맞지 않는다.
-- 스케줄 잡이 없다. `modules/files/service.ts`의 `purgePending`은 떠 있는 프로세스가 부르지 않아 24시간이 지난 pending 업로드도 계속 사용자 쿼터를 차지한다. 만료된 세션과 토큰도 지우지 않는다(FastAPI는 각각 매일 03:00 UTC, 매시간 정각 잡으로 지운다).
-- 공개 글 목록 첫 페이지를 캐시하지 않는다(FastAPI는 `posts/service.ts`가 60초 캐시한다). 그래서 저자 이름 변경처럼 다른 모듈이 일으킨 변화가 목에는 바로 보이고 FastAPI에는 최대 60초 늦게 보인다.
+- 스케줄 잡이 없다. `modules/files/service.ts`의 `purgePending`은 떠 있는 프로세스가 부르지 않아 24시간이 지난 pending 업로드도 계속 사용자 쿼터를 차지한다. 만료된 세션과 토큰도 지우지 않는다(FastAPI는 pending 파일을 매시간 정각에, 만료된 토큰과 끝난 세션을 매일 03:00 UTC에 잡으로 지운다). 지우지 않은 만료 세션도 두 쪽 모두 끝난 세션으로 본다.
+- 공개 글 목록 첫 페이지를 캐시하지 않는다(FastAPI는 `posts/service.py`가 60초 캐시한다). 그래서 저자 이름 변경처럼 다른 모듈이 일으킨 변화가 목에는 바로 보이고 FastAPI에는 최대 60초 늦게 보인다.
 - 비밀번호의 짝 없는 서로게이트를 FastAPI는 surrogatepass로 인코딩해 해시하고, 목의 scrypt(`src/core/security.ts`)는 UTF-8로 인코딩하면서 U+FFFD로 대신한다. 그래서 U+FFFD가 든 비밀번호의 그 자리를 짝 없는 서로게이트로 바꿔 로그인하면 목은 통과하고 FastAPI는 401이다.
 - `REALTIME_ALLOWED_ORIGINS`는 두 쪽 모두 값마다 Origin(스킴://호스트[:포트])으로 정규화하고 `*`와 http(s) 주소가 아닌 값을 설정 오류로 거절한다. 다만 목은 호스트를 WHATWG URL로 읽어 브라우저가 보낼 모양으로 바꿔 받고(ASCII가 아닌 호스트는 punycode로, `127.1`은 `127.0.0.1`로), FastAPI(`core/config.py`의 `Origins`)는 그렇게 바꿔야 하는 호스트를 설정 오류로 거절한다. 반대로 `xn--` 라벨이 올바른 punycode인지는 목만 본다(`http://xn--a.com`은 목에서 설정 오류, FastAPI에서는 어느 브라우저와도 맞지 않는 값).
 - 본문 인코딩이 다르다: JSON의 `NaN`·`Infinity`는 목에서 400이다(Python의 `json`은 받아들인다). CESU-8로 짝을 이룬 서로게이트 바이트, UTF-16·UTF-32 본문도 Python의 `json.loads`와 다르게 다룬다(`src/jsonapi/validation.ts`, `src/jsonapi/surrogates.ts`).
 - snake_case 속성 이름을 FastAPI(`validate_by_name`)는 camelCase와 함께 받지만, 목은 스키마에 없는 속성으로 보고 조용히 버린다(`removeAdditional`). 그 속성이 필수면 422가 난다.
-- 설정 검증이 FastAPI보다 빡빡하다: `OAUTH_REDIRECT_URIS`의 각 값은 http(s) 주소여야 하고 `SEED_ADMIN_EMAIL`은 이메일 형식이어야 한다. FastAPI는 값을 그대로 받는다(각각 CommaSeparated, 빈 문자열만 아니면 되는 문자열).
+- 두 설정은 목의 검증이 FastAPI보다 빡빡하다: `OAUTH_REDIRECT_URIS`의 각 값은 http(s) 주소여야 하고 `SEED_ADMIN_EMAIL`은 이메일 형식이어야 한다. FastAPI는 값을 그대로 받는다(각각 CommaSeparated, 빈 문자열만 아니면 되는 문자열).
 - 끝에 슬래시가 붙은 경로는 목에서 404다(FastAPI/Starlette는 307로 리다이렉트한다).
 - GET만 선언한 라우트에 HEAD로 요청하면 목은 200이다(Hono가 GET 처리기로 넘긴다). FastAPI는 404다.
 - 이메일 형식은 흔한 경우만 email-validator와 같다(`src/jsonapi/email.ts`).

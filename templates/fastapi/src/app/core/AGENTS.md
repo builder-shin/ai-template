@@ -2,14 +2,14 @@
 
 도메인을 모르는 기반이다. 모든 모듈이 쓴다.
 
-- `config.py`: 설정 스키마 `Settings` 하나. 값은 환경 변수와 `.env`에서 온다. 비밀(키, 비밀번호, 계정이 든 URL)은 `SecretStr`로 받아 쓰는 곳에서만 `.get_secret_value()`로 꺼낸다. `load_settings()`는 틀린 값을 변수마다 한 줄씩 알리고 멈춘다. 운영(`APP_ENV=production`)에서는 앱이 스스로 정하는 비밀(`JWT_SECRET`, `IDENTIFIER_HASH_SECRET`, `SEED_ADMIN_PASSWORD`)이 `.env.example`의 예시 값이면 시작하지 않는다.
+- `config.py`: 설정 스키마 `Settings` 하나. 값은 환경 변수와 `.env`에서 온다. 비밀(키, 비밀번호, 계정이 든 URL)은 `SecretStr`로 받아 쓰는 곳에서만 `.get_secret_value()`로 꺼낸다. `load_settings()`는 틀린 값을 변수마다 한 줄씩 알리고 멈춘다. 운영(`APP_ENV=production`)에서는 앱이 스스로 정하는 비밀(`JWT_SECRET`, `IDENTIFIER_HASH_SECRET`, `SEED_ADMIN_PASSWORD`)이 `.env.example`의 예시 값이면 시작하지 않는다. `REALTIME_ALLOWED_ORIGINS`는 값마다 브라우저가 보내는 Origin으로 바꾸고 `*`는 거절한다(`Origins`).
 - `logging.py`: structlog 설정과 traceId 미들웨어.
 - `db.py`: 비동기 엔진, 세션 팩토리, 모델의 기반 `Base`(제약 이름 규칙 포함), 요청 세션 `SessionDep`, 모델 시각의 기본값 `utc_now`.
 - `redis.py`: Valkey 클라이언트와 요청 의존성 `RedisDep`.
 - `storage.py`: 스토리지(`Storage`, 요청에서는 `StorageDep`). presigned 업로드·다운로드 URL(SigV4라 선언한 타입과 크기만 올라간다), 크기 확인(HEAD), 삭제, 버킷 확인. 네트워크 호출은 스레드에서 돈다.
 - `cache.py`: cache-aside 도우미(`Cache(redis, namespace, shape)`). `get_or_set`으로 만들거나 꺼내고, 원본이 바뀌면 commit한 뒤 `clear`로 세대를 올려 지운다. `shape`(모양)은 캐시하는 문서 모델의 JSON 스키마 해시(`schema_shape`)로, 응답 모양이 바뀐 배포가 옛 모양의 값을 읽지 않게 한다. Valkey에 닿지 못하면 캐시 없이 만든다. 예시는 posts의 공개 목록 첫 페이지다.
 - `jsonvalue.py`: JSON 값 좁히기(`is_object`, `is_array`).
-- `security.py`: 비밀번호 해시(Argon2id), access token(JWT) 발급과 검증, 1회용 토큰과 SHA-256(`digest`, 무작위 토큰용). 이메일처럼 추측할 수 있는 식별자는 `identifier_hash`(설정의 키로 HMAC-SHA256)로 가린다. async 코드는 비밀번호를 스레드에서 도는 `hash_password_async`, `check_password_async`로 다룬다.
+- `security.py`: 비밀번호 해시(Argon2id. 비밀번호는 `surrogatepass`로 인코딩한 바이트로 해시하고 검증해, 짝 없는 서로게이트도 예외가 아니라 틀린 비밀번호다), access token(JWT) 발급과 검증, 1회용 토큰과 SHA-256(`digest`, 무작위 토큰용). 이메일처럼 추측할 수 있는 식별자는 `identifier_hash`(설정의 키로 HMAC-SHA256)로 가린다. async 코드는 비밀번호를 스레드에서 도는 `hash_password_async`, `check_password_async`로 다룬다.
 - `permissions.py`: 권한(`Permission`)과 레지스트리(`PermissionRegistry`). 권한은 모듈이 내보내고 `app.modules.registry`가 모은다.
 - `clients.py`: 요청을 보낸 쪽(IP, User-Agent). `ClientDep`으로 받는다.
 - `ratelimit.py`: 레이트 리밋(Valkey 고정 윈도). 엄격한 한도는 service가 `enforce(redis, Limit(...), 대상)`로 걸고, IP별 전역 한도는 미들웨어가 건다.
@@ -20,7 +20,7 @@
 - `mail.py`: 메일 템플릿 렌더링(`MailTemplates`, 로케일이 없으면 ko)과 SMTP 발송(`send`). 메일은 모듈의 잡이 id를 받아 잡 안에서 만들고 보낸다(예: `auth/jobs.py`).
 - `audit.py`: 감사 로그 테이블(`AuditLog`)과 기록(`record_audit`), 계약의 행위·대상 어휘(`AuditLogAction`, `AuditLogTargetType`). 여러 모듈이 기록하고 읽기 API(audit_logs 모듈)가 users를 포함하므로 core에 둔다.
 - `access.py`: 인증과 권한 검사. 인증기와 레지스트리는 `install_access`로 앱에 건다. 라우트 선언의 `auth`, `permission`을 라우터가 강제하고, 엔드포인트는 `PrincipalDep`, `OptionalPrincipalDep`으로 주체를 받는다. 되돌릴 수 없는 동작은 `require_recent_login(principal, now)`으로 최근 로그인(10분 안, `RECENT_LOGIN`)을 요구하고, 아니면 401 `auth.reauthentication_required`다.
-- `jsonapi/`: JSON:API 공통 계층(문서 모델, 에러, 협상, 라우트 선언, 쿼리 파서, 렌더링, OpenAPI 후처리). 쓰는 법은 `docs/architecture.md`, 예시는 `jsonapi/tests/sample.py`.
+- `jsonapi/`: JSON:API 공통 계층(문서 모델, 에러, 협상, 라우트 선언, 쿼리 파서, 렌더링, OpenAPI 후처리). 에러 응답은 모두 `errors.py`의 `error_response`가 만들고 401에는 늘 `WWW-Authenticate`를 담는다. 응답 클래스(`media.py`의 `JsonApiResponse`)는 짝 없는 서로게이트를 `\uXXXX`로 이스케이프한다. 쓰는 법은 `docs/architecture.md`, 예시는 `jsonapi/tests/sample.py`.
 
 ## 규칙
 

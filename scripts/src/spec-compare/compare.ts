@@ -1,4 +1,4 @@
-/** 백엔드가 내보낸 OpenAPI가 계약과 같은 이름·경로·응답 상태를 쓰는지 비교한다. 구조 호환은 breaking.ts(oasdiff)가 본다. */
+/** 백엔드가 내보낸 OpenAPI가 계약과 같은 이름·경로·응답 상태·실시간 선언을 쓰는지 비교한다. 구조 호환은 breaking.ts(oasdiff)가 본다. */
 
 export interface OpenApiLike {
   readonly paths?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;

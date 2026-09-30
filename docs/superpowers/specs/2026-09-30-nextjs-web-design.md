@@ -1,13 +1,13 @@
 # Next.js web 템플릿 설계 (하위 프로젝트 2)
 
 - 작성일: 2026-09-30
-- 상태: 승인됨(2026-09-30). W1(목 서버) 구현 완료
+- 상태: 승인됨(2026-09-30). W1(목 서버) 구현 완료. W1에서 찾은 FastAPI·계약 문제는 보정했다(2026-09-30, §12.1)
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 2로 미룬 결정을 내리고, `templates/nextjs`, 목 서버(`contract/mock`), 이번 사이클의 저장소 변경을 설계한다.
   - 기반 설계의 규칙은 그대로 따른다: 플랫폼 기능(§4), API 규약(§5), 하네스(§6), 인프라와 품질(§7).
   - 백엔드의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md)와 [보강 설계](2026-09-29-fastapi-hardening-design.md)다. 목 서버는 그 동작을 따른다.
 - 구현 계획: [W1](../plans/2026-09-30-nextjs-w1.md)
-- 다음 단계: FastAPI·계약 보정(§12.1) 뒤 W2(web 뼈대)
+- 다음 단계: W2(web 뼈대)
 
 ## 1. 목표와 범위
 
@@ -313,7 +313,11 @@ templates/nextjs/
 
 - 요청 문서는 `openapi.yaml`의 JSON Schema로 Ajv(2020-12)가 검증한다. 실패는 `validation.*` 코드와 JSON pointer로 옮긴다.
 - 계약이 바뀌면 목의 검증도 저절로 따라간다.
-- 옮긴 결과는 적합성 스위트에서 FastAPI의 동작과 같음을 확인했다. 몇 가지 경계(정수 자리의 숫자 문자열, 판별 유니온 오류의 pointer, UTF-16·32 본문과 CESU-8로 짝을 이룬 서로게이트 바이트)는 FastAPI(Pydantic, Python의 `json`)의 특이 동작 대신 계약대로 한다. 전체 목록은 §8.9다.
+- 옮긴 결과는 적합성 스위트에서 FastAPI의 동작과 같음을 확인했다. W1 때 목이 FastAPI를 따르지 않고 계약과 규약대로 하던 두 경계(정수 자리의 숫자 문자열, 판별 유니온 오류의 pointer)는 FastAPI를 보정해 같아졌다(§12.1).
+- 남은 경계 셋은 FastAPI(Pydantic, Python의 `json`)의 동작을 흉내 내지 않고 계약과 규약대로 한다. 전체 목록은 §8.9다.
+  - 정수 자리에 소수점이나 지수로 쓴 정수(`10.0`, `1e3`): 목은 받고(JSON Schema의 integer이고, `JSON.parse`가 `10`과 구별하지 못한다) FastAPI는 422다(strict 정수). JavaScript 클라이언트는 이런 표기를 보내지 않는다.
+  - 판별자 값과 이름이 같은 grant 필드(password grant의 `password`)에 객체나 배열을 보냈을 때: FastAPI는 그 grant의 필드 오류를 그 값 아래(`/data/attributes/password/email`)로 가리키고, 목은 실제 위치(`/data/attributes/email`)로 가리킨다.
+  - 본문 인코딩: Python의 `json.loads`와 다르게 다룬다. UTF-16·32 본문은 목이 읽지 않고(UTF-8만 읽는다), CESU-8로 짝을 이룬 서로게이트 바이트는 목에서 글자 하나가 되며(Python은 짝 없는 서로게이트 둘), JSON의 `NaN`·`Infinity`는 목에서 400이다.
 
 ### 8.4 데이터와 토큰
 
@@ -358,9 +362,10 @@ templates/nextjs/
 
 ### 8.9 FastAPI와 다른 점 (요약)
 
-- access token은 불투명한 문자열(JWT 아님)이고, 비밀번호 해시(scrypt)·소셜 로그인 제공자·스토리지는 개발용이다(재시작하면 옛 presigned URL이 맞지 않는다).
+- access token은 불투명한 문자열(JWT 아님)이고, 비밀번호 해시(scrypt)·소셜 로그인 제공자·스토리지는 개발용이다(재시작하면 옛 presigned URL이 맞지 않는다). 비밀번호의 짝 없는 서로게이트는 U+FFFD로 바꿔 해시한다(FastAPI는 `surrogatepass`로 인코딩한다).
 - 메일은 요청 안에서 바로 보관함에 들어간다(FastAPI는 요청 뒤 잡으로 보낸다).
-- 요청 검증의 몇 가지 경계(§8.3)는 FastAPI(Pydantic)를 그대로 흉내 내지 않고 계약대로 한다.
+- 요청 검증의 남은 경계 셋(§8.3: 소수점·지수로 쓴 정수, grant 필드에 객체·배열을 보냈을 때의 pointer, 본문 인코딩)은 FastAPI(Pydantic)를 그대로 흉내 내지 않고 계약대로 한다.
+- `REALTIME_ALLOWED_ORIGINS`는 두 쪽 모두 브라우저 Origin으로 정규화하고 `*`를 거절한다. 다만 브라우저가 다른 모양으로 보내는 호스트(ASCII가 아닌 호스트 등)를 목은 그 모양으로 바꿔 받고, FastAPI는 설정 오류로 거절한다.
 - 전체 목록은 `contract/mock/AGENTS.md`의 "FastAPI와 다른 점"이다.
 
 ## 9. 하네스
@@ -484,19 +489,20 @@ web이 실제 백엔드에 붙으려면 다음이 FastAPI 설정에 있어야 �
 
 ### 12.1 W1에서 찾은 FastAPI·계약 문제
 
-W1에서 목을 FastAPI와 맞추면서 찾았다. W2를 시작하기 전에 보정한다(다음 단계).
+W1에서 목을 FastAPI와 맞추면서 찾았다. W2를 시작하기 전에 모두 보정했다(2026-09-30). 목이 따라 하던 동작은 목도 함께 고쳤고, 두 대상에서 확인할 수 있는 것은 적합성 흐름을 더했다. 기록은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §12.1의 "보정"이다.
 
-- FastAPI: 검증 에러의 pointer가 필드 이름이 grant 종류와 같으면 어긋난다(password grant: `/data/attributes/password/email`, `/data/attributes/password/password`. refresh grant: `/data/attributes/refreshToken/refreshToken`). `core/jsonapi/errors.py`의 `document_path`.
-- FastAPI: 짝 없는 서로게이트가 500을 낸다. 로그인의 `password`·`currentPassword`(Argon2 검증이 `UnicodeEncodeError`), 입력을 그대로 돌려주는 에러 응답(`data.id` 불일치 409 detail, 파일의 "존재하지 않거나 내 것이 아니다" detail), 아마 역할 설명 저장(PostgreSQL)도 같다.
-- FastAPI: 자격 증명이 틀린 401 응답에 `WWW-Authenticate`가 없다(RFC 9110은 모든 401에 요구한다).
-- FastAPI: `REALTIME_ALLOWED_ORIGINS`를 검증하지 않는다(끝의 슬래시 하나가 모든 브라우저를 조용히 거부하고, `*`는 전부 허용한다).
-- FastAPI: 실시간 `subscribe`·`unsubscribe`에 페이로드를 둘 이상 보내면 백그라운드 태스크에서 `TypeError`가 나고 ack가 오지 않는다.
-- FastAPI: 정수 필드에 `"size": "10"`처럼 숫자 문자열을 받아들인다(Pydantic lax 모드). 계약은 integer다.
-- FastAPI: `revokedCount`가 `GET /sessions`에는 보이지 않는 만료된 세션까지 센다.
-- FastAPI: `attributes` 없는 `PATCH /roles/{id}`는 권한 검사를 건너뛰고 200을 주는데, `attributes: {}`는 403이다.
-- 계약: `DELETE /me`가 422 `role.last_admin_protected`를 줄 수 있는데 operation은 422를 선언하지 않는다.
-- 계약: 리다이렉트 operation(`oauth`의 authorize, callback)이 JSON:API 협상이 낼 수 있는 406을 선언하지 않는다.
-- 계약 문서: `PostStatus` 스키마의 설명이 `posts.tsp` 파일 머리말이고, 글 이벤트 문서 셋(`PostCreatedEventDocument`, `PostUpdatedEventDocument`, `PostPublishedEventDocument`)은 범용 Document 설명을 그대로 쓴다.
+- FastAPI: 검증 에러의 pointer가 필드 이름이 grant 종류와 같으면 어긋난다(password grant: `/data/attributes/password/email`, `/data/attributes/password/password`. refresh grant: `/data/attributes/refreshToken/refreshToken`). `core/jsonapi/errors.py`의 `document_path`. **해결:** loc에 끼운 판별자 태그를 빼고 본문의 실제 위치를 가리킨다. 그 필드에 객체나 배열을 보낸 경우만 남는다(§8.3).
+- FastAPI: 짝 없는 서로게이트가 500을 낸다. 로그인의 `password`·`currentPassword`(Argon2 검증이 `UnicodeEncodeError`), 입력을 그대로 돌려주는 에러 응답(`data.id` 불일치 409 detail, 파일의 "존재하지 않거나 내 것이 아니다" detail), 아마 역할 설명 저장(PostgreSQL)도 같다. **해결:** 비밀번호는 `surrogatepass`로 인코딩해 해시하고 검증한다(틀린 비밀번호와 같은 401). 응답 클래스가 짝 없는 서로게이트를 `\uXXXX`로 이스케이프한다(목의 `JSON.stringify`와 같은 바이트). 역할 설명 저장도 500이었고 이제 422 `validation.invalid_format`이다. 받던 목도 422로 바꿨다.
+- FastAPI(보정하며 찾음): `PATCH /users/{id}`의 없는 역할 detail(`users/service/management.py:72`의 `Role {id} does not exist.`)도 입력을 그대로 담아, 역할 id에 짝 없는 서로게이트가 있으면 500이었다. **해결:** 위의 응답 이스케이프로 404 그대로다.
+- FastAPI: 자격 증명이 틀린 401 응답에 `WWW-Authenticate`가 없다(RFC 9110은 모든 401에 요구한다). **해결:** 에러 응답을 만드는 한 곳이 challenge가 없는 401에 `Bearer`를 더한다. 목도 같다.
+- FastAPI: `REALTIME_ALLOWED_ORIGINS`를 검증하지 않는다(끝의 슬래시 하나가 모든 브라우저를 조용히 거부하고, `*`는 전부 허용한다). **해결:** 값마다 브라우저 Origin(`스킴://호스트[:포트]`)으로 정규화하고, `*`, http(s)가 아닌 값, 브라우저가 다른 모양으로 보내는 호스트는 설정 오류다(남은 차이는 §8.9).
+- FastAPI: 실시간 `subscribe`·`unsubscribe`에 페이로드를 둘 이상 보내면 백그라운드 태스크에서 `TypeError`가 나고 ack가 오지 않는다. **해결:** 페이로드가 하나가 아니면 틀린 페이로드라 422 `validation.invalid_choice` ack다. 답하지 않던 목도 같게 바꿨다.
+- FastAPI: 정수 필드에 `"size": "10"`처럼 숫자 문자열을 받아들인다(Pydantic lax 모드). 계약은 integer다. **해결:** 정수(`Int32`, `Int64`)가 strict다(JSON 스키마는 그대로). 숫자 문자열과 불리언은 422다. 소수점이나 지수로 쓴 정수는 FastAPI만 거절한다(§8.3).
+- FastAPI: `revokedCount`가 `GET /sessions`에는 보이지 않는 만료된 세션까지 센다. **해결:** 폐기와 계수는 살아 있는 세션만 한다. 인증기, 티켓 연결, 연결 재검사도 만료된 세션을 끝난 세션으로 보고, 여러 세션을 폐기하는 요청은 폐기한 세션이 없어도 재검사한다. 목도 같다.
+- FastAPI: `attributes` 없는 `PATCH /roles/{id}`는 권한 검사를 건너뛰고 200을 주는데, `attributes: {}`는 403이다. **해결:** 늘 서비스를 불러 고치기 전 권한을 검사한다(내 권한 밖의 역할이면 둘 다 403). 목도 같다.
+- 계약: `DELETE /me`가 422 `role.last_admin_protected`를 줄 수 있는데 operation은 422를 선언하지 않는다. **해결:** 계약과 FastAPI 선언에 422를 더했다.
+- 계약: 리다이렉트 operation(`oauth`의 authorize, callback)이 JSON:API 협상이 낼 수 있는 406을 선언하지 않는다. **해결:** 계약과 FastAPI 선언(`REDIRECT_ERRORS`)에 406을 더했다. 구조 비교(`pnpm spec-compare`)도 이제 operation마다 응답 상태 집합을 비교해, 계약과 FastAPI 선언 가운데 한쪽만 고치면 실패한다.
+- 계약 문서: `PostStatus` 스키마의 설명이 `posts.tsp` 파일 머리말이고, 글 이벤트 문서 셋(`PostCreatedEventDocument`, `PostUpdatedEventDocument`, `PostPublishedEventDocument`)은 범용 Document 설명을 그대로 쓴다. **해결:** 파일 머리말을 `//` 주석으로 바꾸고, `PostStatus`와 세 이벤트 문서에 제 설명을 달았다. FastAPI의 docstring도 같은 문장이다.
 
 ## 13. 계획 단계에서 확인할 것
 

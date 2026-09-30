@@ -42,7 +42,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 - 의존은 한쪽으로만 흐른다. 반대 방향이 필요하면 등록으로 뒤집는다. 계정을 닫을 때(비활성화, 탈퇴) users가 부를 처리를 auth가 `users.on_account_closed`로, 역할의 권한이 바뀌거나 역할이 지워질 때 그 멤버에게 알릴 처리를 users가 `roles.on_members_changed`로 등록한다(등록은 `registry.py`).
 - files는 다른 모듈을 모른다. 소유자가 아닌 사람이 파일을 읽게 할 규칙(`files.add_read_rule`)과, 탈퇴 때 남길 파일을 가리는 참조 확인(`files.add_reference_check`)을 users와 posts가 등록한다.
 - 감사 로그 테이블과 기록 함수는 core(`app.core.audit`)에 있다. 여러 모듈이 기록하고, 읽기 API(audit_logs)가 users를 포함하기 때문이다.
-- 인증기는 요청마다 access token의 서명을 검증하고, 세션이 살아 있는지(`revoked_at`)와 사용자, 역할을 DB에서 읽는다. 그래서 폐기와 권한 변경이 곧바로 효과를 낸다.
+- 인증기는 요청마다 access token의 서명을 검증하고, 세션이 살아 있는지(폐기되지도 만료되지도 않았는지: `revoked_at`, `expires_at`)와 사용자, 역할을 DB에서 읽는다. 그래서 폐기와 권한 변경이 곧바로 효과를 낸다.
 
 ## 요청 흐름
 
@@ -54,6 +54,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 5. 라우트 선언(`Operation`, `CollectionOperation`)이 쿼리 파라미터를 파싱한다. 선언에 없는 파라미터, 허용하지 않은 include·sort, 틀린 filter·page는 400이다.
 6. router는 service를 부르고, service가 트랜잭션을 연다(`SessionDep`의 세션으로 commit). repository가 DB를 읽고 쓴다.
 7. router는 문서 모델을 만들어 `render()`로 응답한다. 에러는 `ApiError(상태, ErrorCode.<코드>, 영어 detail)`를 던지면 에러 문서(`meta.traceId` 포함)가 된다. 예상하지 못한 예외는 500 에러 문서다.
+   에러 문서는 한 곳(`error_response`)에서 만든다. 401이면 `WWW-Authenticate: Bearer`를 더하고(이미 challenge를 넣었으면 그대로 둔다), 응답 클래스(`JsonApiResponse`)는 짝 없는 서로게이트를 `\uXXXX`로 이스케이프한다. 그래서 detail이 요청의 값을 그대로 담아도(예: `require_matching_id`) 500이 나지 않는다.
 
 `/health/live`, `/health/ready`(`src/app/health.py`)는 JSON:API가 아니라 `application/json`이다. Socket.IO는 같은 api 프로세스의 `/socket.io/`에서 받는다(아래 "실시간").
 
@@ -87,7 +88,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 
 라우트 선언 하나에서 operationId, 에러 응답, 쿼리 파라미터(OpenAPI)와 쿼리 파서가 함께 나온다. 전체 예시는 테스트 전용 샘플 `src/app/core/jsonapi/tests/sample.py`다.
 
-1. 문서 모델: `app.core.jsonapi.models`의 제네릭(`ResourceWithRelationships`, `Document`, `CollectionDocument`, `CreateDocument` 등)을 상속해 계약과 같은 이름의 클래스를 만든다. 선택 필드는 `Omittable[T] = MISSING`이다.
+1. 문서 모델: `app.core.jsonapi.models`의 제네릭(`ResourceWithRelationships`, `Document`, `CollectionDocument`, `CreateDocument` 등)을 상속해 계약과 같은 이름의 클래스를 만든다. 선택 필드는 `Omittable[T] = MISSING`이다. 정수는 `Int32`·`Int64`(strict)로 쓰고, DB에 저장하는 문자열에는 길이 제약을 둔다([엔드포인트 추가](recipes/endpoint.md)의 규칙).
 2. 선언: `Operation(name=..., errors=..., include=..., fields=..., permission=...)`이나 `CollectionOperation(..., sort=..., filter=<FilterModel>)`. 에러 묶음은 `COMMON_ERRORS`, `BODY_ERRORS`, `AUTH_ERRORS`, `NOT_FOUND`, `CONFLICT`, `CREATE_ERRORS`다.
    - POST는 `CREATE_ERRORS`(클라이언트가 만든 id 403, type 불일치 409)를, PATCH는 `CONFLICT`(type·id 불일치 409)를 반드시 넣는다. 빠지면 라우트를 달 때 `ValueError`가 난다.
    - PATCH 핸들러는 `require_matching_id(document.data.id, 경로의 id)`로 본문의 id를 확인한다. 관계가 가리키는 리소스가 없으면 404이므로, 관계를 받는 선언에는 `NOT_FOUND`도 넣는다.
@@ -136,11 +137,11 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 
 ## 실시간
 
-Socket.IO 서버(`app.core.realtime`)가 api 프로세스의 `/socket.io/`에서 WebSocket 연결만 받는다. 브라우저 연결의 Origin은 `REALTIME_ALLOWED_ORIGINS`로 본다.
+Socket.IO 서버(`app.core.realtime`)가 api 프로세스의 `/socket.io/`에서 WebSocket 연결만 받는다. 브라우저 연결의 Origin은 `REALTIME_ALLOWED_ORIGINS`로 본다. python-engineio는 Origin 헤더를 목록과 글자 그대로 비교하고 `*`를 모두 허용으로 읽으므로, 설정(`app.core.config`의 `Origins`)이 값마다 브라우저가 보내는 Origin(`스킴://호스트[:포트]`)으로 바꾼다. 경로와 끝의 `/`, 쿼리, 조각, 계정은 떼고, 호스트는 소문자로, 기본 포트(80, 443)는 뺀다. `*`, http(s)가 아닌 값, 브라우저가 다른 모양으로 보내는 호스트(ASCII가 아닌 호스트, 줄여 쓴 IPv4 등)는 설정 오류다. 국제화 도메인은 punycode(`xn--…`)로 적는다.
 
 - 연결: 로그인한 브라우저는 BFF가 받은 티켓(`POST /realtime-tickets`, 30초, 1회용)을 `auth.ticket`으로 보낸다. 서버는 티켓을 꺼내 지우고, 세션이 살아 있으면 그 연결을 `user:{id}` 룸에 넣는다. 틀린 티켓(ASCII가 아닌 값 포함)은 연결을 거부한다(`connect_error`의 message `auth.token_invalid`, data 에러 객체). 티켓이 없으면 익명 연결이다(realtime 모듈의 `gateway.py`).
-- 구독: `subscribe`와 `unsubscribe`에 `{ channel }`을 보내고 ack(`RealtimeAck`)를 받는다. 채널은 모듈이 선언한다(`Channel`, posts는 `posts`와 `posts:all`). 권한이 필요한 채널은 구독할 때 DB에서 권한을 계산한다.
-- 연결 재검사: 세션을 폐기하거나(`session.revoked`) 역할·상태를 바꾸면(`me.updated`의 `roles`, `status`) 모듈이 `queue_recheck(session, 사용자 id)`를 넣고, commit한 뒤에 발행기가 제어 채널(`<pub/sub 채널>:control`, `app.core.realtime_pubsub.ControlChannel`)로 알린다. api 인스턴스마다 제어 채널을 듣다가, 자기 인스턴스에 있는 그 사용자의 연결(`user:{id}` 룸의 참가자)을 다시 검사해 세션이 끝났거나 구독한 채널의 권한을 잃은 연결을 끊는다(realtime 모듈의 `Gateway.recheck`). 사용자별 소켓 id를 인스턴스 밖에 기록하지 않는다. 끊긴 클라이언트는 새 티켓으로 다시 붙는다. 세션이 끝났으면 티켓 발급이 401이고, 권한을 잃은 채널은 구독이 `permission.denied`다. 제어 채널을 듣지 못한 동안(Valkey 장애)의 알림은 잃는다. 연결 하나를 다시 검사하다 끝내지 못하면(예: DB 장애) 그 연결은 끊지 않고 남겨 두고(fail-open) 나머지 연결을 이어서 검사한다.
+- 구독: `subscribe`와 `unsubscribe`에 페이로드 `{ channel }` 하나를 보내고 ack(`RealtimeAck`)를 받는다. 페이로드가 없거나 둘 이상이면 모르는 채널처럼 422 `validation.invalid_choice`(`source.pointer` `/channel`) ack다. python-socketio는 페이로드를 하나씩 인자로 넘기므로 처리기는 `*payloads`로 받는다(인자가 맞지 않으면 처리기가 `TypeError`로 끝나 ack를 보내지 못한다). 채널은 모듈이 선언한다(`Channel`, posts는 `posts`와 `posts:all`). 권한이 필요한 채널은 구독할 때 DB에서 권한을 계산한다.
+- 연결 재검사: 세션을 폐기하거나(`session.revoked`) 역할·상태를 바꾸면(`me.updated`의 `roles`, `status`) 모듈이 `queue_recheck(session, 사용자 id)`를 넣고, commit한 뒤에 발행기가 제어 채널(`<pub/sub 채널>:control`, `app.core.realtime_pubsub.ControlChannel`)로 알린다. 여러 세션을 폐기하는 요청(다른 기기·전체 로그아웃, 비밀번호 변경·재설정, 계정 닫기)은 폐기한 세션이 없어도 재검사를 넣는다(auth의 `events.session_revoked`). 만료되기 전에 붙은 연결이 남아 있을 수 있기 때문이다. api 인스턴스마다 제어 채널을 듣다가, 자기 인스턴스에 있는 그 사용자의 연결(`user:{id}` 룸의 참가자)을 다시 검사해 세션이 끝났거나(폐기, 만료) 구독한 채널의 권한을 잃은 연결을 끊는다(realtime 모듈의 `Gateway.recheck`). 사용자별 소켓 id를 인스턴스 밖에 기록하지 않는다. 끊긴 클라이언트는 새 티켓으로 다시 붙는다. 세션이 끝났으면 티켓 발급이 401이고, 권한을 잃은 채널은 구독이 `permission.denied`다. 제어 채널을 듣지 못한 동안(Valkey 장애)의 알림은 잃는다. 연결 하나를 다시 검사하다 끝내지 못하면(예: DB 장애) 그 연결은 끊지 않고 남겨 두고(fail-open) 나머지 연결을 이어서 검사한다.
 - 발행: 모듈이 쓰기의 commit 전에 `queue(session, 이름, 룸, 페이로드를 만드는 함수)`로 넣으면, 세션(`EventSession`)이 commit이 성공한 뒤 페이로드를 만들어 발행기로 보낸다. rollback하면 버려지고, 발행에 실패해도 요청은 성공한다. 계정 닫기 같은 훅 안에서 넣은 이벤트도 부른 쪽의 commit 뒤에 나간다. 룸이 없는 이벤트는 보내지 않는다(빈 룸 목록을 그대로 넘기면 Socket.IO가 room 전체 브로드캐스트로 다루기 때문이다).
 - 인스턴스 사이: api의 발행기는 이 인스턴스의 연결에 보내고 Valkey pub/sub으로 다른 인스턴스에 알린다. python-socketio 매니저는 발행이 실패하거나 수신을 다시 시작할 때마다 Valkey 클라이언트를 새로 만든다. `TrackedRedisManager`는 클라이언트를 하나만 만들어 다시 쓰고(redis-py가 다시 연결한다) 닫을 때 닫는다. worker와 scheduler는 소켓 서버가 아니라 쓰기 전용 발행기(`JobContext.realtime`)로 보낸다. pub/sub 채널 이름에는 Valkey DB 번호를 넣어 개발, 테스트, E2E를 나눈다.
 - 계약: 채널, 이벤트, 메시지는 계약의 `x-realtime-channels`, `x-realtime-events`, `x-realtime-messages`와 같다. 앱이 `openapi.json`에 이 확장과 페이로드 스키마를 내고(`realtime_openapi`), 저장소의 구조 비교(`pnpm spec-compare`)가 계약과 같은지 본다.

@@ -1,7 +1,7 @@
 # FastAPI 템플릿 설계 (하위 프로젝트 1)
 
 - 작성일: 2026-09-26
-- 상태: 승인됨. 마일스톤 M1~M5 구현 완료(§1.2의 완료 조건 통과)
+- 상태: 승인됨. 마일스톤 M1~M5 구현 완료(§1.2의 완료 조건 통과). web 사이클의 W1에서 찾은 문제를 보정했다(2026-09-30, §12.1의 "보정")
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 1로 미룬 결정을 내리고, `templates/fastapi`와 이번 사이클의 저장소 변경을 설계한다.
   - 기반 설계의 규칙은 그대로 따른다: 플랫폼 기능(§4), API 규약(§5), 하네스(§6), 인프라(§7). 이 문서는 그 규칙을 구현하는 방법과 계약 변경을 정한다.
@@ -185,10 +185,15 @@ src/app/modules/posts/
   - 406 `jsonapi.not_acceptable`: `Accept`에 JSON:API 미디어 타입이 있는데, 그 인스턴스 모두에 `profile` 밖의 매개변수가 붙어 있을 때
   - 413 `jsonapi.content_too_large`: 요청 본문이 1 MiB(1,048,576바이트)를 넘을 때. 협상(415·406) 다음, 본문 JSON 검사 앞이다. `Content-Length`가 넘으면 본문을 읽지 않고, 길이를 알리지 않은 본문은 읽으면서 센다(M5).
   - `Accept`가 없거나 JSON:API 미디어 타입을 담지 않으면(예: `*/*`) 통과한다.
-- 응답은 `application/vnd.api+json` 전용 응답 클래스로 보낸다.
+  - 협상은 `/api/` 아래 모든 요청에 걸린다. 본문이 없는 소셜 로그인 리다이렉트(`authorize`, `callback`)도 406을 내므로 선언한다(§7, 보정).
+- 응답은 `application/vnd.api+json` 전용 응답 클래스로 보낸다. 이 클래스는 짝 없는 서로게이트를 `\uXXXX`(소문자 16진)로 이스케이프한다. 입력을 그대로 담은 에러 detail(`data.id` 불일치, 없는 관계의 id)이 그런 글자를 싣는데 UTF-8은 이를 인코딩하지 못하기 때문이다. 결과는 목의 `JSON.stringify`와 같은 바이트다(보정).
 - 모든 예외는 `ErrorDocument`와 `meta.traceId`로 바꾼다.
   - 도메인 예외는 코드, 상태, 영어 detail, `source`, `meta.params`를 담는 예외 클래스 하나로 표현한다.
+  - 401 응답은 늘 `WWW-Authenticate`를 담는다(RFC 9110 §15.5.2). 에러 응답을 만드는 한 곳(`error_response`)이 challenge가 없는 401에 `Bearer`를 더한다. 그래서 인증 의존성을 거치지 않는 401(로그인, refresh, 소셜 로그인 코드, 비밀번호 변경의 틀린 자격 증명)도 담고, 재인증의 step-up challenge(RFC 9470, §6.4)는 그대로 둔다(보정).
   - Pydantic 검증 오류는 필드마다 에러 객체를 만들어 422로 돌려준다. `source.pointer`(예: `/data/attributes/title`)를 채우고, 오류 종류를 `validation.required`, `validation.too_short` 등으로 바꾼다.
+    - pointer는 본문의 실제 위치다. 판별 유니온(`SessionGrant`)은 loc에 태그 값을 끼우므로 그 조각을 뺀다(password grant의 이메일 오류는 `/data/attributes/email`). 태그와 이름이 같은 필드(password grant의 `password`)에 객체나 배열을 보낸 경우만 그 값 아래를 가리킨다(보정).
+    - 정수(`Int32`, `Int64`)는 strict다. 계약의 integer처럼 숫자 문자열과 불리언을 받지 않는다(`validation.invalid_format`). 본문을 `json.loads`로 읽으므로 소수점이나 지수로 쓴 정수(`10.0`, `1e3`)도 float라 받지 않는다. JSON 스키마는 그대로다(보정).
+    - 짝 없는 서로게이트: 제약(길이, 패턴, 선택지, 형식)이 있는 문자열은 Pydantic이 다른 검사보다 먼저 `validation.invalid_format`으로 거절한다. 제약 없는 문자열(토큰, 비밀번호, id)은 받아서 비교하므로 틀린 값과 같은 에러다. 길이를 검증기로 세는 역할 설명은 그 검증기가 먼저 거절한다(보정).
   - JSON이 아니거나 문서 구조가 틀리면 400 `jsonapi.invalid_document`다.
   - JSON:API 1.1이 반드시 쓰라는 상태를 따른다: 본문의 `type` 불일치는 409 `resource.conflict`, 생성 요청의 클라이언트가 만든 `id`는 403 `permission.denied`, 관계가 가리키는 리소스가 없으면 404 `resource.not_found`다. 요청 문서 전체를 가리키는 pointer는 `""`다.
   - 예상하지 못한 예외는 500 `internal.unexpected`다. 원인은 로그에만 남긴다.
@@ -228,7 +233,7 @@ src/app/modules/posts/
 ### 6.1 인증과 세션
 
 - access token은 JWT(HS256, 15분)이고 `sub`(사용자 id)와 `sid`(세션 id)를 담는다.
-- 인증이 필요한 요청마다 서명을 검증하고, 세션이 살아 있는지(세션 행의 `revoked_at`)를 DB에서 확인한다.
+- 인증이 필요한 요청마다 서명을 검증하고, 세션이 살아 있는지(세션 행의 `revoked_at`과 `expires_at`)를 DB에서 확인한다.
   - 요청마다 사용자와 역할을 DB에서 읽으므로(§6.3) 같은 조회로 확인한다. Valkey에 폐기 목록을 따로 두지 않는다.
   - 그래서 로그아웃과 폐기가 access token 만료를 기다리지 않고 즉시 효과를 낸다.
 - refresh token
@@ -248,7 +253,9 @@ src/app/modules/posts/
 | `account_deactivated`  | 관리자가 계정을 비활성화했다                           |
 | `account_deleted`      | 탈퇴했다                                               |
 
+- 만료된 세션은 정리 잡이 지우기 전에도 끝난 세션이다. `GET /sessions`, 폐기, 인증기가 같은 조건(폐기되지 않았고 만료되지 않음)을 쓴다. 그래서 다른 기기·전체 로그아웃의 `revokedCount`(전체 로그아웃이면 감사 로그 `session.all_revoked`의 `metadata.revokedCount`도)는 목록에 보이던 세션 가운데 폐기한 수다(보정).
 - 비밀번호가 없는 계정(소셜 전용)은 `password` grant와 비밀번호 변경에서 `auth.invalid_credentials`를 받는다. 이메일이 없는 계정에는 재설정 메일을 보내지 않는다. 재설정 요청 자체는 계정 존재와 무관하게 늘 202다.
+- 비밀번호는 `surrogatepass`로 인코딩한 바이트로 해시하고 검증한다. 그래서 짝 없는 서로게이트가 든 비밀번호(로그인의 `password`, 비밀번호 변경의 `currentPassword`)도 500이 아니라 틀린 비밀번호와 같은 401 `auth.invalid_credentials`다. 새 비밀번호는 길이 제약이 있어 422다(보정).
 - 비밀번호를 바꾸면(`POST /password-changes`) 남은 재설정 토큰을 지운다. 비밀번호 변경에는 사용자별 엄격한 레이트 리밋이 있다(§6.10, M5).
 
 ### 6.2 소셜 로그인
@@ -287,7 +294,7 @@ src/app/modules/posts/
   - `member`는 가입할 때 자동으로 부여된다. 권한은 고칠 수 있지만 삭제할 수 없다.
   - 시스템 역할을 삭제하거나 `admin`의 권한을 고치려 하면 `role.system_role_protected`다.
 - 권한 상승 금지(F2). 위반은 모두 `permission.denied`다.
-  - 자기 권한을 넘는 역할은 만들거나, 고치거나, 부여하거나, 회수하지 못한다. 기준은 "역할의 권한이 내 실제 권한의 부분집합인가"이고, 수정은 고치기 전과 후 모두 검사한다.
+  - 자기 권한을 넘는 역할은 만들거나, 고치거나, 부여하거나, 회수하지 못한다. 기준은 "역할의 권한이 내 실제 권한의 부분집합인가"이고, 수정은 고치기 전과 후 모두 검사한다. `attributes`가 없거나 빈 PATCH도 고치기 전을 검사한다(보정).
   - 자기보다 권한이 큰 사용자(그 사용자의 실제 권한이 내 권한의 부분집합이 아닌 경우)의 역할과 상태를 바꾸지 못한다.
   - 자기 자신의 역할과 상태는 바꾸지 못한다.
 - 마지막 활성 admin의 admin 역할 회수, 비활성화, 탈퇴는 새 코드 `role.last_admin_protected`(422)로 막는다.
@@ -378,14 +385,16 @@ src/app/modules/posts/
 ### 6.8 실시간
 
 - Socket.IO 서버는 `/socket.io/`에 있고 WebSocket 전송만 허용한다. 연결의 Origin은 설정의 허용 목록으로 검사한다.
+  - 허용 목록(`REALTIME_ALLOWED_ORIGINS`)은 값마다 브라우저가 보내는 Origin(`스킴://호스트[:포트]`)으로 정규화한다. 경로와 끝의 `/`, 쿼리, 조각, 계정은 떼고, 호스트는 소문자로, 기본 포트(80, 443)는 뺀다.
+  - `*`, http(s)가 아닌 값, 브라우저가 다른 모양으로 보내는 호스트(ASCII가 아닌 호스트, 줄여 쓴 IPv4 등)는 설정 오류다. python-engineio가 Origin 헤더를 글자 그대로 비교하고 `*`를 모두 허용으로 읽기 때문이다(보정).
 - 티켓(`POST /realtime-tickets`)은 Valkey에 30초 두는 1회용 값이고, 사용자 id와 세션 id를 담는다.
 - 접속할 때 `auth.ticket`이 있으면 티켓을 꺼내 지우고, 세션이 살아 있으면 그 연결을 `user:{id}` 룸에 넣는다. 티켓이 없으면 익명 연결이다. 티켓이 틀렸거나 만료됐거나 세션이 끝났으면 연결을 거부한다. `connect_error`의 message는 `auth.token_invalid`, data는 에러 객체다.
 - 클라이언트 메시지(F22)
-  - `subscribe`와 `unsubscribe`, 페이로드는 `RealtimeSubscription`(`{ "channel": "posts" }`)이다.
+  - `subscribe`와 `unsubscribe`, 페이로드는 `RealtimeSubscription`(`{ "channel": "posts" }`) 하나다.
   - ack는 `RealtimeAck`로, 성공이면 `{ "ok": true }`다. 실패면 `{ "ok": false, "error": ErrorObject }`이고, 권한이 없으면 `permission.denied`, 모르는 채널이면 `validation.invalid_choice`다.
   - 익명 연결은 `posts`만 구독할 수 있다. `posts:all`에는 `posts:manage`가 필요하다. 권한은 구독할 때 DB에서 계산한다.
-  - 연결 재검사(M5): 세션을 폐기하거나 사용자의 역할·상태가 바뀌면(`session.revoked`, `me.updated`의 `roles`·`status`) commit한 뒤 Valkey pub/sub 제어 채널(`<pub/sub 채널>:control`)로 사용자 id를 알린다. api 인스턴스마다 자기 연결(`user:{id}` 룸의 참가자)만 다시 검사해, 세션이 끝났거나 구독한 채널의 권한을 잃은 연결을 끊는다. 사용자별 소켓 id를 인스턴스 밖에 기록하지 않는다. 끊긴 클라이언트는 새 티켓으로 다시 붙는다.
-  - ack의 에러 객체는 권한 없음 403, 모르는 채널이나 틀린 페이로드 422이고 `source.pointer`는 `/channel`이다.
+  - 연결 재검사(M5): 세션을 폐기하거나 사용자의 역할·상태가 바뀌면(`session.revoked`, `me.updated`의 `roles`·`status`) commit한 뒤 Valkey pub/sub 제어 채널(`<pub/sub 채널>:control`)로 사용자 id를 알린다. 여러 세션을 폐기하는 요청(다른 기기·전체 로그아웃, 비밀번호 변경·재설정, 계정 닫기)은 폐기할 살아 있는 세션이 없어 `session.revoked`를 보내지 않아도 알린다. 만료되기 전에 붙은 연결이 남아 있을 수 있기 때문이다(보정). api 인스턴스마다 자기 연결(`user:{id}` 룸의 참가자)만 다시 검사해, 세션이 끝났거나(폐기, 만료) 구독한 채널의 권한을 잃은 연결을 끊는다. 사용자별 소켓 id를 인스턴스 밖에 기록하지 않는다. 끊긴 클라이언트는 새 티켓으로 다시 붙는다.
+  - ack의 에러 객체는 권한 없음 403, 모르는 채널이나 틀린 페이로드 422이고 `source.pointer`는 `/channel`이다. 페이로드가 없거나 둘 이상이어도 틀린 페이로드다. python-socketio는 받은 페이로드를 하나씩 인자로 넘기므로, 처리기는 개수와 상관없이 받아 ack로 답한다(보정).
 - api는 `AsyncRedisManager`로 인스턴스 사이에 이벤트를 전파한다. worker와 scheduler는 쓰기 전용 매니저로 이벤트를 보낸다. 매니저는 Valkey 클라이언트를 하나만 만들어 다시 쓰고 닫을 때 닫는다(python-socketio는 발행이 실패하거나 수신을 다시 시작할 때마다 새로 만든다, M5).
 - 이벤트 페이로드는 모듈의 직렬화 함수로 만든 JSON:API 문서다.
 - 이벤트는 쓰기가 commit된 뒤에 나간다. 모듈이 트랜잭션에 넣고(`queue`) 세션이 commit한 뒤에 페이로드를 만들어 보낸다. 한 연결이 여러 룸에 있어도 한 번 받는다.
@@ -456,6 +465,9 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 | 실시간(M5)   | `post.unpublished` 이벤트(`rooms`: `posts`)와 `PostUnpublishedEventDocument`                                                               |
 | OAuth(M5)    | `authorize`의 `codeChallenge`에 pattern `^[A-Za-z0-9_-]{43}$`                                                                               |
 | 설명(M5)     | `DELETE /me`(재인증), `POST /password-changes`(사용자별 레이트 리밋, 재설정 토큰 삭제), `POST /files`(사용자별 한도)                        |
+| users(보정)  | `DELETE /me`에 422(`role.last_admin_protected`)를 선언하고 설명에 적는다. 동작은 M2부터 422였다                                              |
+| OAuth(보정)  | `authorize`와 `callback`에 406을 선언한다. 협상 미들웨어가 `/api/` 아래 모든 요청의 `Accept`를 본다                                          |
+| 설명(보정)   | `PostStatus`에 제 설명을 단다(`posts.tsp`의 파일 머리말은 `//` 주석으로 바꿔 붙지 않게 한다). 글 이벤트 문서 셋(`PostCreatedEventDocument`, `PostUpdatedEventDocument`, `PostPublishedEventDocument`)에 제 이벤트의 설명을 단다 |
 
 - `x-realtime-messages`의 형식: `[{ "name": "subscribe", "payload": "RealtimeSubscription", "ack": "RealtimeAck" }, { "name": "unsubscribe", ... }]`
 - 룰셋의 공용 스키마 이름 목록에 `RealtimeChannel`, `RealtimeSubscription`, `RealtimeAck`를 더한다. 이 스키마들은 리소스에 속하지 않는다.
@@ -633,7 +645,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 - CI(`.github/workflows/ci.yml`)에 잡을 더한다. action은 커밋 SHA로 고정한다.
   - `fastapi`: uv 설치 → `uv run poe setup` → `check` → `test:e2e` → Docker 이미지 빌드
   - `conformance-fastapi`: `pnpm conformance fastapi`
-  - 구조 비교: M1부터 `check` 잡에서 `pnpm spec-compare --subset contract/openapi.yaml templates/fastapi/openapi.json`(구현한 operation만 비교)을 돌리고, M4에서 `--subset`을 뗐다. M4부터 구조 비교는 실시간 선언(`x-realtime-*`)도 계약과 같은지 본다
+  - 구조 비교: M1부터 `check` 잡에서 `pnpm spec-compare --subset contract/openapi.yaml templates/fastapi/openapi.json`(구현한 operation만 비교)을 돌리고, M4에서 `--subset`을 뗐다. M4부터 구조 비교는 실시간 선언(`x-realtime-*`)도 계약과 같은지 본다. 보정부터는 operation마다 응답 상태 집합도 같은지 본다(`--subset`이면 구현한 operation만). oasdiff는 성공 상태를 뺀 것만 breaking으로 보므로, 에러 상태를 한쪽에만 선언해도 통과했다
 - 루트 `pnpm check`는 Python과 Docker 없이 돌도록 지금 범위를 유지한다. 템플릿 자체 검사는 CI 잡이 맡는다.
 
 ## 12. 마일스톤
@@ -654,7 +666,7 @@ M1의 첫 작업으로 반영한다. 계약 테스트, `docs/conventions/jsonapi
 
 ### 12.1 마일스톤 사이에 넘긴 일
 
-M1~M5의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다.
+M1~M5의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획에 넣는다. 사이클 뒤에 고친 것은 마지막의 "보정"이다.
 
 - M2를 시작하기 전(NestJS가 따라 하기 전에 정한다). M2 계획의 Task 1~2에서 다음과 같이 정했다.
   - POST 본문의 `type` 불일치는 409 `resource.conflict`, 클라이언트가 만든 `id`는 403 `permission.denied`다(JSON:API 1.1 MUST). 계약의 모든 POST가 403과 409를 선언한다. 로그인 없이 부르는 POST에는 `CreateErrors`(403, 409)를, 로그인이 필요한 POST에는 `Conflict`를 더한다(같은 상태를 두 번 넣으면 응답 스키마가 `anyOf`로 겹친다).
@@ -694,7 +706,7 @@ M1~M5의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획
   - `gen:module`의 테이블 검사는 소스를 바이트로 읽는다(BOM이 있는 파일, M3 최종 재리뷰).
   - 채널 구독의 권한은 구독할 때 본다. 구독한 뒤 권한을 잃거나 계정이 닫혀도 그 연결은 끊기거나 구독을 풀 때까지 받는다. 클라이언트는 `me.updated`(`roles`, `status`)나 `session.revoked`를 받으면 새 티켓으로 다시 붙는다(§1.3, §6.8, 최종 리뷰). M5에서 서버가 그런 연결을 끊게 바꿨다(연결 재검사).
   - 역할 이름을 이미 있는 이름으로 바꾸면서 권한도 바꾸는 요청은 422 `validation.already_taken`이다. 멤버 알림은 이름 검사가 끝난 뒤에 한다(최종 리뷰).
-  - 토큰의 해시는 짝이 없는 서로게이트도 인코딩한다(`surrogatepass`). 그런 토큰은 500이 아니라 각 grant의 401이다(최종 리뷰).
+  - 토큰의 해시는 짝이 없는 서로게이트도 인코딩한다(`surrogatepass`). 그런 토큰은 500이 아니라 각 grant의 401이다(최종 리뷰). 보정에서 같은 원칙을 비밀번호, 응답 본문, 역할 설명으로 넓혔다(§5.2, §6.1).
   - `codeVerifier`는 RFC 7636 모양(`[A-Za-z0-9._~-]` 43~128자)이어야 한다. 제공자의 에러는 `access_denied`만 `auth.oauth_denied`이고, 나머지는 `auth.oauth_failed`다(최종 리뷰).
   - OpenTelemetry는 헬스 체크 요청과 ASGI send·receive를 span으로 만들지 않는다. 쓰기 전용 발행기와 소켓 테스트 도우미는 쓴 연결을 닫는다(최종 리뷰).
 - M5(보강). [보강 설계](2026-09-29-fastapi-hardening-design.md)가 M2~M4의 최종 리뷰가 남긴 "나중" 목록(M2 7건, M3 4건, M4 7건)을 모두 처리했다. 결정은 그 문서의 §2(H1~H18)에 있다.
@@ -706,6 +718,16 @@ M1~M5의 계획과 최종 리뷰가 남긴 일이다. 해당 마일스톤 계획
   - 에이전트용 규칙과 레시피(AGENTS.md, `docs/recipes/`)를 M5의 실제 코드(식별자 해시, `Cache`와 `require_recent_login`의 시그니처, 파일 참조 확인)에 맞췄다. 잡·메일 레시피는 `service.py` 하나뿐인 모듈에서 순환 import가 나던 안내를 고쳐, 잡이 부르는 작업과 잡을 보내는 서비스를 다른 파일에 두게 했다(최종 리뷰).
   - 제어 채널의 수신(`ControlChannel._listen`)은 Valkey 오류가 아닌 예외에도 죽지 않고 로그를 남긴 뒤 같은 backoff로 다시 구독한다(최종 리뷰).
   - 연결 재검사(`Gateway._still_allowed`)를 끝내지 못하면(예: DB 장애) 그 연결은 끊지 않고 남긴다(fail-open, 최종 리뷰).
+- 보정(2026-09-30). web 사이클의 W1(목 서버)에서 목을 FastAPI와 맞추다 찾은 11건([web 설계](2026-09-30-nextjs-web-design.md) §12.1)과, 그것을 조사하다 찾은 같은 종류 하나를 고쳤다. 목과 적합성 흐름도 같은 동작으로 맞췄다.
+  - 검증 에러: 판별 유니온(`SessionGrant`)의 필드 오류가 본문의 실제 위치를 가리킨다. 정수(`Int32`, `Int64`)는 strict라 숫자 문자열과 불리언을 받지 않는다(§5.2).
+  - 짝 없는 서로게이트의 500: 비밀번호는 `surrogatepass`로 인코딩해 해시하고 검증한다(401, §6.1). 응답 클래스가 짝 없는 서로게이트를 `\uXXXX`로 이스케이프한다(§5.2). 입력을 담은 detail 셋(`require_matching_id`의 409, `files.attachable_file`의 404, 조사에서 새로 찾은 `users/service/management.py`의 없는 역할 404)이 응답을 인코딩하다 500이었다. 역할 설명은 PostgreSQL에 저장하다 500이었고 이제 422다.
+  - 모든 401에 `WWW-Authenticate`(§5.2). 로그인, refresh, 소셜 로그인 코드, 비밀번호 변경의 401에 없었다.
+  - 실시간: `REALTIME_ALLOWED_ORIGINS`를 Origin으로 정규화하고 `*`를 거절한다. 페이로드가 하나가 아닌 `subscribe`·`unsubscribe`는 422 ack다(전에는 처리기가 `TypeError`로 끝나 ack가 없었다, §6.8).
+  - 만료된 세션은 끝난 세션이다. `revokedCount`가 만료된 세션을 세지 않고, 인증기·티켓 연결·재검사가 만료를 본다. 여러 세션을 폐기하는 요청은 폐기한 세션이 없어도 재검사한다(§6.1, §6.8).
+  - `attributes`가 없는 `PATCH /roles/{id}`가 서비스를 건너뛰어 고치기 전 권한 검사(F2)를 하지 않았다(§6.3).
+  - 계약: `DELETE /me`의 422, 리다이렉트의 406, `PostStatus`와 글 이벤트 문서의 설명(§7). FastAPI 선언도 함께 고쳤다.
+  - 구조 비교가 operation마다 응답 상태 집합을 본다(§11). 이제 계약과 FastAPI 선언 가운데 한쪽만 고치면 실패한다.
+  - 목과 남은 차이(소수점·지수로 쓴 정수, 판별자와 이름이 같은 grant 필드에 객체·배열을 보냈을 때의 pointer 등)는 `contract/mock/AGENTS.md`의 "FastAPI와 다른 점"에 있다.
 
 ## 13. 계획 단계에서 확인할 것
 
