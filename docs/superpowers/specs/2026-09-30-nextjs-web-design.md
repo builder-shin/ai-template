@@ -365,7 +365,7 @@ templates/nextjs/
 - access token은 불투명한 문자열(JWT 아님)이고, 비밀번호 해시(scrypt)·소셜 로그인 제공자·스토리지는 개발용이다(재시작하면 옛 presigned URL이 맞지 않는다). 비밀번호의 짝 없는 서로게이트는 U+FFFD로 바꿔 해시한다(FastAPI는 `surrogatepass`로 인코딩한다).
 - 메일은 요청 안에서 바로 보관함에 들어간다(FastAPI는 요청 뒤 잡으로 보낸다).
 - 요청 검증의 남은 경계 셋(§8.3: 소수점·지수로 쓴 정수, grant 필드에 객체·배열을 보냈을 때의 pointer, 본문 인코딩)은 FastAPI(Pydantic)를 그대로 흉내 내지 않고 계약대로 한다.
-- `REALTIME_ALLOWED_ORIGINS`는 두 쪽 모두 브라우저 Origin으로 정규화하고 `*`를 거절한다. 다만 브라우저가 다른 모양으로 보내는 호스트(ASCII가 아닌 호스트 등)를 목은 그 모양으로 바꿔 받고, FastAPI는 설정 오류로 거절한다.
+- `REALTIME_ALLOWED_ORIGINS`는 두 쪽 모두 브라우저 Origin으로 정규화하고 `*`를 거절한다. 다만 브라우저가 다른 모양으로 보내는 호스트(ASCII가 아닌 호스트 등)를 목은 그 모양으로 바꿔 받고, FastAPI는 설정 오류로 거절한다. 이름에 쓰지 않는 글자가 든 호스트(예: `*.example.com`)도 목은 그대로 받아들이고 FastAPI는 설정 오류로 거절한다.
 - 전체 목록은 `contract/mock/AGENTS.md`의 "FastAPI와 다른 점"이다.
 
 ## 9. 하네스

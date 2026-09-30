@@ -84,8 +84,9 @@ export interface MockConfig {
    * Socket.IO 연결을 받을 브라우저 Origin(REALTIME_ALLOWED_ORIGINS, 쉼표로 구분). FastAPI(config.py의
    * Origins)처럼 값마다 Origin으로 정규화하고 `*`나 http(s) 주소가 아닌 값은 설정 오류로 거절한다. 호스트는
    * WHATWG URL로 읽어 브라우저가 보낼 모양으로 바꾼다(ASCII가 아닌 호스트는 punycode로, 127.1은
-   * 127.0.0.1로). FastAPI는 그렇게 바꿔야 하는 호스트를 설정 오류로 거절한다. Origin 헤더가 없는
-   * 연결(브라우저가 아닌 클라이언트)은 늘 받는다.
+   * 127.0.0.1로). FastAPI는 그렇게 바꿔야 하는 호스트를 설정 오류로 거절한다. 이름에 쓰지 않는 글자가 든
+   * 호스트(예: `*.example.com`)는 WHATWG URL이 그대로 두므로 목은 그대로 받아들이지만 FastAPI는 설정
+   * 오류로 거절한다. Origin 헤더가 없는 연결(브라우저가 아닌 클라이언트)은 늘 받는다.
    */
   readonly realtimeAllowedOrigins: readonly string[];
 }
