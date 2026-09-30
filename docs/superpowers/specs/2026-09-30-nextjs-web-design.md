@@ -301,7 +301,7 @@ templates/nextjs/
 - 모듈은 백엔드와 같은 단위(auth, users, roles, files, posts, audit-logs, realtime)로 나눈다. JSON:API 공통 층(문서 렌더링, 에러, 쿼리 해석, 미디어 타입 협상, 본문 한도)은 따로 둔다.
 - 목의 타입은 web과 같은 `openapi.yaml`에서 생성한다.
 - 설정은 환경 변수다. 없거나 비면 기본값을 쓰고, 틀리면 변수마다 한 줄씩 알리고 멈춘다(`src/config.ts`).
-  - 서버: `PORT`(기본 4010), `API_URL`(기본 `http://localhost:<PORT>`, presigned URL·OAuth 화면이 쓰는 목의 주소), `MOCK_TEST_ENDPOINTS`(기본 켜짐)
+  - 서버: `PORT`(기본 4010), `HOST`(들을 인터페이스, 기본 127.0.0.1. 컨테이너는 `HOST=0.0.0.0`으로 연다), `API_URL`(기본 `http://localhost:<PORT>`, presigned URL·OAuth 화면이 쓰는 목의 주소), `MOCK_TEST_ENDPOINTS`(기본 켜짐)
   - 시드 관리자: `SEED_ADMIN_EMAIL`(기본 admin@example.com), `SEED_ADMIN_PASSWORD`(8자 이상)
   - 프론트 연동: `FRONTEND_URL`(기본 `http://localhost:3000`, 메일 링크), `OAUTH_REDIRECT_URIS`(기본 `http://localhost:3000/oauth/callback`, 쉼표 목록)
   - 식별자 해시: `IDENTIFIER_HASH_SECRET`(32자 이상)

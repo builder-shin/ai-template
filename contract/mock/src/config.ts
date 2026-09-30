@@ -44,6 +44,12 @@ export interface MockConfig {
   /** HTTP 포트(PORT). API, 실시간, 가짜 스토리지, 테스트 통로가 이 포트 하나에 뜬다. */
   readonly port: number;
   /**
+   * 들을 네트워크 인터페이스(HOST). 기본은 개발용으로 로컬만 여는 127.0.0.1이다(FastAPI 템플릿의
+   * compose가 개발 포트를 127.0.0.1에만 여는 것과 같다). 컨테이너는 HOST=0.0.0.0으로 모든 인터페이스를
+   * 연다.
+   */
+  readonly host: string;
+  /**
    * 브라우저가 보는 목의 주소(API_URL, FastAPI와 같은 뜻). 기본은 http://localhost:<PORT>다.
    * 가짜 스토리지의 presigned URL(<API_URL>/_storage/...)이 이 주소를 쓴다.
    */
@@ -75,14 +81,17 @@ export interface MockConfig {
    */
   readonly storageAllowedOrigins: readonly string[];
   /**
-   * Socket.IO 연결을 받을 브라우저 Origin(REALTIME_ALLOWED_ORIGINS, 쉼표로 구분, FastAPI와 같은 뜻).
-   * Origin 헤더가 없는 연결(브라우저가 아닌 클라이언트)은 늘 받는다.
+   * Socket.IO 연결을 받을 브라우저 Origin(REALTIME_ALLOWED_ORIGINS, 쉼표로 구분). 값마다 Origin으로
+   * 정규화하고 `*`나 URL이 아닌 값은 설정 오류로 거절한다. FastAPI는 원래 문자열을 그대로 비교해 `*`를
+   * 전부 허용으로 본다(값을 검증하지 않는다). Origin 헤더가 없는 연결(브라우저가 아닌 클라이언트)은 늘
+   * 받는다.
    */
   readonly realtimeAllowedOrigins: readonly string[];
 }
 
 export const DEFAULT_CONFIG: MockConfig = {
   port: 4010,
+  host: "127.0.0.1",
   apiUrl: "http://localhost:4010",
   testEndpoints: true,
   seedAdmin: { email: "admin@example.com", password: "admin-password" }, // betterleaks:allow 개발용 기본 시드 관리자
@@ -174,9 +183,9 @@ function positiveInteger(raw: string): Parsed<number> {
   return { problem: `1 이상의 정수여야 한다(현재: ${raw})` };
 }
 
-/** 아무 문자열(목록의 항목). */
+/** 아무 문자열이면 된다(목록의 항목, HOST). 앞뒤 공백만 지운다. */
 function text(raw: string): Parsed<string> {
-  return { value: raw };
+  return { value: raw.trim() };
 }
 
 /**
@@ -220,6 +229,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
   const listenPort = read("PORT", defaults.port, port);
   const config: MockConfig = {
     port: listenPort,
+    host: read("HOST", defaults.host, text),
     apiUrl: read("API_URL", `http://localhost:${String(listenPort)}`, httpUrl),
     testEndpoints: read("MOCK_TEST_ENDPOINTS", defaults.testEndpoints, flag),
     seedAdmin: {

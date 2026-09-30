@@ -17,6 +17,7 @@ describe("loadConfig", () => {
   it("변수가 없으면 FastAPI 템플릿 .env.example의 개발용 값으로 뜬다", () => {
     expect(loadConfig({})).toEqual({
       port: 4010,
+      host: "127.0.0.1",
       apiUrl: "http://localhost:4010",
       testEndpoints: true,
       seedAdmin: { email: "admin@example.com", password: "admin-password" }, // betterleaks:allow 개발용 기본 시드 관리자
@@ -45,6 +46,7 @@ describe("loadConfig", () => {
   it("값을 읽는다. 불리언은 true/false, 1/0, yes/no, on/off를 받는다", () => {
     const env = {
       PORT: "4999",
+      HOST: " 0.0.0.0 ",
       API_URL: "https://mock.example.com/",
       MOCK_TEST_ENDPOINTS: "Off",
       SEED_ADMIN_EMAIL: " root@example.com ",
@@ -68,6 +70,7 @@ describe("loadConfig", () => {
     };
     expect(loadConfig(env)).toEqual({
       port: 4999,
+      host: "0.0.0.0",
       apiUrl: "https://mock.example.com/",
       testEndpoints: false,
       seedAdmin: { email: "root@example.com", password: "conformance-admin-password" }, // betterleaks:allow 테스트용 가짜 비밀번호
@@ -110,6 +113,7 @@ describe("loadConfig", () => {
   it("빈 값은 기본값이다", () => {
     const env = {
       PORT: "",
+      HOST: " ",
       API_URL: " ",
       MOCK_TEST_ENDPOINTS: "  ",
       SEED_ADMIN_PASSWORD: "",

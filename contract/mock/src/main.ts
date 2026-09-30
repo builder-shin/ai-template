@@ -45,7 +45,7 @@ const config = loadConfigOrExit();
 const state = createState();
 const app = createApp(config, state);
 
-const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
+const server = serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {
   const root = `http://localhost:${String(info.port)}`;
   const testEndpoints = config.testEndpoints
     ? `켜짐, 메일 보관함 ${root}${MAIL_PAGE_PATH}`
