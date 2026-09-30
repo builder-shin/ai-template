@@ -108,6 +108,12 @@ NOT_AN_ORIGIN = "Origin(http[s]://호스트[:포트])으로 읽을 수 없다"
         ("http://127.1", NOT_AN_ORIGIN),
         ("http://[::ffff:127.0.0.1]", NOT_AN_ORIGIN),
         ("http://[fe80::1%25eth0]", NOT_AN_ORIGIN),
+        ("http://a.example\\@b.example", NOT_AN_ORIGIN),
+        ("http://a.com:80\\@b.com", NOT_AN_ORIGIN),  # betterleaks:allow 가짜 값
+        ("http://user:pa\\ss@good.com", NOT_AN_ORIGIN),  # betterleaks:allow 가짜 값
+        ("http://ex%41mple.com", NOT_AN_ORIGIN),
+        ("http://1.2.3.4.", NOT_AN_ORIGIN),
+        ("http://0x7f.0.0.1", NOT_AN_ORIGIN),
     ],
     ids=[
         "any",
@@ -121,6 +127,12 @@ NOT_AN_ORIGIN = "Origin(http[s]://호스트[:포트])으로 읽을 수 없다"
         "short-ipv4",
         "ipv4-mapped-ipv6",
         "ipv6-zone",
+        "backslash",
+        "backslash-with-port",
+        "backslash-in-password",
+        "percent-escaped-host",
+        "trailing-dot-ipv4",
+        "hex-ipv4",
     ],
 )
 def test_realtime_origins_refuse_what_is_not_a_browser_origin(

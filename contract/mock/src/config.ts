@@ -86,7 +86,10 @@ export interface MockConfig {
    * WHATWG URL로 읽어 브라우저가 보낼 모양으로 바꾼다(ASCII가 아닌 호스트는 punycode로, 127.1은
    * 127.0.0.1로). FastAPI는 그렇게 바꿔야 하는 호스트를 설정 오류로 거절한다. 이름에 쓰지 않는 글자가 든
    * 호스트(예: `*.example.com`)는 WHATWG URL이 그대로 두므로 목은 그대로 받아들이지만 FastAPI는 설정
-   * 오류로 거절한다. Origin 헤더가 없는 연결(브라우저가 아닌 클라이언트)은 늘 받는다.
+   * 오류로 거절한다. 값에 `\`가 있어도 같다: WHATWG URL은 `\`에서 authority를 끝내 목은 그 앞부분을
+   * 호스트로 읽지만, FastAPI(urlsplit)는 `\`를 구분자로 보지 않아 같은 값을 다른 호스트로 읽을 수 있어
+   * `\`가 든 값을 통째로 설정 오류로 거절한다. Origin 헤더가 없는 연결(브라우저가 아닌 클라이언트)은 늘
+   * 받는다.
    */
   readonly realtimeAllowedOrigins: readonly string[];
 }

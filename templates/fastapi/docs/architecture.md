@@ -137,7 +137,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 
 ## 실시간
 
-Socket.IO 서버(`app.core.realtime`)가 api 프로세스의 `/socket.io/`에서 WebSocket 연결만 받는다. 브라우저 연결의 Origin은 `REALTIME_ALLOWED_ORIGINS`로 본다. python-engineio는 Origin 헤더를 목록과 글자 그대로 비교하고 `*`를 모두 허용으로 읽으므로, 설정(`app.core.config`의 `Origins`)이 값마다 브라우저가 보내는 Origin(`스킴://호스트[:포트]`)으로 바꾼다. 경로와 끝의 `/`, 쿼리, 조각, 계정은 떼고, 호스트는 소문자로, 기본 포트(80, 443)는 뺀다. `*`, http(s)가 아닌 값, 브라우저가 다른 모양으로 보내는 호스트(ASCII가 아닌 호스트, 줄여 쓴 IPv4 등)는 설정 오류다. 국제화 도메인은 punycode(`xn--…`)로 적는다.
+Socket.IO 서버(`app.core.realtime`)가 api 프로세스의 `/socket.io/`에서 WebSocket 연결만 받는다. 브라우저 연결의 Origin은 `REALTIME_ALLOWED_ORIGINS`로 본다. python-engineio는 Origin 헤더를 목록과 글자 그대로 비교하고 `*`를 모두 허용으로 읽으므로, 설정(`app.core.config`의 `Origins`)이 값마다 브라우저가 보내는 Origin(`스킴://호스트[:포트]`)으로 바꾼다. 경로와 끝의 `/`, 쿼리, 조각, 계정은 떼고, 호스트는 소문자로, 기본 포트(80, 443)는 뺀다. `*`, http(s)가 아닌 값, `\`가 든 값(urlsplit은 `\`에서 authority를 끝내지 않아 브라우저와 다른 호스트로 읽을 수 있다), 브라우저가 다른 모양으로 보내는 호스트(ASCII가 아닌 호스트, 줄여 쓴 IPv4 등)는 설정 오류다. 국제화 도메인은 punycode(`xn--…`)로 적는다.
 
 - 연결: 로그인한 브라우저는 BFF가 받은 티켓(`POST /realtime-tickets`, 30초, 1회용)을 `auth.ticket`으로 보낸다. 서버는 티켓을 꺼내 지우고, 세션이 살아 있으면 그 연결을 `user:{id}` 룸에 넣는다. 틀린 티켓(ASCII가 아닌 값 포함)은 연결을 거부한다(`connect_error`의 message `auth.token_invalid`, data 에러 객체). 티켓이 없으면 익명 연결이다(realtime 모듈의 `gateway.py`).
 - 구독: `subscribe`와 `unsubscribe`에 페이로드 `{ channel }` 하나를 보내고 ack(`RealtimeAck`)를 받는다. 페이로드가 없거나 둘 이상이면 모르는 채널처럼 422 `validation.invalid_choice`(`source.pointer` `/channel`) ack다. python-socketio는 페이로드를 하나씩 인자로 넘기므로 처리기는 `*payloads`로 받는다(인자가 맞지 않으면 처리기가 `TypeError`로 끝나 ack를 보내지 못한다). 채널은 모듈이 선언한다(`Channel`, posts는 `posts`와 `posts:all`). 권한이 필요한 채널은 구독할 때 DB에서 권한을 계산한다.

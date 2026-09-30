@@ -81,6 +81,11 @@ def _origin(value: str) -> str:
     if not value.startswith(("http://", "https://")):
         raise ValueError(f"http:// 또는 https://로 시작하는 주소여야 한다(현재: {value})")
     unreadable = f"Origin(http[s]://호스트[:포트])으로 읽을 수 없다(현재: {value})"
+    if "\\" in value:
+        # WHATWG URL 파싱(목의 origin(), 브라우저)은 \도 authority를 끝내지만 urlsplit은 아니다.
+        # 그대로 두면 같은 값을 FastAPI와 브라우저가 다른 호스트로 읽는다. 올바른 Origin은 \를
+        # 담지 않으므로 여기서 거절한다.
+        raise ValueError(unreadable)
     try:
         parts = urlsplit(value)
         port = parts.port
