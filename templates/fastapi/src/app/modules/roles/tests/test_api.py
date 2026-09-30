@@ -212,6 +212,29 @@ async def test_update_protects_system_roles_and_limits(
     assert (response.status_code, error_codes(response)) == (status, [code])
 
 
+@pytest.mark.parametrize("extra", [{}, {"attributes": {}}], ids=["absent", "empty"])
+async def test_update_without_changes_still_checks_the_role(
+    api: httpx.AsyncClient,
+    accounts: Accounts,
+    db: async_sessionmaker[AsyncSession],
+    extra: dict[str, Any],
+) -> None:
+    """attributes가 없거나 비어도 고치기 전 권한 검사(F2)를 한다. 권한 안의 역할은 그대로 준다."""
+    auth = await signed_in(accounts, MANAGER)
+
+    async def patch(role_id: uuid.UUID | str) -> httpx.Response:
+        document = {"data": {"type": "roles", "id": str(role_id), **extra}}
+        return await api.patch(f"{ROLES}/{role_id}", **jsonapi_body(document, auth))
+
+    beyond = await patch((await role_named(db, ADMIN_ROLE)).id)
+    assert (beyond.status_code, error_codes(beyond)) == (403, ["permission.denied"])
+    own = await create(api, auth, "editor", ["users:read"])
+    same = await patch(own)
+    assert same.status_code == 200, same.text
+    assert same.json()["data"]["attributes"]["name"] == "editor"
+    assert await actions(db) == ["role.created"]
+
+
 async def test_admin_permissions_cannot_change(
     api: httpx.AsyncClient, accounts: Accounts, db: async_sessionmaker[AsyncSession]
 ) -> None:

@@ -131,6 +131,24 @@ describe(`역할 (${target.name})`, () => {
     });
   });
 
+  it("내 권한을 넘는 역할은 attributes가 없거나 비어 있어도 고치지 못한다", async () => {
+    const manager = await userWith(["roles:read", "roles:manage"]);
+    const id = await systemRole(manager, "admin");
+    const params = { path: { id } };
+    const bare = await manager.api.PATCH("/api/v1/roles/{id}", {
+      params,
+      body: { data: { type: "roles", id } },
+    });
+    const empty = await manager.api.PATCH("/api/v1/roles/{id}", {
+      params,
+      body: { data: { type: "roles", id, attributes: {} } },
+    });
+    for (const { error, response } of [bare, empty]) {
+      expect(response.status).toBe(403);
+      expect(codes(error)).toEqual(["permission.denied"]);
+    }
+  });
+
   it("roles:read가 없으면 역할을 보지 못한다", async () => {
     const user = await newUser();
     const { error, response } = await user.api.GET("/api/v1/roles");

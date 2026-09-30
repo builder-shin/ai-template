@@ -225,7 +225,10 @@ async def update_role(
     role: Role,
     attributes: RoleUpdateAttributes,
 ) -> Role:
-    """역할을 고친다. 고치기 전과 후의 권한이 모두 내 권한 안이어야 한다."""
+    """역할을 고친다. 고치기 전과 후의 권한이 모두 내 권한 안이어야 한다.
+
+    고칠 것이 없어도(attributes가 없는 PATCH는 router가 빈 속성으로 부른다) 고치기 전 권한은 본다.
+    """
     _require_within(role_permissions(role, registry), actor)
     changed: list[str] = []
     if attributes.name is not MISSING and attributes.name != role.name:

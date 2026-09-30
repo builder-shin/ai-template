@@ -253,12 +253,21 @@ describe("역할 고치기", () => {
     expect(unchanged.status).toBe(200);
   });
 
-  it("attributes가 없으면 권한도 검사하지 않고 그대로 준다", async () => {
+  it("attributes가 없거나 비어도 고치기 전 권한을 검사하고, 권한 안의 역할은 그대로 준다", async () => {
     const { app, state } = testApp();
     const manager = await userWith(app, state, [...MANAGER]);
     const admin = roleId(state, "admin");
-    expect((await patch(app, manager, admin)).status).toBe(200);
-    expect(await codesOf(await patch(app, manager, admin, {}), 403)).toEqual(["permission.denied"]);
+    const id = await create(app, manager, "editor", ["users:read"]);
+    const before = state.store.roles.get(id)?.updatedAt;
+    for (const attributes of [undefined, {}]) {
+      const beyond = await patch(app, manager, admin, attributes);
+      expect(await codesOf(beyond, 403)).toEqual(["permission.denied"]);
+      expect((await patch(app, manager, id, attributes)).status).toBe(200);
+    }
+    expect([state.store.roles.get(id)?.updatedAt, actions(state)]).toEqual([
+      before,
+      ["role.created"],
+    ]);
   });
 
   it("본문의 id가 경로와 다르면 409이고, 없는 역할이어도 409가 먼저다", async () => {

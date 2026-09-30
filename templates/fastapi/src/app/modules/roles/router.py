@@ -33,6 +33,7 @@ from app.modules.roles.schemas import (
     RoleCreateDocument,
     RoleDocument,
     RoleFilter,
+    RoleUpdateAttributes,
     RoleUpdateDocument,
 )
 
@@ -135,10 +136,16 @@ async def update_role(
 ) -> Response:
     require_matching_id(document.data.id, role_id)
     role = await service.get_role(session, role_id)
-    if document.data.attributes is not MISSING:
-        role = await service.update_role(
-            session, registry, actor, client, role, document.data.attributes
-        )
+    # attributes가 없어도 서비스를 부른다. 고치기 전 권한 검사(F2)를 건너뛰면 안 된다.
+    attributes = document.data.attributes
+    role = await service.update_role(
+        session,
+        registry,
+        actor,
+        client,
+        role,
+        RoleUpdateAttributes() if attributes is MISSING else attributes,
+    )
     return render(RoleDocument(data=service.role_resource(role, registry)))
 
 

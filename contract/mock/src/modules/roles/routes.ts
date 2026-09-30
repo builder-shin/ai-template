@@ -3,8 +3,8 @@
  * (management.ts)에 있고, 여기서는 요청을 넘기고 문서를 만든다.
  *
  * - 읽기는 roles:read, 만들기·고치기·지우기는 roles:manage 권한이 있어야 한다.
- * - PATCH 본문의 data.id가 경로와 다르면 409이고, 그다음 역할이 없으면 404다. attributes가 없으면 고치지
- *   않고(권한 검사도 하지 않는다) 역할을 그대로 준다.
+ * - PATCH 본문의 data.id가 경로와 다르면 409이고, 그다음 역할이 없으면 404다. attributes가 없으면 빈
+ *   속성으로 고친다. 고치기 전 권한 검사는 하고(내 권한을 넘는 역할이면 403), 바뀐 것은 없다.
  * - 권한 목록은 등록된 권한(core/permissions.ts)을 코드 순으로 준다. 정렬할 수 있는 것은 id뿐이다.
  */
 
@@ -54,10 +54,7 @@ function roleManagementRoutes(api: JsonApiRouter, state: MockState): void {
     const { id, attributes } = document.data;
     requireMatchingId(id, path.id);
     const found = getRole(state.store, path.id);
-    const role =
-      attributes === undefined
-        ? found
-        : updateRole(state, principal, clientOf(c), found, attributes);
+    const role = updateRole(state, principal, clientOf(c), found, attributes ?? {});
     const body: Schemas["RoleDocument"] = { data: roleResource(role) };
     return render(body);
   });
