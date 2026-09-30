@@ -7,6 +7,7 @@
 
 import type { Context } from "hono";
 import type { AppEnv } from "../context.ts";
+import { quotePlus } from "../core/urls.ts";
 import type { components } from "../generated/api.ts";
 import { isRecord } from "../json.ts";
 import { jsonApiResponse } from "./media.ts";
@@ -83,18 +84,6 @@ export function loadIncluded<T extends { readonly type: string; readonly id: str
       return loader();
     }),
   );
-}
-
-/** Python의 quote_plus: 영숫자와 _.-~ 밖의 바이트는 %XX(대문자)로, 공백은 +로 쓴다. */
-function quotePlus(value: string): string {
-  let encoded = "";
-  for (const byte of Buffer.from(value, "utf8")) {
-    const char = String.fromCharCode(byte);
-    if (/^[A-Za-z0-9_.~-]$/.test(char)) encoded += char;
-    else if (byte === 0x20) encoded += "+";
-    else encoded += `%${byte.toString(16).toUpperCase().padStart(2, "0")}`;
-  }
-  return encoded;
 }
 
 /**
