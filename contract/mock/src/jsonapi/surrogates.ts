@@ -49,7 +49,7 @@ function constrained(schema: Readonly<Record<string, unknown>>): boolean {
  * Pydantic이 값을 파싱하는 문자열 스키마인가(WELL_FORMED를 붙일 스키마). 제약이나 형식이 있는 문자열
  * 스키마이고, 널 허용 문자열의 제약을 anyOf 밖에 둔 스키마(역할 설명: anyOf [string, null]과 바깥의
  * maxLength)도 그렇다. 후자는 FastAPI가 검증기로 제약을 보면서 짝 없는 서로게이트를 길이보다 먼저
- * 거절한다(roles/schemas.py). WELL_FORMED는 문자열 값에만 걸리므로 null은 그대로 받는다.
+ * 거절한다(roles/schemas.py의 _check_description). WELL_FORMED는 문자열 값에만 걸리므로 null은 그대로 받는다.
  */
 export function parsesString(schema: Readonly<Record<string, unknown>>): boolean {
   if (schema.type === "string") return constrained(schema);

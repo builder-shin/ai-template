@@ -29,7 +29,8 @@ export const NEW_PASSWORD = "conformance-new-password"; // betterleaks:allow 적
 
 /**
  * 짝 없는 서로게이트 하나(U+D800). 타입 클라이언트(JSON.stringify)는 \ud800 이스케이프로 보낸다. 제약
- * 없는 문자열(비밀번호, id)에 넣으면 백엔드는 500이 아니라 같은 요청의 보통 에러로 답해야 한다.
+ * 없는 문자열(비밀번호, id)에 넣으면 백엔드는 500이 아니라 같은 요청의 보통 에러로 답해야 하고, 제약
+ * 있는 문자열(역할 설명)에 넣으면 422 validation.invalid_format으로 답해야 한다.
  */
 export const LONE_SURROGATE = "\ud800";
 

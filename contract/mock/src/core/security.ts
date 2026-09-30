@@ -3,6 +3,9 @@
  *
  * - 비밀번호는 가벼운 scrypt로 해시한다. 운영용이 아니다(FastAPI는 Argon2id). 해시가 없는 계정(없는
  *   계정, 소셜 전용)도 가짜 해시를 검증해 FastAPI와 같은 흐름을 탄다.
+ * - 비밀번호 문자열은 UTF-8로 바꿔 해시하므로 짝 없는 서로게이트가 U+FFFD가 된다. FastAPI는 surrogatepass
+ *   바이트를 해시해(`core/security.py`의 `_password_bytes`) U+FFFD 자리를 짝 없는 서로게이트로 바꾼
+ *   비밀번호가 목에서만 맞는다(로그인, 비밀번호 변경의 현재 비밀번호).
  * - 토큰(access, refresh, 1회용)은 32바이트 무작위 값을 base64url로 쓴 43자다. 저장할 때는 원문 대신
  *   SHA-256(digest)을 키로 쓴다.
  * - 이메일 같은 식별자는 설정 키(IDENTIFIER_HASH_SECRET)의 HMAC-SHA256으로 가린다. FastAPI와 같은
