@@ -77,6 +77,17 @@ describe("실시간 (§4.7)", () => {
     expect(resourceType(schema("PostResource"))).toBe("posts");
   });
 
+  it("리소스를 담는 글 이벤트 문서는 제 이벤트를 설명한다(Document 템플릿의 included 설명이 아니다)", () => {
+    for (const name of ["post.created", "post.updated", "post.published"]) {
+      const payload = events.find((event) => event.name === name)?.payload ?? "";
+      const description = schema(payload).description ?? "";
+      expect(description, payload).toMatch(
+        new RegExp(`^${name.replace(".", "\\.")}의 페이로드\\.`),
+      );
+      expect(description, payload).not.toContain("included");
+    }
+  });
+
   it("공개 채널과 권한이 필요한 채널을 구분한다", () => {
     expect(channels).toEqual([
       expect.objectContaining({ name: "posts", permission: null }),

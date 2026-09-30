@@ -1,4 +1,4 @@
-"""리다이렉트 operation: 302와 Location, JSON:API 밖의 쿼리 파라미터.
+"""리다이렉트 operation: 302와 Location, JSON:API 밖의 쿼리 파라미터, Accept 협상(406).
 
 콜백은 선언하지 않은 파라미터(제공자가 덧붙이는 것)를 받는다.
 """
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.access import install_access
 from app.core.jsonapi.install import install_jsonapi
+from app.core.jsonapi.media import JSONAPI_MEDIA_TYPE
 from app.core.jsonapi.openapi import JsonApiApp
 from app.core.jsonapi.operation import (
     REDIRECT_ERRORS,
@@ -94,6 +95,17 @@ async def test_a_redirect_sends_302_with_the_location(browser: httpx.AsyncClient
     assert response.headers["location"] == f"{FRONT}?kind=red"
 
 
+async def test_a_redirect_negotiates_the_accept_header(browser: httpx.AsyncClient) -> None:
+    """협상 미들웨어는 /api/ 아래 모든 요청의 Accept를 본다. 그래서 리다이렉트도 406을 선언한다."""
+    accept = f'{JSONAPI_MEDIA_TYPE}; ext="https://example.com/ext"'
+    response = await browser.get(
+        "/api/v1/doors/red/open", params={"to": FRONT}, headers={"accept": accept}
+    )
+    assert response.status_code == 406
+    [error] = response.json()["errors"]
+    assert error["code"] == "jsonapi.not_acceptable"
+
+
 @pytest.mark.parametrize(
     "params",
     [
@@ -140,7 +152,7 @@ def test_the_contract_shape_of_a_redirect() -> None:
         "schema": {"type": "string", "format": "uri"},
         "explode": False,
     }
-    assert sorted(operation["responses"]) == ["302", "400", "404", "429", "500"]
+    assert sorted(operation["responses"]) == ["302", "400", "404", "406", "429", "500"]
     assert operation["responses"]["302"] == {
         "description": "Redirection",
         "headers": {"location": {"required": True, "schema": {"type": "string", "format": "uri"}}},

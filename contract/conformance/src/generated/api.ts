@@ -115,7 +115,7 @@ export interface paths {
         get: operations["Me_get"];
         put?: never;
         post?: never;
-        /** @description 회원 탈퇴. 개인정보를 익명화하고 모든 세션을 폐기한다. 로그인한 지 10분 안의 세션만 할 수 있다. 지났으면 401 auth.reauthentication_required이고, 다시 로그인해 받은 새 세션으로 부른다(refresh로는 풀리지 않는다). */
+        /** @description 회원 탈퇴. 개인정보를 익명화하고 모든 세션을 폐기한다. 로그인한 지 10분 안의 세션만 할 수 있다. 지났으면 401 auth.reauthentication_required이고, 다시 로그인해 받은 새 세션으로 부른다(refresh로는 풀리지 않는다). 마지막 활성 admin은 탈퇴할 수 없다(role.last_admin_protected, 422). */
         delete: operations["Me_delete"];
         options?: never;
         head?: never;
@@ -837,7 +837,7 @@ export interface components {
                 relationships?: components["schemas"]["PostWriteRelationships"];
             };
         };
-        /** @description 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다. */
+        /** @description post.created의 페이로드. 만든 글의 리소스 전체를 담는다. */
         PostCreatedEventDocument: {
             data: components["schemas"]["PostResource"];
         };
@@ -854,7 +854,7 @@ export interface components {
             data: components["schemas"]["PostResource"];
             included?: (components["schemas"]["UserPublicResource"] | components["schemas"]["FileResource"])[];
         };
-        /** @description 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다. */
+        /** @description post.published의 페이로드. 발행한 글의 리소스 전체를 담는다. */
         PostPublishedEventDocument: {
             data: components["schemas"]["PostResource"];
         };
@@ -885,7 +885,7 @@ export interface components {
             relationships: components["schemas"]["PostRelationships"];
         };
         /**
-         * @description 골든 모듈. 새 리소스는 이 파일의 구조를 그대로 따른다.
+         * @description 글의 상태. draft는 작성자와 posts:manage만 보고, published는 누구나 본다.
          * @enum {string}
          */
         PostStatus: "draft" | "published";
@@ -914,7 +914,7 @@ export interface components {
                 relationships?: components["schemas"]["PostWriteRelationships"];
             };
         };
-        /** @description 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다. */
+        /** @description post.updated의 페이로드. 바뀐 뒤 글의 리소스 전체를 담는다. */
         PostUpdatedEventDocument: {
             data: components["schemas"]["PostResource"];
         };
@@ -2372,6 +2372,15 @@ export interface operations {
                 };
             };
             /** @description Client error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
             429: {
                 headers: {
                     "Retry-After": number;
@@ -2575,6 +2584,15 @@ export interface operations {
                 };
             };
             /** @description Client error */
+            406: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
             429: {
                 headers: {
                     "Retry-After": number;
@@ -2629,6 +2647,15 @@ export interface operations {
             };
             /** @description The server cannot find the requested resource. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.api+json": components["schemas"]["ErrorDocument"];
+                };
+            };
+            /** @description Client error */
+            406: {
                 headers: {
                     [name: string]: unknown;
                 };

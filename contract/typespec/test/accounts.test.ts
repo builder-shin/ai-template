@@ -51,9 +51,11 @@ describe("사용자 (§4.10, §5.6)", () => {
     expect(meta?.required).toEqual(["permissions"]);
   });
 
-  it("PATCH /me와 DELETE /me(탈퇴)가 있다", () => {
+  it("PATCH /me와 DELETE /me(탈퇴)가 있고, 마지막 활성 admin의 탈퇴는 422다", () => {
     expect(requestRef(operation("patch", "/api/v1/me"))).toBe("UserMeUpdateDocument");
-    expect(statuses(operation("delete", "/api/v1/me"))).toContain("204");
+    const leave = operation("delete", "/api/v1/me");
+    expect(statuses(leave)).toContain("204");
+    expect(statuses(leave)).toContain("422");
   });
 
   it("관리용 목록은 users:read 권한과 필터를 선언한다", () => {

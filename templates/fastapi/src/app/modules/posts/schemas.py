@@ -63,15 +63,15 @@ class PostCollectionDocument(CollectionDocument[PostResource]):
 
 # 실시간 이벤트의 페이로드(계약의 realtime.tsp). 보내는 곳은 events.py다.
 class PostCreatedEventDocument(Document[PostResource]):
-    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+    """post.created의 페이로드. 만든 글의 리소스 전체를 담는다."""
 
 
 class PostUpdatedEventDocument(Document[PostResource]):
-    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+    """post.updated의 페이로드. 바뀐 뒤 글의 리소스 전체를 담는다."""
 
 
 class PostPublishedEventDocument(Document[PostResource]):
-    """단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다."""
+    """post.published의 페이로드. 발행한 글의 리소스 전체를 담는다."""
 
 
 class PostUnpublishedEventDocument(JsonApiModel):

@@ -129,9 +129,9 @@ interface Me {
     | BodyErrors
     | CommonErrors;
 
-  /** 회원 탈퇴. 개인정보를 익명화하고 모든 세션을 폐기한다. 로그인한 지 10분 안의 세션만 할 수 있다. 지났으면 401 auth.reauthentication_required이고, 다시 로그인해 받은 새 세션으로 부른다(refresh로는 풀리지 않는다). */
+  /** 회원 탈퇴. 개인정보를 익명화하고 모든 세션을 폐기한다. 로그인한 지 10분 안의 세션만 할 수 있다. 지났으면 401 auth.reauthentication_required이고, 다시 로그인해 받은 새 세션으로 부른다(refresh로는 풀리지 않는다). 마지막 활성 admin은 탈퇴할 수 없다(role.last_admin_protected, 422). */
   @delete
-  delete(): JsonApi.NoContent | AuthErrors | CommonErrors;
+  delete(): JsonApi.NoContent | AuthErrors | UnprocessableEntity | CommonErrors;
 }
 
 @route("/api/v1/users")

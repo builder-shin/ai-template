@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.audit import AuditLog
 from app.core.db import utc_now
+from app.core.jsonapi.openapi import JsonApiApp
 from app.core.storage import Storage
 from app.modules.files import File, FileStatus
 from app.modules.roles import Role, UserRole
@@ -261,3 +262,9 @@ async def test_the_last_admin_cannot_leave(
             .where(Role.name == "admin")
         )
     assert admins == 1
+
+
+async def test_leaving_declares_the_last_admin_422(app: JsonApiApp) -> None:
+    """계약처럼 탈퇴 선언에 422(role.last_admin_protected)가 있다."""
+    responses = app.openapi()["paths"][ME]["delete"]["responses"]
+    assert sorted(responses) == ["204", "400", "401", "403", "406", "422", "429", "500", "503"]

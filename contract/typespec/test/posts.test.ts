@@ -99,6 +99,12 @@ describe("골든 모듈 posts (§4.9)", () => {
     const tooMany = operation("get", COLLECTION).responses["429"];
     expect(Object.keys(tooMany?.headers ?? {})).toContain("Retry-After");
   });
+
+  it("PostStatus의 설명은 글의 상태를 말한다(파일 머리말이 붙지 않는다)", () => {
+    const description = schema("PostStatus").description ?? "";
+    expect(description).toMatch(/^글의 상태\./);
+    expect(description).not.toContain("골든 모듈");
+  });
 });
 
 describe("감사 로그 (§4.6)", () => {

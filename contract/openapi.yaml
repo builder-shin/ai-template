@@ -974,7 +974,7 @@ paths:
         - BearerAuth: []
     delete:
       operationId: Me_delete
-      description: 회원 탈퇴. 개인정보를 익명화하고 모든 세션을 폐기한다. 로그인한 지 10분 안의 세션만 할 수 있다. 지났으면 401 auth.reauthentication_required이고, 다시 로그인해 받은 새 세션으로 부른다(refresh로는 풀리지 않는다).
+      description: 회원 탈퇴. 개인정보를 익명화하고 모든 세션을 폐기한다. 로그인한 지 10분 안의 세션만 할 수 있다. 지났으면 401 auth.reauthentication_required이고, 다시 로그인해 받은 새 세션으로 부른다(refresh로는 풀리지 않는다). 마지막 활성 admin은 탈퇴할 수 없다(role.last_admin_protected, 422).
       parameters: []
       responses:
         '204':
@@ -998,6 +998,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
         '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '422':
           description: Client error
           content:
             application/vnd.api+json:
@@ -1076,6 +1082,12 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
         '429':
           description: Client error
           headers:
@@ -1141,6 +1153,12 @@ paths:
                 $ref: '#/components/schemas/ErrorDocument'
         '404':
           description: The server cannot find the requested resource.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ErrorDocument'
+        '406':
+          description: Client error
           content:
             application/vnd.api+json:
               schema:
@@ -4379,7 +4397,7 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/PostResource'
-      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+      description: post.created의 페이로드. 만든 글의 리소스 전체를 담는다.
     PostDeletedEventDocument:
       type: object
       required:
@@ -4419,7 +4437,7 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/PostResource'
-      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+      description: post.published의 페이로드. 발행한 글의 리소스 전체를 담는다.
     PostRelationships:
       type: object
       required:
@@ -4492,7 +4510,7 @@ components:
       enum:
         - draft
         - published
-      description: 골든 모듈. 새 리소스는 이 파일의 구조를 그대로 따른다.
+      description: 글의 상태. draft는 작성자와 posts:manage만 보고, published는 누구나 본다.
     PostUnpublishedEventDocument:
       type: object
       required:
@@ -4554,7 +4572,7 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/PostResource'
-      description: 단건 문서. 포함 리소스가 있으면 리소스 파일에서 included를 덧붙인다.
+      description: post.updated의 페이로드. 바뀐 뒤 글의 리소스 전체를 담는다.
     PostWriteRelationships:
       type: object
       properties:

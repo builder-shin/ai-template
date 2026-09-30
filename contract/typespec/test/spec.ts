@@ -13,6 +13,7 @@ export interface Schema {
   anyOf?: Schema[];
   oneOf?: Schema[];
   $ref?: string;
+  description?: string;
 }
 
 export interface Parameter {

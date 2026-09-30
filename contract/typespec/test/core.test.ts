@@ -77,10 +77,11 @@ describe("계약 기본", () => {
 });
 
 /** 계약의 모든 operation을 `메서드 경로`와 함께 돌려준다. */
-function operations(): { key: string; method: string; op: Operation }[] {
+function operations(): { key: string; path: string; method: string; op: Operation }[] {
   return Object.entries(spec.paths).flatMap(([path, item]) =>
     Object.entries(item).map(([method, op]) => ({
       key: `${method.toUpperCase()} ${path}`,
+      path,
       method,
       op,
     })),
@@ -129,6 +130,15 @@ describe("생성·수정 응답 (JSON:API 1.1)", () => {
         .map(([status]) => `${key} ${status}`),
     );
     expect(doubled).toEqual([]);
+  });
+});
+
+describe("콘텐츠 협상 (JSON:API 1.1)", () => {
+  it("/api/ 아래의 모든 operation은 406을 선언한다(OAuth 리다이렉트도 Accept를 협상한다)", () => {
+    const missing = operations()
+      .filter(({ path, op }) => path.startsWith("/api/") && !("406" in op.responses))
+      .map(({ key }) => key);
+    expect(missing).toEqual([]);
   });
 });
 

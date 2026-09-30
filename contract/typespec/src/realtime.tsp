@@ -28,8 +28,13 @@ model UserMeUpdatedEventDocument {
   };
 }
 
+/** post.created의 페이로드. 만든 글의 리소스 전체를 담는다. */
 model PostCreatedEventDocument is JsonApi.Document<PostResource>;
+
+/** post.updated의 페이로드. 바뀐 뒤 글의 리소스 전체를 담는다. */
 model PostUpdatedEventDocument is JsonApi.Document<PostResource>;
+
+/** post.published의 페이로드. 발행한 글의 리소스 전체를 담는다. */
 model PostPublishedEventDocument is JsonApi.Document<PostResource>;
 
 /** 발행을 취소한 글. 초안의 내용이 공개 채널로 나가지 않게 식별자만 담는다. */

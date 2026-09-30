@@ -98,6 +98,22 @@ describe("OAuth 리다이렉트 (JSON:API 예외)", () => {
     }
   });
 
+  it("authorize와 callback의 Accept도 협상하므로 406을 선언한다(본문이 없어 413·415·422는 없다)", () => {
+    for (const path of [
+      "/api/v1/oauth/{provider}/authorize",
+      "/api/v1/oauth/{provider}/callback",
+    ]) {
+      expect(statuses(operation("get", path)), path).toEqual([
+        "302",
+        "400",
+        "404",
+        "406",
+        "429",
+        "500",
+      ]);
+    }
+  });
+
   it("제공자는 google, kakao, naver다", () => {
     expect(schema("OAuthProvider").enum).toEqual(["google", "kakao", "naver"]);
   });

@@ -51,8 +51,9 @@ BODY_ERRORS = (413, 415, 422)
 AUTH_ERRORS = (401, 403)
 NOT_FOUND = (404,)
 CONFLICT = (409,)
-# 리다이렉트(RedirectOperation)의 에러. 브라우저가 이동하는 요청이라 협상 에러(406, 415)가 없다.
-REDIRECT_ERRORS = (400, 404, 429, 500)
+# 리다이렉트(RedirectOperation)의 에러. 본문이 없어 415는 없다. 협상 미들웨어가 /api/ 아래
+# 모든 요청의 Accept를 보므로 406은 있다.
+REDIRECT_ERRORS = (400, 404, 406, 429, 500)
 # 모든 POST에 넣는다: 클라이언트가 만든 id는 403, 본문의 type 불일치는 409다(JSON:API 1.1).
 # 로그인이 필요한 POST에서 AUTH_ERRORS와 403이 겹쳐도 된다. 응답은 상태마다 하나다.
 CREATE_ERRORS = (403, 409)

@@ -15,8 +15,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base, utc_now
 
 
-# 글의 상태(계약의 PostStatus). 계약에 설명이 없어 docstring을 두지 않는다.
 class PostStatus(StrEnum):
+    """글의 상태. draft는 작성자와 posts:manage만 보고, published는 누구나 본다."""
+
     DRAFT = "draft"
     PUBLISHED = "published"
 

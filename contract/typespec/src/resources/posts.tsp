@@ -10,7 +10,9 @@ using OpenAPI;
 
 namespace Platform;
 
-/** 골든 모듈. 새 리소스는 이 파일의 구조를 그대로 따른다. */
+// 골든 모듈. 새 리소스는 이 파일의 구조를 그대로 따른다.
+
+/** 글의 상태. draft는 작성자와 posts:manage만 보고, published는 누구나 본다. */
 union PostStatus {
   "draft",
   "published",

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { MEDIA_TYPE } from "../../src/jsonapi/assertions.ts";
 import type { OAuthProvider, OAuthReturn } from "../../src/side-channels.ts";
 import {
   api,
@@ -144,6 +145,27 @@ describe(`소셜 로그인 (${target.name})`, () => {
       { redirect: "manual" },
     );
     expect(missing.status).toBe(404);
+  });
+
+  it("authorize와 callback도 Accept를 협상한다: 매개변수가 붙은 JSON:API 미디어 타입만 받으면 406이다", async () => {
+    const headers = { Accept: `${MEDIA_TYPE}; ext="https://example.com/ext"` };
+    const authorize = await api().GET("/api/v1/oauth/{provider}/authorize", {
+      params: {
+        path: { provider: "google" },
+        query: { redirectUri: FRONT_CALLBACK, codeChallenge: VALID_CODE_CHALLENGE },
+      },
+      headers,
+      redirect: "manual",
+    });
+    expect(authorize.response.status).toBe(406);
+    expect(codes(authorize.error)).toEqual(["jsonapi.not_acceptable"]);
+    const callback = await api().GET("/api/v1/oauth/{provider}/callback", {
+      params: { path: { provider: "google" }, query: { state: randomUUID() } },
+      headers,
+      redirect: "manual",
+    });
+    expect(callback.response.status).toBe(406);
+    expect(codes(callback.error)).toEqual(["jsonapi.not_acceptable"]);
   });
 
   it("codeChallenge가 없거나 형식이 틀리면 400이고, codeVerifier가 안 맞거나 RFC 7636 형식이 아니면 401이며 코드는 그때 이미 쓴다", async () => {

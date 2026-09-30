@@ -209,6 +209,7 @@ interface OAuth {
       }
     | BadRequest
     | NotFound
+    | NotAcceptable
     | TooManyRequests
     | InternalServerError;
 
@@ -227,6 +228,7 @@ interface OAuth {
       }
     | BadRequest
     | NotFound
+    | NotAcceptable
     | TooManyRequests
     | InternalServerError;
 }
