@@ -66,8 +66,9 @@
 2. FastAPI 모듈을 읽고 `src/modules/<이름>/`에 같은 단위로 만든다: `model.ts`(행), `service.ts`(규칙, 에러, 감사 로그, 이벤트), `documents.ts`(리소스), `routes.ts`(`api.route("<operationId>", { auth, filters }, handler)`). 예시는 `posts`다.
 3. 테이블은 `src/store.ts`, 그 밖의 상태는 `src/state.ts`, 시드는 `src/seed.ts`에 더하고, 라우트는 `src/app.ts`에서 단다.
 4. 다른 모듈과 얽히는 처리(계정 닫기, 파일 읽기 규칙과 참조 확인, 역할 변경)는 등록 지점에 걸고 `src/modules/registry.ts`에서 잇는다.
-5. `test/`에 단위 테스트를 둔다. 기대값은 FastAPI에 같은 요청을 보내 얻은 응답이다.
-6. 적합성 흐름(`contract/conformance/test/flows/`)을 더해 `pnpm conformance mock`과 `pnpm conformance fastapi`에서 통과시킨다.
+5. 알림(`realtime.publish`)과 재검사(`realtime.recheck`)는 그 상태를 바꾼 뒤에 보낸다. 한 처리가 여러 곳을 바꾸며 알리면 `state.realtime.batch`로 전체를 감싸 재검사가 이미 바뀐 상태를 보게 한다(FastAPI의 commit 뒤 발행과 같다. 예: `modules/roles/management.ts`의 `deleteRole`).
+6. `test/`에 단위 테스트를 둔다. 기대값은 FastAPI에 같은 요청을 보내 얻은 응답이다.
+7. 적합성 흐름(`contract/conformance/test/flows/`)을 더해 `pnpm conformance mock`과 `pnpm conformance fastapi`에서 통과시킨다.
 
 ## FastAPI와 다른 점
 

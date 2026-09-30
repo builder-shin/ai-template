@@ -182,7 +182,11 @@ export function updateRole(
   return role;
 }
 
-/** 역할을 지운다. 그 역할을 가진 사용자에게서도 빠진다(FastAPI의 외래 키 ON DELETE CASCADE). */
+/**
+ * 역할을 지운다. 그 역할을 가진 사용자에게서도 빠진다(FastAPI의 외래 키 ON DELETE CASCADE). 알림과
+ * 재검사는 batch로 모아 역할이 지워진 뒤에 보낸다(FastAPI가 commit 후에 보내는 것과 같다). 그래야
+ * 재검사가 이미 사라진 권한을 본다.
+ */
 export function deleteRole(
   state: MockState,
   actor: Principal,
@@ -191,8 +195,10 @@ export function deleteRole(
 ): void {
   if (role.isSystem) throw systemRoleProtected("System roles cannot be deleted.");
   requireWithin(rolePermissions(role), actor);
-  notifyMembers(state, role);
-  state.store.roles.delete(role.id);
-  for (const held of state.store.userRoles.values()) held.delete(role.id);
+  state.realtime.batch(() => {
+    notifyMembers(state, role);
+    state.store.roles.delete(role.id);
+    for (const held of state.store.userRoles.values()) held.delete(role.id);
+  });
   audit(state, "role.deleted", { actor, client, role }, { name: role.name });
 }

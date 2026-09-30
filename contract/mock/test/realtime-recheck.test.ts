@@ -51,6 +51,14 @@ async function deactivate(served: Serving, admin: SignedIn, userId: string): Pro
   expect(response.status, await response.clone().text()).toBe(200);
 }
 
+/** 역할을 지운다(관리자). */
+async function removeRole(served: Serving, admin: SignedIn, roleId: string): Promise<void> {
+  const response = await send(served.app, "DELETE", `/api/v1/roles/${roleId}`, {
+    token: admin.accessToken,
+  });
+  expect(response.status, await response.clone().text()).toBe(204);
+}
+
 describe("세션", () => {
   it("로그아웃한 세션의 연결은 session.revoked를 받은 뒤 끊기고, 다른 세션의 연결은 남는다", async () => {
     const served = await serving();
@@ -138,5 +146,21 @@ describe("채널 권한", () => {
     expect(everything.log).toEqual([rolesChanged, rolesChanged, SERVER_DISCONNECT]);
     await published.settle();
     expect(published.log).toEqual([rolesChanged, rolesChanged]);
+  });
+
+  it("posts:manage를 오직 커스텀 역할로만 가진 사용자는 그 역할이 지워지면 me.updated를 받은 뒤 끊긴다", async () => {
+    const served = await serving();
+    const [admin, editor] = [
+      await signInAdmin(served),
+      await userWith(served.app, served.state, ["posts:manage"]),
+    ];
+    const socket = await connectAs(served, editor);
+    expect(await socket.call("subscribe", { channel: "posts:all" })).toEqual({ ok: true });
+    await removeRole(served, admin, editor.roleId);
+    expect(await socket.disconnected()).toBe("io server disconnect");
+    expect(socket.log).toEqual([
+      ["me.updated", { meta: { changed: ["roles"] } }],
+      SERVER_DISCONNECT,
+    ]);
   });
 });
