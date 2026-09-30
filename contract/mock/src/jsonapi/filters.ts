@@ -7,11 +7,14 @@
  * - enumFilter(StrEnum): 값이 계약의 enum 값과 정확히 같아야 한다. 선택지는 계약에 적힌 순서다.
  * - uuidFilter(uuid.UUID): Pydantic이 받는 표기(parseUuid)를 표준 표기로 바꾼다. 틀리면 Pydantic이
  *   옮기는 uuid 크레이트(Rust)의 설명을 붙인다.
+ * - awareDatetimeFilter(AwareDatetime): 시간대가 있는 시각(datetime-input.ts).
  */
 
+import type { Instant } from "../core/clock.ts";
 import { parseUuid } from "../core/ids.ts";
 import type { components } from "../generated/api.ts";
 import { allowedValues, contractSchemas } from "./contract-schemas.ts";
+import { parseAwareDatetime } from "./datetime-input.ts";
 import { expectedText } from "./pydantic-messages.ts";
 import type { FilterParser } from "./query.ts";
 
@@ -43,6 +46,8 @@ export const uuidFilter: FilterParser<string> = (raw) => {
   if (value !== undefined) return { value };
   return { problem: `Input should be a valid UUID, ${uuidProblem(raw)}` };
 };
+
+export const awareDatetimeFilter: FilterParser<Instant> = parseAwareDatetime;
 
 const URN_PREFIX = "urn:uuid:";
 /** 하이픈 표기의 앞 네 그룹이 시작하는 자리와 길이. 마지막 그룹은 24에서 시작하고 12자다. */

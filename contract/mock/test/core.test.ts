@@ -20,6 +20,7 @@ describe("시각", () => {
     expect(formatInstant(start + 456_789)).toBe("2026-09-30T01:02:03.456789Z");
     expect(formatInstant(start + 120_000)).toBe("2026-09-30T01:02:03.120000Z");
     expect(formatInstant(start)).toBe("2026-09-30T01:02:03Z");
+    expect(formatInstant(-12_500_000)).toBe("1969-12-31T23:59:47.500000Z");
   });
 
   it("시스템 시계는 같은 값을 두 번 주지 않는다", () => {

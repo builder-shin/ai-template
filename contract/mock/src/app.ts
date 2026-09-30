@@ -19,10 +19,12 @@ import { bodyLimitMiddleware } from "./jsonapi/body-limit.ts";
 import { handleError, handleNotFound } from "./jsonapi/errors.ts";
 import { negotiationMiddleware } from "./jsonapi/negotiation.ts";
 import { createJsonApiRouter } from "./jsonapi/router.ts";
+import { auditLogRoutes } from "./modules/audit-logs/routes.ts";
 import { createAuthenticator } from "./modules/auth/credentials.ts";
 import { authRoutes } from "./modules/auth/routes.ts";
 import { fileRoutes } from "./modules/files/routes.ts";
 import { connectModules } from "./modules/registry.ts";
+import { roleRoutes } from "./modules/roles/routes.ts";
 import { userRoutes } from "./modules/users/routes.ts";
 import { seed } from "./seed.ts";
 import { createState, type MockState } from "./state.ts";
@@ -43,6 +45,8 @@ export function createApp(config: MockConfig, state: MockState = createState()):
   const api = createJsonApiRouter(app, createAuthenticator(state));
   authRoutes(api, config, state);
   userRoutes(api, config, state);
+  roleRoutes(api, state);
+  auditLogRoutes(api, state);
   fileRoutes(api, config, state);
   app.route(STORAGE_PATH, storageRoutes(config, state.storage));
   if (config.testEndpoints) {

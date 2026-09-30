@@ -1,27 +1,37 @@
 /**
  * JSON:API 라우터: 계약에서 읽은 선언(인증, 권한, 쿼리, 경로, 요청 문서)과 에러 우선순위.
- * 이 슬라이스에 없는 operation은 시험용 핸들러로 달아 공통 규칙만 본다.
+ * 공통 규칙만 보려고 operation에 시험용 핸들러를 단 앱(probe)으로 본다.
  */
 
+import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
+import type { AppEnv } from "../src/context.ts";
 import { bearerToken } from "../src/core/access.ts";
+import { handleError } from "../src/jsonapi/errors.ts";
 import { operationSpec } from "../src/jsonapi/operations.ts";
 import { createJsonApiRouter } from "../src/jsonapi/router.ts";
 import { createAuthenticator } from "../src/modules/auth/credentials.ts";
+import { traceIdMiddleware } from "../src/trace-id.ts";
 import { newUser, send, signIn } from "./accounts.ts";
 import { codesOf, errorsOf, testApp } from "./support.ts";
 
-/** 계약의 operation에 시험용 핸들러를 단 앱. 핸들러는 받은 입력을 JSON으로 돌려준다. */
+/**
+ * 계약의 operation에 시험용 핸들러만 단 앱(probe). 핸들러는 받은 입력을 JSON으로 돌려준다. 목의 앱과
+ * 상태를 나눠 쓴다: 로그인은 목의 앱(app)으로 하고, 라우터의 규칙은 probe로 본다.
+ */
 function probeApp() {
   const setup = testApp();
-  const api = createJsonApiRouter(setup.app, createAuthenticator(setup.state));
+  const probe = new Hono<AppEnv>();
+  probe.use(traceIdMiddleware);
+  const api = createJsonApiRouter(probe, createAuthenticator(setup.state));
   api.route("Permissions_list", { auth: "required" }, ({ c, principal, query }) =>
     c.json({ userId: principal.userId, page: query.page }),
   );
   api.route("Roles_update", { auth: "required" }, ({ c, path, document }) =>
     c.json({ path, document }),
   );
-  return setup;
+  probe.onError(handleError);
+  return { ...setup, probe };
 }
 
 describe("계약의 operation 선언", () => {
@@ -72,9 +82,9 @@ describe("인증과 권한", () => {
   });
 
   it("권한이 없으면 403 permission.denied, 있으면 핸들러까지 간다", async () => {
-    const { app, state, config } = probeApp();
+    const { app, probe, state, config } = probeApp();
     const member = await newUser(app, state);
-    const denied = await send(app, "GET", "/api/v1/permissions", { token: member.accessToken });
+    const denied = await send(probe, "GET", "/api/v1/permissions", { token: member.accessToken });
     expect(await errorsOf(denied, 403)).toEqual([
       {
         status: "403",
@@ -84,16 +94,16 @@ describe("인증과 권한", () => {
       },
     ]);
     const admin = await signIn(app, config.seedAdmin.email, config.seedAdmin.password);
-    const allowed = await send(app, "GET", "/api/v1/permissions?page%5Bsize%5D=3", {
+    const allowed = await send(probe, "GET", "/api/v1/permissions?page%5Bsize%5D=3", {
       token: admin.accessToken,
     });
     expect(await allowed.json()).toEqual({ userId: admin.userId, page: { number: 1, size: 3 } });
   });
 
   it("권한 검사(403)가 쿼리 오류(400)보다 먼저다", async () => {
-    const { app, state } = probeApp();
+    const { app, probe, state } = probeApp();
     const member = await newUser(app, state);
-    const response = await send(app, "GET", "/api/v1/permissions?bogus=1", {
+    const response = await send(probe, "GET", "/api/v1/permissions?bogus=1", {
       token: member.accessToken,
     });
     expect(await codesOf(response, 403)).toEqual(["permission.denied"]);
@@ -135,11 +145,11 @@ describe("에러 우선순위", () => {
   });
 
   it("경로의 id 형식 오류(404)와 문서 오류를 함께 모으고, 상태가 섞이면 400이다", async () => {
-    const { app, config } = probeApp();
+    const { app, probe, config } = probeApp();
     const admin = await signIn(app, config.seedAdmin.email, config.seedAdmin.password);
     const token = admin.accessToken;
     const document = { data: { type: "roles", id: "x", attributes: { name: "" } } };
-    const mixed = await send(app, "PATCH", "/api/v1/roles/not-a-uuid", {
+    const mixed = await send(probe, "PATCH", "/api/v1/roles/not-a-uuid", {
       document,
       token,
     });
@@ -148,13 +158,13 @@ describe("에러 우선순위", () => {
       ["422", "validation.too_short"],
     ]);
     const valid = { data: { type: "roles", id: "x", attributes: {} } };
-    const onlyPath = await send(app, "PATCH", "/api/v1/roles/not-a-uuid", {
+    const onlyPath = await send(probe, "PATCH", "/api/v1/roles/not-a-uuid", {
       document: valid,
       token,
     });
     expect(await codesOf(onlyPath, 404)).toEqual(["resource.not_found"]);
     const id = "0199A0B2-8C3E-7ABC-8DEF-0123456789AB";
-    const accepted = await send(app, "PATCH", `/api/v1/roles/urn:uuid:${id}`, {
+    const accepted = await send(probe, "PATCH", `/api/v1/roles/urn:uuid:${id}`, {
       document: valid,
       token,
     });

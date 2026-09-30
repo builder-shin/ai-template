@@ -38,7 +38,7 @@ export function systemClock(): Clock {
  * 0이면 소수 부분을 뺀다. 예: 2026-09-30T01:02:03.456789Z, 2026-09-30T01:02:03Z
  */
 export function formatInstant(instant: Instant): string {
-  const micros = instant % SECOND;
+  const micros = ((instant % SECOND) + SECOND) % SECOND;
   const seconds = new Date((instant - micros) / 1000).toISOString().slice(0, 19);
   return micros === 0 ? `${seconds}Z` : `${seconds}.${String(micros).padStart(6, "0")}Z`;
 }

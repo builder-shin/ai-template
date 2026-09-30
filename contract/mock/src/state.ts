@@ -8,6 +8,7 @@ import { createRateLimiter, type RateLimiter } from "./core/rate-limit.ts";
 import { createRealtimeHub, type RealtimeHub } from "./core/realtime.ts";
 import { createOutbox, type Outbox } from "./mail/outbox.ts";
 import { createFileRegistry, type FileRegistry } from "./modules/files/registry.ts";
+import type { MembersChanged } from "./modules/roles/management.ts";
 import type { AccountCloser } from "./modules/users/accounts.ts";
 import { createStorage, type Storage } from "./storage/bucket.ts";
 import { createStore, type Store } from "./store.ts";
@@ -29,6 +30,8 @@ export interface MockState {
   readonly fileRegistry: FileRegistry;
   /** 계정을 닫을 때(비활성화, 탈퇴) 부를 처리. auth가 앱을 조립할 때 등록한다. */
   readonly accountClosers: AccountCloser[];
+  /** 역할의 권한이 바뀌거나 역할이 지워질 때 그 역할을 가진 사용자로 부를 처리. users가 등록한다. */
+  readonly membersChanged: MembersChanged[];
 }
 
 export interface StateOptions {
@@ -46,5 +49,6 @@ export function createState(options: StateOptions = {}): MockState {
     storage: createStorage(clock),
     fileRegistry: createFileRegistry(),
     accountClosers: [],
+    membersChanged: [],
   };
 }

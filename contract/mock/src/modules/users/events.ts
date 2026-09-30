@@ -11,6 +11,7 @@
 
 import { type RealtimeHub, userRoom } from "../../core/realtime.ts";
 import type { components } from "../../generated/api.ts";
+import type { MockState } from "../../state.ts";
 
 type UserMeUpdatedEventDocument = components["schemas"]["UserMeUpdatedEventDocument"];
 /** me.updated의 meta.changed 항목. */
@@ -27,4 +28,12 @@ export function meUpdated(
   const payload: UserMeUpdatedEventDocument = { meta: { changed: [...changed] } };
   realtime.publish({ name: ME_UPDATED, rooms: userIds.map(userRoom), payload });
   if (changed.includes("roles") || changed.includes("status")) realtime.recheck(userIds);
+}
+
+/**
+ * roles의 역할 변경 처리(onMembersChanged)에 건다(modules/registry.ts). 역할의 권한이 바뀌었거나
+ * 역할이 지워진 사용자에게 알린다.
+ */
+export function rolesChanged(state: MockState, userIds: readonly string[]): void {
+  meUpdated(state.realtime, userIds, ["roles"]);
 }
