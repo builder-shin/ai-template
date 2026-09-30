@@ -68,6 +68,32 @@ describe("계약의 operation 선언", () => {
       api.route("Users_list", { auth: "required", filters: {} }, ({ c }) => c.body(null));
     }).toThrow("필터 파서는 계약의 필터(q, status, role)와 같은 순서로 준다.");
   });
+
+  it("성공이 302인 operation은 리다이렉트이고 쿼리 파라미터의 선언을 읽는다", () => {
+    expect(operationSpec("OAuth_authorize").redirect).toEqual([
+      { name: "redirectUri", required: true, format: "uri", pattern: undefined },
+      { name: "codeChallenge", required: true, format: undefined, pattern: "^[A-Za-z0-9_-]{43}$" },
+    ]);
+    expect(operationSpec("OAuth_callback").redirect?.map((item) => item.name)).toEqual([
+      "state",
+      "code",
+      "error",
+    ]);
+    expect(operationSpec("Sessions_create").redirect).toBeUndefined();
+  });
+
+  it("리다이렉트는 api.redirect로만, 그 밖은 api.route로만 단다", () => {
+    const { app, state } = testApp();
+    const api = createJsonApiRouter(app, createAuthenticator(state));
+    expect(() => {
+      api.route("OAuth_callback", { auth: "none" }, ({ c }) => c.body(null));
+    }).toThrow("OAuth_callback: 리다이렉트 operation은 api.redirect로 단다.");
+    expect(() => {
+      api.redirect("Sessions_create", { callback: false }, () => new Response(null));
+    }).toThrow(
+      "Sessions_create: 인증 없는 리다이렉트 operation(성공이 302)만 api.redirect로 단다.",
+    );
+  });
 });
 
 describe("인증과 권한", () => {

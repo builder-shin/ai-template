@@ -4,6 +4,8 @@
  * FastAPI는 라우트 선언(Operation)에서 계약을 만들고, 목은 거꾸로 계약에서 선언을 읽는다. 그래서
  * 경로, 메서드, 인증(security), 권한(x-permission), 쿼리 파라미터, include·sort 허용 목록
  * (x-jsonapi-include, x-jsonapi-sort), 요청 문서가 계약과 어긋날 수 없다. 시작할 때 한 번 읽는다.
+ * 성공 응답이 302인 operation은 리다이렉트(FastAPI의 RedirectOperation)이고 쿼리 파라미터의 선언
+ * (required, format, pattern)을 함께 읽는다.
  */
 
 import { isPermissionCode, type PermissionCode } from "../core/permissions.ts";
@@ -11,6 +13,7 @@ import type { operations } from "../generated/api.ts";
 import { isRecord } from "../json.ts";
 import { contract, type SchemaObject } from "./contract-schemas.ts";
 import { JSONAPI_MEDIA_TYPE } from "./media.ts";
+import type { RedirectParameter } from "./redirect.ts";
 import { isRequestDocumentName, type RequestDocumentName } from "./validation.ts";
 
 export type OperationId = keyof operations;
@@ -47,6 +50,8 @@ export interface OperationSpec {
   readonly pathParameters: readonly PathParameter[];
   /** 요청 본문의 문서 스키마 이름. 본문이 없는 operation은 undefined다. */
   readonly requestDocument: RequestDocumentName | undefined;
+  /** 리다이렉트 operation(성공이 302)의 쿼리 파라미터. 그 밖의 operation은 undefined다. */
+  readonly redirect: readonly RedirectParameter[] | undefined;
 }
 
 const METHODS: Readonly<Record<string, HttpMethod>> = {
@@ -85,6 +90,31 @@ function requestDocumentOf(requestBody: unknown): RequestDocumentName | undefine
   return name;
 }
 
+/** 리다이렉트 operation의 쿼리 파라미터 선언. 성공 응답이 302가 아니면 undefined다. */
+function redirectParameters(
+  id: string,
+  operation: SchemaObject,
+  parameters: readonly Record<string, unknown>[],
+): RedirectParameter[] | undefined {
+  const responses = isRecord(operation.responses) ? operation.responses : {};
+  if (!Object.hasOwn(responses, "302")) return undefined;
+  return parameters
+    .filter((item) => item.in === "query")
+    .map((item) => {
+      const schema = isRecord(item.schema) ? item.schema : {};
+      const { format, pattern } = schema;
+      if (format !== undefined && format !== "uri") {
+        throw new Error(`${id}의 쿼리 형식 ${JSON.stringify(format)}을 목이 검사하지 못한다.`);
+      }
+      return {
+        name: String(item.name),
+        required: item.required === true,
+        format: format === undefined ? undefined : "uri",
+        pattern: typeof pattern === "string" ? pattern : undefined,
+      };
+    });
+}
+
 function specOf(
   id: string,
   method: HttpMethod,
@@ -121,6 +151,7 @@ function specOf(
     },
     pathParameters,
     requestDocument: requestDocumentOf(operation.requestBody),
+    redirect: redirectParameters(id, operation, parameters),
   };
 }
 

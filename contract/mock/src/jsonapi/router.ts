@@ -13,6 +13,9 @@
  * 4. 경로 파라미터(형식이 틀리면 404)와 요청 문서(400, 403, 409, 422). 둘의 에러는 함께 모으고, 상태가
  *    섞이면 400이다
  * 그 뒤(엄격한 레이트 리밋, 도메인 규칙)는 핸들러가 본다.
+ *
+ * 리다이렉트 operation(성공이 302, 소셜 로그인)은 api.redirect로 단다. 인증 없이 쿼리(redirect.ts),
+ * 경로 파라미터 순서로 보고, 핸들러는 선언한 쿼리 파라미터의 값을 받는다.
  */
 
 import type { Context, Hono } from "hono";
@@ -43,6 +46,7 @@ import {
   queryParams,
   type ResourceQuery,
 } from "./query.ts";
+import { parseRedirectQuery } from "./redirect.ts";
 import { readJsonBody, validateDocument } from "./validation.ts";
 
 /** 선언한 auth에 따라 핸들러가 받는 principal. */
@@ -102,15 +106,38 @@ export interface RouteOptions<A extends Auth, F extends FilterParsers = NoFilter
   readonly filters?: F;
 }
 
+export interface RedirectInputs<Id extends OperationId> {
+  readonly c: Context<AppEnv>;
+  /** 선언한 쿼리 파라미터 가운데 들어온 것. 필수 파라미터는 늘 있다. */
+  readonly query: QueryParameters<Id>;
+  readonly path: PathOf<Id>;
+}
+
+export type RedirectHandler<Id extends OperationId> = (inputs: RedirectInputs<Id>) => Response;
+
+export interface RedirectOptions {
+  /** 제공자가 돌아오는 콜백인가. 콜백은 선언하지 않은 쿼리 파라미터(제공자가 덧붙이는 것)를 받는다. */
+  readonly callback: boolean;
+}
+
 export interface JsonApiRouter {
   route<Id extends OperationId, A extends Auth, F extends FilterParsers = NoFilters>(
     id: Id,
     options: RouteOptions<A, F>,
     handler: OperationHandler<Id, A, F>,
   ): void;
+  /** 리다이렉트 operation(성공이 302)을 단다. 계약의 인증은 none이어야 한다. */
+  redirect<Id extends OperationId>(
+    id: Id,
+    options: RedirectOptions,
+    handler: RedirectHandler<Id>,
+  ): void;
 }
 
 function checkDeclaration(spec: OperationSpec, options: RouteOptions<Auth, FilterParsers>): void {
+  if (spec.redirect !== undefined) {
+    throw new Error(`${spec.id}: 리다이렉트 operation은 api.redirect로 단다.`);
+  }
   if (options.auth !== spec.auth) {
     throw new Error(`${spec.id}: 계약의 인증은 ${spec.auth}인데 ${options.auth}로 달았다.`);
   }
@@ -205,6 +232,24 @@ export function createJsonApiRouter(
           path: path as PathOf<Id>,
           document: document as DocumentOf<Id>,
         });
+      });
+    },
+    redirect<Id extends OperationId>(
+      id: Id,
+      options: RedirectOptions,
+      handler: RedirectHandler<Id>,
+    ) {
+      const spec = operationSpec(id);
+      const parameters = spec.redirect;
+      if (parameters === undefined || spec.auth !== "none") {
+        throw new Error(
+          `${spec.id}: 인증 없는 리다이렉트 operation(성공이 302)만 api.redirect로 단다.`,
+        );
+      }
+      app.on(spec.method, honoPath(spec.path), (c) => {
+        const query = parseRedirectQuery(queryParams(c), parameters, options.callback);
+        const { path } = validateInputs(c, spec, undefined);
+        return handler({ c, query, path: path as PathOf<Id> });
       });
     },
   };

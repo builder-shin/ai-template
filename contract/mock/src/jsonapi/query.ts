@@ -80,7 +80,7 @@ function has(query: QueryParams, name: string): boolean {
 }
 
 /** 한 번만 온 파라미터의 값. 두 번 이상 오면 400이다. */
-function single(query: QueryParams, name: string): string {
+export function single(query: QueryParams, name: string): string {
   const values = query.pairs.filter(([key]) => key === name).map(([, value]) => value);
   if (values.length > 1) {
     throw queryError("jsonapi.invalid_query", name, `Query parameter ${name} must appear once.`);
