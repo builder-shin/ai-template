@@ -17,6 +17,7 @@ describe("loadConfig", () => {
   it("변수가 없으면 FastAPI 템플릿 .env.example의 개발용 값으로 뜬다", () => {
     expect(loadConfig({})).toEqual({
       port: 4010,
+      apiUrl: "http://localhost:4010",
       testEndpoints: true,
       seedAdmin: { email: "admin@example.com", password: "admin-password" }, // betterleaks:allow 개발용 기본 시드 관리자
       frontendUrl: "http://localhost:3000",
@@ -29,12 +30,19 @@ describe("loadConfig", () => {
         mailEmail: 3,
         passwordChangeUser: 5,
       },
+      files: {
+        maxSize: 10_485_760,
+        allowedTypes: ["image/gif", "image/jpeg", "image/png", "image/webp"],
+        userQuota: 1_073_741_824,
+      },
+      storageAllowedOrigins: ["http://localhost:3000", "http://localhost:3001"],
     });
   });
 
   it("값을 읽는다. 불리언은 true/false, 1/0, yes/no, on/off를 받는다", () => {
     const env = {
       PORT: "4999",
+      API_URL: "https://mock.example.com/",
       MOCK_TEST_ENDPOINTS: "Off",
       SEED_ADMIN_EMAIL: " root@example.com ",
       SEED_ADMIN_PASSWORD: "conformance-admin-password", // betterleaks:allow 테스트용 가짜 비밀번호
@@ -46,9 +54,14 @@ describe("loadConfig", () => {
       RATE_LIMIT_MAIL_IP: "4",
       RATE_LIMIT_MAIL_EMAIL: " 5 ",
       RATE_LIMIT_PASSWORD_CHANGE_USER: "6",
+      FILE_MAX_SIZE: "20",
+      FILE_ALLOWED_TYPES: " text/plain, image/png,,text/plain ",
+      FILE_USER_QUOTA: "100",
+      STORAGE_ALLOWED_ORIGINS: "https://web.example.com/login, http://localhost:3000",
     };
     expect(loadConfig(env)).toEqual({
       port: 4999,
+      apiUrl: "https://mock.example.com/",
       testEndpoints: false,
       seedAdmin: { email: "root@example.com", password: "conformance-admin-password" }, // betterleaks:allow 테스트용 가짜 비밀번호
       frontendUrl: "https://web.example.com/",
@@ -61,6 +74,8 @@ describe("loadConfig", () => {
         mailEmail: 5,
         passwordChangeUser: 6,
       },
+      files: { maxSize: 20, allowedTypes: ["image/png", "text/plain"], userQuota: 100 },
+      storageAllowedOrigins: ["http://localhost:3000", "https://web.example.com"],
     });
     for (const [raw, expected] of [
       ["true", true],
@@ -75,12 +90,18 @@ describe("loadConfig", () => {
     }
   });
 
+  it("API_URL이 없으면 PORT의 localhost 주소다", () => {
+    expect(loadConfig({ PORT: "4999" }).apiUrl).toBe("http://localhost:4999");
+  });
+
   it("빈 값은 기본값이다", () => {
     const env = {
       PORT: "",
+      API_URL: " ",
       MOCK_TEST_ENDPOINTS: "  ",
       SEED_ADMIN_PASSWORD: "",
       RATE_LIMIT_MAIL_IP: "",
+      FILE_ALLOWED_TYPES: "",
     };
     expect(loadConfig(env)).toEqual(DEFAULT_CONFIG);
   });
@@ -88,21 +109,29 @@ describe("loadConfig", () => {
   it("틀린 변수를 모두 모아 변수마다 한 줄씩 알린다", () => {
     const problems = problemsOf({
       PORT: "80a",
+      API_URL: "localhost:4010",
       MOCK_TEST_ENDPOINTS: "maybe",
       SEED_ADMIN_EMAIL: "admin",
       SEED_ADMIN_PASSWORD: "short", // betterleaks:allow 테스트용 가짜 비밀번호
       FRONTEND_URL: "localhost:3000",
       IDENTIFIER_HASH_SECRET: "too-short", // betterleaks:allow 테스트용 가짜 키
       RATE_LIMIT_LOGIN_IP: "0",
+      FILE_MAX_SIZE: "10MB",
+      FILE_ALLOWED_TYPES: " , ",
+      STORAGE_ALLOWED_ORIGINS: "http://localhost:3000,localhost:3001",
     });
     expect(problems).toEqual([
       "설정 오류: PORT — 1~65535 사이의 정수여야 한다(현재: 80a).",
+      "설정 오류: API_URL — http:// 또는 https://로 시작하는 주소여야 한다(현재: localhost:4010).",
       "설정 오류: MOCK_TEST_ENDPOINTS — true 또는 false여야 한다(현재: maybe).",
       "설정 오류: SEED_ADMIN_EMAIL — 이메일 주소여야 한다(현재: admin).",
       "설정 오류: SEED_ADMIN_PASSWORD — 8자 이상이어야 한다.",
       "설정 오류: FRONTEND_URL — http:// 또는 https://로 시작하는 주소여야 한다(현재: localhost:3000).",
       "설정 오류: IDENTIFIER_HASH_SECRET — 32자 이상이어야 한다.",
       "설정 오류: RATE_LIMIT_LOGIN_IP — 1 이상의 정수여야 한다(현재: 0).",
+      "설정 오류: FILE_MAX_SIZE — 1 이상의 정수여야 한다(현재: 10MB).",
+      "설정 오류: FILE_ALLOWED_TYPES — 쉼표로 나눈 값이 하나 이상 있어야 한다.",
+      "설정 오류: STORAGE_ALLOWED_ORIGINS — http:// 또는 https://로 시작하는 주소여야 한다(현재: localhost:3001).",
     ]);
   });
 

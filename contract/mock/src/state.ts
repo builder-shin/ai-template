@@ -1,12 +1,14 @@
 /**
  * 목의 메모리 상태. 데이터는 프로세스 메모리에 있고 재시작하면 처음으로 돌아간다.
- * 자원을 더하면(가짜 스토리지 등) 여기에 더하고 createState에서 만든다.
+ * 자원을 더하면 여기에 더하고 createState에서 만든다.
  */
 
 import { type Clock, systemClock } from "./core/clock.ts";
 import { createRateLimiter, type RateLimiter } from "./core/rate-limit.ts";
 import { createRealtimeHub, type RealtimeHub } from "./core/realtime.ts";
 import { createOutbox, type Outbox } from "./mail/outbox.ts";
+import { createFileRegistry, type FileRegistry } from "./modules/files/registry.ts";
+import { createStorage, type Storage } from "./storage/bucket.ts";
 import { createStore, type Store } from "./store.ts";
 
 export interface MockState {
@@ -20,6 +22,10 @@ export interface MockState {
   readonly realtime: RealtimeHub;
   /** 보낸 메일 보관함. */
   readonly outbox: Outbox;
+  /** 가짜 스토리지의 버킷(객체와 presigned URL). */
+  readonly storage: Storage;
+  /** 파일 읽기 규칙, 참조 확인, 삭제 처리. 파일을 가리키는 모듈이 앱을 조립할 때 등록한다. */
+  readonly fileRegistry: FileRegistry;
 }
 
 export interface StateOptions {
@@ -34,5 +40,7 @@ export function createState(options: StateOptions = {}): MockState {
     limiter: createRateLimiter(clock),
     realtime: createRealtimeHub(),
     outbox: createOutbox(),
+    storage: createStorage(clock),
+    fileRegistry: createFileRegistry(),
   };
 }

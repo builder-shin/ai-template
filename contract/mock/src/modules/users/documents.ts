@@ -3,11 +3,14 @@
  * users/router.py의 user_resource, included_for).
  */
 
+import type { MockConfig } from "../../config.ts";
 import { formatInstant } from "../../core/clock.ts";
 import type { components } from "../../generated/api.ts";
 import { ApiError } from "../../jsonapi/errors.ts";
 import { loadIncluded } from "../../jsonapi/rendering.ts";
+import type { MockState } from "../../state.ts";
 import type { Store } from "../../store.ts";
+import { fileResources } from "../files/documents.ts";
 import type { RoleRow } from "../roles/model.ts";
 import { roleResource } from "../roles/service.ts";
 import type { UserRow } from "./model.ts";
@@ -39,14 +42,20 @@ export function userResource(user: UserRow, held: readonly RoleRow[]): UserResou
 }
 
 /**
- * include 경로마다 포함 리소스(FastAPI의 included_for). 역할은 사용자들이 가진 역할이다. 아바타(avatar)는
- * files 모듈이 파일 리소스를 만들 때 여기에 더한다. 그 전에는 아바타를 정할 방법(PATCH /me, 파일
- * 업로드)이 없어 늘 비어 있다.
+ * include 경로마다 포함 리소스(FastAPI의 included_for). 역할은 사용자들이 가진 역할이고, 아바타는
+ * 사용자들의 아바타 파일이다(ready면 downloadUrl이 있다).
  */
-export function includedFor(include: readonly string[], held: readonly RoleRow[]): UserIncluded[] {
+export function includedFor(
+  state: MockState,
+  config: MockConfig,
+  include: readonly string[],
+  found: readonly UserRow[],
+  held: readonly RoleRow[],
+): UserIncluded[] {
+  const avatarIds = found.flatMap((user) => user.avatarId ?? []);
   return loadIncluded<UserIncluded>(include, {
     roles: () => held.map(roleResource),
-    avatar: () => [],
+    avatar: () => fileResources(state, config, avatarIds),
   });
 }
 

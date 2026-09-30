@@ -28,9 +28,24 @@ export interface RateLimits {
   readonly passwordChangeUser: number;
 }
 
+/** 파일 업로드의 한도. */
+export interface FileLimits {
+  /** 파일 하나의 최대 크기(바이트, FILE_MAX_SIZE). */
+  readonly maxSize: number;
+  /** 허용하는 MIME 타입(FILE_ALLOWED_TYPES, 쉼표로 구분). 겹치지 않고 정렬돼 있다. */
+  readonly allowedTypes: readonly string[];
+  /** 한 사용자가 가진 파일(pending과 ready) 크기 합의 한도(바이트, FILE_USER_QUOTA). */
+  readonly userQuota: number;
+}
+
 export interface MockConfig {
   /** HTTP 포트(PORT). API, 실시간, 가짜 스토리지, 테스트 통로가 이 포트 하나에 뜬다. */
   readonly port: number;
+  /**
+   * 브라우저가 보는 목의 주소(API_URL, FastAPI와 같은 뜻). 기본은 http://localhost:<PORT>다.
+   * 가짜 스토리지의 presigned URL(<API_URL>/_storage/...)이 이 주소를 쓴다.
+   */
+  readonly apiUrl: string;
   /** 테스트 통로(/_test, /_mock)를 여는가(MOCK_TEST_ENDPOINTS). */
   readonly testEndpoints: boolean;
   /** 시작할 때 시드하는 관리자(SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD). FastAPI의 시드와 같은 변수다. */
@@ -41,10 +56,18 @@ export interface MockConfig {
   readonly identifierHashSecret: string;
   /** 엄격한 레이트 리밋의 한도(RATE_LIMIT_*). */
   readonly rateLimits: RateLimits;
+  /** 파일 업로드의 한도(FILE_*). */
+  readonly files: FileLimits;
+  /**
+   * 브라우저가 가짜 스토리지에 직접 올리고 내려받을 때 CORS로 허용하는 Origin(STORAGE_ALLOWED_ORIGINS,
+   * 쉼표로 구분). 기본은 FastAPI 템플릿이 개발 버킷에 거는 CORS의 출처(web과 admin)와 같다.
+   */
+  readonly storageAllowedOrigins: readonly string[];
 }
 
 export const DEFAULT_CONFIG: MockConfig = {
   port: 4010,
+  apiUrl: "http://localhost:4010",
   testEndpoints: true,
   seedAdmin: { email: "admin@example.com", password: "admin-password" }, // betterleaks:allow 개발용 기본 시드 관리자
   frontendUrl: "http://localhost:3000",
@@ -57,6 +80,12 @@ export const DEFAULT_CONFIG: MockConfig = {
     mailEmail: 3,
     passwordChangeUser: 5,
   },
+  files: {
+    maxSize: 10_485_760,
+    allowedTypes: ["image/gif", "image/jpeg", "image/png", "image/webp"],
+    userQuota: 1_073_741_824,
+  },
+  storageAllowedOrigins: ["http://localhost:3000", "http://localhost:3001"],
 };
 
 /** 시드 관리자 비밀번호의 최소 길이. FastAPI 설정(seed_admin_password)과 가입 규칙과 같다. */
@@ -113,11 +142,42 @@ function httpUrl(raw: string): Parsed<string> {
   return { problem: `http:// 또는 https://로 시작하는 주소여야 한다(현재: ${raw})` };
 }
 
-/** 한 윈도의 요청 수. 1 이상의 정수다. */
-function limit(raw: string): Parsed<number> {
+/** 브라우저의 Origin(스킴, 호스트, 포트). 경로가 붙어 있으면 뗀다. */
+function origin(raw: string): Parsed<string> {
+  const parsed = httpUrl(raw);
+  return "problem" in parsed ? parsed : { value: new URL(parsed.value).origin };
+}
+
+/** 1 이상의 정수(한 윈도의 요청 수, 바이트 수). */
+function positiveInteger(raw: string): Parsed<number> {
   const value = Number(raw.trim());
   if (/^\d+$/.test(raw.trim()) && value >= 1 && Number.isSafeInteger(value)) return { value };
   return { problem: `1 이상의 정수여야 한다(현재: ${raw})` };
+}
+
+/** 아무 문자열(목록의 항목). */
+function text(raw: string): Parsed<string> {
+  return { value: raw };
+}
+
+/**
+ * 쉼표로 나눈 목록(FastAPI의 CommaSeparated). 항목의 앞뒤 공백을 지우고 빈 항목은 빼며, 값이 하나
+ * 이상 있어야 한다. 항목마다 item으로 해석하고, 겹치는 값은 하나만 남겨 정렬한다.
+ */
+function commaSeparated(
+  item: (raw: string) => Parsed<string>,
+): (raw: string) => Parsed<readonly string[]> {
+  return (raw) => {
+    const values = new Set<string>();
+    for (const part of raw.split(",").map((value) => value.trim())) {
+      if (part === "") continue;
+      const parsed = item(part);
+      if ("problem" in parsed) return parsed;
+      values.add(parsed.value);
+    }
+    if (values.size === 0) return { problem: "쉼표로 나눈 값이 하나 이상 있어야 한다" };
+    return { value: [...values].sort() };
+  };
 }
 
 /** 환경 변수에서 설정을 읽는다. 틀린 변수가 하나라도 있으면 모두 모아 ConfigError로 던진다. */
@@ -137,9 +197,11 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
 
   const defaults = DEFAULT_CONFIG;
   const rateLimit = (name: string, key: keyof RateLimits) =>
-    read(name, defaults.rateLimits[key], limit);
+    read(name, defaults.rateLimits[key], positiveInteger);
+  const listenPort = read("PORT", defaults.port, port);
   const config: MockConfig = {
-    port: read("PORT", defaults.port, port),
+    port: listenPort,
+    apiUrl: read("API_URL", `http://localhost:${String(listenPort)}`, httpUrl),
     testEndpoints: read("MOCK_TEST_ENDPOINTS", defaults.testEndpoints, flag),
     seedAdmin: {
       email: read("SEED_ADMIN_EMAIL", defaults.seedAdmin.email, email),
@@ -163,6 +225,16 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
       mailEmail: rateLimit("RATE_LIMIT_MAIL_EMAIL", "mailEmail"),
       passwordChangeUser: rateLimit("RATE_LIMIT_PASSWORD_CHANGE_USER", "passwordChangeUser"),
     },
+    files: {
+      maxSize: read("FILE_MAX_SIZE", defaults.files.maxSize, positiveInteger),
+      allowedTypes: read("FILE_ALLOWED_TYPES", defaults.files.allowedTypes, commaSeparated(text)),
+      userQuota: read("FILE_USER_QUOTA", defaults.files.userQuota, positiveInteger),
+    },
+    storageAllowedOrigins: read(
+      "STORAGE_ALLOWED_ORIGINS",
+      defaults.storageAllowedOrigins,
+      commaSeparated(origin),
+    ),
   };
   if (problems.length > 0) throw new ConfigError(problems);
   return config;
