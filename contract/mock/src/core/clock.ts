@@ -21,12 +21,16 @@ export interface Clock {
   now(): Instant;
 }
 
-/** 시스템 시계. 앞서 준 값보다 늘 크다(단조 증가). */
+/**
+ * 시스템 시계. 벽시계(Date.now())를 따르고, 같은 값을 반복하거나 거꾸로 가지 않는다(단조 증가).
+ * FastAPI의 datetime.now(UTC)처럼 벽시계를 따르므로, 오래 떠 있는 목도 기기가 잠들었다 깨어난 뒤에도
+ * accessTokenExpiresAt 같은 만료 시각을 올바르게 유지한다.
+ */
 export function systemClock(): Clock {
   let last = 0;
   return {
     now() {
-      const current = Math.floor((performance.timeOrigin + performance.now()) * 1000);
+      const current = Date.now() * 1000;
       last = Math.max(current, last + 1);
       return last;
     },

@@ -4,7 +4,7 @@
  */
 
 import { Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AppEnv } from "../src/context.ts";
 import { clientOf } from "../src/core/client.ts";
 import { formatInstant, HOUR, SECOND, systemClock } from "../src/core/clock.ts";
@@ -28,6 +28,26 @@ describe("시각", () => {
     const values = Array.from({ length: 1000 }, () => clock.now());
     expect(new Set(values).size).toBe(1000);
     expect(values).toEqual(values.toSorted((left, right) => left - right));
+  });
+
+  it("벽시계를 따른다: 앞으로 뛰면 그만큼 나아가고, 뒤로 가도 늘어나기만 한다", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const start = Date.UTC(2026, 8, 30, 0, 0, 0);
+      vi.setSystemTime(start);
+      const clock = systemClock();
+      const before = clock.now();
+
+      vi.setSystemTime(start + 60 * 60 * 1000);
+      const after = clock.now();
+      expect(after).toBe(before + HOUR);
+
+      vi.setSystemTime(start);
+      const backward = clock.now();
+      expect(backward).toBe(after + 1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
