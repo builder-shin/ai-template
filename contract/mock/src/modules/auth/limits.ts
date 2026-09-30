@@ -5,6 +5,8 @@
  * - 가입: IP별(registration-ip) 시간당
  * - 메일을 보내는 요청(인증 메일 재발송, 재설정 요청): IP별(mail-ip)과 이메일 해시별(mail-email)
  *   시간당. 두 요청이 같은 한도를 나눠 쓴다.
+ * - 비밀번호 변경: 사용자별(password-change-user) 시간당. 세션을 훔친 사람이 현재 비밀번호를 맞히는
+ *   시도를 막는다.
  * 요청 문서 검증을 통과한 요청만 센다(서비스가 검증 뒤에 부른다).
  */
 
@@ -27,6 +29,11 @@ export function authLimits(config: MockConfig) {
     registrationIp: { name: "registration-ip", limit: limits.registrationIp, window: PER_HOUR },
     mailIp: { name: "mail-ip", limit: limits.mailIp, window: PER_HOUR },
     mailEmail: { name: "mail-email", limit: limits.mailEmail, window: PER_HOUR },
+    passwordChangeUser: {
+      name: "password-change-user",
+      limit: limits.passwordChangeUser,
+      window: PER_HOUR,
+    },
   } satisfies Record<string, Limit>;
 }
 

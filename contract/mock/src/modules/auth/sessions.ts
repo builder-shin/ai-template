@@ -24,6 +24,7 @@ import type { components } from "../../generated/api.ts";
 import { ApiError } from "../../jsonapi/errors.ts";
 import type { Page, SortField } from "../../jsonapi/query.ts";
 import type { MockState } from "../../state.ts";
+import type { Store } from "../../store.ts";
 import { findAccount } from "../users/accounts.ts";
 import type { UserRow } from "../users/model.ts";
 import {
@@ -183,8 +184,27 @@ export function revokeSession(state: MockState, actor: Principal, sessionId: str
 }
 
 /**
- * others는 현재 세션을 뺀 나머지를, all은 전부 폐기한다. 폐기한 개수를 돌려준다. 폐기하지 않은
- * 세션이면 만료됐어도 센다(FastAPI는 정리 잡이 지우기 전까지 남아 있는 세션을 센다). all은 폐기한
+ * 사용자의 폐기하지 않은 세션을 모두 폐기하고 그 개수를 돌려준다(FastAPI의 revoke_sessions). keep은
+ * 남길 세션이다. 폐기하지 않은 세션이면 만료됐어도 센다(FastAPI는 정리 잡이 지우기 전까지 남아 있는
+ * 세션을 센다). 이벤트는 부른 쪽이 사유를 정해 보낸다.
+ */
+export function revokeUserSessions(
+  store: Store,
+  userId: string,
+  now: Instant,
+  keep?: string,
+): number {
+  let revoked = 0;
+  for (const login of store.sessions.values()) {
+    if (login.userId !== userId || login.revokedAt !== null || login.id === keep) continue;
+    login.revokedAt = now;
+    revoked += 1;
+  }
+  return revoked;
+}
+
+/**
+ * others는 현재 세션을 뺀 나머지를, all은 전부 폐기한다. 폐기한 개수를 돌려준다. all은 폐기한
  * 세션이 없어도 감사 로그를 남긴다.
  */
 export function revokeSessions(
@@ -193,14 +213,8 @@ export function revokeSessions(
   client: Client,
   scope: SessionRevocationScope,
 ): number {
-  const now = state.clock.now();
   const keep = scope === "others" ? actor.sessionId : undefined;
-  let revoked = 0;
-  for (const login of state.store.sessions.values()) {
-    if (login.userId !== actor.userId || login.revokedAt !== null || login.id === keep) continue;
-    login.revokedAt = now;
-    revoked += 1;
-  }
+  const revoked = revokeUserSessions(state.store, actor.userId, state.clock.now(), keep);
   if (revoked > 0) sessionRevoked(state.realtime, actor.userId, "revoked");
   if (scope === "all") {
     const record: AuditRecord = {

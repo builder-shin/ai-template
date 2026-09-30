@@ -5,10 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import { DAY } from "../src/core/clock.ts";
-import type { RealtimeEvent } from "../src/core/realtime.ts";
-import type { MockState } from "../src/state.ts";
 import { newUser, refreshGrant, type SignedIn, send, signIn } from "./accounts.ts";
-import { codesOf, errorsOf, TIMESTAMP, testApp, testClock } from "./support.ts";
+import { codesOf, errorsOf, revokedReasons, TIMESTAMP, testApp, testClock } from "./support.ts";
 
 const SESSIONS = "/api/v1/sessions";
 const REVOCATIONS = "/api/v1/session-revocations";
@@ -27,15 +25,6 @@ async function list(app: ReturnType<typeof testApp>["app"], user: SignedIn, quer
 
 function revocation(scope: string) {
   return { data: { type: "session-revocations", attributes: { scope } } };
-}
-
-function reasonsOf(state: MockState, userId: string): () => unknown[] {
-  const events: RealtimeEvent[] = [];
-  state.realtime.listen({ event: (event) => events.push(event) });
-  return () =>
-    events
-      .filter((event) => event.rooms.includes(`user:${userId}`))
-      .map((event) => [event.name, (event.payload as { meta: { reason: string } }).meta.reason]);
 }
 
 describe("세션 목록", () => {
@@ -143,7 +132,7 @@ describe("로그아웃과 세션 폐기", () => {
     const { app, state } = testApp();
     const phone = await newUser(app, state);
     const laptop = await signIn(app, phone.email);
-    const reasons = reasonsOf(state, phone.userId);
+    const reasons = revokedReasons(state, phone.userId);
     const out = await send(app, "DELETE", `${SESSIONS}/current`, { token: phone.accessToken });
     expect([out.status, await out.text()]).toEqual([204, ""]);
     const blocked = await send(app, "GET", SESSIONS, { token: phone.accessToken });
@@ -157,7 +146,7 @@ describe("로그아웃과 세션 폐기", () => {
     const mine = await newUser(app, state);
     const spare = await signIn(app, mine.email);
     const theirs = await newUser(app, state);
-    const reasons = reasonsOf(state, mine.userId);
+    const reasons = revokedReasons(state, mine.userId);
     const remove = (id: string) =>
       send(app, "DELETE", `${SESSIONS}/${id}`, { token: mine.accessToken });
     const foreign = await remove(theirs.sessionId);
@@ -190,7 +179,7 @@ describe("로그아웃과 세션 폐기", () => {
   it("자기 세션을 id로 지우면 로그아웃이다", async () => {
     const { app, state } = testApp();
     const user = await newUser(app, state);
-    const reasons = reasonsOf(state, user.userId);
+    const reasons = revokedReasons(state, user.userId);
     const path = `${SESSIONS}/${user.sessionId}`;
     expect((await send(app, "DELETE", path, { token: user.accessToken })).status).toBe(204);
     expect(reasons()).toEqual([["session.revoked", "logout"]]);
@@ -205,7 +194,7 @@ describe("다른 기기·전체 로그아웃", () => {
     const { app, state } = testApp();
     const current = await newUser(app, state);
     const others = [await signIn(app, current.email), await signIn(app, current.email)];
-    const reasons = reasonsOf(state, current.userId);
+    const reasons = revokedReasons(state, current.userId);
     const response = await send(app, "POST", REVOCATIONS, {
       document: revocation(scope),
       token: current.accessToken,
@@ -238,7 +227,7 @@ describe("다른 기기·전체 로그아웃", () => {
   it("폐기할 세션이 없으면 0개이고 이벤트를 보내지 않는다", async () => {
     const { app, state } = testApp();
     const user = await newUser(app, state);
-    const reasons = reasonsOf(state, user.userId);
+    const reasons = revokedReasons(state, user.userId);
     const response = await send(app, "POST", REVOCATIONS, {
       document: revocation("others"),
       token: user.accessToken,

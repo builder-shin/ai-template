@@ -24,6 +24,8 @@ export interface RateLimits {
   readonly mailIp: number;
   /** 메일 요청: 이메일(해시)별 시간당(RATE_LIMIT_MAIL_EMAIL). */
   readonly mailEmail: number;
+  /** 비밀번호 변경: 사용자별 시간당(RATE_LIMIT_PASSWORD_CHANGE_USER). */
+  readonly passwordChangeUser: number;
 }
 
 export interface MockConfig {
@@ -47,7 +49,14 @@ export const DEFAULT_CONFIG: MockConfig = {
   seedAdmin: { email: "admin@example.com", password: "admin-password" }, // betterleaks:allow 개발용 기본 시드 관리자
   frontendUrl: "http://localhost:3000",
   identifierHashSecret: "local-development-only-identifier-hash-key", // betterleaks:allow 개발용 기본 키
-  rateLimits: { loginIp: 10, loginIdentifier: 5, registrationIp: 10, mailIp: 5, mailEmail: 3 },
+  rateLimits: {
+    loginIp: 10,
+    loginIdentifier: 5,
+    registrationIp: 10,
+    mailIp: 5,
+    mailEmail: 3,
+    passwordChangeUser: 5,
+  },
 };
 
 /** 시드 관리자 비밀번호의 최소 길이. FastAPI 설정(seed_admin_password)과 가입 규칙과 같다. */
@@ -152,6 +161,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
       registrationIp: rateLimit("RATE_LIMIT_REGISTRATION_IP", "registrationIp"),
       mailIp: rateLimit("RATE_LIMIT_MAIL_IP", "mailIp"),
       mailEmail: rateLimit("RATE_LIMIT_MAIL_EMAIL", "mailEmail"),
+      passwordChangeUser: rateLimit("RATE_LIMIT_PASSWORD_CHANGE_USER", "passwordChangeUser"),
     },
   };
   if (problems.length > 0) throw new ConfigError(problems);

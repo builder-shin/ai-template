@@ -77,12 +77,17 @@ export async function register(
   return { email, userId: body.data.id };
 }
 
+/** 받는 사람에게 온 가장 최근 메일 가운데 이 경로의 토큰 링크(`<경로>?token=`)가 있는 메일의 토큰. */
+export function mailToken(state: MockState, email: string, path: string): string {
+  const mail = state.outbox.list(email).find((item) => item.text.includes(`${path}?token=`));
+  const token = /[?&]token=([A-Za-z0-9_-]+)/.exec(mail?.text ?? "")?.[1];
+  if (token === undefined) throw new Error(`${email}에게 온 ${path} 메일이 없다.`);
+  return token;
+}
+
 /** 받는 사람에게 온 가장 최근 인증 메일의 토큰. */
 export function verificationToken(state: MockState, email: string): string {
-  const mail = state.outbox.list(email).find((item) => item.text.includes("/verify-email?token="));
-  const token = /[?&]token=([A-Za-z0-9_-]+)/.exec(mail?.text ?? "")?.[1];
-  if (token === undefined) throw new Error(`${email}에게 온 인증 메일이 없다.`);
-  return token;
+  return mailToken(state, email, "/verify-email");
 }
 
 export function verification(token: string) {

@@ -1,7 +1,8 @@
 /**
  * auth의 API: 가입(Registrations), 인증 메일 재발송(EmailVerificationRequests), 이메일 인증
- * (EmailVerifications), 세션(Sessions), 다른 기기·전체 로그아웃(SessionRevocations).
- * 규칙은 서비스(accounts.ts, sessions.ts)에 있고, 여기서는 요청을 넘기고 문서를 만든다.
+ * (EmailVerifications), 세션(Sessions), 다른 기기·전체 로그아웃(SessionRevocations), 비밀번호
+ * 재설정 요청(PasswordResetRequests), 재설정(PasswordResets), 변경(PasswordChanges).
+ * 규칙은 서비스(accounts.ts, sessions.ts, passwords.ts)에 있고, 여기서는 요청을 넘기고 문서를 만든다.
  */
 
 import type { MockConfig } from "../../config.ts";
@@ -15,6 +16,7 @@ import type { MockState } from "../../state.ts";
 import { register, requestVerification, verifyEmail } from "./accounts.ts";
 import type { IssuedTokens } from "./credentials.ts";
 import type { LoginSessionRow } from "./model.ts";
+import { changePassword, requestReset, resetPassword } from "./passwords.ts";
 import { listSessions, revokeSession, revokeSessions, signIn } from "./sessions.ts";
 
 type Schemas = components["schemas"];
@@ -135,7 +137,40 @@ function sessionRoutes(api: JsonApiRouter, config: MockConfig, state: MockState)
   });
 }
 
+function passwordRoutes(api: JsonApiRouter, config: MockConfig, state: MockState): void {
+  api.route("PasswordResetRequests_create", { auth: "none" }, ({ c, document }) => {
+    requestReset(state, config, clientOf(c), document.data.attributes.email);
+    return c.body(null, 202);
+  });
+
+  api.route("PasswordResets_create", { auth: "none" }, ({ c, document }) => {
+    const reset = resetPassword(state, clientOf(c), document.data.attributes);
+    const body: Schemas["PasswordResetDocument"] = {
+      data: {
+        type: "password-resets",
+        id: reset.id,
+        attributes: { createdAt: formatInstant(reset.createdAt) },
+      },
+    };
+    return render(body, { status: 201 });
+  });
+
+  api.route("PasswordChanges_create", { auth: "required" }, ({ c, principal, document }) => {
+    const attributes = document.data.attributes;
+    const changedAt = changePassword(state, config, principal, clientOf(c), attributes);
+    const body: Schemas["PasswordChangeDocument"] = {
+      data: {
+        type: "password-changes",
+        id: uuid7(),
+        attributes: { createdAt: formatInstant(changedAt) },
+      },
+    };
+    return render(body, { status: 201 });
+  });
+}
+
 export function authRoutes(api: JsonApiRouter, config: MockConfig, state: MockState): void {
   accountRoutes(api, config, state);
   sessionRoutes(api, config, state);
+  passwordRoutes(api, config, state);
 }

@@ -72,6 +72,7 @@ describe("적합성 대상", () => {
       "RATE_LIMIT_REGISTRATION_IP",
       "RATE_LIMIT_MAIL_IP",
       "RATE_LIMIT_MAIL_EMAIL",
+      "RATE_LIMIT_PASSWORD_CHANGE_USER",
     ]);
     expect(new Set(limits.map(([, value]) => value))).toEqual(new Set(["1000000"]));
   });

@@ -21,7 +21,14 @@ describe("loadConfig", () => {
       seedAdmin: { email: "admin@example.com", password: "admin-password" }, // betterleaks:allow 개발용 기본 시드 관리자
       frontendUrl: "http://localhost:3000",
       identifierHashSecret: "local-development-only-identifier-hash-key", // betterleaks:allow 개발용 기본 키
-      rateLimits: { loginIp: 10, loginIdentifier: 5, registrationIp: 10, mailIp: 5, mailEmail: 3 },
+      rateLimits: {
+        loginIp: 10,
+        loginIdentifier: 5,
+        registrationIp: 10,
+        mailIp: 5,
+        mailEmail: 3,
+        passwordChangeUser: 5,
+      },
     });
   });
 
@@ -38,6 +45,7 @@ describe("loadConfig", () => {
       RATE_LIMIT_REGISTRATION_IP: "3",
       RATE_LIMIT_MAIL_IP: "4",
       RATE_LIMIT_MAIL_EMAIL: " 5 ",
+      RATE_LIMIT_PASSWORD_CHANGE_USER: "6",
     };
     expect(loadConfig(env)).toEqual({
       port: 4999,
@@ -51,6 +59,7 @@ describe("loadConfig", () => {
         registrationIp: 3,
         mailIp: 4,
         mailEmail: 5,
+        passwordChangeUser: 6,
       },
     });
     for (const [raw, expected] of [

@@ -4,6 +4,7 @@ import { expect } from "vitest";
 import { createApp } from "../src/app.ts";
 import { DEFAULT_CONFIG, type MockConfig } from "../src/config.ts";
 import type { Clock, Instant } from "../src/core/clock.ts";
+import type { RealtimeEvent } from "../src/core/realtime.ts";
 import type { ErrorObject } from "../src/jsonapi/errors.ts";
 import { JSONAPI_MEDIA_TYPE } from "../src/jsonapi/media.ts";
 import { createState, type MockState, type StateOptions } from "../src/state.ts";
@@ -70,4 +71,17 @@ export async function errorsOf(response: Response, status: number): Promise<Erro
 /** 에러 객체의 코드 목록. */
 export async function codesOf(response: Response, status: number): Promise<string[]> {
   return (await errorsOf(response, status)).map((error) => error.code);
+}
+
+/**
+ * 지금부터 사용자의 룸(user:<id>)으로 나가는 이벤트를 모은다. 돌려준 함수는 모은 이벤트를
+ * [이름, meta.reason]으로 준다(FastAPI 테스트의 RecordingPublisher).
+ */
+export function revokedReasons(state: MockState, userId: string): () => unknown[] {
+  const events: RealtimeEvent[] = [];
+  state.realtime.listen({ event: (event) => events.push(event) });
+  return () =>
+    events
+      .filter((event) => event.rooms.includes(`user:${userId}`))
+      .map((event) => [event.name, (event.payload as { meta: { reason: string } }).meta.reason]);
 }

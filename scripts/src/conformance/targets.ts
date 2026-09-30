@@ -58,6 +58,7 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
       RATE_LIMIT_REGISTRATION_IP: "1000000",
       RATE_LIMIT_MAIL_IP: "1000000",
       RATE_LIMIT_MAIL_EMAIL: "1000000",
+      RATE_LIMIT_PASSWORD_CHANGE_USER: "1000000",
     },
     baseUrl: "http://localhost:4010",
     // 메일은 목의 테스트 통로(/_test/mail)로 읽는다. 적합성 키트가 CONFORMANCE_TARGET=mock을 보고 고른다.

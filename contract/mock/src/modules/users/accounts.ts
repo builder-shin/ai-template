@@ -102,3 +102,9 @@ export function markEmailVerified(user: UserRow, now: Instant): boolean {
   user.updatedAt = now;
   return true;
 }
+
+/** 비밀번호를 바꾼다(해시해서 저장한다). */
+export function setPassword(user: UserRow, password: string, now: Instant): void {
+  user.passwordHash = hashPassword(password);
+  user.updatedAt = now;
+}
