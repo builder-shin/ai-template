@@ -37,6 +37,7 @@ describe("loadConfig", () => {
         userQuota: 1_073_741_824,
       },
       storageAllowedOrigins: ["http://localhost:3000", "http://localhost:3001"],
+      realtimeAllowedOrigins: ["http://localhost:3000"],
     });
   });
 
@@ -61,6 +62,7 @@ describe("loadConfig", () => {
       FILE_ALLOWED_TYPES: " text/plain, image/png,,text/plain ",
       FILE_USER_QUOTA: "100",
       STORAGE_ALLOWED_ORIGINS: "https://web.example.com/login, http://localhost:3000",
+      REALTIME_ALLOWED_ORIGINS: " http://LOCALHOST:3000/, https://web.example.com:443,,",
     };
     expect(loadConfig(env)).toEqual({
       port: 4999,
@@ -83,6 +85,7 @@ describe("loadConfig", () => {
       },
       files: { maxSize: 20, allowedTypes: ["image/png", "text/plain"], userQuota: 100 },
       storageAllowedOrigins: ["http://localhost:3000", "https://web.example.com"],
+      realtimeAllowedOrigins: ["http://localhost:3000", "https://web.example.com"],
     });
     for (const [raw, expected] of [
       ["true", true],
@@ -127,6 +130,7 @@ describe("loadConfig", () => {
       FILE_MAX_SIZE: "10MB",
       FILE_ALLOWED_TYPES: " , ",
       STORAGE_ALLOWED_ORIGINS: "http://localhost:3000,localhost:3001",
+      REALTIME_ALLOWED_ORIGINS: "*",
     });
     expect(problems).toEqual([
       "설정 오류: PORT — 1~65535 사이의 정수여야 한다(현재: 80a).",
@@ -141,6 +145,7 @@ describe("loadConfig", () => {
       "설정 오류: FILE_MAX_SIZE — 1 이상의 정수여야 한다(현재: 10MB).",
       "설정 오류: FILE_ALLOWED_TYPES — 쉼표로 나눈 값이 하나 이상 있어야 한다.",
       "설정 오류: STORAGE_ALLOWED_ORIGINS — http:// 또는 https://로 시작하는 주소여야 한다(현재: localhost:3001).",
+      "설정 오류: REALTIME_ALLOWED_ORIGINS — http:// 또는 https://로 시작하는 주소여야 한다(현재: *).",
     ]);
   });
 

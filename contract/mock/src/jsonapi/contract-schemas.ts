@@ -1,7 +1,7 @@
 /**
  * 계약(contract/openapi.yaml)의 컴포넌트 스키마. 시작할 때 한 번 읽어 Ajv(JSON Schema 2020-12,
  * ajv-formats)에 등록한다. 요청 문서 검증(validation.ts)과 에러의 위치·순서 계산이 쓴다. 읽은 계약
- * 문서(contract)는 operation 선언(operations.ts)도 쓴다.
+ * 문서(contract)는 operation 선언(operations.ts)과 실시간 채널(modules/realtime/channels.ts)도 쓴다.
  *
  * - 계약 안의 `#/components/schemas/X` 참조는 등록한 스키마의 `contract#/$defs/X`로 바꾼다.
  * - 판별 유니온(oneOf + discriminator, 예: SessionGrant)은 Ajv의 discriminator로 검증한다. Ajv는

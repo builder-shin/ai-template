@@ -77,6 +77,11 @@ describe("적합성 대상", () => {
     expect(new Set(limits.map(([, value]) => value))).toEqual(new Set(["1000000"]));
   });
 
+  it("목의 실시간은 FastAPI의 compose처럼 web의 Origin만 받는다", () => {
+    const origins = processTarget("mock").processEnv.REALTIME_ALLOWED_ORIGINS;
+    expect(origins).toBe("http://localhost:3000");
+  });
+
   it("목이 시드하는 관리자로 흐름이 로그인하고, 메일은 Mailpit 없이 읽는다", () => {
     const mock = processTarget("mock");
     const env = testEnv(mock);

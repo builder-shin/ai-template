@@ -72,6 +72,11 @@ export interface MockConfig {
    * 쉼표로 구분). 기본은 FastAPI 템플릿이 개발 버킷에 거는 CORS의 출처(web과 admin)와 같다.
    */
   readonly storageAllowedOrigins: readonly string[];
+  /**
+   * Socket.IO 연결을 받을 브라우저 Origin(REALTIME_ALLOWED_ORIGINS, 쉼표로 구분, FastAPI와 같은 뜻).
+   * Origin 헤더가 없는 연결(브라우저가 아닌 클라이언트)은 늘 받는다.
+   */
+  readonly realtimeAllowedOrigins: readonly string[];
 }
 
 export const DEFAULT_CONFIG: MockConfig = {
@@ -96,6 +101,7 @@ export const DEFAULT_CONFIG: MockConfig = {
     userQuota: 1_073_741_824,
   },
   storageAllowedOrigins: ["http://localhost:3000", "http://localhost:3001"],
+  realtimeAllowedOrigins: ["http://localhost:3000"],
 };
 
 /** 시드 관리자 비밀번호의 최소 길이. FastAPI 설정(seed_admin_password)과 가입 규칙과 같다. */
@@ -248,6 +254,11 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
     storageAllowedOrigins: read(
       "STORAGE_ALLOWED_ORIGINS",
       defaults.storageAllowedOrigins,
+      commaSeparated(origin),
+    ),
+    realtimeAllowedOrigins: read(
+      "REALTIME_ALLOWED_ORIGINS",
+      defaults.realtimeAllowedOrigins,
       commaSeparated(origin),
     ),
   };

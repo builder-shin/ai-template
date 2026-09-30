@@ -6,8 +6,8 @@
  * - 한 트랜잭션에서 알림을 여럿 내는 유스케이스(예: 비활성화와 역할 변경을 함께)는 batch로 감싼다.
  *   FastAPI의 commit처럼 이벤트를 낸 순서대로 모두 보낸 뒤, 다시 검사할 사용자를 한 번에 알린다. 그래서
  *   재검사로 끊길 연결도 그 트랜잭션의 이벤트를 모두 받는다.
- * - 받는 쪽(Socket.IO 게이트웨이)은 listen으로 붙는다. 붙은 쪽이 없으면 버린다. 테스트는 listen으로
- *   낸 이벤트를 모은다(FastAPI 테스트의 RecordingPublisher).
+ * - 받는 쪽(실시간 서버, modules/realtime/server.ts)은 listen으로 붙는다. 붙은 쪽이 없으면 버린다.
+ *   테스트는 listen으로 낸 이벤트를 모은다(FastAPI 테스트의 RecordingPublisher).
  */
 
 import { compareText } from "./permissions.ts";

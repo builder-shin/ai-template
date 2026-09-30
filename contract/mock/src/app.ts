@@ -9,7 +9,8 @@
  * 앱을 만들 때 시드를 넣고 모듈 사이의 처리를 건다(seed.ts, modules/registry.ts). 모듈의 API는
  * 계약의 operationId로 JSON:API 라우터에 단다(jsonapi/router.ts). 가짜 스토리지(/_storage)는 늘
  * 붙고, 테스트 통로(/_test/mail, 가짜 OAuth 서버 /_mock/oauth)는 MOCK_TEST_ENDPOINTS가 켜져 있을 때만
- * 붙는다.
+ * 붙는다. 실시간(Socket.IO)은 HTTP 서버에 붙으므로 main.ts가 띄운 서버에 attachRealtime으로 붙인다
+ * (modules/realtime/server.ts).
  */
 
 import { Hono } from "hono";
