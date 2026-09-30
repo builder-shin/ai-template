@@ -62,6 +62,17 @@ describe("적합성 대상", () => {
     expect(mock.baseUrl).toBe("http://localhost:4010");
   });
 
+  it("목은 흐름이 기대하는 API_URL, OAuth 콜백, 파일 한도를 셸 환경과 무관하게 고정한다", () => {
+    const env = processTarget("mock").processEnv;
+    expect(env.API_URL).toBe("http://localhost:4010");
+    // oauth.test.ts의 FRONT_CALLBACK과 같은 값이다.
+    expect(env.OAUTH_REDIRECT_URIS).toBe("http://localhost:3000/oauth/callback");
+    // files.test.ts가 기대하는 목의 기본값(src/config.ts의 DEFAULT_CONFIG)과 같다.
+    expect(env.FILE_MAX_SIZE).toBe("10485760");
+    expect(env.FILE_ALLOWED_TYPES).toBe("image/gif,image/jpeg,image/png,image/webp");
+    expect(env.FILE_USER_QUOTA).toBe("1073741824");
+  });
+
   it("목의 레이트 리밋(전역과 엄격한 한도)은 FastAPI의 compose처럼 크게 둔다", () => {
     const limits = Object.entries(processTarget("mock").processEnv).filter(([name]) =>
       name.startsWith("RATE_LIMIT_"),

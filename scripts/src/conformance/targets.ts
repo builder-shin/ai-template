@@ -47,8 +47,13 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
     kind: "process",
     name: "mock",
     command: ["pnpm", "--filter", "@ai-template/mock", "run", "start"],
+    // startProcess가 이 값 위에 개발자 셸의 환경 변수를 먼저 깔고 여기 값으로 덮으므로(process.ts), 흐름이
+    // 기대하는 값은 셸에 있든 없든 여기서 정한다. 셸의 API_URL·OAUTH_REDIRECT_URIS·FILE_*가 새어 들어오면
+    // 아래 값과 달라져 파일·소셜 로그인 흐름이 알 수 없게 깨진다.
     processEnv: {
       PORT: "4010",
+      // baseUrl과 같다. presigned URL과 가짜 OAuth 화면 주소가 이 값을 쓴다.
+      API_URL: "http://localhost:4010",
       MOCK_TEST_ENDPOINTS: "true",
       SEED_ADMIN_EMAIL: MOCK_ADMIN.email,
       SEED_ADMIN_PASSWORD: MOCK_ADMIN.password,
@@ -62,6 +67,12 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
       RATE_LIMIT_PASSWORD_CHANGE_USER: "1000000",
       // FastAPI의 compose처럼 web의 Origin만 받는다. 흐름은 이 Origin의 연결이 붙고 다른 Origin은 거부되는지 본다.
       REALTIME_ALLOWED_ORIGINS: "http://localhost:3000",
+      // oauth.test.ts의 FRONT_CALLBACK(흐름이 돌아올 프론트 콜백)과 같은 값이다.
+      OAUTH_REDIRECT_URIS: "http://localhost:3000/oauth/callback",
+      // files.test.ts가 이 한도와 허용 타입을 그대로 기댄다(목의 기본값. src/config.ts의 DEFAULT_CONFIG).
+      FILE_MAX_SIZE: "10485760",
+      FILE_ALLOWED_TYPES: "image/gif,image/jpeg,image/png,image/webp",
+      FILE_USER_QUOTA: "1073741824",
     },
     baseUrl: "http://localhost:4010",
     // 메일은 목의 테스트 통로(/_test/mail)로 읽는다. 적합성 키트가 CONFORMANCE_TARGET=mock을 보고 고른다.
