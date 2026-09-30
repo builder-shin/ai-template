@@ -7,7 +7,15 @@ import {
   MEDIA_TYPE,
 } from "../../src/jsonapi/assertions.ts";
 import { validateSchema } from "../../src/validation.ts";
-import { type ErrorDocument, newUser, PASSWORD, problems, signInAdmin, target } from "./support.ts";
+import {
+  api,
+  type ErrorDocument,
+  newUser,
+  PASSWORD,
+  problems,
+  signInAdmin,
+  target,
+} from "./support.ts";
 
 interface Sent {
   readonly status: number;
@@ -84,6 +92,48 @@ describe(`JSON:API 규칙 (${target.name})`, () => {
     });
     expect(clientId.status).toBe(403);
     expect(problems(clientId.body as ErrorDocument)).toEqual([["permission.denied", "/data/id"]]);
+  });
+
+  it("판별 유니온(grant)의 필드 오류는 grant 종류와 이름이 같은 필드가 있어도 본문의 위치를 가리킨다", async () => {
+    // password grant의 password, refreshToken grant의 refreshToken은 이름이 grant 종류와 같다.
+    const login = await api().POST("/api/v1/sessions", {
+      body: {
+        data: {
+          type: "sessions",
+          attributes: { grantType: "password", email: "bad", password: "x" },
+        },
+      },
+    });
+    expect(login.response.status).toBe(422);
+    expect(problems(login.error)).toEqual([
+      ["validation.invalid_format", "/data/attributes/email"],
+    ]);
+    // 숫자 refreshToken은 타입 클라이언트가 보내지 못한다.
+    const attributes = { grantType: "refreshToken", refreshToken: 5 };
+    const refresh = await send("/api/v1/sessions", {
+      method: "POST",
+      body: JSON.stringify({ data: { type: "sessions", attributes } }),
+    });
+    expect(refresh.status).toBe(422);
+    expect(problems(refresh.body as ErrorDocument)).toEqual([
+      ["validation.invalid_format", "/data/attributes/refreshToken"],
+    ]);
+  });
+
+  it("정수 자리에 숫자 문자열이나 불리언을 보내면 422 validation.invalid_format이다", async () => {
+    const { accessToken: token } = await newUser();
+    for (const size of ["10", true]) {
+      const attributes = { filename: "a.png", contentType: "image/png", size };
+      const sent = await send("/api/v1/files", {
+        method: "POST",
+        body: JSON.stringify({ data: { type: "files", attributes } }),
+        token,
+      });
+      expect(sent.status, String(size)).toBe(422);
+      expect(problems(sent.body as ErrorDocument), String(size)).toEqual([
+        ["validation.invalid_format", "/data/attributes/size"],
+      ]);
+    }
   });
 
   it("허용하지 않은 include, sort, filter, 페이지 값은 400이고 source.parameter가 그 파라미터다", async () => {

@@ -62,6 +62,9 @@ async def test_create_returns_a_pending_file_with_an_upload_url(
         ),
         ({"size": 0}, "validation.out_of_range", "/data/attributes/size"),
         ({"filename": ""}, "validation.too_short", "/data/attributes/filename"),
+        # 계약의 integer다. 숫자 문자열과 불리언을 정수로 바꾸지 않는다.
+        ({"size": "10"}, "validation.invalid_format", "/data/attributes/size"),
+        ({"size": True}, "validation.invalid_format", "/data/attributes/size"),
     ],
 )
 async def test_create_checks_the_size_and_type(

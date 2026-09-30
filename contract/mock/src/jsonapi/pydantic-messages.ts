@@ -40,17 +40,16 @@ export function discriminatorNames(tag: string): string {
   return snake === tag ? `'${tag}'` : `'${snake}' | '${tag}'`;
 }
 
-/** 형이 틀린 값의 메시지. expected는 JSON Schema의 type이다. */
-export function typeMessage(expected: string, value: unknown): string {
+/**
+ * 형이 틀린 값의 메시지. expected는 JSON Schema의 type이다. FastAPI의 정수(Int32·Int64)는 strict라
+ * 문자열, 불리언, 소수가 모두 "Input should be a valid integer"다.
+ */
+export function typeMessage(expected: string): string {
   switch (expected) {
     case "object":
       return "Input should be a valid dictionary or object to extract fields from";
     case "array":
       return "Input should be a valid list";
-    case "integer":
-      return typeof value === "number"
-        ? "Input should be a valid integer, got a number with a fractional part"
-        : "Input should be a valid integer";
     default:
       return `Input should be a valid ${expected}`;
   }

@@ -14,6 +14,7 @@
   `T | MISSING`을 직접 쓰지 않는다.
 - 스칼라 별칭은 PEP 695 `type` 문이 아니라 일반 대입으로 만든다. `type` 별칭은 Pydantic이
   별도 컴포넌트(`Int32` 등)로 내보내 스키마 이름 규칙을 깬다.
+- 문서 모델의 정수는 `int`가 아니라 `Int32`·`Int64`로 쓴다. `int`는 lax라 "10"과 true를 받는다.
 """
 
 import inspect
@@ -25,6 +26,7 @@ from pydantic import (
     Field,
     GetCoreSchemaHandler,
     GetJsonSchemaHandler,
+    Strict,
     ValidatorFunctionWrapHandler,
     model_validator,
 )
@@ -72,8 +74,10 @@ OmittableT = TypeVar("OmittableT")
 # 사용: `title: Omittable[str] = MISSING`, 널 허용 선택 멤버는 `Omittable[str | None] = MISSING`.
 Omittable = Annotated[OmittableT | MISSING, _Omittable()]
 
-Int32 = Annotated[int, Field(json_schema_extra={"format": "int32"})]
-Int64 = Annotated[int, Field(json_schema_extra={"format": "int64"})]
+# 정수는 strict다. 계약의 integer처럼 숫자 문자열과 불리언을 받지 않는다. 본문을 json.loads로 읽어
+# 소수점이나 지수로 쓴 수(10.0, 1e3)는 float라 이것도 받지 않는다. JSON 스키마는 그대로다.
+Int32 = Annotated[int, Strict(), Field(json_schema_extra={"format": "int32"})]
+Int64 = Annotated[int, Strict(), Field(json_schema_extra={"format": "int64"})]
 # URI-reference(상대 경로 포함). 널을 허용하면 계약처럼 format이 anyOf 밖에 붙는다.
 UriReference = Annotated[str, Field(json_schema_extra={"format": "uri-reference"})]
 NullableUriReference = Annotated[str | None, Field(json_schema_extra={"format": "uri-reference"})]

@@ -24,6 +24,7 @@ const PERMISSIONS =
   "'audit-logs:read', 'posts:create' or 'posts:manage'";
 const DICT = "Input should be a valid dictionary or object to extract fields from";
 const STRING = "Input should be a valid string";
+const INTEGER = "Input should be a valid integer";
 const REQUIRED = "Field required";
 const NOT_EMAIL = "value is not a valid email address: An email address must have an @-sign.";
 
@@ -293,12 +294,17 @@ describe("필드 오류는 필드마다 422이고 순서는 모델의 필드 순
     [
       "소수 size",
       { filename: "a.png", contentType: "image/png", size: 1.5 },
-      [
-        invalidFormat(
-          "/data/attributes/size",
-          "Input should be a valid integer, got a number with a fractional part",
-        ),
-      ],
+      [invalidFormat("/data/attributes/size", INTEGER)],
+    ],
+    [
+      "숫자 문자열 size",
+      { filename: "a.png", contentType: "image/png", size: "10" },
+      [invalidFormat("/data/attributes/size", INTEGER)],
+    ],
+    [
+      "불리언 size",
+      { filename: "a.png", contentType: "image/png", size: true },
+      [invalidFormat("/data/attributes/size", INTEGER)],
     ],
     [
       "빈 파일 이름",
@@ -438,11 +444,13 @@ describe("판별 유니온(세션 grant)", () => {
       invalidFormat("/data/attributes/email", NOT_EMAIL),
       required("/data/attributes/password"),
     ]);
-    // FastAPI는 이 경우 판별자 값(password)과 같은 이름의 필드가 본문에 있어 document_path가
-    // /data/attributes/password/email을 가리킨다. 목은 실제 위치를 가리킨다.
     const collided = grant({ grantType: "password", email: "bad", password: "x" });
     expect(await rejected("SessionCreateDocument", collided, 422)).toEqual([
       invalidFormat("/data/attributes/email", NOT_EMAIL),
+    ]);
+    const refresh = grant({ grantType: "refreshToken", refreshToken: 5 });
+    expect(await rejected("SessionCreateDocument", refresh, 422)).toEqual([
+      invalidFormat("/data/attributes/refreshToken"),
     ]);
     const oauth = grant({ grantType: "oauthCode", code: 5 });
     expect(await rejected("SessionCreateDocument", oauth, 422)).toEqual([

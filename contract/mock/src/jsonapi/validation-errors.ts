@@ -152,7 +152,7 @@ function toIssue(error: AjvError, document: unknown, root: SchemaObject): Issue 
     }
     case "type":
       if (params.type === "null") return undefined;
-      return { pointer, kind: "type", message: typeMessage(String(params.type), value) };
+      return { pointer, kind: "type", message: typeMessage(String(params.type)) };
     case "enum":
       return choice(pointer, Array.isArray(params.allowedValues) ? params.allowedValues : []);
     case "const":

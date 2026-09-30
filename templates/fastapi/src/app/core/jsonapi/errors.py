@@ -179,17 +179,19 @@ def _child(node: object, part: int | str) -> object:
 
 
 def document_path(body: object, parts: Sequence[int | str]) -> list[int | str]:
-    """Pydantic loc에서 요청 본문에 실제로 있는 경로만 남긴다(마지막 조각은 늘 남긴다).
+    """Pydantic loc에서 요청 본문을 따라 내려갈 수 있는 경로만 남긴다(마지막 조각은 늘 남긴다).
 
-    판별 유니온(SessionGrant 등)은 loc에 태그 값을 끼워 넣는다. 예를 들어 password grant의
-    빠진 password는 ("data", "attributes", "password", "password")다. 본문을 따라가며 없는 조각을
-    건너뛰면 /data/attributes/password가 된다.
+    판별 유니온(SessionGrant 등)은 loc에 태그 값을 끼워 넣는다. 예를 들어 password grant의 이메일
+    오류는 ("data", "attributes", "password", "email")다. 태그 조각은 본문에 없거나, 태그와 이름이
+    같은 필드(password grant의 password)의 스칼라 값을 가리킨다. 그래서 마지막이 아닌 조각이 객체나
+    배열을 가리키지 않으면 건너뛴다. 결과는 /data/attributes/email이다. 태그와 이름이 같은 필드에
+    객체나 배열을 보내면 태그와 구별하지 못해 그 아래를 가리킨다(드문 경우라 받아들인다).
     """
     path: list[int | str] = []
     node = body
     for index, part in enumerate(parts):
         child = _child(node, part)
-        if child is _ABSENT and index < len(parts) - 1:
+        if index < len(parts) - 1 and not (is_object(child) or is_array(child)):
             continue
         path.append(part)
         node = child
@@ -246,8 +248,8 @@ def validation_error_objects(
 
     - JSON이 아니면 400 jsonapi.invalid_document
     - 본문 오류는 _body_error의 규칙(403, 409, 필드마다 422, 문서 구조 400)을 따른다.
-      source.pointer는 RFC 6901이라 문서 전체는 ""다. body(요청 본문)를 주면 본문에 없는 loc
-      조각(판별 유니온의 태그)을 뺀다
+      source.pointer는 RFC 6901이라 문서 전체는 ""다. body(요청 본문)를 주면 본문을 따라 내려갈
+      수 없는 loc 조각(판별 유니온의 태그)을 뺀다(document_path)
     - 쿼리 오류는 400 jsonapi.invalid_query, 경로 오류는 404 resource.not_found
     - 둘 이상의 상태가 섞이면 JSON:API 권고대로 가장 일반적인 400을 쓰고 에러 객체는 모두 담는다
     """

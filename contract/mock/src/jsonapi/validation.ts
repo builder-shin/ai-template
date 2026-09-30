@@ -10,9 +10,13 @@
  *   const document = validateDocument("PostCreateDocument", body); // 400, 403, 409, 422
  *
  * 맞추지 않는 차이(목은 계약대로 한다):
- * - Pydantic(lax 모드)은 정수 자리의 숫자 문자열(예: 파일 size "10")을 받는다. 목은 형 오류(422)다.
- * - FastAPI는 판별 유니온의 필드 오류를 판별자 값과 같은 이름의 필드 아래로 가리킨다(예: password
- *   grant의 이메일 오류가 /data/attributes/password/email). 목은 실제 위치(/data/attributes/email)다.
+ * - 정수 자리에 소수점이나 지수로 쓴 정수(10.0, 1e3)를 FastAPI는 422 validation.invalid_format으로
+ *   거절한다(Python json.loads가 float로 읽고 Int32·Int64가 strict다). 목은 받는다. JSON Schema의
+ *   integer는 소수부가 0인 수를 받고, JSON.parse도 10.0을 10과 구별하지 못한다. JavaScript
+ *   클라이언트는 이런 표기를 보내지 않는다(JSON.stringify(10.0)은 "10"이다).
+ * - 판별자 값과 이름이 같은 필드(password grant의 password)에 객체나 배열을 보내면, FastAPI는 그
+ *   grant의 필드 오류를 그 값 아래로 가리킨다(예: /data/attributes/password/email). 목은 실제
+ *   위치(/data/attributes/email)다. 그 필드가 문자열이면 둘 다 실제 위치다.
  * - Python json.loads는 UTF-16·32 본문도 읽는다. 목은 UTF-8만 읽는다(브라우저는 UTF-8로 보낸다).
  */
 

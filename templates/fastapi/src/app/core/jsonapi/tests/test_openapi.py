@@ -178,6 +178,20 @@ def test_inline_models_are_expanded_in_place(spec: dict[str, Any]) -> None:
     assert "x-inline" not in str(spec)
 
 
+def test_strict_integers_keep_the_contract_schema(spec: dict[str, Any]) -> None:
+    """Int32·Int64의 Strict()는 검증만 엄격하게 한다. JSON 스키마는 계약의 integer 그대로다."""
+    schemas = spec["components"]["schemas"]
+    assert schemas["PageMeta"]["properties"]["number"] == {"type": "integer", "format": "int32"}
+    assert schemas["WidgetCreateAttributes"]["properties"]["size"] == {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 1,
+        "maximum": 100,
+        "default": 1,
+        "description": "생략하면 1.",
+    }
+
+
 def test_single_value_literal_is_an_enum_and_titles_are_gone(spec: dict[str, Any]) -> None:
     resource = spec["components"]["schemas"]["WidgetResource"]
     assert resource["properties"]["type"] == {"type": "string", "enum": ["widgets"]}

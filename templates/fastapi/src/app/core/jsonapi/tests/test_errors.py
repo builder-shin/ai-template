@@ -59,6 +59,23 @@ async def test_length_errors_carry_params(
     ]
 
 
+@pytest.mark.parametrize("size", ["10", True, 10.0])
+async def test_integers_refuse_strings_booleans_and_floats(
+    client: httpx.AsyncClient, size: object
+) -> None:
+    """Int32·Int64는 strict다. 계약의 integer처럼 숫자 문자열과 불리언을 받지 않고, 소수점으로 쓴
+    정수(10.0)도 받지 않는다."""
+    response = await client.post("/api/v1/widgets", **jsonapi_body(widget_document(size=size)))
+    errors = errors_of(response, 422)
+    assert [(error["code"], error["source"], error["detail"]) for error in errors] == [
+        (
+            "validation.invalid_format",
+            {"pointer": "/data/attributes/size"},
+            "Input should be a valid integer",
+        )
+    ]
+
+
 async def test_malformed_json_is_400_invalid_document(client: httpx.AsyncClient) -> None:
     request = jsonapi_body({})
     request["content"] = b'{"data": '
@@ -235,17 +252,69 @@ async def test_unmapped_http_exception_is_500_error_document() -> None:
     ]
 
 
-def test_discriminated_union_errors_point_into_the_document() -> None:
-    """판별 유니온은 loc에 태그 값을 끼운다. pointer는 본문에 있는 경로만 따른다."""
-    body = {"data": {"type": "sessions", "attributes": {"grantType": "password", "email": "a"}}}
-    loc = ("body", "data", "attributes", "password", "password")
-    status, [error] = validation_error_objects(
-        [{"type": "missing", "loc": loc, "msg": "Field required"}], body
-    )
-    assert (status, error.code, error.source) == (
+@pytest.mark.parametrize(
+    ("attributes", "error_type", "loc", "pointer"),
+    [
+        # 태그(password)와 이름이 같은 필드가 본문에 없다.
+        (
+            {"grantType": "password", "email": "a"},
+            "missing",
+            ("password", "password"),
+            "/data/attributes/password",
+        ),
+        # 태그와 이름이 같은 필드가 본문에 있다. 그 값은 스칼라라 그 아래로 내려갈 수 없다.
+        (
+            {"grantType": "password", "email": "nope", "password": "x"},
+            "value_error",
+            ("password", "email"),
+            "/data/attributes/email",
+        ),
+        (
+            {"grantType": "password", "password": "x"},
+            "missing",
+            ("password", "email"),
+            "/data/attributes/email",
+        ),
+        (
+            {"grantType": "password", "email": "a@example.com", "password": 123},
+            "string_type",
+            ("password", "password"),
+            "/data/attributes/password",
+        ),
+        (
+            {"grantType": "refreshToken", "refreshToken": 5},
+            "string_type",
+            ("refreshToken", "refreshToken"),
+            "/data/attributes/refreshToken",
+        ),
+    ],
+)
+def test_discriminated_union_errors_point_into_the_document(
+    attributes: dict[str, object], error_type: str, loc: tuple[str, ...], pointer: str
+) -> None:
+    """판별 유니온은 loc에 태그 값을 끼운다. pointer는 본문을 따라 내려갈 수 있는 경로만 따른다."""
+    body = {"data": {"type": "sessions", "attributes": attributes}}
+    raw = {"type": error_type, "loc": ("body", "data", "attributes", *loc), "msg": "m"}
+    status, [error] = validation_error_objects([raw], body)
+    assert (status, error.source) == (422, ErrorSource(pointer=pointer))
+
+
+def test_error_pointers_follow_objects_and_arrays() -> None:
+    """태그가 아닌 경로는 객체와 배열을 따라 내려간다. 마지막 조각은 본문에 없어도 남는다."""
+    roles = {"data": [{"type": "roles", "id": 5}, {"type": "roles"}]}
+    body = {"data": {"type": "users", "relationships": {"roles": roles}}}
+    base = ("body", "data", "relationships", "roles", "data")
+    raw = [
+        {"type": "string_type", "loc": (*base, 0, "id"), "msg": "m"},
+        {"type": "missing", "loc": (*base, 1, "id"), "msg": "m"},
+    ]
+    status, errors = validation_error_objects(raw, body)
+    assert (status, [error.source for error in errors]) == (
         422,
-        ErrorCode.VALIDATION_REQUIRED,
-        ErrorSource(pointer="/data/attributes/password"),
+        [
+            ErrorSource(pointer="/data/relationships/roles/data/0/id"),
+            ErrorSource(pointer="/data/relationships/roles/data/1/id"),
+        ],
     )
 
 

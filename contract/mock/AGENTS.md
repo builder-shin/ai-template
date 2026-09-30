@@ -90,4 +90,4 @@
 - 끝에 슬래시가 붙은 경로는 목에서 404다(FastAPI/Starlette는 307로 리다이렉트한다).
 - GET만 선언한 라우트에 HEAD로 요청하면 목은 200이다(Hono가 GET 처리기로 넘긴다). FastAPI는 404다.
 - 이메일 형식은 흔한 경우만 email-validator와 같다(`src/jsonapi/email.ts`).
-- 요청 검증의 나머지 몇 가지 경계 — 정수 자리의 숫자 문자열, 판별 유니온 오류의 pointer(예: SessionGrant의 grantType) — 는 FastAPI(Pydantic)의 특이 동작 대신 계약대로 한다(`src/jsonapi/validation.ts`).
+- 요청 검증의 나머지 두 경계는 FastAPI(Pydantic) 대신 계약대로 한다(`src/jsonapi/validation.ts`). 정수 자리에 소수점이나 지수로 쓴 정수(`10.0`, `1e3`)를 목은 받는다(JSON Schema의 integer, `JSON.parse`가 `10`과 구별하지 못한다). FastAPI는 422 `validation.invalid_format`이다(`json.loads`가 float로 읽고 정수는 strict다). 판별자 값과 이름이 같은 grant 필드(password grant의 `password`)에 객체나 배열을 보내면 FastAPI는 그 grant의 필드 오류를 그 값 아래로 가리키고(`/data/attributes/password/email`) 목은 실제 위치(`/data/attributes/email`)를 가리킨다.

@@ -158,10 +158,27 @@ async def test_refresh_rotates_and_reuse_revokes_the_session(
             "validation.required",
             "/data/attributes/password",
         ),
+        # grant 종류와 이름이 같은 필드(password, refreshToken)가 있어도 필드 오류는 본문의 위치다.
+        (
+            {"grantType": "password", "email": "bad", "password": "x"},
+            422,
+            "validation.invalid_format",
+            "/data/attributes/email",
+        ),
+        (
+            {"grantType": "refreshToken", "refreshToken": 5},
+            422,
+            "validation.invalid_format",
+            "/data/attributes/refreshToken",
+        ),
     ],
 )
 async def test_bad_grants(
-    api: httpx.AsyncClient, attributes: dict[str, str], status: int, code: str, pointer: str | None
+    api: httpx.AsyncClient,
+    attributes: dict[str, object],
+    status: int,
+    code: str,
+    pointer: str | None,
 ) -> None:
     response = await api.post(SESSIONS, **jsonapi_body(grant(**attributes)))
     assert (response.status_code, error_codes(response)) == (status, [code])
