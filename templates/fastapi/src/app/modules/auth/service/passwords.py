@@ -65,8 +65,8 @@ async def reset_password(
         raise tokens.invalid_token()
     await users.set_password(user, password)
     users.mark_email_verified(user, now)
-    if await repository.revoke_sessions(session, user.id, now):
-        events.session_revoked(session, user.id, SessionRevokedReason.PASSWORD_RESET)
+    revoked = await repository.revoke_sessions(session, user.id, now)
+    events.session_revoked(session, user.id, SessionRevokedReason.PASSWORD_RESET, revoked)
     await record_audit(
         session,
         AuditLogAction.USER_PASSWORD_RESET,
@@ -99,8 +99,8 @@ async def change_password(
     now = utc_now()
     await users.set_password(user, new)
     await repository.delete_account_tokens(session, user.id, TokenPurpose.PASSWORD_RESET)
-    if await repository.revoke_sessions(session, user.id, now, keep=actor.session_id):
-        events.session_revoked(session, user.id, SessionRevokedReason.PASSWORD_CHANGED)
+    revoked = await repository.revoke_sessions(session, user.id, now, keep=actor.session_id)
+    events.session_revoked(session, user.id, SessionRevokedReason.PASSWORD_CHANGED, revoked)
     await record_audit(
         session,
         AuditLogAction.USER_PASSWORD_CHANGED,

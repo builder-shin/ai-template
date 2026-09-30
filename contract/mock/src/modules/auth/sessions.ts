@@ -131,7 +131,7 @@ function refresh(state: MockState, refreshToken: string): IssuedTokens {
     const detail = "The refresh token was already used. The session is revoked.";
     throw unauthorized("auth.refresh_token_reused", detail);
   }
-  if (activeSession(store, login.id, login.userId) === undefined) throw invalid();
+  if (activeSession(store, login.id, login.userId, now) === undefined) throw invalid();
   row.usedAt = now;
   login.lastUsedAt = now;
   const [token, fresh] = refreshTokenRow(login, now);
@@ -206,9 +206,9 @@ export function revokeSession(state: MockState, actor: Principal, sessionId: str
 }
 
 /**
- * 사용자의 폐기하지 않은 세션을 모두 폐기하고 그 개수를 돌려준다(FastAPI의 revoke_sessions). keep은
- * 남길 세션이다. 폐기하지 않은 세션이면 만료됐어도 센다(FastAPI는 정리 잡이 지우기 전까지 남아 있는
- * 세션을 센다). 이벤트는 부른 쪽이 사유를 정해 보낸다.
+ * 사용자의 살아 있는 세션을 모두 폐기하고 그 개수를 돌려준다(FastAPI의 revoke_sessions). keep은 남길
+ * 세션이다. 만료된 세션은 이미 끝났으므로 폐기하지도 세지도 않는다. 그래서 개수는 GET /sessions에 보이던
+ * 세션 수다. 이벤트는 부른 쪽이 사유를 정해 보낸다.
  */
 export function revokeUserSessions(
   store: Store,
@@ -218,7 +218,7 @@ export function revokeUserSessions(
 ): number {
   let revoked = 0;
   for (const login of store.sessions.values()) {
-    if (login.userId !== userId || login.revokedAt !== null || login.id === keep) continue;
+    if (!live(login, userId, now) || login.id === keep) continue;
     login.revokedAt = now;
     revoked += 1;
   }
@@ -237,7 +237,7 @@ export function revokeSessions(
 ): number {
   const keep = scope === "others" ? actor.sessionId : undefined;
   const revoked = revokeUserSessions(state.store, actor.userId, state.clock.now(), keep);
-  if (revoked > 0) sessionRevoked(state.realtime, actor.userId, "revoked");
+  sessionRevoked(state.realtime, actor.userId, "revoked", revoked);
   if (scope === "all") {
     const record: AuditRecord = {
       action: "session.all_revoked",

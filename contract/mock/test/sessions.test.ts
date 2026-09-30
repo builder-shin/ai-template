@@ -319,6 +319,21 @@ describe("access token", () => {
       detail: "The session has ended.",
     });
   });
+
+  it("만료된 세션의 토큰도 세션이 끝난 것이다", async () => {
+    const { app, state } = testApp();
+    const user = await newUser(app, state);
+    // access token은 세션의 만료를 늘린 직후에만 발급하므로 실제로는 세션보다 먼저 만료된다(재검사가
+    // 만나는 경우). 그래서 세션의 만료를 저장소에서 앞당긴다.
+    const login = state.store.sessions.get(user.sessionId);
+    if (login === undefined) throw new Error("세션이 없다");
+    login.expiresAt = state.clock.now();
+    const ended = await send(app, "GET", SESSIONS, { token: user.accessToken });
+    expect((await errorsOf(ended, 401))[0]).toMatchObject({
+      code: "auth.token_invalid",
+      detail: "The session has ended.",
+    });
+  });
 });
 
 describe("시드 관리자", () => {

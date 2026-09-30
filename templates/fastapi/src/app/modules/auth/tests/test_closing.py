@@ -1,4 +1,4 @@
-"""계정 닫기(users.close_account)에 auth가 등록한 처리: 세션 폐기와 탈퇴 때 토큰 삭제."""
+"""계정 닫기(users.close_account)에 auth가 등록한 처리: 세션 폐기, 재검사, 탈퇴 때 토큰 삭제."""
 
 from datetime import timedelta
 
@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.db import utc_now
+from app.core.realtime import RecordingPublisher
 from app.modules import users
 from app.modules.auth.models import AccountToken, LoginSession, TokenPurpose
 from app.modules.auth.service.credentials import close_credentials
@@ -53,3 +54,15 @@ async def test_deletion_also_deletes_tokens(
     db: async_sessionmaker[AsyncSession], accounts: Accounts
 ) -> None:
     assert await closed(db, accounts, users.Closure.DELETED) == (0, 0)
+
+
+async def test_closing_without_live_sessions_still_rechecks_the_connections(
+    db: async_sessionmaker[AsyncSession], accounts: Accounts, publisher: RecordingPublisher
+) -> None:
+    """폐기할 세션이 없으면 session.revoked는 보내지 않고, 연결은 그래도 다시 검사한다."""
+    user = await accounts.create()
+    async with db() as session:
+        await close_credentials(session, user.id, users.Closure.DEACTIVATED)
+        await session.commit()
+    assert publisher.named("session.revoked") == []
+    assert publisher.rechecks == [(user.id,)]

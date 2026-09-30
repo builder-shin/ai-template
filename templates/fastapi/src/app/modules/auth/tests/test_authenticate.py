@@ -1,4 +1,4 @@
-"""인증기: access token의 서명과 만료, 세션 폐기, 사용자 상태를 보고 실제 권한을 계산한다."""
+"""인증기: access token의 서명과 만료, 세션 폐기·만료, 사용자 상태를 보고 실제 권한을 계산한다."""
 
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -63,6 +63,26 @@ async def test_revoked_session_is_rejected_at_once(
             update(LoginSession)
             .where(LoginSession.user_id == user.id)
             .values(revoked_at=datetime.now(UTC))
+        )
+        await session.commit()
+    assert await code_of(app, db, header) == "auth.token_invalid"
+
+
+async def test_expired_session_is_rejected(
+    app: JsonApiApp, db: async_sessionmaker[AsyncSession], accounts: Accounts
+) -> None:
+    """만료된 세션도 끝난 세션이다(실시간 연결의 재검사가 같은 규칙을 쓴다).
+
+    access token은 세션의 만료를 늘린 직후에만 발급하므로 실제로는 세션보다 먼저 만료된다.
+    그래서 세션의 만료를 DB에서 앞당겨 본다.
+    """
+    user = await accounts.create()
+    header = (await accounts.sign_in(user))["authorization"]
+    async with db() as session:
+        await session.execute(
+            update(LoginSession)
+            .where(LoginSession.user_id == user.id)
+            .values(expires_at=datetime.now(UTC) - timedelta(seconds=1))
         )
         await session.commit()
     assert await code_of(app, db, header) == "auth.token_invalid"

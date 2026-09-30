@@ -1,8 +1,8 @@
 """인증기와 세션 발급.
 
 - access token(JWT, 15분)은 sub(사용자), sid(세션)를 담는다. 인증기는 서명을 검증한 뒤 요청마다
-  세션이 폐기되지 않았는지, 사용자가 활성인지 DB에서 본다. 그래서 로그아웃과 폐기는 access token의
-  만료를 기다리지 않고 바로 효과를 낸다. 같은 요청에서 역할로 실제 권한도 계산한다.
+  세션이 끝나지(폐기, 만료) 않았는지, 사용자가 활성인지 DB에서 본다. 그래서 로그아웃과 폐기는 access
+  token의 만료를 기다리지 않고 바로 효과를 낸다. 같은 요청에서 역할로 실제 권한도 계산한다.
 - refresh token은 32바이트 불투명 토큰(30일)이고 DB에는 SHA-256만 둔다.
 """
 
@@ -75,9 +75,12 @@ async def session_principal(
 ) -> Principal | None:
     """살아 있는 세션의 Principal(실제 권한 포함). 세션이 끝났거나 사용자가 활성이 아니면 None이다.
 
-    인증기와 실시간 연결(티켓)이 같은 규칙으로 본다.
+    세션이 끝났다는 것은 폐기했거나 만료됐다는 뜻이다. 인증기와 실시간 연결(티켓, 재검사)이 같은
+    규칙으로 본다. access token은 세션의 만료를 늘린 직후에만 발급하므로(issue) 세션보다 먼저
+    만료된다. 그래서 만료 조건은 HTTP 인증을 바꾸지 않고, 만료 전에 붙은 실시간 연결을 재검사가
+    끊게 한다.
     """
-    login = await repository.active_session(session, session_id, user_id)
+    login = await repository.active_session(session, session_id, user_id, utc_now())
     if login is None:
         return None
     permissions = await roles.effective_permissions(session, registry, user_id)
@@ -136,17 +139,16 @@ async def close_credentials(
     """계정을 닫을 때(users.close_account) 부른다.
 
     세션을 모두 폐기하고, 탈퇴면 남은 1회용 토큰과 소셜 로그인 연결도 지운다. commit하지 않는다.
-    부른 쪽(users)의
-    트랜잭션에 들어가고, session.revoked도 그 commit 뒤에 나간다.
+    부른 쪽(users)의 트랜잭션에 들어가고, session.revoked와 연결 재검사도 그 commit 뒤에 나간다.
     """
     deleted = closure is users.Closure.DELETED
-    if await repository.revoke_sessions(session, user_id, utc_now()):
-        reason = (
-            SessionRevokedReason.ACCOUNT_DELETED
-            if deleted
-            else SessionRevokedReason.ACCOUNT_DEACTIVATED
-        )
-        events.session_revoked(session, user_id, reason)
+    revoked = await repository.revoke_sessions(session, user_id, utc_now())
+    reason = (
+        SessionRevokedReason.ACCOUNT_DELETED
+        if deleted
+        else SessionRevokedReason.ACCOUNT_DEACTIVATED
+    )
+    events.session_revoked(session, user_id, reason, revoked)
     if deleted:
         await repository.delete_account_tokens(session, user_id)
         await repository.delete_social_accounts(session, user_id)

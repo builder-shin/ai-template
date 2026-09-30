@@ -25,18 +25,27 @@ SESSION_SORT: dict[str, Sortable] = {
 SESSION_DEFAULT_SORT = (SortField(name="lastUsedAt", descending=True),)
 
 
+def _live(user_id: uuid.UUID, now: datetime) -> tuple[ColumnElement[bool], ...]:
+    """사용자의 살아 있는 세션: 폐기되지 않았고 만료되지 않았다.
+
+    목록, 폐기, 인증기가 같은 조건을 쓴다. 만료된 세션은 정리 잡이 지우기 전에도 끝난 세션이다.
+    """
+    return (
+        LoginSession.user_id == user_id,
+        LoginSession.revoked_at.is_(None),
+        LoginSession.expires_at > now,
+    )
+
+
 async def active_session(
-    session: AsyncSession, session_id: uuid.UUID, user_id: uuid.UUID
+    session: AsyncSession, session_id: uuid.UUID, user_id: uuid.UUID, now: datetime
 ) -> LoginSession | None:
-    """폐기되지 않았고 사용자가 활성 상태인 세션. 인증기가 요청마다 부른다."""
+    """폐기되지도 만료되지도 않았고 사용자가 활성 상태인 세션. 인증기가 요청마다 부른다."""
     query = (
         select(LoginSession)
         .join(User, User.id == LoginSession.user_id)
         .where(
-            LoginSession.id == session_id,
-            LoginSession.user_id == user_id,
-            LoginSession.revoked_at.is_(None),
-            User.status == UserStatus.ACTIVE,
+            LoginSession.id == session_id, *_live(user_id, now), User.status == UserStatus.ACTIVE
         )
     )
     return await session.scalar(query)
@@ -100,14 +109,6 @@ async def get_session(session: AsyncSession, session_id: uuid.UUID) -> LoginSess
     return await session.get(LoginSession, session_id)
 
 
-def _live(user_id: uuid.UUID, now: datetime) -> tuple[ColumnElement[bool], ...]:
-    return (
-        LoginSession.user_id == user_id,
-        LoginSession.revoked_at.is_(None),
-        LoginSession.expires_at > now,
-    )
-
-
 async def live_session(
     session: AsyncSession, user_id: uuid.UUID, session_id: uuid.UUID, now: datetime
 ) -> LoginSession | None:
@@ -131,10 +132,12 @@ async def live_sessions_page(
 async def revoke_sessions(
     session: AsyncSession, user_id: uuid.UUID, now: datetime, keep: uuid.UUID | None = None
 ) -> int:
-    """사용자의 살아 있는 세션을 폐기한다. keep은 남길 세션이다. 폐기한 개수를 돌려준다."""
-    query = update(LoginSession).where(
-        LoginSession.user_id == user_id, LoginSession.revoked_at.is_(None)
-    )
+    """사용자의 살아 있는 세션을 폐기한다. keep은 남길 세션이다. 폐기한 개수를 돌려준다.
+
+    만료된 세션은 이미 끝났으므로 폐기하지도 세지도 않는다. 그래서 개수는 GET /sessions에 보이던
+    세션 수다.
+    """
+    query = update(LoginSession).where(*_live(user_id, now))
     if keep is not None:
         query = query.where(LoginSession.id != keep)
     revoked = await session.scalars(query.values(revoked_at=now).returning(LoginSession.id))

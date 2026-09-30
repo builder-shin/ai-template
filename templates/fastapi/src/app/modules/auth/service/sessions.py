@@ -121,7 +121,7 @@ async def _refresh(session: AsyncSession, settings: Settings, refresh_token: str
         await session.commit()
         detail = "The refresh token was already used. The session is revoked."
         raise _unauthorized(ErrorCode.AUTH_REFRESH_TOKEN_REUSED, detail)
-    if await repository.active_session(session, login.id, login.user_id) is None:
+    if await repository.active_session(session, login.id, login.user_id, now) is None:
         raise invalid
     row.used_at = now
     login.last_used_at = now
@@ -202,8 +202,7 @@ async def revoke_sessions(
     """others는 현재 세션을 뺀 나머지를, all은 전부 폐기한다. 폐기한 개수를 돌려준다."""
     keep = actor.session_id if scope is SessionRevocationScope.OTHERS else None
     revoked = await repository.revoke_sessions(session, actor.user_id, utc_now(), keep)
-    if revoked:
-        events.session_revoked(session, actor.user_id, SessionRevokedReason.REVOKED)
+    events.session_revoked(session, actor.user_id, SessionRevokedReason.REVOKED, revoked)
     if scope is SessionRevocationScope.ALL:
         await record_audit(
             session,

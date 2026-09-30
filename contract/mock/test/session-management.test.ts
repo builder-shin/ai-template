@@ -190,9 +190,13 @@ describe("다른 기기·전체 로그아웃", () => {
   it.each([
     ["others", 2, true],
     ["all", 3, false],
-  ] as const)("scope %s는 %i개를 폐기한다", async (scope, count, currentAlive) => {
-    const { app, state } = testApp();
-    const current = await newUser(app, state);
+  ] as const)("scope %s는 살아 있는 세션 %i개를 폐기한다", async (scope, count, currentAlive) => {
+    const clock = testClock();
+    const { app, state } = testApp({}, { clock });
+    // 만료된 세션은 이미 끝났으므로 폐기하지도 세지도 않는다(GET /sessions에 보이던 세션만 센다).
+    const expired = await newUser(app, state);
+    clock.advance(30 * DAY);
+    const current = await signIn(app, expired.email);
     const others = [await signIn(app, current.email), await signIn(app, current.email)];
     const reasons = revokedReasons(state, current.userId);
     const response = await send(app, "POST", REVOCATIONS, {
@@ -217,6 +221,7 @@ describe("다른 기기·전체 로그아웃", () => {
     for (const other of others) {
       expect((await send(app, "GET", SESSIONS, { token: other.accessToken })).status).toBe(401);
     }
+    expect(state.store.sessions.get(expired.sessionId)?.revokedAt).toBeNull();
     expect(reasons()).toEqual([["session.revoked", "revoked"]]);
     const audit = state.store.auditLogs.filter((row) => row.action === "session.all_revoked");
     expect(audit.map((row) => [row.actorId, row.targetId, row.metadata])).toEqual(

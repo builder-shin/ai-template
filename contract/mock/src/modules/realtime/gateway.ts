@@ -8,7 +8,7 @@
  *   페이로드는 validation.invalid_choice(422), 권한이 없으면 permission.denied(403)이고 source.pointer는
  *   /channel이다. 권한은 구독할 때 계산한다.
  * - 재검사(recheck): 세션을 폐기하거나 역할·상태를 바꾸면 허브가 알린다. 그 사용자의 연결을 다시 검사해
- *   세션이 끝났거나(폐기, 계정 비활성화·탈퇴) 구독한 채널의 권한을 잃은 연결을 끊는다. 끊긴 클라이언트는
+ *   세션이 끝났거나(폐기, 만료, 계정 비활성화·탈퇴) 구독한 채널의 권한을 잃은 연결을 끊는다. 끊긴 클라이언트는
  *   새 티켓으로 다시 붙는다(세션이 끝났으면 티켓 발급이 401이고, 권한을 잃은 채널은 구독이
  *   permission.denied다). 목은 프로세스가 하나라 제어 채널 없이 바로 검사한다.
  */
@@ -79,7 +79,9 @@ function authenticate(state: MockState, socket: RealtimeSocket): ExtendedError |
   if (ticket === undefined || ticket === null) return undefined;
   const found = typeof ticket === "string" ? consumeTicket(state, ticket) : undefined;
   const principal =
-    found === undefined ? undefined : sessionPrincipal(state.store, found.userId, found.sessionId);
+    found === undefined
+      ? undefined
+      : sessionPrincipal(state.store, found.userId, found.sessionId, state.clock.now());
   if (principal === undefined) return refused();
   socket.data.login = { userId: principal.userId, sessionId: principal.sessionId };
   return undefined;
@@ -89,7 +91,7 @@ function authenticate(state: MockState, socket: RealtimeSocket): ExtendedError |
 function principalOf(state: MockState, socket: RealtimeSocket): Principal | undefined {
   const { login } = socket.data;
   if (login === undefined) return undefined;
-  return sessionPrincipal(state.store, login.userId, login.sessionId);
+  return sessionPrincipal(state.store, login.userId, login.sessionId, state.clock.now());
 }
 
 function failed(status: 403 | 422, code: ErrorCode, detail: string): RealtimeAck {

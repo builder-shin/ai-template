@@ -84,9 +84,8 @@ export function resetPassword(
   deleteAccountTokens(state.store, user.id, "password_reset");
   setPassword(user, attributes.password, now);
   markEmailVerified(user, now);
-  if (revokeUserSessions(state.store, user.id, now) > 0) {
-    sessionRevoked(state.realtime, user.id, "password_reset");
-  }
+  const revoked = revokeUserSessions(state.store, user.id, now);
+  sessionRevoked(state.realtime, user.id, "password_reset", revoked);
   audit(state, "user.password_reset", user.id, client, now);
   return { id: row.id, createdAt: now };
 }
@@ -110,9 +109,8 @@ export function changePassword(
   const now = state.clock.now();
   setPassword(user, attributes.newPassword, now);
   deleteAccountTokens(state.store, user.id, "password_reset");
-  if (revokeUserSessions(state.store, user.id, now, actor.sessionId) > 0) {
-    sessionRevoked(state.realtime, user.id, "password_changed");
-  }
+  const revoked = revokeUserSessions(state.store, user.id, now, actor.sessionId);
+  sessionRevoked(state.realtime, user.id, "password_changed", revoked);
   audit(state, "user.password_changed", user.id, client, now);
   return now;
 }

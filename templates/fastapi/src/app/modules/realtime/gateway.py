@@ -6,7 +6,7 @@
 - subscribe·unsubscribe: 페이로드는 RealtimeSubscription, ack는 RealtimeAck다. 모르는 채널은
   validation.invalid_choice, 권한이 없으면 permission.denied다. 권한은 구독할 때 DB에서 계산한다.
 - 재검사: 세션을 폐기하거나 역할·상태를 바꾸면(auth와 users의 queue_recheck) 제어 채널로
-  알림이 온다. 이 인스턴스에 있는 그 사용자의 연결을 다시 검사해, 세션이 끝났거나(폐기, 계정
+  알림이 온다. 이 인스턴스에 있는 그 사용자의 연결을 다시 검사해, 세션이 끝났거나(폐기, 만료, 계정
   비활성화·탈퇴) 구독한 채널의 권한을 잃은 연결을 끊는다. 끊긴 클라이언트는 새 티켓으로 다시
   붙는다(세션이 끝났으면 티켓 발급이 401이고, 권한을 잃은 채널은 구독이 permission.denied다).
 """

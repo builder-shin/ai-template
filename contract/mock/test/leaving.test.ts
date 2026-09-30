@@ -197,11 +197,11 @@ describe("계정 닫기", () => {
     expect(counts).toEqual([0, 0]);
   });
 
-  it("폐기할 세션이 없으면 session.revoked를 보내지 않는다", async () => {
+  it("폐기할 세션이 없으면 session.revoked를 보내지 않고, 연결은 그래도 다시 검사한다", async () => {
     const { app, state } = testApp();
     const { userId } = await register(app);
     const log = realtimeLog(state);
     closeAccount(state, userId, "deactivated");
-    expect(log).toEqual([]);
+    expect(log).toEqual([["recheck", [userId]]]);
   });
 });

@@ -1,24 +1,33 @@
 """세션: grant 셋, refresh token 회전과 재사용 감지, 목록, 로그아웃, 폐기, 감사 기록."""
 
+import asyncio
 import uuid
+from datetime import timedelta
 from typing import Any
 
 import httpx
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+import app.modules.auth.service.tokens as tokens
 from app.core.audit import AuditLog
 from app.core.config import Settings
+from app.core.db import utc_now
 from app.core.jsonapi.openapi import JsonApiApp
+from app.core.realtime import Realtime, RecordingPublisher
 from app.core.security import identifier_hash
-from app.modules.users import UserStatus
+from app.modules.auth.models import LoginSession, TokenPurpose
+from app.modules.users import User, UserStatus
 from app.tests.accounts import PASSWORD, Accounts, new_email
 from app.tests.requests import error_codes, error_sources, jsonapi_body
+from app.tests.sockets import connected, serving
 
 pytestmark = pytest.mark.anyio
 
 SESSIONS = "/api/v1/sessions"
+REVOCATIONS = "/api/v1/session-revocations"
+NEW_PASSWORD = "brand-new-password"  # betterleaks:allow 테스트 비밀번호
 
 
 def grant(**attributes: Any) -> dict[str, Any]:
@@ -45,6 +54,49 @@ async def log_in(api: httpx.AsyncClient, email: str) -> dict[str, Any]:
 async def audit_rows(sessions: async_sessionmaker[AsyncSession]) -> list[AuditLog]:
     async with sessions() as session:
         return list(await session.scalars(select(AuditLog).order_by(AuditLog.created_at)))
+
+
+async def expire(sessions: async_sessionmaker[AsyncSession], body: dict[str, Any]) -> None:
+    """로그인 응답(body)의 세션을 만료된 세션으로 만든다(정리 잡이 아직 지우지 않았다).
+
+    테스트에는 시계 제어가 없어 세션의 만료를 DB에서 앞당긴다.
+    """
+    async with sessions() as session:
+        await session.execute(
+            update(LoginSession)
+            .where(LoginSession.id == uuid.UUID(body["data"]["id"]))
+            .values(expires_at=utc_now() - timedelta(seconds=1))
+        )
+        await session.commit()
+
+
+async def revoke(api: httpx.AsyncClient, body: dict[str, Any], scope: str) -> httpx.Response:
+    """로그인 응답(body)의 세션으로 다른 기기(others)나 전체(all) 로그아웃을 한다."""
+    document = {"data": {"type": "session-revocations", "attributes": {"scope": scope}}}
+    return await api.post(REVOCATIONS, **jsonapi_body(document, bearer(body)))
+
+
+async def end_sessions(
+    api: httpx.AsyncClient, db: async_sessionmaker[AsyncSession], user: User, action: str
+) -> httpx.Response:
+    """세션을 폐기하는 동작: 폐기 scope(all, others), password-change, password-reset.
+
+    폐기와 비밀번호 변경은 새로 로그인한 세션으로 하고, 재설정은 DB에서 발급한 토큰으로 한다.
+    """
+    assert user.email is not None
+    if action == "password-reset":
+        async with db() as session:
+            token = tokens.issue(session, user.id, TokenPurpose.PASSWORD_RESET, utc_now())
+            await session.commit()
+        reset = {"token": token, "password": NEW_PASSWORD}
+        document = {"data": {"type": "password-resets", "attributes": reset}}
+        return await api.post("/api/v1/password-resets", **jsonapi_body(document))
+    current = await log_in(api, user.email)
+    if action == "password-change":
+        change = {"currentPassword": PASSWORD, "newPassword": NEW_PASSWORD}
+        document = {"data": {"type": "password-changes", "attributes": change}}
+        return await api.post("/api/v1/password-changes", **jsonapi_body(document, bearer(current)))
+    return await revoke(api, current, action)
 
 
 async def test_password_grant_issues_tokens_and_records_the_login(
@@ -266,17 +318,59 @@ async def test_revocations_end_other_or_all_sessions(
     count: int,
     current_alive: bool,
 ) -> None:
+    """폐기하고 세는 것은 GET /sessions에 보이는 살아 있는 세션뿐이다. 만료된 세션은 이미 끝났다."""
     user = await accounts.create()
     assert user.email is not None
-    current, *others = [await log_in(api, user.email) for _ in range(3)]
-    document = {"data": {"type": "session-revocations", "attributes": {"scope": scope}}}
-    response = await api.post(
-        "/api/v1/session-revocations", **jsonapi_body(document, bearer(current))
-    )
+    expired, current, *others = [await log_in(api, user.email) for _ in range(4)]
+    await expire(db, expired)
+    response = await revoke(api, current, scope)
     assert response.status_code == 201, response.text
     assert response.json()["data"]["attributes"]["revokedCount"] == count
     assert ((await api.get(SESSIONS, headers=bearer(current))).status_code == 200) is current_alive
     statuses = [(await api.get(SESSIONS, headers=bearer(other))).status_code for other in others]
     assert statuses == [401, 401]
-    actions = [log.action for log in await audit_rows(db)]
-    assert ("session.all_revoked" in actions) is (scope == "all")
+    async with db() as session:
+        stale = await session.get(LoginSession, uuid.UUID(expired["data"]["id"]))
+        assert stale is not None
+        assert stale.revoked_at is None
+    audits = [log.details for log in await audit_rows(db) if log.action == "session.all_revoked"]
+    assert audits == ([{"revokedCount": count}] if scope == "all" else [])
+
+
+@pytest.mark.parametrize(
+    ("action", "announced"),
+    [("all", 1), ("others", 0), ("password-change", 0), ("password-reset", 0)],
+)
+async def test_ending_sessions_drops_the_connection_of_an_expired_session(
+    app: JsonApiApp,
+    api: httpx.AsyncClient,
+    accounts: Accounts,
+    db: async_sessionmaker[AsyncSession],
+    realtime: Realtime,
+    publisher: RecordingPublisher,
+    action: str,
+    announced: int,
+) -> None:
+    """만료된 세션은 폐기하지도 세지도 않지만, 만료 전에 그 세션으로 붙은 연결은 재검사가 끊는다.
+
+    재검사는 폐기한 세션이 없어도 한다. session.revoked는 폐기한 세션이 있을 때만 보낸다(여기서는
+    all이 새로 로그인한 세션을 폐기할 때뿐이다).
+    """
+    user = await accounts.create()
+    assert user.email is not None
+    expired = await log_in(api, user.email)
+    document: dict[str, Any] = {"data": {"type": "realtime-tickets", "attributes": {}}}
+    ticket = await api.post("/api/v1/realtime-tickets", **jsonapi_body(document, bearer(expired)))
+    assert ticket.status_code == 201, ticket.text
+    auth = {"ticket": ticket.json()["data"]["attributes"]["token"]}
+    async with serving(app) as url, connected(url, auth=auth) as socket:
+        await asyncio.wait_for(realtime.control.listening.wait(), 5)
+        await expire(db, expired)
+        response = await end_sessions(api, db, user, action)
+        assert response.status_code == 201, response.text
+        await socket.next("disconnect")
+    async with db() as session:
+        stale = await session.get(LoginSession, uuid.UUID(expired["data"]["id"]))
+        assert stale is not None
+        assert stale.revoked_at is None
+    assert len(publisher.named("session.revoked")) == announced

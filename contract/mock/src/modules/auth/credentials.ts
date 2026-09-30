@@ -4,9 +4,9 @@
  * - access token(15분)은 불투명한 무작위 문자열이다. 발급할 때 사용자, 세션, 만료 시각을 저장해 두고
  *   요청마다 찾는다. FastAPI의 JWT와 같게 만료는 초 단위로 버리고 30초를 봐준다. 모르는 토큰은
  *   auth.token_invalid, 만료된 토큰은 auth.token_expired(세션이 살아 있는지와 관계없다)다.
- * - 인증기는 요청마다 세션이 폐기되지 않았는지, 사용자가 활성인지 본다. 그래서 로그아웃과 폐기는 access
- *   token의 만료를 기다리지 않고 바로 효과를 낸다(401 auth.token_invalid "The session has ended.").
- *   같은 요청에서 역할로 실제 권한도 계산한다.
+ * - 인증기는 요청마다 세션이 끝나지(폐기, 만료) 않았는지, 사용자가 활성인지 본다. 그래서 로그아웃과
+ *   폐기는 access token의 만료를 기다리지 않고 바로 효과를 낸다(401 auth.token_invalid "The session has
+ *   ended."). 같은 요청에서 역할로 실제 권한도 계산한다.
  * - refresh token은 32바이트 불투명 토큰(30일)이고 digest만 저장한다.
  */
 
@@ -38,27 +38,32 @@ export function unauthorized(code: ErrorCode, detail: string): ApiError {
   return new ApiError(401, code, detail);
 }
 
-/** 폐기되지 않았고 사용자가 활성인 세션. 인증기가 요청마다 부른다. */
+/** 폐기되지도 만료되지도 않았고 사용자가 활성인 세션. 인증기가 요청마다 부른다. */
 export function activeSession(
   store: Store,
   sessionId: string,
   userId: string,
+  now: Instant,
 ): LoginSessionRow | undefined {
   const login = store.sessions.get(sessionId);
   const active = store.users.get(userId)?.status === "active";
-  return login?.userId === userId && login.revokedAt === null && active ? login : undefined;
+  const live = login?.userId === userId && login.revokedAt === null && login.expiresAt > now;
+  return live && active ? login : undefined;
 }
 
 /**
  * 살아 있는 세션의 Principal(실제 권한 포함). 세션이 끝났거나 사용자가 활성이 아니면 undefined다.
- * 인증기와 실시간 연결(티켓)이 같은 규칙으로 본다.
+ * 세션이 끝났다는 것은 폐기했거나 만료됐다는 뜻이다. 인증기와 실시간 연결(티켓, 재검사)이 같은 규칙으로
+ * 본다. access token은 세션의 만료를 늘린 직후에만 발급하므로(issue) 세션보다 먼저 만료된다. 그래서 만료
+ * 조건은 HTTP 인증을 바꾸지 않고, 만료 전에 붙은 실시간 연결을 재검사가 끊게 한다.
  */
 export function sessionPrincipal(
   store: Store,
   userId: string,
   sessionId: string,
+  now: Instant,
 ): Principal | undefined {
-  const login = activeSession(store, sessionId, userId);
+  const login = activeSession(store, sessionId, userId, now);
   if (login === undefined) return undefined;
   return {
     userId,
@@ -79,10 +84,11 @@ export function createAuthenticator(state: MockState): Authenticator {
   return (token) => {
     const row = state.store.accessTokens.get(digest(token));
     if (row === undefined) throw unauthorized("auth.token_invalid", "The access token is invalid.");
-    if (expired(row, state.clock.now())) {
+    const now = state.clock.now();
+    if (expired(row, now)) {
       throw unauthorized("auth.token_expired", "The access token has expired.");
     }
-    const principal = sessionPrincipal(state.store, row.userId, row.sessionId);
+    const principal = sessionPrincipal(state.store, row.userId, row.sessionId, now);
     if (principal === undefined) throw unauthorized("auth.token_invalid", "The session has ended.");
     return principal;
   };

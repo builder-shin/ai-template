@@ -5,7 +5,9 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { newUser, send, type SignedIn, signIn, userWith } from "./accounts.ts";
+import { DAY } from "../src/core/clock.ts";
+import { issueAccountToken } from "../src/modules/auth/tokens.ts";
+import { newUser, PASSWORD, send, type SignedIn, signIn, userWith } from "./accounts.ts";
 import {
   capturedWarnings,
   connect,
@@ -14,8 +16,10 @@ import {
   type TestSocket,
   ticketFor,
 } from "./sockets.ts";
+import { testClock } from "./support.ts";
 
 const SERVER_DISCONNECT = ["disconnect", "io server disconnect"];
+const NEW_PASSWORD = "brand-new-password"; // betterleaks:allow 테스트용 가짜 비밀번호
 
 /** 이 사용자가 로그인한 연결. */
 async function connectAs(served: Serving, user: SignedIn): Promise<TestSocket> {
@@ -24,6 +28,28 @@ async function connectAs(served: Serving, user: SignedIn): Promise<TestSocket> {
 
 function logout(served: Serving, user: SignedIn): Promise<Response> {
   return send(served.app, "DELETE", "/api/v1/sessions/current", { token: user.accessToken });
+}
+
+/**
+ * 세션을 폐기하는 동작: 폐기 scope(all, others), password-change, password-reset. 폐기와 비밀번호 변경은
+ * 새로 로그인한 세션으로 하고, 재설정은 저장소에서 발급한 토큰으로 한다.
+ */
+async function endSessions(served: Serving, user: SignedIn, action: string): Promise<Response> {
+  const { app, state } = served;
+  if (action === "password-reset") {
+    const token = issueAccountToken(state.store, user.userId, "password_reset", state.clock.now());
+    const attributes = { token, password: NEW_PASSWORD };
+    const document = { data: { type: "password-resets", attributes } };
+    return send(app, "POST", "/api/v1/password-resets", { document });
+  }
+  const current = await signIn(app, user.email);
+  if (action === "password-change") {
+    const attributes = { currentPassword: PASSWORD, newPassword: NEW_PASSWORD };
+    const document = { data: { type: "password-changes", attributes } };
+    return send(app, "POST", "/api/v1/password-changes", { document, token: current.accessToken });
+  }
+  const document = { data: { type: "session-revocations", attributes: { scope: action } } };
+  return send(app, "POST", "/api/v1/session-revocations", { document, token: current.accessToken });
 }
 
 /** 역할의 권한을 바꾼다(관리자). */
@@ -71,6 +97,27 @@ describe("세션", () => {
     expect(gone.log).toEqual([revoked, SERVER_DISCONNECT]);
     await kept.settle();
     expect(kept.log).toEqual([revoked]);
+  });
+
+  // 만료된 세션은 폐기하지도 세지도 않는다. 재검사는 폐기한 세션이 없어도 하고, session.revoked는 폐기한
+  // 세션이 있을 때만 보낸다(여기서는 all이 새로 로그인한 세션을 폐기할 때뿐이다). FastAPI는
+  // auth/tests/test_sessions.py가 같은 경우를 본다(시계 대신 DB에서 만료를 앞당긴다).
+  it.each([
+    ["all", [["session.revoked", { meta: { reason: "revoked" } }]]],
+    ["others", []],
+    ["password-change", []],
+    ["password-reset", []],
+  ])("%s 뒤 재검사가 만료 전에 그 세션으로 붙은 연결을 끊는다", async (action, announced) => {
+    const clock = testClock();
+    const served = await serving({}, { clock });
+    const expired = await newUser(served.app, served.state);
+    const socket = await connectAs(served, expired);
+    clock.advance(30 * DAY);
+    const response = await endSessions(served, expired, action);
+    expect(response.status, await response.clone().text()).toBe(201);
+    expect(await socket.disconnected()).toBe("io server disconnect");
+    expect(socket.log).toEqual([...announced, SERVER_DISCONNECT]);
+    expect(served.state.store.sessions.get(expired.sessionId)?.revokedAt).toBeNull();
   });
 
   it("계정을 비활성화하면 session.revoked와 me.updated를 받은 뒤 끊긴다", async () => {
