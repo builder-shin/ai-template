@@ -10,6 +10,7 @@ from typing import Any, Protocol
 from urllib.parse import urlencode
 
 from fastapi import Request, Response
+from pydantic_core import PydanticSerializationError
 
 from app.core.jsonapi.media import JSONAPI_MEDIA_TYPE, JsonApiResponse
 from app.core.jsonapi.models import JsonApiModel, PageMeta, PaginationLinks
@@ -33,9 +34,17 @@ def render(
     status_code: int = 200,
     fields: Mapping[str, frozenset[str]] | None = None,
 ) -> Response:
-    """문서를 JSON:API 응답으로 만든다. fields가 있으면 sparse fieldset을 적용한다."""
+    """문서를 JSON:API 응답으로 만든다. fields가 있으면 sparse fieldset을 적용한다.
+
+    fields가 없으면 model_dump_json()으로 바로 직렬화한다(빠른 경로). 문서에 짝 없는 서로게이트가
+    있으면 UTF-8로 인코딩하지 못해 PydanticSerializationError가 나므로, 그때만 다른 모든 경로처럼
+    JsonApiResponse(짝 없는 서로게이트를 이스케이프한다)로 다시 만든다.
+    """
     if not fields:
-        body = document.model_dump_json()
+        try:
+            body = document.model_dump_json()
+        except PydanticSerializationError:
+            return JsonApiResponse(document.model_dump(mode="json"), status_code=status_code)
         return Response(body, status_code=status_code, media_type=JSONAPI_MEDIA_TYPE)
     return JsonApiResponse(document_content(document, fields), status_code=status_code)
 

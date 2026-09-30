@@ -1,16 +1,21 @@
 """렌더링: sparse fieldset, 페이지 메타와 상대 경로 링크, 포함 리소스의 중복 제거, 204."""
 
+import json
+
 import httpx
 import pytest
 
-from app.core.jsonapi.rendering import load_included
+from app.core.jsonapi.rendering import load_included, render
 from app.core.jsonapi.tests.sample import (
     ADA,
     GRACE,
     KNOWN_ID,
     MANAGER_TOKEN,
+    WIDGETS,
     OwnerAttributes,
     OwnerResource,
+    WidgetDocument,
+    to_resource,
 )
 
 pytestmark = pytest.mark.anyio
@@ -100,3 +105,16 @@ async def test_load_included_runs_only_requested_loaders_and_keeps_the_first() -
 
     assert await load_included(["owner"], {"owner": owners, "unused": unused}) == [ada, grace]
     assert calls == ["owner"]
+
+
+def test_render_falls_back_to_json_api_response_for_a_lone_surrogate() -> None:
+    """fields 없는 빠른 경로는 model_dump_json()을 쓴다. 짝 없는 서로게이트로 그게 실패하면
+    JsonApiResponse로 대체해 다른 모든 경로와 같은 이스케이프를 낸다."""
+    owner = OwnerResource(type="users", id=ADA, attributes=OwnerAttributes(name="\ud800"))
+    document = WidgetDocument(data=to_resource(WIDGETS[0]), included=[owner])
+    response = render(document)
+    assert response.status_code == 200
+    body = bytes(response.body)
+    assert b"\\ud800" in body
+    parsed = json.loads(body)
+    assert parsed["included"][0]["attributes"]["name"] == "\ud800"
