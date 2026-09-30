@@ -1,5 +1,6 @@
 /**
- * 공통 도구: 시각의 모양, UUID, 레이트 리밋 윈도, 클라이언트 IP. FastAPI 템플릿과 같은 값을 내는지 본다.
+ * 공통 도구: 시각의 모양, UUID, 레이트 리밋 윈도, 클라이언트 IP, 실시간 허브. FastAPI 템플릿과 같은 값을
+ * 내는지 본다.
  */
 
 import { Hono } from "hono";
@@ -9,6 +10,7 @@ import { clientOf } from "../src/core/client.ts";
 import { formatInstant, HOUR, SECOND, systemClock } from "../src/core/clock.ts";
 import { parsePythonUuid, parseUuid, uuid7 } from "../src/core/ids.ts";
 import { createRateLimiter } from "../src/core/rate-limit.ts";
+import { createRealtimeHub, type RealtimeHub } from "../src/core/realtime.ts";
 import { checkPassword, digest, hashPassword } from "../src/core/security.ts";
 import { testClock } from "./support.ts";
 
@@ -147,5 +149,62 @@ describe("클라이언트", () => {
     const client = (await clientFor(undefined, { "User-Agent": long })) as { userAgent: string };
     expect(client.userAgent).toBe("é".repeat(500));
     expect(await clientFor(undefined, { "User-Agent": "" })).toMatchObject({ userAgent: null });
+  });
+});
+
+describe("실시간 허브", () => {
+  function recorded(hub: RealtimeHub): unknown[] {
+    const log: unknown[] = [];
+    hub.listen({
+      event: (event) => log.push(event.name),
+      recheck: (userIds) => log.push(["recheck", [...userIds]]),
+    });
+    return log;
+  }
+
+  const event = (name: string) => ({ name, rooms: [], payload: {} });
+
+  it("batch 밖에서는 바로 보낸다", () => {
+    const hub = createRealtimeHub();
+    const log = recorded(hub);
+    hub.publish(event("a"));
+    hub.recheck(["u2"]);
+    hub.publish(event("b"));
+    expect(log).toEqual(["a", ["recheck", ["u2"]], "b"]);
+  });
+
+  it("batch는 FastAPI의 commit처럼 이벤트를 차례로 보낸 뒤 재검사를 한 번에 알린다", () => {
+    const hub = createRealtimeHub();
+    const log = recorded(hub);
+    const result = hub.batch(() => {
+      hub.publish(event("a"));
+      hub.recheck(["u2", "u1"]);
+      hub.batch(() => {
+        hub.publish(event("b"));
+        hub.recheck(["u1", "u3"]);
+      });
+      expect(log).toEqual([]);
+      return "done";
+    });
+    expect(result).toBe("done");
+    expect(log).toEqual(["a", "b", ["recheck", ["u1", "u2", "u3"]]]);
+  });
+
+  it("batch가 던지면 모은 것을 버린다(rollback)", () => {
+    const hub = createRealtimeHub();
+    const log = recorded(hub);
+    expect(() =>
+      hub.batch(() => {
+        hub.publish(event("a"));
+        throw new Error("실패");
+      }),
+    ).toThrow("실패");
+    hub.publish(event("b"));
+    expect(log).toEqual(["b"]);
+  });
+
+  it("비동기 함수는 받지 않는다", () => {
+    const hub = createRealtimeHub();
+    expect(() => hub.batch(async () => Promise.resolve())).toThrow("동기 함수");
   });
 });

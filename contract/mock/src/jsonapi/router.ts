@@ -37,6 +37,7 @@ import {
 import {
   type CollectionQuery,
   type FilterParsers,
+  type FilterValues,
   parseCollectionQuery,
   parseResourceQuery,
   queryParams,
@@ -54,11 +55,19 @@ export type PrincipalFor<A extends Auth> = A extends "required"
 type ParametersOf<Id extends OperationId> = operations[Id]["parameters"];
 type QueryParameters<Id extends OperationId> = NonNullable<ParametersOf<Id>["query"]>;
 
-/** 컬렉션 GET(page[number]를 받는 operation)은 CollectionQuery, 그 밖은 ResourceQuery다. */
-export type QueryOf<Id extends OperationId> = [QueryParameters<Id>] extends [never]
+/** 필터가 없는 라우트의 필터 파서. */
+export type NoFilters = Readonly<Record<string, never>>;
+
+/**
+ * 컬렉션 GET(page[number]를 받는 operation)은 CollectionQuery, 그 밖은 ResourceQuery다. 컬렉션의
+ * filter는 라우트에 준 필터 파서들이 읽은 값이다.
+ */
+export type QueryOf<Id extends OperationId, F extends FilterParsers = NoFilters> = [
+  QueryParameters<Id>,
+] extends [never]
   ? ResourceQuery
   : "page[number]" extends keyof QueryParameters<Id>
-    ? CollectionQuery
+    ? CollectionQuery<FilterValues<F>>
     : ResourceQuery;
 
 /** 경로 파라미터. uuid는 표준 표기(소문자, 하이픈)로 바꾼 값이다. */
@@ -72,34 +81,36 @@ export type DocumentOf<Id extends OperationId> = operations[Id]["requestBody"] e
   ? Document
   : undefined;
 
-export interface OperationInputs<Id extends OperationId, A extends Auth> {
+export interface OperationInputs<Id extends OperationId, A extends Auth, F extends FilterParsers> {
   readonly c: Context<AppEnv>;
   readonly principal: PrincipalFor<A>;
-  readonly query: QueryOf<Id>;
+  readonly query: QueryOf<Id, F>;
   readonly path: PathOf<Id>;
   readonly document: DocumentOf<Id>;
 }
 
-export type OperationHandler<Id extends OperationId, A extends Auth> = (
-  inputs: OperationInputs<Id, A>,
-) => Response | Promise<Response>;
+export type OperationHandler<
+  Id extends OperationId,
+  A extends Auth,
+  F extends FilterParsers = NoFilters,
+> = (inputs: OperationInputs<Id, A, F>) => Response | Promise<Response>;
 
-export interface RouteOptions<A extends Auth> {
+export interface RouteOptions<A extends Auth, F extends FilterParsers = NoFilters> {
   /** 계약의 security와 같아야 한다. */
   readonly auth: A;
   /** 컬렉션 GET의 filter[...] 파서. 계약의 filter 파라미터와 같은 이름, 같은 순서다. */
-  readonly filters?: FilterParsers;
+  readonly filters?: F;
 }
 
 export interface JsonApiRouter {
-  route<Id extends OperationId, A extends Auth>(
+  route<Id extends OperationId, A extends Auth, F extends FilterParsers = NoFilters>(
     id: Id,
-    options: RouteOptions<A>,
-    handler: OperationHandler<Id, A>,
+    options: RouteOptions<A, F>,
+    handler: OperationHandler<Id, A, F>,
   ): void;
 }
 
-function checkDeclaration(spec: OperationSpec, options: RouteOptions<Auth>): void {
+function checkDeclaration(spec: OperationSpec, options: RouteOptions<Auth, FilterParsers>): void {
   if (options.auth !== spec.auth) {
     throw new Error(`${spec.id}: 계약의 인증은 ${spec.auth}인데 ${options.auth}로 달았다.`);
   }
@@ -170,10 +181,10 @@ export function createJsonApiRouter(
   authenticator: Authenticator,
 ): JsonApiRouter {
   return {
-    route<Id extends OperationId, A extends Auth>(
+    route<Id extends OperationId, A extends Auth, F extends FilterParsers = NoFilters>(
       id: Id,
-      options: RouteOptions<A>,
-      handler: OperationHandler<Id, A>,
+      options: RouteOptions<A, F>,
+      handler: OperationHandler<Id, A, F>,
     ) {
       const spec = operationSpec(id);
       checkDeclaration(spec, options);
@@ -190,7 +201,7 @@ export function createJsonApiRouter(
         return handler({
           c,
           principal: principal as PrincipalFor<A>,
-          query: query as QueryOf<Id>,
+          query: query as QueryOf<Id, F>,
           path: path as PathOf<Id>,
           document: document as DocumentOf<Id>,
         });

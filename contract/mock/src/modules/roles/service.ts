@@ -52,6 +52,15 @@ export function rolesOfUser(store: Store, userId: string): RoleRow[] {
     .sort((left, right) => compareText(left.name, right.name));
 }
 
+/**
+ * permissions가 모두 granted(내 실제 권한) 안에 있는가(FastAPI의 roles/policies.py). 권한 상승 금지의
+ * 기준이다: 내 권한을 넘는 역할은 만들거나, 고치거나(고치기 전과 후 모두), 지우거나, 주거나, 뺏지 못한다.
+ */
+export function within(permissions: Iterable<string>, granted: ReadonlySet<string>): boolean {
+  for (const permission of permissions) if (!granted.has(permission)) return false;
+  return true;
+}
+
 /** 사용자의 역할에서 계산한 실제 권한. */
 export function effectivePermissions(store: Store, userId: string): ReadonlySet<PermissionCode> {
   const permissions = new Set<PermissionCode>();
@@ -81,6 +90,18 @@ export function assignRoles(store: Store, userId: string, roles: readonly RoleRo
   const held = store.userRoles.get(userId) ?? new Set<string>();
   for (const role of roles) held.add(role.id);
   store.userRoles.set(userId, held);
+}
+
+/** 사용자에게 역할을 주고 뺀다. */
+export function changeRoles(
+  store: Store,
+  userId: string,
+  added: readonly RoleRow[],
+  removed: readonly RoleRow[],
+): void {
+  assignRoles(store, userId, added);
+  const held = store.userRoles.get(userId);
+  for (const role of removed) held?.delete(role.id);
 }
 
 /** 사용자의 역할을 모두 뺀다(탈퇴). */

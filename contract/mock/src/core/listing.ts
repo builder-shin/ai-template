@@ -1,5 +1,6 @@
 /**
- * 컬렉션 조회 도우미: 정렬과 페이지. 모듈이 메모리의 행을 늘어놓을 때 쓴다(FastAPI의 core/listing.py).
+ * 컬렉션 조회 도우미: 정렬, 검색, 페이지. 모듈이 메모리의 행을 늘어놓을 때 쓴다(FastAPI의
+ * core/listing.py).
  *
  * - ordered: 쿼리의 sort를 행의 순서로 바꾼다. 끝에 늘 id 오름차순을 붙여 같은 값이 여럿이어도 페이지
  *   사이의 순서가 흔들리지 않게 한다. id는 UUIDv7이라 만든 순서다.
@@ -44,4 +45,12 @@ export function ordered<Row extends { readonly id: string }>(
 export function pageOf<Row>(rows: readonly Row[], page: Page): { rows: Row[]; total: number } {
   const offset = (page.number - 1) * page.size;
   return { rows: rows.slice(offset, offset + page.size), total: rows.length };
+}
+
+/**
+ * 부분 일치 검색(FastAPI의 contains와 ILIKE). 대소문자를 가리지 않고, 검색어의 %, _, \는 글자 그대로
+ * 찾는다. 값이 null이면 맞지 않는다(SQL에서 NULL ILIKE는 참이 아니다).
+ */
+export function containsText(value: string | null, text: string): boolean {
+  return value?.toLowerCase().includes(text.toLowerCase()) ?? false;
 }

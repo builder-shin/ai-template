@@ -1,11 +1,20 @@
-/** 계정 도우미: 가입, 이메일 인증, 로그인을 API로 한다(FastAPI 테스트의 app/tests/accounts.py). */
+/**
+ * 계정 도우미: 가입, 이메일 인증, 로그인을 API로 한다. 권한을 가진 사용자와 역할은 저장소에 바로 만든다
+ * (FastAPI 테스트의 app/tests/accounts.py).
+ */
 
 import { randomUUID } from "node:crypto";
 import type { Hono } from "hono";
 import { expect } from "vitest";
 import type { AppEnv } from "../src/context.ts";
+import { uuid7 } from "../src/core/ids.ts";
+import { compareText, type PermissionCode } from "../src/core/permissions.ts";
 import type { components } from "../src/generated/api.ts";
 import { JSONAPI_MEDIA_TYPE } from "../src/jsonapi/media.ts";
+import type { RoleRow } from "../src/modules/roles/model.ts";
+import { assignRoles } from "../src/modules/roles/service.ts";
+import { createAccount } from "../src/modules/users/accounts.ts";
+import type { UserRow } from "../src/modules/users/model.ts";
 import type { MockState } from "../src/state.ts";
 
 type App = Hono<AppEnv>;
@@ -136,4 +145,51 @@ export async function newUser(app: App, state: MockState, email = newEmail()): P
   await register(app, email);
   await verify(app, state, email);
   return signIn(app, email);
+}
+
+/** 이 권한만 가진 역할을 저장소에 바로 만든다. 이름은 겹치지 않는다. */
+export function newRole(state: MockState, permissions: readonly PermissionCode[] = []): RoleRow {
+  const now = state.clock.now();
+  const role: RoleRow = {
+    id: uuid7(),
+    name: `role-${randomUUID().slice(0, 8)}`,
+    description: null,
+    permissions: [...new Set(permissions)].sort(compareText),
+    isSystem: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+  state.store.roles.set(role.id, role);
+  return role;
+}
+
+/** 이 권한만 가진 역할을 새로 만들어 준, 로그인한 새 사용자. member 역할도 그대로 가진다. */
+export async function userWith(
+  app: App,
+  state: MockState,
+  permissions: readonly PermissionCode[],
+): Promise<SignedIn & { readonly roleId: string }> {
+  const user = await newUser(app, state);
+  const role = newRole(state, permissions);
+  assignRoles(state.store, user.userId, [role]);
+  return { ...user, roleId: role.id };
+}
+
+export interface AccountOptions {
+  readonly email?: string;
+  readonly name?: string;
+  readonly roleNames?: readonly string[];
+}
+
+/** 이메일 인증을 마친 계정을 저장소에 바로 만든다(FastAPI 테스트의 accounts.create). 기본 역할은 member다. */
+export function newAccount(state: MockState, options: AccountOptions = {}): UserRow {
+  const account = {
+    email: options.email ?? newEmail(),
+    password: PASSWORD,
+    name: options.name ?? "가입자",
+    locale: "ko" as const,
+    verified: true,
+    ...(options.roleNames === undefined ? {} : { roleNames: options.roleNames }),
+  };
+  return createAccount(state.store, account, state.clock.now());
 }

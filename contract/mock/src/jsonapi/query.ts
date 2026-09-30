@@ -36,20 +36,27 @@ export interface SortField {
   readonly descending: boolean;
 }
 
-export interface CollectionQuery extends ResourceQuery {
+/** filter는 필터 이름 → 파서가 돌려준 값이다. 라우트는 파서의 값 타입(FilterValues)으로 받는다. */
+export interface CollectionQuery<Filter = Readonly<Record<string, unknown>>> extends ResourceQuery {
   readonly page: Page;
   /** 비었으면 모듈의 기본 정렬이다. */
   readonly sort: readonly SortField[];
   /** 필터 이름 → 파서가 돌려준 값. 들어온 필터만 있다. */
-  readonly filter: Readonly<Record<string, unknown>>;
+  readonly filter: Filter;
 }
 
 /** filter[이름] 값 하나의 파서. 틀리면 problem이 에러 객체의 detail이 된다. */
-export type FilterParser = (
+export type FilterParser<Value = unknown> = (
   raw: string,
-) => { readonly value: unknown } | { readonly problem: string };
+) => { readonly value: Value } | { readonly problem: string };
 /** 필터 이름 → 파서. 계약의 filter 파라미터와 같은 이름, 같은 순서다. */
 export type FilterParsers = Readonly<Record<string, FilterParser>>;
+/** 파서들이 읽은 필터 값. 들어온 필터만 있다. */
+export type FilterValues<Parsers extends FilterParsers> = {
+  readonly [Name in keyof Parsers]?: Parsers[Name] extends FilterParser<infer Value>
+    ? Value
+    : never;
+};
 
 /** 요청의 쿼리 파라미터. */
 export interface QueryParams {
