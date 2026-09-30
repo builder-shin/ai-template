@@ -8,6 +8,12 @@
  *   const body = await readJsonBody(c); // 본문이 JSON이 아니면 400. 인증보다 먼저다
  *   // 인증(401, 403)과 쿼리 파라미터(400)
  *   const document = validateDocument("PostCreateDocument", body); // 400, 403, 409, 422
+ *
+ * 맞추지 않는 차이(목은 계약대로 한다):
+ * - Pydantic(lax 모드)은 정수 자리의 숫자 문자열(예: 파일 size "10")을 받는다. 목은 형 오류(422)다.
+ * - FastAPI는 판별 유니온의 필드 오류를 판별자 값과 같은 이름의 필드 아래로 가리킨다(예: password
+ *   grant의 이메일 오류가 /data/attributes/password/email). 목은 실제 위치(/data/attributes/email)다.
+ * - Python json.loads는 UTF-16·32 본문도 읽는다. 목은 UTF-8만 읽는다(브라우저는 UTF-8로 보낸다).
  */
 
 import type { Context } from "hono";

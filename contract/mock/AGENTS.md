@@ -1,0 +1,77 @@
+# contract/mock
+
+플랫폼 API를 메모리로 구현한 목 서버다(Hono와 Socket.IO, Node 24에서 tsx로 실행). 단독 web의 개발·E2E 백엔드이고 적합성 스위트의 `mock` 대상이다. 설계는 `docs/superpowers/specs/2026-09-30-nextjs-web-design.md` §8이다.
+
+## 원칙
+
+- FastAPI 템플릿(`templates/fastapi/src/app`)과 똑같이 동작한다. 상태, 에러 코드와 우선순위, detail, JSON:API 규칙, 레이트 리밋, 메일, 실시간 이벤트까지 FastAPI 코드를 읽고 맞춘다. 파일 첫 주석에 대응하는 FastAPI 파일과 규칙을 적는다.
+- 요청은 계약(`contract/openapi.yaml`)으로 검증한다. 라우트는 operationId로 경로, 메서드, 인증, 권한, 쿼리 파라미터, 요청 문서를 계약에서 읽는다(`src/jsonapi/operations.ts`, `router.ts`). 계약으로 적을 수 없는 FastAPI 동작(공백 지우기, 짝 없는 서로게이트 등)만 코드로 둔다(`src/jsonapi/validation.ts`).
+- 타입은 계약에서 만든 `src/generated/api.ts`를 쓴다(직접 고치지 않는다). 에러는 `ApiError`와 계약의 에러 코드만 쓴다.
+- 데이터는 프로세스 메모리에 있다. 재시작하면 시드(admin·member 역할, 관리자, 예제 글)만 남는다.
+- 시각은 `state.clock`으로 얻는다(테스트가 시간을 돌린다). 요청 하나는 await 없이 끝나므로 트랜잭션이 없다. 여러 행을 바꾸는 처리는 검사를 모두 마친 뒤 바꾼다(`src/store.ts`).
+
+## 구조
+
+| 경로                                          | 내용                                                                                                                   |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`, `src/app.ts`                   | 진입점, 앱 조립(미들웨어 순서가 FastAPI와 같다)                                                                        |
+| `src/config.ts`                               | 설정(환경 변수)                                                                                                        |
+| `src/state.ts`, `src/store.ts`, `src/seed.ts` | 메모리 상태, 테이블, 시드                                                                                              |
+| `src/core/`                                   | 도메인을 모르는 기반: 시계, id, 보안, 클라이언트 IP, 레이트 리밋, 권한, 감사 로그, 목록, 실시간 허브                   |
+| `src/jsonapi/`                                | JSON:API 공통 계층: 협상, 본문 한도, 계약 검증, 에러 문서, 쿼리, 렌더링, operation 라우터                              |
+| `src/modules/`                                | FastAPI와 같은 단위의 모듈(auth, users, roles, files, posts, audit-logs, realtime). `registry.ts`가 모듈 사이를 잇는다 |
+| `src/modules/realtime/`                       | 실시간: Socket.IO(`/socket.io`, API와 같은 포트), 티켓, 구독, 연결 재검사                                              |
+| `src/storage/`                                | 가짜 스토리지(presigned URL, `/_storage`)                                                                              |
+| `src/oauth-server/`                           | 가짜 OAuth 서버(google, kakao, naver)                                                                                  |
+| `src/test-endpoints/`                         | 테스트 통로(`/_test/mail`, `/_mock/mail`)                                                                              |
+| `test/`                                       | 단위 테스트. 앱을 `app.request`로 부른다(`test/support.ts`의 `testApp`, `testClock`)                                   |
+
+## 명령
+
+| 명령                                    | 하는 일                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------- |
+| `pnpm --filter @ai-template/mock start` | 목을 띄운다(기본 http://localhost:4010)                                               |
+| `pnpm --filter @ai-template/mock test`  | 단위 테스트                                                                           |
+| `pnpm --filter @ai-template/mock check` | 생성물 최신 여부, 타입, 단위 테스트. 루트 `pnpm check`에 들어 있다                    |
+| `pnpm --filter @ai-template/mock gen`   | 계약에서 타입을 다시 만든다. 루트 `pnpm gen`도 한다                                   |
+| `pnpm conformance mock [흐름 파일...]`  | 목을 띄우고 적합성 흐름을 돌린 뒤 내린다. Docker가 필요 없다(CI의 `conformance-mock`) |
+
+## 설정
+
+없거나 빈 변수는 FastAPI 템플릿 `.env.example`의 개발용 값을 쓰고, 틀린 변수는 한 줄씩 알리고 멈춘다(`src/config.ts`).
+
+| 변수                                                     | 뜻                                                                                |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `PORT`, `API_URL`                                        | 포트(기본 4010)와 브라우저가 보는 목의 주소(presigned URL, OAuth 화면)            |
+| `MOCK_TEST_ENDPOINTS`                                    | 테스트 통로를 연다(기본 켜짐)                                                     |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`                | 시드 관리자                                                                       |
+| `FRONTEND_URL`, `OAUTH_REDIRECT_URIS`                    | 메일 링크의 프론트 주소, 소셜 로그인 뒤 돌아갈 프론트 콜백                        |
+| `IDENTIFIER_HASH_SECRET`                                 | 이메일 해시(HMAC) 키                                                              |
+| `RATE_LIMIT_*`                                           | 레이트 리밋 한도: `GLOBAL`(IP별 분당 600), 로그인, 가입, 메일 요청, 비밀번호 변경 |
+| `FILE_MAX_SIZE`, `FILE_ALLOWED_TYPES`, `FILE_USER_QUOTA` | 업로드 한도                                                                       |
+| `STORAGE_ALLOWED_ORIGINS`, `REALTIME_ALLOWED_ORIGINS`    | 가짜 스토리지의 CORS와 Socket.IO 연결이 받는 브라우저 Origin                      |
+
+## 테스트 통로와 화면
+
+`/_storage`만 늘 뜨고 나머지는 `MOCK_TEST_ENDPOINTS`가 켜져 있을 때만 뜬다.
+
+- `GET /_test/mail[?to=주소]`, `DELETE /_test/mail`: 보낸 메일(JSON, 최신순). 적합성 키트와 E2E가 읽는다.
+- `/_mock/mail`: 사람이 보는 메일 보관함(Mailpit 대신). 본문의 링크를 누르고 모두 지운다.
+- `/_mock/oauth/{provider}/authorize`: 가짜 제공자의 로그인 화면. 사람이 신원을 고르거나 E2E가 모의 OAuth 서버와 같은 폼(username, claims)을 보낸다.
+- `/_storage/<키>`: presigned URL로 올리고 내려받는다. 서명과 만료를 보고 CORS를 허용한다.
+
+## 리소스 더하기
+
+1. 계약(`contract/typespec/src/`)을 고치고 `pnpm gen`한다.
+2. FastAPI 모듈을 읽고 `src/modules/<이름>/`에 같은 단위로 만든다: `model.ts`(행), `service.ts`(규칙, 에러, 감사 로그, 이벤트), `documents.ts`(리소스), `routes.ts`(`api.route("<operationId>", { auth, filters }, handler)`). 예시는 `posts`다.
+3. 테이블은 `src/store.ts`, 그 밖의 상태는 `src/state.ts`, 시드는 `src/seed.ts`에 더하고, 라우트는 `src/app.ts`에서 단다.
+4. 다른 모듈과 얽히는 처리(계정 닫기, 파일 읽기 규칙과 참조 확인, 역할 변경)는 등록 지점에 걸고 `src/modules/registry.ts`에서 잇는다.
+5. `test/`에 단위 테스트를 둔다. 기대값은 FastAPI에 같은 요청을 보내 얻은 응답이다.
+6. 적합성 흐름(`contract/conformance/test/flows/`)을 더해 `pnpm conformance mock`과 `pnpm conformance fastapi`에서 통과시킨다.
+
+## FastAPI와 다른 점
+
+- access token은 JWT가 아닌 불투명한 문자열이다. 만료는 세션 응답의 `accessTokenExpiresAt`, `refreshTokenExpiresAt`으로 본다.
+- 메일은 요청 안에서 바로 보관함에 들어가고(FastAPI는 요청 뒤 잡으로 보낸다) 텍스트 본문만 있다.
+- 비밀번호 해시(scrypt), 소셜 로그인 제공자(가짜 OAuth 서버), 스토리지(메모리 버킷)는 개발용이다. 재시작하면 옛 presigned URL은 맞지 않는다.
+- 이메일 형식은 흔한 경우만 email-validator와 같다(`src/jsonapi/email.ts`). 요청 검증의 몇 가지 경계(정수 자리의 숫자 문자열, 판별 유니온 오류의 pointer, UTF-16 본문)는 목이 계약대로 한다(`src/jsonapi/validation.ts`).
