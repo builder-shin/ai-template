@@ -83,6 +83,11 @@ export function assignRoles(store: Store, userId: string, roles: readonly RoleRo
   store.userRoles.set(userId, held);
 }
 
+/** 사용자의 역할을 모두 뺀다(탈퇴). */
+export function clearRoles(store: Store, userId: string): void {
+  store.userRoles.delete(userId);
+}
+
 /** 시스템 역할(admin, member)이 없으면 만든다. 새로 만든 역할 이름을 돌려준다. */
 export function ensureSystemRoles(store: Store, now: Instant): string[] {
   const created: string[] = [];

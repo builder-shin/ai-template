@@ -14,6 +14,7 @@ import { fileResources } from "../files/documents.ts";
 import type { RoleRow } from "../roles/model.ts";
 import { roleResource } from "../roles/service.ts";
 import type { UserRow } from "./model.ts";
+import { avatarOf } from "./public.ts";
 
 type UserResource = components["schemas"]["UserResource"];
 /** 사용자 문서의 포함 리소스. */
@@ -36,7 +37,7 @@ export function userResource(user: UserRow, held: readonly RoleRow[]): UserResou
     },
     relationships: {
       roles: { data: held.map((role) => ({ type: "roles", id: role.id })) },
-      avatar: { data: user.avatarId === null ? null : { type: "files", id: user.avatarId } },
+      avatar: avatarOf(user),
     },
   };
 }

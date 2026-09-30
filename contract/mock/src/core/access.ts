@@ -6,16 +6,19 @@
  * - 토큰이 있으면 선택이어도 검증한다. 틀리면 인증기(auth 모듈)가 401을 던진다.
  * - 권한(x-permission)이 있고 Principal에 없으면 403 permission.denied다.
  * - 401에는 WWW-Authenticate: Bearer를 붙인다(RFC 6750).
+ * - 되돌릴 수 없는 동작(탈퇴)은 requireRecentLogin으로 최근 로그인(RECENT_LOGIN)을 요구한다.
  */
 
 import type { Context } from "hono";
 import type { AppEnv } from "../context.ts";
 import { ApiError } from "../jsonapi/errors.ts";
 import type { Auth } from "../jsonapi/operations.ts";
-import type { Instant } from "./clock.ts";
+import { type Instant, MINUTE, SECOND } from "./clock.ts";
 import type { PermissionCode } from "./permissions.ts";
 
 const CHALLENGE = { "WWW-Authenticate": "Bearer" };
+/** 되돌릴 수 없는 동작이 요구하는 로그인의 최근성. access token 수명(15분)처럼 API 설계 값이다. */
+export const RECENT_LOGIN = 10 * MINUTE;
 
 /** 인증된 요청의 주체. permissions는 이번 요청에서 역할로 계산한 실제 권한이다. */
 export interface Principal {
@@ -69,4 +72,19 @@ export function authorize(
     throw new ApiError(403, "permission.denied", `Permission ${permission} is required.`);
   }
   return principal;
+}
+
+/**
+ * 로그인한 지 RECENT_LOGIN이 지났으면 401 auth.reauthentication_required다(FastAPI의
+ * require_recent_login). refresh로는 풀리지 않는다. 클라이언트는 다시 로그인해 받은 새 세션으로 부른다.
+ * WWW-Authenticate는 RFC 9470(step-up)의 error와 max_age(초)를 담는다.
+ */
+export function requireRecentLogin(principal: Principal, now: Instant): void {
+  if (now - principal.loggedInAt <= RECENT_LOGIN) return;
+  const seconds = String(RECENT_LOGIN / SECOND);
+  const challenge = `Bearer error="insufficient_user_authentication", max_age=${seconds}`;
+  const detail = `Log in again: this needs a session that logged in within ${seconds} seconds.`;
+  throw new ApiError(401, "auth.reauthentication_required", detail, {
+    headers: { "WWW-Authenticate": challenge },
+  });
 }

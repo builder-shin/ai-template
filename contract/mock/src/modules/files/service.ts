@@ -11,7 +11,8 @@
  *   알리지 않고 404다. 쓰기(PATCH, 삭제)는 소유자만 한다. 읽을 수 있지만 소유자가 아니면 403이다.
  *   고칠 속성이 없는 PATCH도 같다.
  * - 다른 리소스에 거는 파일(아바타, 커버 이미지)은 요청한 사람 소유의 ready 이미지여야 한다
- *   (attachableFile). 남의 파일을 걸면 그 리소스를 보는 모든 사람에게 파일이 공개되기 때문이다.
+ *   (attachableFile). 남의 파일을 걸면 그 리소스를 보는 모든 사람에게 파일이 공개되기 때문이다. 관계의
+ *   id는 FastAPI처럼 Python의 uuid.UUID()로 읽는다(parsePythonUuid).
  * - 지우기는 행과 객체를 함께 지운다(FastAPI는 행을 commit한 뒤 객체를 지운다). 가리키던 관계는
  *   등록된 삭제 처리가 null로 바꾼다.
  * - 관계에서 풀린 파일(release)과 탈퇴한 사용자의 파일(removeUnreferenced)은 다른 리소스가 가리키지
@@ -22,7 +23,7 @@
 import type { MockConfig } from "../../config.ts";
 import type { Principal } from "../../core/access.ts";
 import { HOUR, MINUTE } from "../../core/clock.ts";
-import { parseUuid, uuid7 } from "../../core/ids.ts";
+import { parsePythonUuid, uuid7 } from "../../core/ids.ts";
 import { compareText } from "../../core/permissions.ts";
 import type { components } from "../../generated/api.ts";
 import { ApiError } from "../../jsonapi/errors.ts";
@@ -220,7 +221,7 @@ export function attachableFile(
   fileId: string,
   pointer: string,
 ): FileRow {
-  const id = parseUuid(fileId);
+  const id = parsePythonUuid(fileId);
   const file = id === undefined ? undefined : state.store.files.get(id);
   if (file?.ownerId !== actor.userId) {
     const detail = `File ${fileId} does not exist or is not yours.`;

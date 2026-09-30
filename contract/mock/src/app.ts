@@ -6,9 +6,9 @@
  * 3. 본문 한도(413)
  * 4. 라우트. `/api/` 아래의 없는 경로와 허용하지 않은 메서드는 404 resource.not_found다.
  *
- * 앱을 만들 때 시드를 넣는다(seed.ts). 모듈의 API는 계약의 operationId로 JSON:API 라우터에 단다
- * (jsonapi/router.ts). 가짜 스토리지(/_storage)는 늘 붙고, 테스트 통로(/_test)는
- * MOCK_TEST_ENDPOINTS가 켜져 있을 때만 붙는다.
+ * 앱을 만들 때 시드를 넣고 모듈 사이의 처리를 건다(seed.ts, modules/registry.ts). 모듈의 API는
+ * 계약의 operationId로 JSON:API 라우터에 단다(jsonapi/router.ts). 가짜 스토리지(/_storage)는 늘
+ * 붙고, 테스트 통로(/_test)는 MOCK_TEST_ENDPOINTS가 켜져 있을 때만 붙는다.
  */
 
 import { Hono } from "hono";
@@ -22,7 +22,8 @@ import { createJsonApiRouter } from "./jsonapi/router.ts";
 import { createAuthenticator } from "./modules/auth/credentials.ts";
 import { authRoutes } from "./modules/auth/routes.ts";
 import { fileRoutes } from "./modules/files/routes.ts";
-import { meRoutes } from "./modules/users/me.ts";
+import { connectModules } from "./modules/registry.ts";
+import { userRoutes } from "./modules/users/routes.ts";
 import { seed } from "./seed.ts";
 import { createState, type MockState } from "./state.ts";
 import { STORAGE_PATH } from "./storage/bucket.ts";
@@ -33,6 +34,7 @@ import { traceIdMiddleware } from "./trace-id.ts";
 /** 앱을 만든다. state를 주지 않으면 빈 상태로 시작한다(테스트는 상태를 넘겨 들여다본다). */
 export function createApp(config: MockConfig, state: MockState = createState()): Hono<AppEnv> {
   seed(state, config);
+  connectModules(state);
   const app = new Hono<AppEnv>();
   app.use(traceIdMiddleware);
   app.use(negotiationMiddleware);
@@ -40,7 +42,7 @@ export function createApp(config: MockConfig, state: MockState = createState()):
   app.route("/health", healthRoutes());
   const api = createJsonApiRouter(app, createAuthenticator(state));
   authRoutes(api, config, state);
-  meRoutes(api, config, state);
+  userRoutes(api, config, state);
   fileRoutes(api, config, state);
   app.route(STORAGE_PATH, storageRoutes(config, state.storage));
   if (config.testEndpoints) {

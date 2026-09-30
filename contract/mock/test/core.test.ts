@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { AppEnv } from "../src/context.ts";
 import { clientOf } from "../src/core/client.ts";
 import { formatInstant, HOUR, SECOND, systemClock } from "../src/core/clock.ts";
-import { parseUuid, uuid7 } from "../src/core/ids.ts";
+import { parsePythonUuid, parseUuid, uuid7 } from "../src/core/ids.ts";
 import { createRateLimiter } from "../src/core/rate-limit.ts";
 import { checkPassword, digest, hashPassword } from "../src/core/security.ts";
 import { testClock } from "./support.ts";
@@ -47,6 +47,29 @@ describe("UUID", () => {
     ["urn:uuid:0199a0b28c3e7abc8def0123456789ab", undefined],
   ])("Pydantic처럼 %s를 %s로 읽는다", (value, expected) => {
     expect(parseUuid(value)).toBe(expected);
+  });
+
+  // 기대값은 Python 3.14의 uuid.UUID()로 확인했다.
+  it.each([
+    ["{{0199a0b28c3e7abc8def0123456789ab}}", "0199a0b2-8c3e-7abc-8def-0123456789ab"],
+    ["urn:urn:uuid:0199A0B28C3E7ABC8DEF0123456789AB", "0199a0b2-8c3e-7abc-8def-0123456789ab"],
+    ["0-1-9-9a0b28c3e7abc8def0123456789ab", "0199a0b2-8c3e-7abc-8def-0123456789ab"],
+    ["}0199a0b28c3e7abc8def0123456789ab{", "0199a0b2-8c3e-7abc-8def-0123456789ab"],
+    [" 199a0b28c3e7abc8def0123456789ab", "0199a0b2-8c3e-7abc-8def-0123456789ab"],
+    ["\u3000199a0b28c3e7abc8def0123456789ab", "0199a0b2-8c3e-7abc-8def-0123456789ab"],
+    ["+0x199a0b28c3e7abc8def0123456789", "000199a0-b28c-3e7a-bc8d-ef0123456789"],
+    ["0199_0b28c3e7abc8def0123456789ab", "001990b2-8c3e-7abc-8def-0123456789ab"],
+    ["\u0661199a0b28c3e7abc8def0123456789ab", "1199a0b2-8c3e-7abc-8def-0123456789ab"],
+    ["\u{1d7d9}199a0b28c3e7abc8def0123456789ab", "1199a0b2-8c3e-7abc-8def-0123456789ab"],
+    ["0199__b28c3e7abc8def0123456789ab", undefined],
+    ["_199a0b28c3e7abc8def0123456789ab", undefined],
+    ["-199a0b28c3e7abc8def0123456789ab", undefined],
+    ["\u001c199a0b28c3e7abc8def0123456789ab", undefined],
+    ["\ufeff199a0b28c3e7abc8def0123456789ab", undefined],
+    ["\u00e9199a0b28c3e7abc8def0123456789ab", undefined],
+    ["not-a-uuid", undefined],
+  ])("Python의 uuid.UUID()처럼 %j를 %s로 읽는다", (value, expected) => {
+    expect(parsePythonUuid(value)).toBe(expected);
   });
 });
 

@@ -8,6 +8,7 @@ import { createRateLimiter, type RateLimiter } from "./core/rate-limit.ts";
 import { createRealtimeHub, type RealtimeHub } from "./core/realtime.ts";
 import { createOutbox, type Outbox } from "./mail/outbox.ts";
 import { createFileRegistry, type FileRegistry } from "./modules/files/registry.ts";
+import type { AccountCloser } from "./modules/users/accounts.ts";
 import { createStorage, type Storage } from "./storage/bucket.ts";
 import { createStore, type Store } from "./store.ts";
 
@@ -26,6 +27,8 @@ export interface MockState {
   readonly storage: Storage;
   /** 파일 읽기 규칙, 참조 확인, 삭제 처리. 파일을 가리키는 모듈이 앱을 조립할 때 등록한다. */
   readonly fileRegistry: FileRegistry;
+  /** 계정을 닫을 때(비활성화, 탈퇴) 부를 처리. auth가 앱을 조립할 때 등록한다. */
+  readonly accountClosers: AccountCloser[];
 }
 
 export interface StateOptions {
@@ -42,5 +45,6 @@ export function createState(options: StateOptions = {}): MockState {
     outbox: createOutbox(),
     storage: createStorage(clock),
     fileRegistry: createFileRegistry(),
+    accountClosers: [],
   };
 }

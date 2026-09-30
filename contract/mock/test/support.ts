@@ -85,3 +85,16 @@ export function revokedReasons(state: MockState, userId: string): () => unknown[
       .filter((event) => event.rooms.includes(`user:${userId}`))
       .map((event) => [event.name, (event.payload as { meta: { reason: string } }).meta.reason]);
 }
+
+/**
+ * 지금부터 실시간 허브로 나가는 것을 나간 차례대로 모은다. 이벤트는 [이름, 룸, 페이로드], 연결 재검사는
+ * ["recheck", 사용자 id]다(FastAPI 테스트의 RecordingPublisher).
+ */
+export function realtimeLog(state: MockState): unknown[] {
+  const log: unknown[] = [];
+  state.realtime.listen({
+    event: (event) => log.push([event.name, event.rooms, event.payload]),
+    recheck: (userIds) => log.push(["recheck", [...userIds]]),
+  });
+  return log;
+}
