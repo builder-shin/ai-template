@@ -8,9 +8,9 @@
  *
  * 앱을 만들 때 시드를 넣고 모듈 사이의 처리를 건다(seed.ts, modules/registry.ts). 모듈의 API는
  * 계약의 operationId로 JSON:API 라우터에 단다(jsonapi/router.ts). 가짜 스토리지(/_storage)는 늘
- * 붙고, 테스트 통로(/_test/mail, 가짜 OAuth 서버 /_mock/oauth)는 MOCK_TEST_ENDPOINTS가 켜져 있을 때만
- * 붙는다. 실시간(Socket.IO)은 HTTP 서버에 붙으므로 main.ts가 띄운 서버에 attachRealtime으로 붙인다
- * (modules/realtime/server.ts).
+ * 붙고, 테스트 통로(/_test/mail, 메일 보관함 화면 /_mock/mail, 가짜 OAuth 서버 /_mock/oauth)는
+ * MOCK_TEST_ENDPOINTS가 켜져 있을 때만 붙는다. 실시간(Socket.IO)은 HTTP 서버에 붙으므로 main.ts가 띄운
+ * 서버에 attachRealtime으로 붙인다(modules/realtime/server.ts).
  */
 
 import { Hono } from "hono";
@@ -37,6 +37,7 @@ import { createState, type MockState } from "./state.ts";
 import { STORAGE_PATH } from "./storage/bucket.ts";
 import { storageRoutes } from "./storage/routes.ts";
 import { mailTestRoutes } from "./test-endpoints/mail.ts";
+import { MAIL_PAGE_PATH, mailPageRoutes } from "./test-endpoints/mail-page.ts";
 import { traceIdMiddleware } from "./trace-id.ts";
 
 /** 앱을 만든다. state를 주지 않으면 빈 상태로 시작한다(테스트는 상태를 넘겨 들여다본다). */
@@ -59,6 +60,7 @@ export function createApp(config: MockConfig, state: MockState = createState()):
   app.route(STORAGE_PATH, storageRoutes(config, state.storage));
   if (config.testEndpoints) {
     app.route("/_test/mail", mailTestRoutes(state.outbox));
+    app.route(MAIL_PAGE_PATH, mailPageRoutes(state.outbox));
     app.route(OAUTH_SERVER_PATH, oauthServerRoutes(state.oauthServer));
   }
   app.notFound(handleNotFound);

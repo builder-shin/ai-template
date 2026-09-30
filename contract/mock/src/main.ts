@@ -12,6 +12,7 @@ import { createApp } from "./app.ts";
 import { ConfigError, loadConfig, type MockConfig } from "./config.ts";
 import { attachRealtime, type RealtimeServer } from "./modules/realtime/server.ts";
 import { createState } from "./state.ts";
+import { MAIL_PAGE_PATH } from "./test-endpoints/mail-page.ts";
 
 const SIGNALS = ["SIGINT", "SIGTERM"] as const;
 
@@ -45,9 +46,12 @@ const state = createState();
 const app = createApp(config, state);
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
-  const testEndpoints = config.testEndpoints ? "켜짐" : "꺼짐";
+  const root = `http://localhost:${String(info.port)}`;
+  const testEndpoints = config.testEndpoints
+    ? `켜짐, 메일 보관함 ${root}${MAIL_PAGE_PATH}`
+    : "꺼짐";
   console.log(
-    `목 서버가 떴다: http://localhost:${String(info.port)} (테스트 통로 ${testEndpoints}, 시드 관리자 ${config.seedAdmin.email})`,
+    `목 서버가 떴다: ${root} (테스트 통로 ${testEndpoints}, 시드 관리자 ${config.seedAdmin.email})`,
   );
 });
 const realtime = attachRealtime(server, config, state);

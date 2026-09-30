@@ -1,6 +1,6 @@
 /**
  * 가짜 OAuth 서버의 화면(HTML). 개발하면서 사람이 신원을 골라 로그인하는 폼과, 인가 요청이 틀렸을 때의
- * 안내다. 꾸밈 도구 없이 짧은 인라인 스타일만 쓴다.
+ * 안내다. 꾸밈 도구 없이 짧은 인라인 스타일만 쓴다(화면의 뼈대와 이스케이프는 ../html.ts).
  *
  * 폼은 인가 화면 주소(쿼리 포함)로 그대로 POST한다(action이 없다). 필드 이름은 routes.ts가 읽는다.
  * username 입력칸, claims 입력칸, 로그인 버튼(input[type=submit])은 모의 OAuth 서버
@@ -8,6 +8,7 @@
  * 거부 버튼은 button이라 input[type=submit]에 걸리지 않는다.
  */
 
+import { escapeHtml, htmlPage } from "../html.ts";
 import { type OAuthProvider, personClaims } from "./server.ts";
 
 /** 폼에 다시 채울 값. 제출한 값이 틀려 화면을 다시 보여 줄 때 쓴다. */
@@ -62,32 +63,8 @@ input[type="submit"], button { margin: 1rem 0.5rem 0 0; padding: 0.4rem 1rem; fo
 .note { color: #555; font-size: 0.9rem; }
 .problem { color: #b00020; }`;
 
-function escapeHtml(text: string): string {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
 function page(provider: OAuthProvider, body: string): string {
-  const title = `${NAMES[provider]} 로그인 (목)`;
-  return `<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)}</title>
-<style>${STYLE}
-</style>
-</head>
-<body>
-<h1>${escapeHtml(title)}</h1>
-${body}
-</body>
-</html>
-`;
+  return htmlPage(`${NAMES[provider]} 로그인 (목)`, STYLE, body);
 }
 
 function problemLine(problem: string | undefined): string {

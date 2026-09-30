@@ -1,6 +1,7 @@
 /**
  * 테스트 통로: 메일 보관함(/_test/mail). MOCK_TEST_ENDPOINTS가 켜져 있을 때만 붙는다.
- * JSON:API가 아닌 JSON이다. 적합성 스위트와 E2E가 인증·재설정 메일을 읽는다(Mailpit 대신).
+ * JSON:API가 아닌 JSON이다. 적합성 스위트와 E2E가 인증·재설정 메일을 읽는다(Mailpit 대신). 사람이 보는
+ * 화면은 /_mock/mail이다(mail-page.ts).
  *
  * - GET /_test/mail[?to=<주소>]: { messages: [{ id, to, subject, text, receivedAt }] }, 최신순.
  *   to를 주면 그 주소(대소문자 무시)로 간 메일만 준다.
