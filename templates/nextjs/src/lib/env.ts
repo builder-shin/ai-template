@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const EXAMPLE_SESSION_SECRET = "dev-only-change-this-session-secret"; // betterleaks:allow
+export const EXAMPLE_SESSION_SECRET = "dev-only-change-this-session-secret"; // betterleaks:allow 사유: 운영에서 거절하는 공개 개발 예시
 const httpUrl = z.url({ protocol: /^https?$/ });
 
 export const envSchema = z.object({

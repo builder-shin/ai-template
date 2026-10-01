@@ -4,7 +4,7 @@ import { EXAMPLE_SESSION_SECRET, parseEnv } from "./env";
 const valid = {
   API_BASE_URL: "http://localhost:4010/api/v1",
   APP_URL: "http://localhost:3000",
-  SESSION_SECRET: "x".repeat(32), // betterleaks:allow
+  SESSION_SECRET: "x".repeat(32), // betterleaks:allow 사유: 환경 검증 테스트용 가짜 비밀
   NEXT_PUBLIC_REALTIME_URL: "http://localhost:4010",
 };
 

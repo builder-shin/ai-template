@@ -56,7 +56,7 @@ describe("Next 설정의 환경 검증 시점", () => {
     const result = loadConfig(PHASE_PRODUCTION_SERVER, {
       ...example,
       NODE_ENV: "production",
-      SESSION_SECRET: "x".repeat(32), // betterleaks:allow
+      SESSION_SECRET: "x".repeat(32), // betterleaks:allow 사유: 시작 단계 검증용 가짜 비밀
     });
     expect(result.status, result.stderr).toBe(0);
   });
