@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const excluded = new Set([
@@ -35,4 +35,10 @@ export function isGenerated(path: string) {
     path === "src/lib/api/schema.d.ts" ||
     path === "contract/openapi.yaml"
   );
+}
+
+/** types 캐시는 build/typegen 출력만 본다. 실행 중인 dev 출력은 입력이 아니다. */
+export function readRouteTypes(root: string): Record<string, string> {
+  const directory = join(root, ".next/types");
+  return existsSync(directory) ? readProjectFiles(directory) : {};
 }

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { envSchema } from "../../src/lib/env";
 import { binary, pnpm } from "../process.mjs";
-import { readProjectFiles } from "./files";
+import { readProjectFiles, readRouteTypes } from "./files";
 import ko from "../../messages/ko.json";
 import en from "../../messages/en.json";
 import { errorCodes } from "../../src/lib/generated/error-codes";
@@ -22,7 +22,7 @@ try {
 } catch {
   /* 캐시는 없어도 된다. */
 }
-const steps = assembleSteps(files, fast, related);
+const steps = assembleSteps(files, fast, related, readRouteTypes(root));
 const result = await runChecks(steps, previous, async (step) => {
   if (step.name === "i18n") {
     const problems = checkI18n({ ko, en }, errorCodes);
@@ -42,6 +42,15 @@ const result = await runChecks(steps, previous, async (step) => {
   };
 });
 if (!existsSync(".cache")) mkdirSync(".cache");
+// typegen이 갱신한 next-env와 route 타입을 성공 캐시에 반영한다.
+if (result.cache.types) {
+  result.cache.types = assembleSteps(
+    readProjectFiles(root),
+    fast,
+    related,
+    readRouteTypes(root),
+  ).find((step) => step.name === "types")!.key;
+}
 writeFileSync(cachePath, JSON.stringify(result.cache));
 console.log(result.output);
 process.exitCode = result.ok ? 0 : 1;

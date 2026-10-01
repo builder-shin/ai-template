@@ -4,6 +4,7 @@ export function assembleSteps(
   files: Record<string, string>,
   fast: boolean,
   related: string[],
+  routeTypes: Record<string, string> = {},
 ): Step[] {
   const select = (pattern: RegExp) =>
     Object.fromEntries(
@@ -16,7 +17,11 @@ export function assembleSteps(
   const steps: Step[] = [
     { name: "format", args: ["prettier", "--check", "."], key: fingerprint(files) },
     { name: "lint", args: ["eslint", "."], key: key(/\.[cm]?[jt]sx?$/) },
-    { name: "types", args: ["tsc", "--noEmit"], key: key(/\.[cm]?[jt]sx?$|tsconfig|^messages\//) },
+    {
+      name: "types",
+      args: ["tsx", "scripts/check/types.ts"],
+      key: key(/\.[cm]?[jt]sx?$|tsconfig|^messages\//) + fingerprint(routeTypes),
+    },
     {
       name: fast ? "related-tests" : "tests",
       args: [
