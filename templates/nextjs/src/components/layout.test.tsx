@@ -56,6 +56,7 @@ describe("헤더", () => {
       />,
     );
     expect(screen.queryByRole("link", { name: "로그인" })).toBeNull();
+    expect(screen.getByRole("link", { name: "내 정보" }).getAttribute("href")).toBe("/me");
     const trigger = screen.getByRole("button", { name: "사용자 메뉴: 관리자" });
     if (input === "마우스") await user.click(trigger);
     else {

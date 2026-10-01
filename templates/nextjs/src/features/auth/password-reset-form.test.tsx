@@ -62,12 +62,11 @@ it.each(["ko", "en"] as const)(
         name: locale === "ko" ? "재설정 메일 보내기" : "Send reset email",
       }),
     );
-    expect(await screen.findByRole("status")).toHaveProperty(
-      "textContent",
+    const message =
       locale === "ko"
         ? "입력한 이메일의 계정이 있다면 비밀번호 재설정 메일을 보냈습니다. 받은 편지함을 확인해 주세요."
-        : "If an account exists for that email, we sent a password reset link. Check your inbox.",
-    );
+        : "If an account exists for that email, we sent a password reset link. Check your inbox.";
+    expect((await screen.findByText(message)).getAttribute("role")).toBe("status");
     expect(screen.queryByLabelText(locale === "ko" ? "이메일" : "Email")).toBeNull();
     expect(screen.getByRole("link", { name: locale === "ko" ? "로그인" : "Log in" })).toBeTruthy();
   },
@@ -132,12 +131,11 @@ it.each(["ko", "en"] as const)(
         name: locale === "ko" ? "비밀번호 재설정" : "Reset password",
       }),
     );
-    expect(await screen.findByRole("status")).toHaveProperty(
-      "textContent",
+    const message =
       locale === "ko"
         ? "비밀번호를 재설정했습니다. 새 비밀번호로 로그인해 주세요."
-        : "Your password has been reset. Log in with your new password.",
-    );
+        : "Your password has been reset. Log in with your new password.";
+    expect((await screen.findByText(message)).getAttribute("role")).toBe("status");
     expect(received?.get("token")).toBe("mail-token");
     expect(received?.get("password")).toBe("sample-password");
     expect(screen.queryByLabelText(locale === "ko" ? "새 비밀번호" : "New password")).toBeNull();

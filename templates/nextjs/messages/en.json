@@ -44,7 +44,22 @@
     "invalidTransitionGuidance": "Refresh to check the current status, then try again.",
     "retryAfter": "Try again in {seconds} seconds."
   },
+  "me": {
+    "title": "My profile",
+    "nameLabel": "Name",
+    "localeLabel": "Language",
+    "avatarLabel": "Avatar",
+    "save": "Save",
+    "saved": "Profile saved.",
+    "passwordTitle": "Change password",
+    "currentPasswordLabel": "Current password",
+    "newPasswordLabel": "New password",
+    "passwordGuidance": "Changing your password signs out other devices. This device stays signed in.",
+    "passwordChanged": "Password changed. Other devices have been signed out.",
+    "retryAfter": "Try again in {seconds} seconds."
+  },
   "layout": {
+    "me": "My profile",
     "posts": "Posts",
     "brand": "Web template",
     "home": "Home",

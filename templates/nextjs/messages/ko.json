@@ -44,7 +44,22 @@
     "invalidTransitionGuidance": "새로고침으로 현재 상태를 확인한 뒤 다시 시도하세요.",
     "retryAfter": "{seconds}초 뒤에 다시 시도해 주세요."
   },
+  "me": {
+    "title": "내 정보",
+    "nameLabel": "이름",
+    "localeLabel": "언어",
+    "avatarLabel": "아바타",
+    "save": "저장",
+    "saved": "내 정보를 저장했습니다.",
+    "passwordTitle": "비밀번호 변경",
+    "currentPasswordLabel": "현재 비밀번호",
+    "newPasswordLabel": "새 비밀번호",
+    "passwordGuidance": "비밀번호를 바꾸면 다른 기기에서 로그아웃됩니다. 이 기기의 로그인은 유지됩니다.",
+    "passwordChanged": "비밀번호를 변경했습니다. 다른 기기에서 로그아웃되었습니다.",
+    "retryAfter": "{seconds}초 뒤에 다시 시도해 주세요."
+  },
   "layout": {
+    "me": "내 정보",
     "posts": "글",
     "brand": "Web 템플릿",
     "home": "홈",

@@ -144,12 +144,11 @@ it.each(["ko", "en"] as const)(
       .click(
         screen.getByRole("button", { name: locale === "ko" ? "이메일 인증" : "Verify email" }),
       );
-    expect(await screen.findByRole("status")).toHaveProperty(
-      "textContent",
+    const message =
       locale === "ko"
         ? "이메일 인증을 마쳤습니다. 이제 로그인할 수 있습니다."
-        : "Your email is verified. You can log in now.",
-    );
+        : "Your email is verified. You can log in now.";
+    expect((await screen.findByText(message)).getAttribute("role")).toBe("status");
     expect(received).toBe("mail-token");
     expect(screen.getByRole("link", { name: locale === "ko" ? "로그인" : "Log in" })).toBeTruthy();
   },

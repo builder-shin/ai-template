@@ -82,6 +82,14 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 성공하면 새 비밀번호로 로그인하는 링크를 보여 준다. 백엔드가 모든 세션을 폐기하므로 Action도 현재 브라우저의 세션 쿠키를 지워 성공 화면의 헤더를 익명 상태로 렌더링한다. 두 폼은 로케일별 permalink를 사용해 JS 없이도 결과를 복원한다.
 
+## 내 정보와 비밀번호 변경
+
+`/me`는 보호된 화면이다. `features/me/queries.ts`가 `include=avatar`로 이름·계정 언어·아바타를 읽고, 저장 Action은 현재 세션에서 본인 id를 읽어 `PATCH /me`를 호출한다. 이름 저장 뒤 로케일 레이아웃을 갱신해 헤더와 글 작성자 이름도 다시 읽는다. 계정 언어를 `NEXT_LOCALE`에 쓰고 UI 언어와 다르면 한국어 `/me` 또는 영어 `/en/me`로 이동한다.
+
+아바타는 `features/files`의 업로드를 재사용한다. 업로드에는 JavaScript가 필요하며 ready 파일 id만 폼에 연결한다. 업로드 중 프로필 저장을 막는다. 빈 아바타 값은 관계를 해제하고 필드를 생략하면 기존 관계를 보존한다. 이름·언어와 현재 아바타의 저장은 로케일별 permalink와 `useActionState`로 JavaScript 없이도 제출된다.
+
+비밀번호 폼은 `POST /password-changes`에 `currentPassword`와 `newPassword`를 보낸다. 백엔드는 다른 세션만 폐기하므로 현재 쿠키·access token·refresh token을 유지한다. 다른 기기에서 로그아웃된다는 안내를 제출 전과 성공 뒤에 표시한다. `auth.invalid_credentials`의 `currentPassword` pointer가 있는 401은 입력 오류로 번역하고, 실제 세션 오류의 401은 기존 쿠키 정리 route로 보낸다. 비밀번호는 폼 결과에 돌려주지 않는다.
+
 ## API 호출과 에러
 
 `src/lib/api/client.ts`의 `createApiClient`에 요청의 baseUrl(`/api/v1` 포함), locale, accessToken과 선택 traceId를 넘긴다. 화면·Action에서는 `await createSessionApiClient({locale})`로 요청 세션의 access 토큰을 연결한다. 호출 경로는 `/posts`처럼 쓴다. 클라이언트를 전역에 보관하지 않는다. 읽기의 요청 내 중복 제거는 기능 queries에서 `React.cache`로 한다.
