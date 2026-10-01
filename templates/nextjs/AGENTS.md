@@ -40,6 +40,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 갱신은 proxy에서만 한다. 화면·Action은 `createSessionApiClient`로 요청의 토큰을 읽고, 401은 `redirectOnUnauthorized`로 쿠키 정리 route에 보낸다. `/me`·`/my-posts`는 로그인 경로다.
 - 폼은 `<form action>`과 `useActionState`로 만든다. 백엔드가 검증의 원본이다. 제출 버튼은 `useFormStatus`로 막는다. 인증 폼은 로케일별 permalink로 JS 없이도 제출한다.
 - 가입은 `/signup`에서 메일 안내·재발송 화면으로 전환한다. 메일 링크 `/verify-email?token=…`는 쿠키·언어 헤더로 로케일을 고르고 확인 버튼의 Action만 토큰을 소비한다.
+- `/forgot-password`는 계정 존재 여부와 관계없이 같은 메일 안내를 보여 준다. 메일 링크 `/reset-password?token=…`에서 새 비밀번호를 제출하면 성공·로그인 링크를 표시하고 폐기된 세션 쿠키를 지운다.
 - 로그인은 `/me`의 계정 로케일로 `NEXT_LOCALE`과 이동 URL을 맞춘다. `returnTo`는 로케일 접두사 제거 뒤에도 검증한다. 로그아웃은 API 실패여도 쿠키를 지우고 현재 로케일 홈으로 간다.
 - 로딩은 스피너나 스켈레톤만 쓴다. 로딩 문구는 쓰지 않는다. 스피너에는 화면 낭독기용 `aria-label`만 붙인다.
 - 하네스는 TSX 문구와 카탈로그의 로딩 문구를 막는다. `accessibility.spinner`는 aria-label 전용이다.

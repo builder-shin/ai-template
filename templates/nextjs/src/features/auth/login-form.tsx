@@ -79,9 +79,10 @@ export function LoginForm({
         <FormErrors state={state} />
         <SubmitButton>{t("login")}</SubmitButton>
       </form>
-      <Link href="/signup" className="text-sm underline">
-        {t("signup")}
-      </Link>
+      <div className="flex gap-4 text-sm underline">
+        <Link href="/signup">{t("signup")}</Link>
+        <Link href="/forgot-password">{t("forgotPasswordLink")}</Link>
+      </div>
       {verificationEmail && (
         <ResendForm
           email={verificationEmail}

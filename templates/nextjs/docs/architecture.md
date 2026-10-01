@@ -45,7 +45,7 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 레이아웃이 로그아웃 Action을 헤더에 넘긴다. 사용자 메뉴의 버튼은 바깥 HTML 폼과 `form` 속성으로 연결해 포털에서도 제출한다. Action은 `DELETE /sessions/current`를 호출하고 실패해도 `finally`에서 쿠키를 지운 뒤 현재 로케일 홈으로 간다.
 
-실제 Next HTTP 통합 검사는 홈의 세션 헤더와 가입·메일 인증·로그인·재발송·로그아웃 폼을 사용한다. 테스트 중 페이지를 만들거나 Next 타입 파일을 백업하지 않는다. 거절되는 옛 access 토큰과 유효한 refresh 토큰으로 같은 렌더링·Action의 새 토큰 사용을 확인한다.
+실제 Next HTTP 통합 검사는 홈의 세션 헤더와 가입·메일 인증·로그인·재발송·비밀번호 재설정·로그아웃 폼을 사용한다. 테스트 중 페이지를 만들거나 Next 타입 파일을 백업하지 않는다. 거절되는 옛 access 토큰과 유효한 refresh 토큰으로 같은 렌더링·Action의 새 토큰 사용을 확인한다.
 
 ## 가입과 메일 인증
 
@@ -54,6 +54,14 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 목과 FastAPI는 `FRONTEND_URL`에 `/verify-email?token=…`를 붙인다. 이 경로를 그대로 제공하며 로케일 접두사가 없는 첫 요청은 `NEXT_LOCALE`, `Accept-Language`, 기본 ko 순으로 고른다. 영어는 토큰 쿼리를 유지한 `/en/verify-email`로 이동한다. 계정의 로케일은 인증 전에는 알 수 없으므로 메일의 언어를 URL에서 추측하지 않는다.
 
 링크의 GET은 확인 폼만 보여 주며 버튼의 Server Action이 `POST /email-verifications`를 호출한다. 메일 미리보기·prefetch·언어 전환으로 토큰을 소모하지 않는다. 성공은 로그인 링크를, 실패는 번역한 안내를 보여 준다. 토큰 누락·반복 쿼리는 실패 안내로 처리한다. 토큰은 반환 상태·API 로그에 넣지 않으며 토큰 pointer는 편집할 입력칸이 없어 폼 오류로 연결한다.
+
+## 비밀번호 재설정
+
+로그인의 안내 링크는 `/forgot-password`로 간다. 이메일을 `POST /password-reset-requests`에 보내며 계정 존재 여부와 관계없이 같은 성공 상태·메일 안내를 보여 준다. 이메일 형식 오류는 입력칸에 연결하고, 메일 요청 한도는 계정 여부와 관계없이 `Retry-After`로 안내한다.
+
+목과 FastAPI의 메일 경로는 `/reset-password?token=…`다. 인증 메일과 같은 쿠키·언어 헤더 규칙으로 로케일을 고른다. GET은 새 비밀번호 폼만 보여 주며 Action이 `POST /password-resets`에 메일 토큰과 `password`를 보낸다. 누락·반복 token 쿼리는 제출 없이 번역한 오류를 보여 준다. 토큰 오류는 폼 안내, 비밀번호 pointer는 입력 오류로 번역한다. 비밀번호·토큰은 반환 상태나 API 로그에 넣지 않는다.
+
+성공하면 새 비밀번호로 로그인하는 링크를 보여 준다. 백엔드가 모든 세션을 폐기하므로 Action도 현재 브라우저의 세션 쿠키를 지워 성공 화면의 헤더를 익명 상태로 렌더링한다. 두 폼은 로케일별 permalink를 사용해 JS 없이도 결과를 복원한다.
 
 `src/lib/i18n/request.ts`는 선택한 카탈로그와 `TIME_ZONE`을 반환한다. 레이아웃은 같은 메시지와 시간대를 `NextIntlClientProvider`에 전달한다. 서버의 `getFormatter`와 클라이언트의 `useFormatter`를 써서 호스트 시간대 차이에 따른 날짜 불일치를 막는다. 기본 시간대는 `Asia/Seoul`이다.
 
