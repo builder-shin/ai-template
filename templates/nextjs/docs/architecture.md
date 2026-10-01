@@ -99,7 +99,7 @@ Stop은 세션 시작 또는 마지막 통과 때의 스냅샷과 비교하므�
 App Router 템플릿은 Pages 전용 `no-html-link-for-pages` 규칙만 끈다. 저장소 루트의 pre-commit과 프로젝트 안의 린트가 같은 설정을 쓴다.
 생성물 검사는 TypeSpec 계약과 web·목 타입을 재생성해 비교한다. E2E는 별도 `pnpm test:e2e`로 실행한다.
 
-PreToolUse의 셸 검사는 단어 기반의 최선 검사다. `git push -fv`처럼 짧은 옵션 그룹의 어느 위치에든 `f`가 있으면 래퍼 안에서도 강제 push를 막는다. 권한 deny 글롭도 결합 옵션을 보수적으로 막는다. 별도 프로그램 안에서 파일을 여는 동작까지 해석하지 않는다.
+PreToolUse의 셸 검사는 단어 기반의 최선 검사다. `git push -fv`처럼 짧은 옵션 그룹의 어느 위치에든 `f`가 있으면 래퍼 안에서도 강제 push를 막는다. 권한 deny 글롭은 명시적인 `-f`·`--force`·`--force-with-lease`만 막고 결합 옵션은 hook이 검사한다. `--follow-tags`·`--no-follow-tags` 같은 일반 긴 옵션은 허용한다. 별도 프로그램 안에서 파일을 여는 동작까지 해석하지 않는다.
 Hook JSON 형식의 기준은 [Claude Code 공식 문서](https://code.claude.com/docs/en/hooks)다.
 저장소 비밀 스캔의 `@inquirer/password` 예외는 중첩 잠금 파일 경로와 패키지 이름을 모두 만족해야 한다. 독립 템플릿은 기본 prefilter로 잠금 파일을 제외하므로 별도 패키지 이름 예외를 두지 않는다. 수기 소스의 같은 표식은 비밀번호를 허용하지 않는다.
 

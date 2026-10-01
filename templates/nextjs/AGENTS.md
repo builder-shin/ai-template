@@ -64,6 +64,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 템플릿 밖의 파일에 의존하지 않는다. 비밀 스캔 허용 목록은 계약 사본과 생성물로 제한한다.
 - 테스트·개발 예시의 가짜 비밀에는 같은 줄의 주석에 `betterleaks:allow 사유: 설명`을 적는다.
 - 커밋 메시지는 영문 Conventional Commits다. AI 태그와 트레일러, `--no-verify`는 쓰지 않는다.
+- 강제 push 권한은 명시적인 `-f`·`--force`·`--force-with-lease`만 막는다. 결합된 짧은 옵션은 hook이 검사하며 `--follow-tags` 같은 일반 긴 옵션은 허용한다.
 
 ## 완료 기준과 문서
 

@@ -49,9 +49,31 @@ it("독립 프로젝트의 계약·목 소스는 편집할 수 있고 생성물�
   }
 });
 
-it("강제 push 권한의 짧은 옵션 그룹과 hook의 방어 범위를 맞춘다", () => {
+it("강제 push의 명시적 옵션만 권한으로 막고 일반 긴 옵션은 허용한다", () => {
   const settings = JSON.parse(readFileSync(".claude/settings.json", "utf8"));
   for (const tool of ["Bash", "PowerShell"]) {
-    expect(settings.permissions.deny).toContain(`${tool}(git push *-*f* *)`);
+    const denied = (command: string) =>
+      settings.permissions.deny.some((rule: string) => {
+        if (!rule.startsWith(`${tool}(`)) return false;
+        const pattern = rule
+          .slice(tool.length + 1, -1)
+          .split("*")
+          .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+          .join(".*");
+        return new RegExp(`^${pattern}$`).test(command);
+      });
+    for (const command of [
+      "git push -f origin main",
+      "git push --force origin main",
+      "git push --force-with-lease origin main",
+    ])
+      expect(denied(command), `${tool}: ${command}`).toBe(true);
+    for (const command of [
+      "git push --follow-tags origin main",
+      "git push --prune --follow-tags origin main",
+      "git push --no-follow-tags origin main",
+      "git push origin main",
+    ])
+      expect(denied(command), `${tool}: ${command}`).toBe(false);
   }
 });
