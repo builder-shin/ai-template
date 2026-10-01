@@ -146,7 +146,15 @@ it("실제 브라우저의 공개 채널은 목록·상세·404 뒤 안내를 �
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext({ locale: "ko-KR" });
+    await context.addCookies([
+      {
+        name: "session",
+        value: await sealSession({ ...owner.session, sessionId: owner.id }, EXAMPLE_SESSION_SECRET),
+        url: inject("httpBaseUrl"),
+      },
+    ]);
     const page = await context.newPage();
+    const updates = observeDraftUpdates(page);
     const websocket = waitForRealtime(page, true);
     await page.goto(
       `${inject("httpBaseUrl")}/posts?q=${encodeURIComponent(post.attributes.title)}`,
@@ -182,8 +190,27 @@ it("실제 브라우저의 공개 채널은 목록·상세·404 뒤 안내를 �
       "이 글의 발행이 취소되었습니다.",
     );
     await browserExpect(page.getByText("실시간 본문", { exact: true })).toHaveCount(0);
+    const draftUpdated = updates.wait(post.id);
+    const draftRefreshed = page.waitForResponse(
+      (response) =>
+        response.request().headers()["rsc"] === "1" &&
+        new URL(response.url()).pathname === `/posts/${post.id}`,
+    );
+    await owner.client.PATCH("/posts/{id}", {
+      params: { path: { id: post.id } },
+      body: {
+        data: { type: "posts", id: post.id, attributes: { body: "작성자만 받는 draft 본문" } },
+      },
+    });
+    await draftUpdated;
+    await (await draftRefreshed).finished();
+    await browserExpect(page.locator("main").getByRole("alert")).toHaveText(
+      "이 글의 발행이 취소되었습니다.",
+    );
+    await browserExpect(page.getByText("작성자만 받는 draft 본문", { exact: true })).toHaveCount(0);
     await change("published");
     await browserExpect(page.getByRole("heading", { name: post.attributes.title })).toBeVisible();
+    await browserExpect(page.getByText("작성자만 받는 draft 본문", { exact: true })).toBeVisible();
     await owner.client.DELETE("/posts/{id}", { params: { path: { id: post.id } } });
     await browserExpect(page.locator("main").getByRole("alert")).toHaveText(
       "이 글이 삭제되었습니다.",

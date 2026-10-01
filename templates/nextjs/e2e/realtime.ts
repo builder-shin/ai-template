@@ -9,16 +9,21 @@ export function observeRealtime(page: Page) {
     if (new URL(socket.url()).pathname !== "/socket.io/") return;
     let postsAck: string | undefined;
     socket.on("framesent", ({ payload }) => {
-      const match = String(payload).match(/^42(\d+)(\[.*)$/);
+      const match = String(payload).match(/^42(\d*)(\[.*)$/);
       if (!match) return;
       const [event, data] = JSON.parse(match[2]!) as [string, { channel?: string }];
       if (event === "subscribe" && data.channel === "posts") postsAck = match[1];
+      if (event === "unsubscribe" && data.channel === "posts") {
+        subscribed.delete(socket);
+        postsAck = undefined;
+      }
     });
     socket.on("framereceived", ({ payload }) => {
       const frame = String(payload);
       if (frame.startsWith("40")) connected.add(socket);
       if (postsAck && frame.startsWith(`43${postsAck}[`)) {
         const [ack] = JSON.parse(frame.slice(2 + postsAck.length)) as { ok: boolean }[];
+        postsAck = undefined;
         if (ack?.ok) subscribed.add(socket);
       }
       const event = frame.match(/^42\d*(\[.*)$/);
@@ -30,6 +35,7 @@ export function observeRealtime(page: Page) {
     socket.on("close", () => {
       connected.delete(socket);
       subscribed.delete(socket);
+      postsAck = undefined;
     });
   });
   return {

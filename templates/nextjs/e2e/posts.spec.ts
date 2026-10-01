@@ -93,6 +93,8 @@ test("다른 컨텍스트의 발행·취소가 공개 목록에 새로고침 없
   try {
     const reader = await peer.newPage();
     const realtime = observeRealtime(reader);
+    let sockets = 0;
+    reader.on("websocket", () => sockets++);
     let documents = 0;
     reader.on("request", (request) => {
       if (request.isNavigationRequest() && request.frame() === reader.mainFrame()) documents += 1;
@@ -102,6 +104,18 @@ test("다른 컨텍스트의 발행·취소가 공개 목록에 새로고침 없
     await expect(reader.getByRole("link", { name: title, exact: true })).toHaveCount(0);
     // 실제 posts 구독 ack 뒤에 발행하여 연결 시작과 변경의 경합을 없앤다.
     await expect.poll(() => realtime.postsSubscribed).toBe(true);
+    const connectedSockets = sockets;
+    await reader
+      .getByRole("banner")
+      .getByRole("link", { name: en.layout.home, exact: true })
+      .click();
+    await expect(reader).toHaveURL("/en");
+    await expect.poll(() => realtime.postsSubscribed).toBe(false);
+    expect(realtime.connected).toBe(true);
+    await reader.goBack();
+    await expect(reader).toHaveURL(path);
+    await expect.poll(() => realtime.postsSubscribed).toBe(true);
+    expect(sockets).toBe(connectedSockets);
     await page.getByRole("button", { name: en.posts.publish, exact: true }).click();
     await expect(reader.getByRole("link", { name: title, exact: true })).toBeVisible();
     expect(realtime.received.has("post.published")).toBe(true);

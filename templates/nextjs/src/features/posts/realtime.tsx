@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "../../lib/i18n/navigation";
@@ -35,13 +35,21 @@ export function PostsRealtime() {
 /** 상세 layout에 두어 새 서버 응답이 404여도 변경 안내를 보존한다. */
 export function PostRealtime({ id, children }: { id: string; children: ReactNode }) {
   const t = useTranslations("posts");
+  const router = useRouter();
   const refresh = usePostRefresh();
   const [notice, setNotice] = useState<"deletedNotice" | "unpublishedNotice" | null>(null);
   useChannel("posts", (event) => {
     if (event.payload.data.id !== id) return;
     if (event.name === "post.deleted") setNotice("deletedNotice");
     else if (event.name === "post.unpublished") setNotice("unpublishedNotice");
-    else setNotice(null);
+    else if (event.payload.data.attributes.status === "published" && notice) {
+      // 옛 not-found 자식을 먼저 드러내지 않고 새 서버 화면과 안내 해제를 함께 반영한다.
+      startTransition(() => {
+        setNotice(null);
+        router.refresh();
+      });
+      return;
+    }
     refresh();
   });
   if (!notice) return children;

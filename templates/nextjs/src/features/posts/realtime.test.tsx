@@ -18,11 +18,18 @@ afterEach(() => {
   vi.useRealTimers();
   vi.clearAllMocks();
 });
-function event(name: "post.deleted" | "post.unpublished" | "post.updated", id = "current-post") {
+function event(
+  name: "post.deleted" | "post.unpublished" | "post.updated" | "post.published",
+  id = "current-post",
+  status: "draft" | "published" = "published",
+) {
   const handler = vi.mocked(useChannel).mock.calls.at(-1)![1];
-  // 같은 글 판별에는 모든 계약 이벤트의 data.id만 쓴다.
+  // 이 검사는 같은 글과 공개 상태만 사용한다.
   act(() =>
-    handler({ name, payload: { data: { type: "posts", id } } } as Parameters<typeof handler>[0]),
+    handler({
+      name,
+      payload: { data: { type: "posts", id, attributes: { status } } },
+    } as Parameters<typeof handler>[0]),
   );
 }
 it("공개 목록은 짧은 시간의 글 변경을 한 번으로 모으고 해제 때 타이머를 지운다", () => {
@@ -39,6 +46,32 @@ it("공개 목록은 짧은 시간의 글 변경을 한 번으로 모으고 해�
   view.unmount();
   act(() => vi.advanceTimersByTime(100));
   expect(refresh).toHaveBeenCalledTimes(1);
+});
+
+it("작성자 방의 draft 수정은 발행 취소 안내를 보존하고 재발행만 안내를 지운다", () => {
+  vi.useFakeTimers();
+  const wrap = (body: string) => (
+    <NextIntlClientProvider locale="ko" messages={ko}>
+      <PostRealtime id="current-post">
+        <p>{body}</p>
+      </PostRealtime>
+    </NextIntlClientProvider>
+  );
+  const view = render(wrap("공개 본문"));
+  event("post.unpublished", "current-post", "draft");
+  act(() => vi.advanceTimersByTime(100));
+  view.rerender(wrap("서버의 404"));
+  event("post.updated", "current-post", "draft");
+  act(() => vi.advanceTimersByTime(100));
+  expect(screen.getByRole("alert").textContent).toBe(ko.posts.unpublishedNotice);
+  expect(screen.queryByText("서버의 404")).toBeNull();
+  expect(refresh).toHaveBeenCalledTimes(2);
+  event("post.published", "current-post", "published");
+  act(() => vi.advanceTimersByTime(100));
+  view.rerender(wrap("재발행 본문"));
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByText("재발행 본문")).toBeTruthy();
+  expect(refresh).toHaveBeenCalledTimes(3);
 });
 it.each(["ko", "en"] as const)(
   "%s 상세는 같은 글만 갱신하고 삭제·발행 취소 안내를 보존한다",
