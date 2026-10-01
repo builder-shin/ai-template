@@ -19,6 +19,14 @@ it("중복 쿼리의 첫 값을 쓰고 잘못된 정렬·페이지는 기본값�
   });
 });
 
+it.each([
+  ["공개 글", parsePostSearch],
+  ["내 글", parseMyPostSearch],
+])("%s 페이지는 int32 상한을 지키고 초과값은 첫 페이지로 돌린다", (_, parse) => {
+  expect(parse({ page: "2147483647" }).page).toBe(2147483647);
+  expect(parse({ page: "2147483648" }).page).toBe(1);
+});
+
 it("내 글 상태는 중복값의 첫 값만 쓰고 잘못된 상태·페이지는 기본값이다", () => {
   expect(parseMyPostSearch({ status: ["draft", "published"], page: "2", size: "1" })).toEqual({
     status: "draft",

@@ -37,6 +37,9 @@ export const postSorts = {
 } as const;
 export type PostSort = keyof typeof postSorts;
 
+// 계약의 page[number]는 int32다.
+const PAGE_NUMBER_MAX = 2_147_483_647;
+
 export function parsePostSearch(params: Record<string, string | string[] | undefined>) {
   const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
   const sort = first(params.sort);
@@ -47,7 +50,7 @@ export function parsePostSearch(params: Record<string, string | string[] | undef
   return {
     q: first(params.q)?.trim() ?? "",
     sort: sort === "published" || sort === "title" ? sort : ("latest" as PostSort),
-    page: positive(first(params.page), 1, Number.MAX_SAFE_INTEGER),
+    page: positive(first(params.page), 1, PAGE_NUMBER_MAX),
     size: positive(first(params.size), 10, 100),
   };
 }
