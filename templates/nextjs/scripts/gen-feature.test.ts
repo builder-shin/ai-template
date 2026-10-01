@@ -10,18 +10,20 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { binary, pnpm } from "./process.mjs";
+import { pnpm } from "./process.mjs";
+import { pathToFileURL } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
 let temporary: string;
 let project: string;
+let copiedTools: typeof import("./process.mjs");
 function run(name: string, ...args: string[]) {
-  return binary("tsx", [join(root, "scripts/gen-feature.ts"), name, ...args], { cwd: project });
+  return copiedTools.pnpm(["gen:feature", name, ...args], { cwd: project });
 }
 function file(path: string) {
   return readFileSync(join(project, path), "utf8");
 }
-function copyProject() {
+async function copyProject() {
   mkdirSync(join(root, ".cache"), { recursive: true });
   temporary = mkdtempSync(join(root, ".cache/gen-feature-"));
   project = join(temporary, "project");
@@ -49,6 +51,12 @@ function copyProject() {
     cwd: project,
   });
   expect(installed.status, installed.stdout + installed.stderr).toBe(0);
+  copiedTools = await import(pathToFileURL(join(project, "scripts/process.mjs")).href);
+  // 이 사본의 CLI가 실행됐는지 결과로 확인한다.
+  writeFileSync(
+    join(project, "scripts/gen-feature.ts"),
+    'console.info("copied-generator-entry");\n' + file("scripts/gen-feature.ts"),
+  );
   // 중첩된 임시 경로에서도 Tailwind가 사본의 화면 소스만 검사하게 한다.
   writeFileSync(
     join(project, "src/app/globals.css"),
@@ -72,6 +80,7 @@ describe("골든 기능 생성", () => {
     );
     const result = run("blog-posts");
     expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain("copied-generator-entry");
     expect(result.stdout).toContain("고칠 곳");
     expect(result.stdout).toContain("src/features/blog-posts/queries.ts");
     expect(file("src/features/blog-posts/index.ts")).toContain("getBlogPosts");
@@ -185,7 +194,7 @@ it("이름", () => {
         ],
       ],
     ] as const) {
-      const result = binary(command, [...args], { cwd: project });
+      const result = copiedTools.binary(command, [...args], { cwd: project });
       expect(result.status, `${command}:\n${result.stdout}\n${result.stderr}`).toBe(0);
       console.info(`생성 사본 ${command}: 성공`);
       if (command === "vitest")

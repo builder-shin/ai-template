@@ -2,8 +2,6 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 
-const require = createRequire(import.meta.url);
-
 /** pnpm의 JS 또는 native 진입점을 인자 배열로 실행한다. */
 export function pnpm(args, options = {}) {
   const entry = process.env.npm_execpath;
@@ -16,7 +14,10 @@ export function pnpm(args, options = {}) {
   });
 }
 
-export function binary(name, args, options = {}) {
+export function binary(name, args, { toolRoot, ...options } = {}) {
+  const require = toolRoot
+    ? createRequire(resolve(toolRoot, "package.json"))
+    : createRequire(import.meta.url);
   const entries = {
     prettier: "prettier",
     eslint: "eslint",
