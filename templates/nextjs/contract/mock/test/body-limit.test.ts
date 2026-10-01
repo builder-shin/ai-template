@@ -1,9 +1,9 @@
 /**
- * 요청 본문 한도(413): 1 MiB를 넘는 본문을 거절한다. 길이를 알리면 읽기 전에, 알리지 않으면
- * 읽으면서 센다. FastAPI 템플릿의 test_body_limit.py와 같은 경우를 본다.
+ * 요청 본문 한도(413): 1 MiB를 넘는 본문을 버린 뒤 거절한다. FastAPI 템플릿의
+ * test_body_limit.py와 같은 경우와 버리기 한도를 본다.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MAX_BODY_SIZE } from "../src/jsonapi/body-limit.ts";
 import { JSONAPI_MEDIA_TYPE } from "../src/jsonapi/media.ts";
 import { codesOf, echoApp, errorsOf } from "./support.ts";
@@ -38,14 +38,14 @@ function streamed(body: ReadableStream<Uint8Array>, headers: Record<string, stri
 }
 
 describe("본문 한도", () => {
-  it("한도를 넘는 본문은 413 jsonapi.content_too_large이고 연결을 닫는다", async () => {
+  it("한도를 넘는 본문은 413 jsonapi.content_too_large이고 연결을 유지한다", async () => {
     const { app } = echoApp();
     const response = await app.request(ECHO, {
       method: "POST",
       body: new Uint8Array(MAX_BODY_SIZE + 1),
       headers: { "Content-Type": JSONAPI_MEDIA_TYPE },
     });
-    expect(response.headers.get("connection")).toBe("close");
+    expect(response.headers.get("connection")).toBeNull();
     expect(await errorsOf(response, 413)).toEqual([
       {
         status: "413",
@@ -56,7 +56,7 @@ describe("본문 한도", () => {
     ]);
   });
 
-  it("Content-Length가 한도를 넘으면 본문을 읽지 않고 거절한다", async () => {
+  it("Content-Length가 한도를 넘으면 본문을 버린 뒤 거절한다", async () => {
     const { app } = echoApp();
     let pulled = false;
     // highWaterMark 0: 누가 읽을 때만 pull이 불린다.
@@ -73,8 +73,44 @@ describe("본문 한도", () => {
     expect(await codesOf(await app.request(ECHO, init), 413)).toEqual([
       "jsonapi.content_too_large",
     ]);
-    expect(pulled).toBe(false);
+    expect(pulled).toBe(true);
   });
+
+  it.each([true, false])("16 MiB를 넘으면 연결을 닫는다(Content-Length: %s)", async (length) => {
+    const { app } = echoApp();
+    const size = 16 * 1024 * 1024 + 1;
+    const headers = length ? { "Content-Length": String(size) } : {};
+    const response = await app.request(ECHO, streamed(chunks(size), headers));
+    expect(await codesOf(response, 413)).toEqual(["jsonapi.content_too_large"]);
+    expect(response.headers.get("connection")).toBe("close");
+  });
+
+  it.each([true, false])(
+    "초과 본문이 멈춰도 5초 뒤 413으로 닫는다(Content-Length: %s)",
+    async (length) => {
+      vi.useFakeTimers();
+      try {
+        const { app } = echoApp();
+        let pulled = false;
+        const stalled = new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (pulled) return;
+            pulled = true;
+            controller.enqueue(new Uint8Array(MAX_BODY_SIZE + 1));
+          },
+        });
+        const headers = length ? { "Content-Length": String(MAX_BODY_SIZE + 1) } : {};
+        const pending = app.request(ECHO, streamed(stalled, headers));
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(5_000);
+        const response = await pending;
+        expect(await codesOf(response, 413)).toEqual(["jsonapi.content_too_large"]);
+        expect(response.headers.get("connection")).toBe("close");
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
 
   it("길이를 알리지 않은 본문은 읽으면서 센다", async () => {
     const { app } = echoApp();

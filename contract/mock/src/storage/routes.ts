@@ -6,7 +6,8 @@
  * - 서명과 만료를 확인한다(bucket.ts). 서명이 없거나 맞지 않으면 403 SignatureDoesNotMatch, 만료됐으면
  *   403 AccessDenied다. 업로드는 Content-Type과 Content-Length가 서명과 같아야 한다.
  * - 올리기는 본문을 저장하고 200과 ETag(본문의 MD5)를 준다. 본문을 읽기 전에 거절하면 연결을
- *   닫는다고 알린다(Connection: close. jsonapi/body-limit.ts의 413과 같은 이유다).
+ *   닫는다고 알린다(Connection: close). API의 초과 본문과 달리 미리 버리지 않으므로,
+ *   @hono/node-server의 응답 뒤 버리기 한도(500ms)가 지나면 업로드 중에도 연결이 닫힐 수 있다.
  * - 내려받기는 저장할 때의 Content-Type으로 준다. 객체가 없으면 404 NoSuchKey다.
  * - 에러 본문은 S3의 XML 에러 문서다.
  * - CORS: 설정의 Origin(STORAGE_ALLOWED_ORIGINS)에 GET, PUT, HEAD를 허용하고, 요청 헤더는 모두 받고,
