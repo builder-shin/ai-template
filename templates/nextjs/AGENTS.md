@@ -50,6 +50,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 에러 번역은 `errors` namespace에 코드와 `meta.params`를 전달한다. 서버·클라이언트의 `getFormatter`/`useFormatter`는 요청 설정과 provider의 같은 `TIME_ZONE`을 쓴다.
 - 루트 레이아웃의 `/me` 실패도 `global-error.tsx`가 번역한 복구 화면과 trace를 보여 준다. 전역 오류 화면은 자체 html·body·스타일·번역 provider를 갖춘다.
 - `.env`를 읽거나 출력하지 않는다. 키는 `.env.example`과 `src/lib/env.ts`에서 확인한다. 운영에는 예시 `SESSION_SECRET`을 쓸 수 없다.
+- `pnpm setup`은 의존성 → 환경 키 보충 → 독립 저장소 hook → Chromium 순서다. 브라우저 설치가 실패해도 앞의 준비를 보존하고 실패 코드로 끝난다. 다시 실행하면 기존 환경 값을 유지한다.
 - 환경 검증은 `next.config.ts`의 개발·운영 서버 phase에서 한다. 빌드에는 서버 비밀이 필요 없다. 잘못된 설정은 서버 시작 때 변수마다 한 줄을 알리고 종료한다.
 - 의존성 버전은 정확히 고정한다. pnpm의 `minimumReleaseAge: 1440`을 유지한다.
 - 생성물은 직접 고치지 않는다. 생성 원본을 고치고 `pnpm gen`한다.

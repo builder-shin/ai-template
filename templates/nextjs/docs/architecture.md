@@ -115,7 +115,7 @@ web 자체 생성물은 첫 줄에 직접 수정 금지 헤더를 둔다. 계약
 
 Vitest global setup이 자유 포트의 실제 복사 목과 Next dev를 하나씩 시작한다. 헤더 오류 검사는 별도 자유 포트의 HTTP 중계에서 `/me` 500만 주입하고, 나머지 요청은 실제 목에 전달한다. `pnpm check`·`pnpm test`는 이 오류 화면을 브라우저에서 확인하므로 `pnpm setup`이 설치한 Chromium이 필요하다. 없으면 서버를 시작하기 전에 설치 안내 한 줄로 실패한다. `scripts/http/`의 i18n·세션 갱신·로그인·가입·비밀번호 재설정 파일은 같은 `helpers.ts`에서 서버 주소·API·폼 제출을 가져온다. 브라우저는 검사 finally에서, Next → 중계 → 목은 global setup의 finally에서 내린다. 개발 포트 3000·4010을 사용하지 않는다.
 
-`pnpm setup`은 고정 Playwright 1.63.0의 Chromium을 설치한다. `pnpm test:e2e`는 headless Chromium에서 운영 코드를 검사한다. Playwright `webServer`가 `scripts/e2e-server.ts`를 실행해 복사 목 readiness → `next build` → `next start` 순서를 보장한다. web은 localhost:3100, 목은 127.0.0.1:4110이다. 두 포트가 사용 중이면 실패하며 기존 서버를 재사용하거나 종료하지 않는다. 개발 서버와 동시에 실행할 수 있는 포트지만 Next 빌드 산출물을 함께 쓰므로 이 프로젝트의 dev·build·check와 E2E는 동시에 실행하지 않는다.
+`pnpm setup`은 의존성 설치 → 환경 키 보충 → 독립 저장소 hook 설치 → 고정 Playwright 1.63.0의 Chromium 설치 순서다. 브라우저 설치가 실패해도 환경과 hook 준비는 남고 실패 코드로 끝난다. 재실행은 기존 환경 값을 유지한다. `pnpm test:e2e`는 headless Chromium에서 운영 코드를 검사한다. Playwright `webServer`가 `scripts/e2e-server.ts`를 실행해 복사 목 readiness → `next build` → `next start` 순서를 보장한다. web은 localhost:3100, 목은 127.0.0.1:4110이다. 두 포트가 사용 중이면 실패하며 기존 서버를 재사용하거나 종료하지 않는다. 개발 서버와 동시에 실행할 수 있는 포트지만 Next 빌드 산출물을 함께 쓰므로 이 프로젝트의 dev·build·check와 E2E는 동시에 실행하지 않는다.
 
 운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. 운영의 Secure·`__Host-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
 
