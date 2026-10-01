@@ -144,3 +144,28 @@ def test_recent_login_allows_up_to_the_window() -> None:
     )
     challenge = 'Bearer error="insufficient_user_authentication", max_age=600'
     assert caught.value.headers == {"WWW-Authenticate": challenge}
+
+
+@pytest.mark.parametrize("seconds", [10, 900])
+def test_recent_login_uses_the_configured_window(seconds: int) -> None:
+    now = datetime(2026, 10, 2, tzinfo=UTC)
+    window = timedelta(seconds=seconds)
+    edge = Principal(
+        user_id=uuid.uuid7(),
+        session_id=uuid.uuid7(),
+        permissions=frozenset(),
+        logged_in_at=now - window,
+    )
+    require_recent_login(edge, now, window=window)
+    older = replace(edge, logged_in_at=edge.logged_in_at - timedelta(microseconds=1))
+    with pytest.raises(ApiError) as caught:
+        require_recent_login(older, now, window=window)
+    assert (caught.value.status, caught.value.code) == (
+        401,
+        ErrorCode.AUTH_REAUTHENTICATION_REQUIRED,
+    )
+    challenge = f'Bearer error="insufficient_user_authentication", max_age={seconds}'
+    assert caught.value.headers == {"WWW-Authenticate": challenge}
+    assert caught.value.detail == (
+        f"Log in again: this needs a session that logged in within {seconds} seconds."
+    )

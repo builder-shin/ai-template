@@ -6,7 +6,7 @@
   권한(403)이 쿼리 오류(400)보다 먼저 나온다. 결과는 request.state.principal에 둔다.
 - 엔드포인트는 PrincipalDep(로그인 필수 선언)이나 OptionalPrincipalDep(로그인 선택)으로 받는다.
   등록된 권한(PermissionRegistry)은 PermissionsDep으로 받는다.
-- 되돌릴 수 없는 동작(탈퇴)은 require_recent_login으로 최근 로그인(RECENT_LOGIN)을 요구한다.
+- 되돌릴 수 없는 동작(탈퇴)은 require_recent_login으로 설정한 창 안의 로그인을 요구한다.
 """
 
 import uuid
@@ -26,7 +26,7 @@ from app.core.permissions import PermissionRegistry
 type Auth = Literal["none", "optional", "required"]
 
 _CHALLENGE = {"WWW-Authenticate": "Bearer"}
-# 되돌릴 수 없는 동작이 요구하는 로그인의 최근성. access token 수명(15분)처럼 API 설계 값이다.
+# 최근 로그인 창의 기본값. 탈퇴 경로는 설정의 RECENT_LOGIN_SECONDS를 넘긴다.
 RECENT_LOGIN = timedelta(minutes=10)
 
 
@@ -127,15 +127,17 @@ def get_permissions(request: Request) -> PermissionRegistry:
     return registry
 
 
-def require_recent_login(principal: Principal, now: datetime) -> None:
-    """로그인한 지 RECENT_LOGIN이 지났으면 401 auth.reauthentication_required다.
+def require_recent_login(
+    principal: Principal, now: datetime, *, window: timedelta = RECENT_LOGIN
+) -> None:
+    """로그인한 지 window(기본 10분)가 지났으면 401 auth.reauthentication_required다.
 
     refresh로는 풀리지 않는다. 클라이언트는 다시 로그인해 받은 새 세션으로 부른다. 응답의
     WWW-Authenticate는 RFC 9470(step-up)의 error와 max_age(초)를 담는다.
     """
-    if now - principal.logged_in_at <= RECENT_LOGIN:
+    if now - principal.logged_in_at <= window:
         return
-    seconds = int(RECENT_LOGIN.total_seconds())
+    seconds = int(window.total_seconds())
     challenge = f'Bearer error="insufficient_user_authentication", max_age={seconds}'
     detail = f"Log in again: this needs a session that logged in within {seconds} seconds."
     raise ApiError(

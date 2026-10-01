@@ -13,6 +13,7 @@ import app.modules.users.service.management as management
 import app.modules.users.service.profile as profile
 from app.core.access import PermissionsDep, Principal, PrincipalDep
 from app.core.clients import ClientDep
+from app.core.config import Settings
 from app.core.db import SessionDep
 from app.core.jsonapi.errors import require_matching_id
 from app.core.jsonapi.media import JsonApiBody
@@ -197,9 +198,14 @@ async def update_me(
 
 @me.route("DELETE", "", DELETE_ME, response_model=None)
 async def delete_me(
-    session: SessionDep, storage: StorageDep, actor: PrincipalDep, client: ClientDep
+    request: Request,
+    session: SessionDep,
+    storage: StorageDep,
+    actor: PrincipalDep,
+    client: ClientDep,
 ) -> Response:
-    await profile.delete_me(session, storage, actor, client)
+    settings: Settings = request.app.state.settings
+    await profile.delete_me(session, storage, actor, client, settings)
     return Response(status_code=204)
 
 

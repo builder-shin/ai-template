@@ -19,7 +19,7 @@
 - `telemetry.py`: OpenTelemetry. 기본으로 꺼 두고 `OTEL_ENABLED=true`면 트레이스를 OTLP로 보낸다. 요청, SQLAlchemy·psycopg, Valkey, httpx, Taskiq를 계측하고, 수동 span은 `tracer(이름)`으로 만든다.
 - `mail.py`: 메일 템플릿 렌더링(`MailTemplates`, 로케일이 없으면 ko)과 SMTP 발송(`send`). 메일은 모듈의 잡이 id를 받아 잡 안에서 만들고 보낸다(예: `auth/jobs.py`).
 - `audit.py`: 감사 로그 테이블(`AuditLog`)과 기록(`record_audit`), 계약의 행위·대상 어휘(`AuditLogAction`, `AuditLogTargetType`). 여러 모듈이 기록하고 읽기 API(audit_logs 모듈)가 users를 포함하므로 core에 둔다.
-- `access.py`: 인증과 권한 검사. 인증기와 레지스트리는 `install_access`로 앱에 건다. 라우트 선언의 `auth`, `permission`을 라우터가 강제하고, 엔드포인트는 `PrincipalDep`, `OptionalPrincipalDep`으로 주체를 받는다. 되돌릴 수 없는 동작은 `require_recent_login(principal, now)`으로 최근 로그인(10분 안, `RECENT_LOGIN`)을 요구하고, 아니면 401 `auth.reauthentication_required`다.
+- `access.py`: 인증과 권한 검사. 인증기와 레지스트리는 `install_access`로 앱에 건다. 라우트 선언의 `auth`, `permission`을 라우터가 강제하고, 엔드포인트는 `PrincipalDep`, `OptionalPrincipalDep`으로 주체를 받는다. 되돌릴 수 없는 동작은 `require_recent_login(principal, now, window=timedelta(seconds=settings.recent_login_seconds))`로 설정한 창 안의 로그인(`RECENT_LOGIN_SECONDS`, 기본 600초)을 요구하고, 아니면 401 `auth.reauthentication_required`다. `max_age`도 같은 창이며 refresh로는 로그인 시각이 바뀌지 않는다.
 - `jsonapi/`: JSON:API 공통 계층(문서 모델, 에러, 협상, 라우트 선언, 쿼리 파서, 렌더링, OpenAPI 후처리). 에러 응답은 모두 `errors.py`의 `error_response`가 만들고 401에는 늘 `WWW-Authenticate`를 담는다. 응답 클래스(`media.py`의 `JsonApiResponse`)는 짝 없는 서로게이트를 `\uXXXX`로 이스케이프한다. 쓰는 법은 `docs/architecture.md`, 예시는 `jsonapi/tests/sample.py`.
 
 ## 규칙
