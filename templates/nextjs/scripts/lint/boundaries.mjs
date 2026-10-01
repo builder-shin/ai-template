@@ -1,4 +1,34 @@
 import boundaries from "eslint-plugin-boundaries";
+import { dirname, resolve } from "node:path";
+
+/** @type {import("eslint").Rule.RuleModule} */
+const testSupport = {
+  meta: {
+    type: "problem",
+    schema: [],
+    messages: { forbidden: "테스트 지원은 테스트와 fixture에서만 가져온다." },
+  },
+  create(context) {
+    const path = context.filename.replaceAll("\\", "/");
+    if (/\.(test|spec)\.[cm]?tsx?$|(?:^|[/\-])fixture\.[cm]?tsx?$|\/lib\/testing\//.test(path))
+      return {};
+    function check(node) {
+      const source = node.source;
+      if (!source || typeof source.value !== "string") return;
+      const target = source.value.startsWith("@/")
+        ? `/src/${source.value.slice(2)}`
+        : resolve(dirname(context.filename), source.value).replaceAll("\\", "/");
+      if (/\/src\/lib\/testing(?:\/|$)/.test(target))
+        context.report({ node: source, messageId: "forbidden" });
+    }
+    return {
+      ImportDeclaration: check,
+      ExportNamedDeclaration: check,
+      ExportAllDeclaration: check,
+      ImportExpression: check,
+    };
+  },
+};
 
 /** @type {import("eslint").Rule.RuleModule} */
 const serverOnly = {
@@ -38,7 +68,10 @@ const serverOnly = {
 export function architectureConfig(root) {
   return {
     files: ["src/**/*.{ts,tsx}"],
-    plugins: { boundaries, template: { rules: { "server-only": serverOnly } } },
+    plugins: {
+      boundaries,
+      template: { rules: { "server-only": serverOnly, "test-support": testSupport } },
+    },
     settings: {
       "boundaries/root-path": root,
       "boundaries/elements": [
@@ -55,6 +88,7 @@ export function architectureConfig(root) {
     },
     rules: {
       "template/server-only": "error",
+      "template/test-support": "error",
       "boundaries/no-unknown-dependencies": "error",
       "boundaries/dependencies": [
         "error",

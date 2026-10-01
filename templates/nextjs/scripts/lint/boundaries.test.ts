@@ -16,7 +16,15 @@ beforeAll(() => {
   writeFileSync(`${root}/src/unknown.ts`, "export const x = 1;\n");
   mkdirSync(`${root}/messages`, { recursive: true });
   writeFileSync(`${root}/messages/ko.json`, '{"home":{"title":"홈"}}\n');
-  for (const name of ["app", "features/a", "features/b", "lib/api", "lib/session", "components"]) {
+  for (const name of [
+    "app",
+    "features/a",
+    "features/b",
+    "lib/api",
+    "lib/session",
+    "lib/testing",
+    "components",
+  ]) {
     mkdirSync(`${root}/src/${name}`, { recursive: true });
     for (const file of ["index.ts", "internal.ts"])
       writeFileSync(`${root}/src/${name}/${file}`, "export const x = 1;\n");
@@ -38,6 +46,22 @@ async function lint(path: string, code: string) {
 }
 
 describe("경계 린트", () => {
+  it.each([
+    ["src/app/page.ts", 'import { x } from "../lib/testing/internal";'],
+    ["src/features/a/view.ts", 'export { x } from "../../lib/testing/internal";'],
+    ["src/lib/util.ts", 'const promise = import("./testing/internal");'],
+    ["src/lib/index.ts", 'export * from "@/lib/testing/internal";'],
+  ])("제품 코드는 테스트 지원을 가져오지 못한다: %s", async (file, code) => {
+    expect(await lint(file, code)).toContain("template/test-support");
+  });
+  it.each([
+    "src/features/a/view.test.ts",
+    "src/features/a/test-fixture.ts",
+    "src/features/a/my-post-fixture.ts",
+    "src/lib/testing/account.ts",
+  ])("테스트와 fixture는 공통 테스트 지원을 쓴다: %s", async (file) => {
+    expect(await lint(file, 'import { x } from "@/lib/testing/internal";')).toEqual([]);
+  });
   it("화면이 지정된 계층 밖 로컬 파일을 가져오지 못한다", async () => {
     expect(await lint("src/app/page.ts", 'import { x } from "../unknown";')).toContain(
       "boundaries/no-unknown-dependencies",

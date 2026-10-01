@@ -1,35 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { inject } from "vitest";
-import { createApiClient } from "../../lib/api/client";
+import { registerTestAccount, loginTestAccount } from "../../lib/testing/account";
 
 /** 본인 정보와 여러 세션을 실제 목에서 검증한다. */
 export async function profileFixture(locale: "ko" | "en" = "ko") {
-  const baseUrl = `${inject("mockBaseUrl")}/api/v1`;
-  const anonymous = createApiClient({ baseUrl, locale, log: () => {} });
+  const origin = inject("mockBaseUrl");
   const email = `profile-${randomUUID()}@example.com`;
   const password = "profile-test-password"; // betterleaks:allow 사유: 테스트 비밀번호
-  await anonymous.POST("/registrations", {
-    body: { data: { type: "registrations", attributes: { name: "기존 이름", email, password } } },
-  });
-  const mail = await fetch(`${inject("mockBaseUrl")}/_test/mail?to=${email}`);
-  const { messages } = (await mail.json()) as { messages: { text: string }[] };
-  const token = new URL(messages[0]!.text.match(/https?:\/\/\S+/)![0]).searchParams.get("token")!;
-  await anonymous.POST("/email-verifications", {
-    body: { data: { type: "email-verifications", attributes: { token } } },
-  });
-  async function login(secret = password) {
-    const { data } = await anonymous.POST("/sessions", {
-      body: {
-        data: { type: "sessions", attributes: { grantType: "password", email, password: secret } },
-      },
-    });
-    const session = data!.data.attributes;
-    return {
-      session,
-      client: createApiClient({ baseUrl, locale, accessToken: session.accessToken, log: () => {} }),
-    };
-  }
-  const owner = await login();
+  const account = { name: "기존 이름", email, password };
+  const owner = await registerTestAccount({ origin, locale, account });
+  const login = (secret = password) =>
+    loginTestAccount({ origin, locale, account: { email, password: secret } });
   return {
     ...owner,
     password,

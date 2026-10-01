@@ -1,33 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { inject } from "vitest";
-import { createApiClient } from "../../lib/api/client";
-
-function mockClient(accessToken?: string) {
-  return createApiClient({
-    baseUrl: `${inject("mockBaseUrl")}/api/v1`,
-    locale: "ko",
-    ...(accessToken ? { accessToken } : {}),
-    log: () => {},
-  });
-}
+import { loginSeedAccount } from "../../lib/testing/account";
 
 /** 실제 목 API로 만든 글은 테스트가 끝나면 지운다. */
 export async function postFixture() {
-  const { data: login } = await mockClient().POST("/sessions", {
-    body: {
-      data: {
-        type: "sessions",
-        attributes: {
-          grantType: "password",
-          email: "admin@example.com",
-          password: "admin-password", // betterleaks:allow 사유: 테스트 시드
-        },
-      },
+  const { session, client } = await loginSeedAccount({
+    origin: inject("mockBaseUrl"),
+    locale: "ko",
+    account: {
+      email: "admin@example.com",
+      password: "admin-password", // betterleaks:allow 사유: 테스트 시드
     },
   });
-  if (!login) throw new Error("테스트 세션이 없다.");
-  const session = login.data.attributes;
-  const client = mockClient(session.accessToken);
   const prefix = `posts-${randomUUID()}`;
   const ids: string[] = [];
   // 파일은 런타임에 만든다. 저장소에는 바이너리를 두지 않는다.
