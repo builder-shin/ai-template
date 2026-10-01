@@ -1,13 +1,13 @@
 # Next.js web 템플릿 설계 (하위 프로젝트 2)
 
 - 작성일: 2026-09-30
-- 상태: 승인됨(2026-09-30). W1(목 서버)·W2(web 뼈대) 구현 완료. W1에서 찾은 FastAPI·계약 문제는 보정했다(2026-09-30, §12.1)
+- 상태: 승인됨(2026-09-30). W1(목 서버)·W2(web 뼈대) 구현 완료, W3(기능 화면과 실시간) 구현 완료(2026-10-01). W1에서 찾은 FastAPI·계약 문제는 보정했다(2026-09-30, §12.1)
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 2로 미룬 결정을 내리고, `templates/nextjs`, 목 서버(`contract/mock`), 이번 사이클의 저장소 변경을 설계한다.
   - 기반 설계의 규칙은 그대로 따른다: 플랫폼 기능(§4), API 규약(§5), 하네스(§6), 인프라와 품질(§7).
   - 백엔드의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md)와 [보강 설계](2026-09-29-fastapi-hardening-design.md)다. 목 서버는 그 동작을 따른다.
 - 구현 계획: [W1](../plans/2026-09-30-nextjs-w1.md)
-- 다음 단계: W3(기능 화면과 실시간)
+- 다음 단계: W4(FastAPI 대상 E2E와 마무리). W3에서 목으로 확인한 동작과 남은 검증은 §13.2다.
 
 ## 1. 목표와 범위
 
@@ -64,7 +64,7 @@
 
 | 항목                                        | 버전                          | 비고                                                                     |
 | ------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------ |
-| Node / pnpm                                 | 24 LTS / 12.6.0               | N13. W2 검증 환경은 Node 24.19.0                                         |
+| Node / pnpm                                 | 24 LTS / 12.6.0               | N13. W2·W3 검증 환경은 Node 24.19.0                                     |
 | Next.js / React                             | 16.3.7 / 19.3.0               | 16.3.6이 2026-09 보안 릴리스(next/og RCE)다                              |
 | react-dom / @types/react / @types/react-dom | 19.3.0 / 19.3.0 / 19.3.0      | React와 같은 버전                                                        |
 | @next/env                                   | 16.3.7                        | Next와 같은 버전의 개발 환경 로더                                        |
@@ -81,6 +81,8 @@
 | @typespec/compiler / @typespec/http / @typespec/openapi / @typespec/openapi3 | 1.16.0 | 원본 계약 사본의 pin 유지                                    |
 | yaml / ajv / ajv-formats                     | 2.9.1 / 8.20.0 / 3.0.1        | 계약 생성과 목의 JSON Schema 검증                                       |
 | socket.io-client / socket.io                | 4.8.4 / 4.8.4                 | python-socketio 5.x(프로토콜 v5)와 호환                                  |
+| react-markdown / remark-gfm                  | 10.1.0 / 4.0.1                | 공개 상세·편집기 미리보기의 Markdown과 GFM. raw HTML은 제외한다          |
+| @types/jsdom                                | 30.0.0                        | 실제 SSR HTML을 읽는 HTTP 통합 검사의 타입                              |
 | Hono / @hono/node-server                    | 4.13.11 / 2.1.3               | 목 서버                                                                  |
 | ESLint / typescript-eslint / eslint-config-next | 10.11.0 / 8.71.0 / 16.3.7 | flat config만(Next 16에서 `next lint` 제거)                              |
 | eslint-plugin-boundaries / @eslint/compat   | 7.2.0 / 2.1.1                 | ESLint 10의 경계 검사, Next React 플러그인의 context API 호환             |
@@ -88,13 +90,13 @@
 | Prettier / tsx                              | 3.9.9 / 4.23.15               | 저장소 pin 재사용                                                        |
 | Vitest                                      | 5.0.1                         | 저장소 pin 재사용                                                        |
 | @testing-library/react / @testing-library/user-event / jsdom | 16.3.3 / 14.6.7 / 30.1.1 | 실제 DOM의 역할·이름·입력 검사                     |
-| @playwright/test / playwright / playwright-core | 1.63.0 / 1.63.0 / 1.63.0 | W2의 headless Chromium 인증 E2E                                          |
-| @playwright/cli                             | 0.1.22                        | 에이전트용 CLI와 skill은 W4에서 추가한다. W2에는 설치하지 않았다          |
+| @playwright/test / playwright / playwright-core | 1.63.0 / 1.63.0 / 1.63.0 | W2 인증과 W3 기능의 headless Chromium E2E                                |
+| @playwright/cli                             | 0.1.22                        | 에이전트용 CLI와 skill은 W4에서 추가한다. W3에도 설치하지 않았다          |
 | @parcel/watcher / @swc/core                 | 2.6.0 / 1.16.12               | next-intl의 네이티브 전이 의존성, lock과 빌드 허용 목록                   |
 | lefthook / Betterleaks                      | 2.1.14 / 1.8.1                | 저장소 pin과 FastAPI의 바이너리 pin 재사용                               |
 | next-devtools-mcp                           | 0.4.0                         |                                                                          |
 
-W2의 새 선택은 각 태스크 보고서에 공개 시각과 이유를 기록했다. typescript-eslint는 저장소 루트의 8.70.1 대신 설계의 8.71.0을 썼고 전체 린트·타입 검사를 통과했다. react-markdown과 remark-gfm은 W3에서 확인해 고정하고 이 표에 더한다.
+typescript-eslint는 저장소 루트의 8.70.1 대신 설계의 8.71.0을 썼고 전체 린트·타입 검사를 통과했다. W3는 선택 당시 최신 안정판 react-markdown 10.1.0·remark-gfm 4.0.1과 @types/jsdom 30.0.0을 HTML 제외 렌더링·GFM과 기존 jsdom의 타입에 쓴다. 모두 공개 후 하루가 지났음을 확인했다. Socket.IO 클라이언트는 설계 pin인 4.8.4다. 정확한 pin과 pnpm의 `minimumReleaseAge: 1440`을 유지한다.
 
 ## 4. 템플릿 구조
 
@@ -113,7 +115,7 @@ templates/nextjs/
 │   ├── app/
 │   │   ├── [locale]/…        # 화면
 │   │   └── oauth/…           # 소셜 로그인 route handler (로케일 밖)
-│   ├── features/<기능>/      # posts(골든), auth, me, sessions: 컴포넌트, actions.ts, queries.ts, index.ts(공개 인터페이스)
+│   ├── features/<기능>/      # posts(골든), auth, me, sessions, files: 컴포넌트, actions.ts, queries.ts, index.ts(공개 인터페이스)
 │   ├── lib/
 │   │   ├── api/              # 클라이언트, 생성 타입, JSON:API 도우미, 에러
 │   │   ├── session/          # 쿠키 암호화, 갱신 묶기
@@ -198,11 +200,12 @@ templates/nextjs/
 
 1. 로그인 화면의 제공자 버튼은 route handler(`/oauth/<제공자>/start`)로 간다.
 2. handler가 code verifier(RFC 7636)를 만들고, 제공자와 `returnTo`와 함께 암호화한 단기 쿠키(10분)에 둔다. 브라우저를 백엔드의 `GET /api/v1/oauth/<제공자>/authorize?redirectUri=<web 콜백>&codeChallenge=<S256>`으로 보낸다.
-3. 콜백 handler(`/oauth/callback`)는 verifier 쿠키가 없거나 제공자가 다르면 거부한다(로그인 CSRF 방지, 기반 설계 §4.2).
-4. 쿠키가 맞으면 서버 간 호출로 `POST /sessions`(grantType `oauthCode`, `codeVerifier`)를 부르고, 세션 쿠키를 만들고, verifier 쿠키를 지우고, `returnTo`로 보낸다.
+3. 백엔드가 web 콜백(`/oauth/callback`)으로 보내는 값은 `code` 또는 `error`뿐이며 `provider`는 없다. handler는 암호화한 verifier 쿠키가 누락·만료·변조되면 거부한다. 쿠키의 제공자와 PKCE verifier가 코드를 해당 시도에 묶으므로 다른 시도의 코드는 백엔드의 PKCE 검증에서 실패한다. 요청에 제공자가 명시되면 쿠키와 비교하고, 불일치나 중복 값은 거부한다(로그인 CSRF 방지, 기반 설계 §4.2).
+4. 쿠키가 맞으면 서버 간 호출로 `POST /sessions`(grantType `oauthCode`, `codeVerifier`)와 `GET /me`를 부른다. 세션 쿠키를 만들고 verifier 쿠키를 지우며, 계정 로케일에 맞춘 `NEXT_LOCALE`과 `returnTo` URL로 보낸다. grant에는 provider 필드를 더하지 않는다.
 5. `error`가 오면(`auth.oauth_denied`, `auth.oauth_failed`) 로그인 화면에 번역한 안내를 띄운다.
 
 - web 콜백 주소(`/oauth/callback`)는 백엔드의 `redirectUri` 허용 목록에 있어야 한다(§11.2). FastAPI·목의 기본 `OAUTH_REDIRECT_URIS`와 적합성 스위트의 프론트 콜백이 이미 `http://localhost:3000/oauth/callback`이다.
+- 콜백은 제공자에서 오는 cross-site GET이므로 같은 Origin 검사의 예외다. 쿠키와 PKCE로 시도를 검증하며 성공·실패 모두 verifier 쿠키를 지운다. start는 같은 Origin 이동인지 확인한다.
 
 ### 5.7 보안
 
@@ -265,7 +268,7 @@ templates/nextjs/
 - 페이지는 `useChannel('posts', 처리기)`처럼 채널을 구독한다. ack가 거부면 조용히 무시하지 않고 로그를 남긴다.
 - 서버가 끊으면(`io server disconnect`) 새 티켓으로 다시 붙는다.
 - 이벤트
-  - `session.revoked`: 로그아웃 처리(쿠키 삭제, 로그인 화면)
+  - `session.revoked`: 세션 id 없이 사용자 룸 전체에 온다. Server Action이 현재 세션으로 `GET /me`를 확인하고, 401일 때만 쿠키를 지우고 로그인 화면으로 간다. 성공하면 현재 세션을 유지하고 `router.refresh()`한다. 연결 오류·5xx에도 세션을 유지한다. 비밀번호 변경·다른 기기 로그아웃으로 살아 있는 현재 세션을 지우지 않는다.
   - `me.updated`: `router.refresh()`
   - `post.*`: 목록은 짧게 모아 `router.refresh()`로 반영한다. 상세는 같은 글이면 반영하고, 지워졌거나 발행이 취소됐으면 안내를 띄운다.
 
@@ -277,6 +280,7 @@ templates/nextjs/
 4. 파일 id를 폼 값으로 넘겨 글의 커버나 내 아바타에 건다.
 
 - 크기·타입·한도 에러(`file.*`)는 번역해 보여 준다. 진행 중에는 스피너만 보여 준다(N15).
+- 파일 업로드는 JavaScript가 필요하며 UI와 문서에 안내한다. 제목·본문·이미 ready인 파일 id의 저장은 JS 없이도 제출된다. Markdown 미리보기 탭도 JS가 필요하다.
 
 ## 7. UI, i18n, 폼
 
@@ -325,6 +329,7 @@ templates/nextjs/
   - 레이트 리밋: `RATE_LIMIT_GLOBAL`(IP·분당, 기본 600), `RATE_LIMIT_LOGIN_IP`(분당 10), `RATE_LIMIT_LOGIN_IDENTIFIER`(이메일 해시·분당 5), `RATE_LIMIT_REGISTRATION_IP`(IP·시간당 10), `RATE_LIMIT_MAIL_IP`(시간당 5), `RATE_LIMIT_MAIL_EMAIL`(시간당 3), `RATE_LIMIT_PASSWORD_CHANGE_USER`(사용자·시간당 5)
   - 파일 한도: `FILE_MAX_SIZE`(기본 10MiB), `FILE_ALLOWED_TYPES`(기본 gif·jpeg·png·webp), `FILE_USER_QUOTA`(기본 1GiB)
   - CORS·Origin: `STORAGE_ALLOWED_ORIGINS`(기본 `http://localhost:3000`, `http://localhost:3001`), `REALTIME_ALLOWED_ORIGINS`(기본 `http://localhost:3000`)
+  - 재인증: `RECENT_LOGIN_SECONDS`(목 전용, 기본 600초, 1 이상의 안전한 정수). 탈퇴 재인증을 검사할 때만 창을 줄인다.
 
 ### 8.3 요청 검증
 
@@ -373,15 +378,16 @@ templates/nextjs/
 ### 8.8 web 템플릿과의 관계
 
 - `pnpm sync`가 `contract/mock`, `contract/openapi.yaml`, `contract/typespec`을 그대로 web 템플릿의 `contract/`(`contract/mock/`, `contract/openapi.yaml`, `contract/typespec/`) 아래로 복사한다. 목이 `../openapi.yaml`을 패키지 기준 상대 경로로 읽으므로 계약 사본 옆(`contract/mock/`)에 있어야 한다. 저장소 CI는 사본이 원본과 같은지 본다.
-- **W2 결정(Task 2):** 템플릿 자체의 `pnpm-workspace.yaml`에 `contract/*`를 둔다. 목의 `@ai-template/contract: workspace:*`는 TypeSpec 사본으로 연결된다. 두 사본은 템플릿 루트의 `tsconfig.base.json`을 확장하고, 루트에 고정한 `tsx`·`typescript`·`vitest`·`@types/node`를 쓴다. 사본의 package.json이나 tsconfig를 고치지 않고 독립 실행에 필요한 구조를 템플릿에 갖췄다.
+- 템플릿 자체의 `pnpm-workspace.yaml`에 `contract/*`를 둔다. 목의 `@ai-template/contract: workspace:*`는 TypeSpec 사본으로 연결된다. 두 사본은 템플릿 루트의 `tsconfig.base.json`을 확장하고, 루트에 고정한 `tsx`·`typescript`·`vitest`·`@types/node`를 쓴다. 사본의 package.json이나 tsconfig를 고치지 않고 독립 실행에 필요한 구조를 템플릿에 갖췄다.
 - `docs/conventions/jsonapi.md`와 `error-codes.md`도 함께 sync한다. TypeSpec의 에러 코드 문서 테스트가 읽는 `../../../docs/conventions/error-codes.md`를 충족하고 템플릿 AI도 같은 규약을 읽는다. 전체 `check`는 TypeSpec·목의 자체 검사를 각각 돌린다.
-- 계약 사본은 원본 헤더와 포맷을 보존한다. 첫 줄의 직접 수정 금지 헤더는 web 자체 생성물에 적용하고, 사본은 자체 생성물 최신 여부 검사와 루트 사본 비교로 확인한다(Task 2에서 승인한 예외).
-- Task 2에서 3개 workspace의 frozen 설치, 두 번의 `gen` 뒤 diff 없음, 단독 `dev`의 목 4010 readiness·web 3000 HTTP 200, 백엔드 모드의 web만 기동을 확인했다. HTTP loopback의 4010 `/api/v1` 주소이면 단독 모드다.
+- 계약 사본은 원본 헤더와 포맷을 보존한다. 첫 줄의 직접 수정 금지 헤더는 web 자체 생성물에 적용하고, 사본은 자체 생성물 최신 여부 검사와 루트 사본 비교로 확인한다.
+- 3개 workspace의 frozen 설치, 두 번의 `gen` 뒤 diff 없음, 단독 `dev`의 목 4010 readiness·web 3000 HTTP 200, 백엔드 모드의 web만 기동을 확인했다. HTTP loopback의 4010 `/api/v1` 주소이면 단독 모드다.
 - 단독 web 프로젝트가 API를 넓힐 때는 TypeSpec을 고치고 `pnpm gen`으로 `openapi.yaml`과 타입을 다시 만든 뒤, 목에 핸들러를 더한다(레시피).
 - 조합 프로젝트에서는 백엔드의 `openapi.json`이 원본이고, 목은 프론트만 개발할 때 쓴다.
 
 ### 8.9 FastAPI와 다른 점 (요약)
 
+- 목 전용 `RECENT_LOGIN_SECONDS`로 탈퇴의 재인증 창을 줄인다. 기본 600초는 FastAPI와 같고 refresh는 로그인 시각을 바꾸지 않는다. web 통합 검사는 별도 목의 2초 창, E2E는 10초 창을 쓴다. W4의 FastAPI E2E 대상에도 같은 조건을 만드는 방법이 필요하다.
 - access token은 불투명한 문자열(JWT 아님)이고, 비밀번호 해시(scrypt)·소셜 로그인 제공자·스토리지는 개발용이다(재시작하면 옛 presigned URL이 맞지 않는다). 비밀번호의 짝 없는 서로게이트는 U+FFFD로 바꿔 해시한다(FastAPI는 `surrogatepass`로 인코딩한다).
 - 메일은 요청 안에서 바로 보관함에 들어간다(FastAPI는 요청 뒤 잡으로 보낸다).
 - 요청 검증의 남은 경계 셋(§8.3: 소수점·지수로 쓴 정수, grant 필드에 객체·배열을 보냈을 때의 pointer, 본문 인코딩)은 FastAPI(Pydantic)를 그대로 흉내 내지 않고 계약대로 한다.
@@ -443,8 +449,9 @@ DB가 없으므로 `db:*`는 두지 않는다(기반 설계 §6.2).
 
 ### 9.7 생성기, 레시피, skill
 
-- 골든 기능은 `features/posts`와 그 화면(`app/[locale]/posts`, `app/[locale]/my/posts`)이다.
-- `gen:feature <이름>`은 골든 기능을 복사해 이름을 바꾸고 등록 작업(메시지 키, 화면 경로, 테스트)까지 처리한다. AI는 기능 로직만 채운다.
+- 골든 기능은 `src/features/posts`와 그 화면(`src/app/[locale]/posts`, `src/app/[locale]/my-posts`)이다. 공개 목록·상세와 내 글의 작성·수정·발행·취소·삭제, 업로드·실시간 연결을 포함한다.
+- `pnpm gen:feature <복수형 이름> [--singular <끝 단어의 단수형>]`은 골든 기능·화면·두 HTTP 테스트를 복사한다. camel·Pascal·snake·대문자·kebab의 단수·복수 이름을 바꾸며 ko/en 메시지 namespace와 `/my-<이름>` 로그인 보호도 등록한다. 이미 있는 기능·화면·테스트·namespace는 덮어쓰지 않는다.
+- 계약 타입·API 경로·JSON:API type·에러 코드·실시간 채널은 보존한 초안이다. `gen:feature: 빼기`·`그대로`·`고칠 곳` 표시와 출력한 검토 목록을 보고 새 계약·권한·문구·헤더·홈 링크를 채운다. 생성된 기능은 편집할 소스이며 `pnpm gen`의 직접 수정 금지 생성물과 구분한다.
 - 레시피(`docs/recipes/`): 기능 추가, 페이지 추가, Server Action 추가, 실시간 구독, 번역 추가, API 넓히기(TypeSpec + 목 핸들러), UI 부품 추가
 - skill: 레시피마다 얇은 포장(`.claude/skills/`). 공식 skill로 Next.js `next-dev-loop`, shadcn, Playwright CLI를 넣는다.
 - `.mcp.json`에는 next-devtools-mcp(0.4.0)만 넣는다(N5).
@@ -453,7 +460,7 @@ DB가 없으므로 `db:*`는 두지 않는다(기반 설계 §6.2).
 
 - 루트 AGENTS.md(200줄 이하): 명령, 구조 지도, 핵심 규칙(BFF, 경계, 폼, 로딩 표시, i18n), 완료 기준, 문서 링크
 - 설치 버전의 문서를 보라는 규칙: Next.js는 `node_modules/next/dist/docs`, 다른 라이브러리는 `docs/stack.md`의 버전과 링크
-- 폴더별 AGENTS.md: `src/features/`, `src/lib/`, `contract/mock/`, `e2e/`
+- 폴더별 AGENTS.md: `src/features/`, 골든 `src/features/posts/`, `src/lib/`, `scripts/gen-feature/`, `contract/mock/`, `e2e/`
 - 모든 AGENTS.md 옆에 `@AGENTS.md` 한 줄짜리 CLAUDE.md
 
 ## 10. 템플릿 테스트
@@ -474,7 +481,7 @@ E2E 흐름
 - 소셜 로그인
 - 재인증이 필요한 탈퇴
 
-부수 채널: 목 대상은 목의 테스트 통로(§8.7)를, FastAPI 대상은 Mailpit과 모의 OAuth 서버를 쓴다. E2E 안에 대상별 어댑터를 둔다(적합성 키트와 같은 방식).
+부수 채널: 목 대상은 목의 테스트 통로(§8.7)를 쓴다. `e2e/targets`의 `mailLink`·`expireRecentLogin`·`completeSocialLogin`·`denySocialLogin`이 메일·재인증 창·가짜 제공자 폼을 처리한다. W4의 FastAPI 대상은 같은 인터페이스에 Mailpit과 모의 OAuth 서버를 연결한다. W3의 목 대상은 기존 인증을 포함한 20개 흐름을 headless Chromium에서 통과했으며, FastAPI 대상은 아직 미구현이다.
 
 ## 11. 템플릿 저장소 변경
 
@@ -496,6 +503,7 @@ web이 실제 백엔드에 붙으려면 다음이 FastAPI 설정에 있어야 �
 - Socket.IO 허용 Origin에 web 주소(§13 #6)
 - 소셜 로그인 `redirectUri` 허용 목록에 web 콜백
 - 스토리지(SeaweedFS)의 CORS가 web Origin의 PUT을 허용(§13 #7)
+- 탈퇴 재인증 E2E에서 최근 로그인 창을 짧게 만드는 방법(목의 `RECENT_LOGIN_SECONDS`에 대응, §8.9)
 
 ## 12. 마일스톤
 
@@ -503,7 +511,7 @@ web이 실제 백엔드에 붙으려면 다음이 FastAPI 설정에 있어야 �
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | W1  | 목 서버(§8), 적합성 `mock` 대상과 부수 채널 어댑터, CI 작업                                                                                  | `pnpm conformance mock` 전체 통과 — 상태: 완료(2026-09-30) |
 | W2  | web 뼈대: 하네스(§9), BFF 세션·토큰 갱신·API 클라이언트·JSON:API 도우미(§5), i18n, 레이아웃, 비밀번호 인증 화면(§6.2), 목과 함께 도는 `setup`·`dev`, sync, 목 대상 CI | web `check`, 인증 E2E가 목에서 통과 — 상태: 완료 |
-| W3  | 기능 화면: 글(§6.1, §6.6), 내 정보·세션·탈퇴(§6.3~§6.5), 소셜 로그인, 실시간(§6.7), 업로드(§6.8), `gen:feature`                                | 기능 E2E가 목에서 통과                      |
+| W3  | 기능 화면: 글(§6.1, §6.6), 내 정보·세션·탈퇴(§6.3~§6.5), 소셜 로그인, 실시간(§6.7), 업로드(§6.8), `gen:feature`                                | web `check`·빌드·기능 E2E 20개가 목에서 통과 — 상태: 구현 완료(2026-10-01) |
 | W4  | E2E의 FastAPI 대상, FastAPI 설정 보강(§11.2), CI, 레시피·skill·문서, Docker 이미지                                                              | §1.2의 완료 조건                            |
 
 각 마일스톤은 main의 사본에서 프로토타입을 먼저 만들어 태스크별 커밋으로 검증하고, 그 커밋에서 계획을 조립한 뒤 SDD로 실행한다(FastAPI 사이클과 같다).
@@ -542,17 +550,33 @@ W1에서 목을 FastAPI와 맞추면서 찾았다. W2를 시작하기 전에 모
 
 ### 13.1 W2 확인 결과
 
-Task 4·5·7의 보고서와 Task 10이 보존한 실제 목·Next HTTP 통합 테스트가 근거다. #3~#5는 Windows의 Next 16.3.7 dev에서 확인했고 운영 빌드와 Task 10의 운영 Chromium 인증 E2E 4개도 통과했다. #6·#7은 W3/W4, #9·#10은 W4에서 확인한다.
+W2의 실제 목·Next HTTP 통합 테스트가 근거다. #3~#5는 Windows의 Next 16.3.7 dev에서 확인했고 운영 빌드와 운영 Chromium 인증 E2E 4개도 통과했다. #6·#7의 W3 목 확인은 §13.2, FastAPI·SeaweedFS와 #9·#10의 검증은 W4다.
 
 | # | 결과 | 증거와 최종 검사 |
 | --- | --- | --- |
-| 2 | openapi-fetch 0.17.0 사용 가능. 얇은 fetch 래퍼 대안은 필요 없다 | Task 4: 실제 목에서 vendor Accept/Content-Type과 JSON.stringify로 목록 GET 200·included author, 세션 POST 201, 가입 POST 422·email pointer를 확인했다. `expectTypeOf`와 실제 tsc가 생성된 JSON:API 문서·grant·쿼리 타입을 검증했다. `src/lib/api/openapi-fetch.integration.test.ts` 1개와 API 집중 검사 35개 통과 |
-| 3 | 응답 쿠키와 같은 렌더링의 요청 쿠키를 함께 갱신할 수 있다. 갱신은 proxy에 유지한다 | Task 5에서 확인하고 Task 7에서 실제 홈·로그아웃 Action으로 다시 확인했다. 거절되는 옛 access와 유효한 refresh로 `/`·`/en` GET 200·Admin 헤더·새 JWE의 `/me` 200. JS 없는 영어 로그아웃 POST는 303 `/en`·쿠키 삭제·갱신된 세션의 `/me` 401. 최종 `scripts/http/session-refresh.integration.test.ts` |
-| 4 | proxy 호출 사이에 모듈 Map을 공유한다. globalThis 대안은 필요 없다 | Task 7: 같은 옛 쿠키의 동시 HTTP 요청 6개와 늦은 요청 1개가 모두 200이며 같은 새 access·refresh를 받았다. `scripts/session-refresh.integration.test.ts`도 동시 갱신 12개, 29,999ms 기억·30,000ms 만료를 검증한다. 프로세스 안에서만 유효하며 여러 인스턴스에는 §5.2의 sticky session 한계가 있다 |
-| 5 | next-intl과 세션 갱신을 단일 proxy에서 합성할 수 있다 | Task 5·7: 갱신 GET의 ko/en html lang·영어 NEXT_LOCALE·인증 헤더, 영어 Action POST 이동, 갱신 실패의 영어 로그인 303·쿠키 삭제를 확인했다. next-intl의 rewrite·로케일 헤더·기존 쿠키를 유지한다. 최종 `scripts/http/session-refresh.integration.test.ts`와 `scripts/session-proxy.test.ts` |
-| 8 | 로케일 경로에서 JS 없이 폼 제출·결과 복원·리다이렉트가 된다. JS-required 표시가 필요 없다 | Task 7: 실제 SSR `$ACTION_*` 필드의 multipart POST로 ko/en 로그인 303·계정 ko URL과 쿠키·`/me` 200, 영어 필드 오류 HTML 200, 미인증 안내·재발송 성공과 실제 메일 2개를 확인했다. Task 8·9에서 가입·인증·재설정도 확인했고 Task 10은 HTTP 21개·assertion 112개를 그대로 보존했다. 최종 `scripts/http/{login,signup,password-reset}.integration.test.ts`. 사용자 메뉴 열기의 JS 없는 동작을 뜻하지는 않는다 |
+| 2 | openapi-fetch 0.17.0 사용 가능. 얇은 fetch 래퍼 대안은 필요 없다 | 실제 목에서 vendor Accept/Content-Type과 JSON.stringify로 목록 GET 200·included author, 세션 POST 201, 가입 POST 422·email pointer를 확인했다. `expectTypeOf`와 실제 tsc가 생성된 JSON:API 문서·grant·쿼리 타입을 검증했다. `src/lib/api/openapi-fetch.integration.test.ts` 1개와 API 집중 검사 35개 통과 |
+| 3 | 응답 쿠키와 같은 렌더링의 요청 쿠키를 함께 갱신할 수 있다. 갱신은 proxy에 유지한다 | 실제 홈·로그아웃 Action으로 확인했다. 거절되는 옛 access와 유효한 refresh로 `/`·`/en` GET 200·Admin 헤더·새 JWE의 `/me` 200. JS 없는 영어 로그아웃 POST는 303 `/en`·쿠키 삭제·갱신된 세션의 `/me` 401. 최종 `scripts/http/session-refresh.integration.test.ts` |
+| 4 | proxy 호출 사이에 모듈 Map을 공유한다. globalThis 대안은 필요 없다 | 같은 옛 쿠키의 동시 HTTP 요청 6개와 늦은 요청 1개가 모두 200이며 같은 새 access·refresh를 받았다. `scripts/session-refresh.integration.test.ts`도 동시 갱신 12개, 29,999ms 기억·30,000ms 만료를 검증한다. 프로세스 안에서만 유효하며 여러 인스턴스에는 §5.2의 sticky session 한계가 있다 |
+| 5 | next-intl과 세션 갱신을 단일 proxy에서 합성할 수 있다 | 갱신 GET의 ko/en html lang·영어 NEXT_LOCALE·인증 헤더, 영어 Action POST 이동, 갱신 실패의 영어 로그인 303·쿠키 삭제를 확인했다. next-intl의 rewrite·로케일 헤더·기존 쿠키를 유지한다. 최종 `scripts/http/session-refresh.integration.test.ts`와 `scripts/session-proxy.test.ts` |
+| 8 | 로케일 경로에서 JS 없이 폼 제출·결과 복원·리다이렉트가 된다. JS-required 표시가 필요 없다 | 실제 SSR `$ACTION_*` 필드의 multipart POST로 ko/en 로그인 303·계정 ko URL과 쿠키·`/me` 200, 영어 필드 오류 HTML 200, 미인증 안내·재발송 성공과 실제 메일 2개를 확인했다. 가입·인증·재설정도 확인했으며 HTTP 21개·assertion 112개가 통과했다. 최종 `scripts/http/{login,signup,password-reset}.integration.test.ts`. 사용자 메뉴 열기의 JS 없는 동작을 뜻하지는 않는다 |
 
-쿠키 삭제가 필요한 Server Component의 401은 `/session/clear` Route Handler로 보내 지운 뒤 303 로그인한다. 갱신을 이 route로 옮기지는 않았다. Task 7은 임시 probe 페이지를 모두 없애고 제품 화면·Action만 사용하며, Task 10은 HTTP 테스트를 영역별 5개 파일로 나눴다.
+쿠키 삭제가 필요한 Server Component의 401은 `/session/clear` Route Handler로 보내 지운 뒤 303 로그인한다. 갱신은 proxy에서 한다. HTTP 테스트는 제품 화면·Action을 영역별 5개 파일에서 검사한다.
+
+### 13.2 W3 확인 결과
+
+W3의 실제 목 통합·HTTP 검사와 운영 Chromium E2E 20개가 근거다. root·web `check`와 빌드도 통과했다. 아래는 목으로 확인한 결과이며 FastAPI 대상의 통과를 뜻하지 않는다.
+
+| # | 결과 | 증거와 W4 항목 |
+| --- | --- | --- |
+| 6 | 브라우저의 socket.io-client 4.8.4가 목 Socket.IO에 WebSocket으로 직접 붙는다. 로그인 연결은 새 1회용 티켓을 쓰며 익명 연결·posts 구독 ack·이벤트 갱신도 확인했다 | `scripts/realtime.integration.test.ts`, `scripts/http/realtime.integration.test.ts`, `e2e/{posts,sessions}.spec.ts`. 두 컨텍스트의 목록 반영과 폐기 이벤트를 실제 소켓에서 확인했다. FastAPI의 web Origin 허용과 같은 흐름은 W4 |
+| 7 | 브라우저가 목의 presigned URL에 PUT하고 ready로 바꿔 커버·아바타를 표시한다. Content-Type 등 응답 헤더와 web Origin의 CORS를 사용한다 | `e2e/{cover-upload,posts,profile}.spec.ts`. 런타임에 만든 PNG의 실제 이미지 로드까지 확인했다. SeaweedFS presigned PUT·CORS는 W4 |
+| 8 | 내 글·내 정보·비밀번호·세션·탈퇴 폼도 JS 없이 제출·결과 복원·이동된다. 업로드와 Markdown 미리보기는 JS가 필요하다 | `scripts/http/{my-posts,me,sessions,deletion}.integration.test.ts`. 실제 SSR의 Action 필드를 HTTP로 제출한 결과이며 JS 없는 브라우저의 시각적 동작 전체를 검증한 것은 아니다 |
+
+- 소셜 콜백은 code/error만 오며 암호화한 시도 쿠키와 PKCE로 검증한다(§5.6). 실제 목 HTTP 검사가 누락·만료·변조·명시한 제공자 불일치·다른 시도 코드의 거절을, `e2e/social.spec.ts`가 세 제공자의 성공·거부를 확인한다.
+- `session.revoked`는 사용자 룸 전체의 이벤트다. 현재 세션의 `GET /me`가 401일 때만 로그아웃하고 성공·연결 오류·5xx에는 유지한다(§6.7). 단위 검사와 실제 두 컨텍스트의 세션 폐기·비밀번호 변경 E2E가 확인한다.
+- 목의 `RECENT_LOGIN_SECONDS`로 재인증 뒤 탈퇴를 검증한다. W4는 FastAPI에서 짧은 창을 준비하고 `expireRecentLogin`을 연결해야 한다. `E2E_TARGET=fastapi`는 현재 명시적인 미구현 오류로 실패하며 목으로 대체하지 않는다.
+- `gen:feature`는 독립 임시 사본에 기능을 생성한 뒤 타입·경계 린트·단위·실제 목·HTTP 검사를 통과했다. 이름 충돌·예약어 거절과 정리도 검사한다. 새 계약·권한·문구는 출력한 고칠 곳을 따라 구현한다.
+- 현재 draft·published 두 상태는 양방향 변경과 같은 상태 PATCH를 허용해 실제 목에서 `post.invalid_transition`을 만들 수 없다. 해당 안내만 HTTP 경계에 계약 모양의 422를 주입해 검사하며 다른 CRUD·발행·취소·권한 검사는 실제 목을 쓴다.
 
 ## 14. 확인한 사실과 출처 (2026-09-29)
 

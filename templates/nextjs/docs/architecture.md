@@ -3,7 +3,27 @@
 Next.js App Router의 BFF다. Server Component가 데이터를 읽고 Server Action이 쓴다.
 브라우저는 백엔드 API를 직접 부르지 않는다. W3의 실시간 Socket.IO와 presigned URL 업로드는 직접 연결한다.
 API 계약·목 사본은 이 프로젝트의 `contract/` 안에 두고 자체 workspace로 실행한다.
-W2는 하네스·API·세션·i18n·레이아웃과 비밀번호 인증 흐름까지 구현했다. 글·내 정보·세션 화면, 소셜 로그인·실시간·업로드와 `gen:feature`는 W3이며 `features/posts`는 아직 골든 기능 자리다.
+W3까지 비밀번호·소셜 인증, 공개·내 글, 내 정보·비밀번호 변경·탈퇴, 세션 관리, 업로드와 실시간을 구현했다.
+`features/posts`는 `pnpm gen:feature`가 복사하는 골든 기능이다. 다음 W4는 FastAPI 대상 E2E와 배포·레시피·skill 보강이다.
+
+## 기능과 생성기
+
+`features/auth`는 가입·메일 인증·비밀번호 로그인·재설정과 소셜 안내를, `features/me`는 프로필·비밀번호
+변경·탈퇴를, `features/sessions`는 기기 목록·폐기를 맡는다. `features/files`의 업로드는 글 커버와
+아바타가 함께 쓴다. 다른 기능은 해당 `index.ts`만 가져온다.
+
+골든 `features/posts`는 공개 `/posts`·`/posts/[id]`와 보호된 `/my-posts`·작성·수정·삭제 확인 화면이다.
+`queries.ts`가 요청별 `React.cache`로 읽고 `actions.ts`가 작성·수정·발행·취소·삭제 뒤 영향을 받은
+ko/en 페이지를 갱신한다. 공개 조회는 발행 글만, 내 글 조회는 현재 사용자의 글만 읽는다.
+Markdown 상세·미리보기는 react-markdown과 remark-gfm으로 raw HTML 없이 렌더링한다.
+제목·본문·상태·삭제 확인 폼은 JS 없이 제출되며 업로드와 미리보기 탭은 JS가 필요하다.
+
+`pnpm gen:feature <복수형 이름> [--singular <끝 단어의 단수형>]`은 골든 기능과 두 화면 트리·HTTP
+테스트를 복사해 이름을 바꾼다. ko/en namespace와 `/my-<이름>` 로그인 보호도 등록한다. 계약 타입·API
+경로·JSON:API type·에러 코드·실시간 채널은 posts 값을 보존하므로 새 계약과 권한·문구를 채워야 한다.
+골든 코드의 `gen:feature: 빼기`·`그대로`·`고칠 곳` 표시가 복사·이름 변경·검토 대상을 정한다.
+기존 경로·namespace는 덮어쓰지 않는다. 출력한 검토 목록과 [기능 추가](recipes/add-feature.md)를 따라
+헤더·홈 링크까지 고친다. 생성된 기능은 편집할 소스이며 `pnpm gen`의 계약 타입 생성물과 구분한다.
 
 ## 파일 업로드
 
@@ -220,8 +240,12 @@ Vitest global setup이 자유 포트의 실제 복사 목 두 개(기본·재인
 
 `pnpm setup`은 의존성 설치 → 환경 키 보충 → 독립 저장소 hook 설치 → 고정 Playwright 1.63.0의 Chromium 설치 순서다. 브라우저 설치가 실패해도 환경과 hook 준비는 남고 실패 코드로 끝난다. 재실행은 기존 환경 값을 유지한다. `pnpm test:e2e`는 headless Chromium에서 운영 코드를 검사한다. Playwright `webServer`가 `scripts/e2e-server.ts`를 실행해 복사 목 readiness → `next build` → `next start` 순서를 보장한다. web은 localhost:3100, 목은 127.0.0.1:4110이다. 두 포트가 사용 중이면 실패하며 기존 서버를 재사용하거나 종료하지 않는다. 개발 서버와 동시에 실행할 수 있는 포트지만 Next 빌드 산출물을 함께 쓰므로 이 프로젝트의 dev·build·check와 E2E는 동시에 실행하지 않는다.
 
-운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. Playwright 설정은 상속한 `NO_COLOR`를 지우고 서버와 worker에 `FORCE_COLOR=1`을 사용해 색상 경고를 막는다. 운영의 Secure·`__Host-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
+운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. Playwright 설정은 상속한 `NO_COLOR`를 지우고 서버와 테스트 프로세스에 `FORCE_COLOR=1`을 사용해 색상 경고를 막는다. 운영의 Secure·`__Host-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
 
-`e2e/targets/`는 `E2E_TARGET`의 부수 채널 어댑터다. 기본 mock은 실제 `/_test/mail?to=…`에서 목적별 메일 링크를 읽는다. FastAPI는 W4에서 같은 인터페이스에 Mailpit 조회와 백엔드 스택 기동을 연결한다. 현재 fastapi 선택은 W4 안내와 함께 실패하며 목으로 바뀌지 않는다. 인증 흐름은 실제 브라우저 폼으로 가입·인증·로그인·로그아웃·재설정·returnTo를 검사한다. `/me` 화면은 W3 범위이므로 returnTo 검사는 이동 URL과 로그인 헤더를 확인한다.
+`e2e/targets/`는 `E2E_TARGET`의 부수 채널 어댑터다. `mailLink`는 기본 mock의 실제 `/_test/mail?to=…`에서 메일 링크를 읽는다. `expireRecentLogin`은 10초 창을 기다리고 `completeSocialLogin`·`denySocialLogin`은 세 제공자의 username·claims 폼을 브라우저로 제출한다. 일반 E2E에는 목 전용 URL을 넣지 않는다. W4는 같은 인터페이스에 Mailpit·모의 OAuth 서버·짧은 재인증 창과 FastAPI 기동을 연결한다. 현재 fastapi 선택은 W4 안내와 함께 실패하며 목으로 바뀌지 않는다.
+
+운영 Chromium E2E 20개는 기존 가입·메일 인증·로그인·로그아웃·재설정·returnTo와 W3 프로필·아바타·언어 전환·내 글·커버·발행·취소·삭제·소셜 로그인·거부·탈퇴 재인증·비밀번호 변경을 검사한다. 두 컨텍스트의 세션 폐기·비밀번호 변경은 실제 Socket.IO 연결과 session.revoked를 확인하며 현재 세션을 유지한다. 공개 목록은 posts 구독 ack 뒤 글을 바꿔 문서 reload 없이 반영되는지 확인한다. 커버·아바타 PNG는 텍스트에서 실행 때 만들고 실제 이미지 로드까지 확인한다.
+
+`pnpm check`의 생성기 검사는 독립 임시 사본에 새 기능을 만들고 그 사본의 타입·경계 린트·단위·실제 목·HTTP 검사를 실행한다. 생성기 project는 기존 web 검사 뒤에 실행해 Next 빌드 산출물이 겹치지 않게 한다. 환경 파일은 임시 사본에 복사하지 않는다.
 
 저장소 CI의 `nextjs` 작업은 Node 24·pnpm 12.6.0을 준비하고 이 템플릿의 lockfile로 frozen 설치한다. 고정 Playwright의 Chromium과 Linux 시스템 의존성을 먼저 설치한 뒤 `pnpm check`, `E2E_TARGET=mock`의 `pnpm test:e2e`를 순서대로 실행한다. 브라우저를 다시 설치하지 않는다. 검사의 자유 포트 서버와 E2E의 운영 서버는 각 실행이 준비하므로 별도의 환경 파일 준비가 필요 없다. Docker 이미지와 FastAPI 대상 E2E는 W4에서 추가한다.
