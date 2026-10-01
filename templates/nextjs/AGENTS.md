@@ -55,7 +55,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 이 저장소의 `contract/`와 `docs/conventions/`는 sync 사본이다. 원본 수정 뒤 저장소 루트에서 `pnpm sync`한다. 독립 복사본에서는 TypeSpec을 확장하고 `pnpm gen`한다.
 - `pnpm dev`는 Next 환경 로더 뒤 `API_BASE_URL`이 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 목도 시작한다. 그 밖의 주소는 web만 시작한다. Ctrl+C로 두 서버를 함께 내린다.
 - E2E는 기본 `E2E_TARGET=mock`이다. webServer가 목 → 운영 빌드 → start를 실행하고 매번 새 세션 비밀을 전달한다. 3100·4110은 비워 두며 기존 서버를 재사용하지 않는다. FastAPI 어댑터는 W4에서 구현한다.
-- 소스 400줄, 테스트 600줄을 넘기지 않는다. 타입·린트 억제에는 같은 줄에 `사유: 설명`을 적는다.
+- 소스 400줄, 테스트 600줄을 넘기지 않는다. 타입·린트 억제(`@ts-nocheck` 포함)는 같은 억제 주석의 같은 줄에 `사유: 설명`을 적는다. `any`의 사유는 같은 줄의 뒤따르는 주석에 적는다. 문자열과 연산자는 사유로 인정하지 않는다.
 - 템플릿 밖의 파일에 의존하지 않는다. 비밀 스캔 허용 목록은 계약 사본과 생성물로 제한한다.
 - 커밋 메시지는 영문 Conventional Commits다. AI 태그와 트레일러, `--no-verify`는 쓰지 않는다.
 

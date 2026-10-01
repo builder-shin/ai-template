@@ -16,33 +16,53 @@ function suppressionProblems(path: string, source: string): string[] {
     path.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
   );
   const checked = new Set<number>();
-  function check(position: number) {
+  function check(position: number, comments: readonly { pos: number; end: number }[]) {
     const line = file.getLineAndCharacterOfPosition(position).line;
     if (checked.has(line)) return;
-    checked.add(line);
-    if (!/(?:사유:|--|reason:)\s*\S.{3,}/.test(lines[line] ?? "")) {
+    const start = file.getPositionOfLineAndCharacter(line, 0);
+    const end = start + (lines[line]?.length ?? 0);
+    if (
+      !comments.some((comment) =>
+        /(?:사유:|--|reason:)\s*\S.{3,}/.test(
+          source.slice(Math.max(start, comment.pos), Math.min(end, comment.end)),
+        ),
+      )
+    ) {
+      checked.add(line);
       problems.push(`${path}:${line + 1} 억제 — 같은 줄에 사유: 설명을 적는다.`);
     }
   }
-  function visit(node: ts.Node) {
-    if (node.kind === ts.SyntaxKind.AnyKeyword) check(node.getStart(file));
-    ts.forEachChild(node, visit);
-  }
-  visit(file);
   const scanner = ts.createScanner(
     ts.ScriptTarget.Latest,
     false,
     ts.LanguageVariant.Standard,
     source,
   );
+  const comments: { pos: number; end: number }[] = [];
   for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
     if (
-      (token === ts.SyntaxKind.SingleLineCommentTrivia ||
-        token === ts.SyntaxKind.MultiLineCommentTrivia) &&
-      /eslint-disable|@ts-expect-error|@ts-ignore/.test(scanner.getTokenText())
-    )
-      check(scanner.getTokenPos());
+      token === ts.SyntaxKind.SingleLineCommentTrivia ||
+      token === ts.SyntaxKind.MultiLineCommentTrivia
+    ) {
+      const comment = { pos: scanner.getTokenPos(), end: scanner.getTextPos() };
+      comments.push(comment);
+      for (const match of scanner
+        .getTokenText()
+        .matchAll(/eslint-disable\b|@ts-(?:expect-error|ignore|nocheck)\b/g))
+        check(comment.pos + match.index, [comment]);
+    }
   }
+  function visit(node: ts.Node) {
+    if (node.kind === ts.SyntaxKind.AnyKeyword) {
+      const position = node.getStart(file);
+      check(
+        position,
+        comments.filter((comment) => comment.pos > position),
+      );
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(file);
   return problems;
 }
 

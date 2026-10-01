@@ -39,6 +39,7 @@ describe("하네스", () => {
     "// eslint-disable-next-line no-console",
     "// @ts-ignore",
     "// @ts-expect-error",
+    "// @ts-nocheck",
     "let value: any;",
   ])("사유 없는 억제를 막는다: %s", (code) => {
     expect(inspect({ ...base, "src/a.ts": code }).join()).toMatch(/사유/);
@@ -51,6 +52,21 @@ describe("하네스", () => {
         "src/a.ts": 'const text = "any @ts-ignore eslint-disable";\n// any 값 설명\n',
       }),
     ).toEqual([]);
+  });
+  it.each([
+    'let value: any = "reason: this is string content";',
+    "let value: any = count-- + 12345;",
+    '/* @ts-ignore */ const value = "reason: this is string content";',
+    "/* @ts-nocheck */ // reason: unrelated comment",
+  ])("문자열·연산자·다른 주석을 억제 사유로 인정하지 않는다: %s", (code) => {
+    expect(inspect({ ...base, "src/a.ts": code }).join()).toMatch(/사유/);
+  });
+  it.each([
+    "// @ts-nocheck -- 외부 라이브러리 경계",
+    "/* @ts-ignore reason: external library boundary */",
+    "let value: any; // reason: external library boundary",
+  ])("같은 억제 주석과 any의 뒤따르는 주석에 적은 사유를 인정한다: %s", (code) => {
+    expect(inspect({ ...base, "src/a.ts": code })).toEqual([]);
   });
   it("환경 예시의 빠진 키와 남는 키를 모두 검사한다", () => {
     const result = inspect({ ...base, ".env.example": "A=x\nC=y\n" }).join();
