@@ -26,6 +26,14 @@ web은 3000에서 뜬다. 현재 `dev`는 web만 띄운다. 목 사본을 넣는
 동시 갱신 묶기는 프로세스 안에서만 유효하다. 기본 배포는 인스턴스 하나다.
 여러 인스턴스에서는 sticky session이 필요하며, 인스턴스를 넘는 갱신 조율은 별도 설계 대상이다.
 
+## 로케일과 시간대
+
+화면은 `src/app/[locale]/`에 둔다. `src/proxy.ts`의 next-intl middleware는 ko의 접두사를 없애고 en에 `/en`을 붙인다. URL, `NEXT_LOCALE` 쿠키, `Accept-Language`, 기본 ko 순으로 로케일을 고른다. 헤더와 다른 언어를 선택하면 middleware가 쿠키를 갱신한다. 헤더와 같은 첫 선택에는 불필요한 쿠키를 쓰지 않는다. 계정 로케일 동기화는 인증 단계에서 연결한다.
+
+`src/lib/i18n/request.ts`는 선택한 카탈로그와 `TIME_ZONE`을 반환한다. 레이아웃은 같은 메시지와 시간대를 `NextIntlClientProvider`에 전달한다. 서버의 `getFormatter`와 클라이언트의 `useFormatter`를 써서 호스트 시간대 차이에 따른 날짜 불일치를 막는다. 기본 시간대는 `Asia/Seoul`이다.
+
+`AppConfig`의 메시지 타입은 `messages/ko.json`에서 파생한다. 없는 번역 키는 컴파일 오류이며, check의 i18n 단계는 ko/en의 키와 생성된 모든 ErrorCode의 번역을 검사한다. 에러 코드는 `errors` 아래 영역별 객체로 두고 `getTranslations("errors")`에 코드와 `meta.params`를 넘겨 ICU 값을 치환한다. API 에러 매핑은 다음 단계에서 붙인다.
+
 ## 하네스
 
 check는 단계별 입력 해시를 캐시한다. 삭제도 변경으로 본다. 실패한 단계는 캐시하지 않는다.

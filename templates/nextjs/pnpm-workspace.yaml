@@ -6,3 +6,5 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   lefthook: false
+  "@parcel/watcher": true
+  "@swc/core": true

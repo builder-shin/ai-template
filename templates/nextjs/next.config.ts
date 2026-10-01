@@ -1,7 +1,10 @@
 import { writeSync } from "node:fs";
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_SERVER } from "next/constants";
 import { parseEnv } from "./src/lib/env";
+
+const withNextIntl = createNextIntlPlugin("./src/lib/i18n/request.ts");
 
 export default function nextConfig(phase: string): NextConfig {
   if (phase === PHASE_DEVELOPMENT_SERVER || phase === PHASE_PRODUCTION_SERVER) {
@@ -14,8 +17,8 @@ export default function nextConfig(phase: string): NextConfig {
       process.exit(1);
     }
   }
-  return {
+  return withNextIntl({
     agentRules: false,
     turbopack: { root: import.meta.dirname },
-  };
+  });
 }

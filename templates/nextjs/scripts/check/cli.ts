@@ -3,6 +3,10 @@ import { fileURLToPath } from "node:url";
 import { envSchema } from "../../src/lib/env";
 import { binary, pnpm } from "../process.mjs";
 import { readProjectFiles } from "./files";
+import ko from "../../messages/ko.json";
+import en from "../../messages/en.json";
+import { errorCodes } from "../../src/lib/generated/error-codes";
+import { checkI18n } from "./i18n";
 import { checkHarness } from "./harness";
 import { fingerprint, runChecks, parseCheckArgs, type Step } from "./runner";
 
@@ -28,7 +32,7 @@ const key = (pattern: RegExp) => fingerprint(select(pattern)) + process.version;
 const steps: Step[] = [
   { name: "format", args: ["prettier", "--check", "."], key: fingerprint(files) },
   { name: "lint", args: ["eslint", "."], key: key(/\.[cm]?[jt]sx?$/) },
-  { name: "types", args: ["tsc", "--noEmit"], key: key(/\.[cm]?[jt]sx?$|tsconfig/) },
+  { name: "types", args: ["tsc", "--noEmit"], key: key(/\.[cm]?[jt]sx?$|tsconfig|^messages\//) },
   {
     name: fast ? "related-tests" : "tests",
     args: [
@@ -40,6 +44,7 @@ const steps: Step[] = [
   { name: "generated", args: ["tsx", "scripts/gen.ts", "--check"], key: key(/^(src|contract)\//) },
 ];
 if (!fast) {
+  steps.push({ name: "i18n", args: [], key: key(/^messages\/|^src\/lib\/generated\/error-codes/) });
   for (const directory of ["typespec", "mock"]) {
     steps.push({
       name: `contract-${directory}`,
@@ -50,6 +55,10 @@ if (!fast) {
   steps.push({ name: "harness", args: [], key: fingerprint(files) });
 }
 const result = await runChecks(steps, previous, async (step) => {
+  if (step.name === "i18n") {
+    const problems = checkI18n({ ko, en }, errorCodes);
+    return { ok: !problems.length, output: problems.join("\n") };
+  }
   if (step.name === "harness") {
     const problems = checkHarness(files, Object.keys(envSchema.shape));
     return { ok: !problems.length, output: problems.join("\n") };

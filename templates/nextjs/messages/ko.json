@@ -1,0 +1,69 @@
+{
+  "home": {
+    "title": "Web 템플릿",
+    "description": "새 서비스를 시작하세요."
+  },
+  "errors": {
+    "jsonapi": {
+      "unsupported_media_type": "JSON:API 형식으로 요청하세요.",
+      "not_acceptable": "JSON:API 형식의 응답을 허용하세요.",
+      "content_too_large": "요청 내용이 너무 큽니다.",
+      "invalid_document": "요청 문서의 형식이 올바르지 않습니다.",
+      "invalid_query": "조회 조건이 올바르지 않습니다.",
+      "unsupported_include": "지원하지 않는 관계 조회입니다.",
+      "unsupported_sort": "지원하지 않는 정렬 조건입니다."
+    },
+    "validation": {
+      "required": "필수 값을 입력하세요.",
+      "too_short": "{min}자 이상 입력하세요.",
+      "too_long": "{max}자 이하로 입력하세요.",
+      "invalid_format": "올바른 형식으로 입력하세요.",
+      "out_of_range": "허용 범위 안의 값을 입력하세요.",
+      "invalid_choice": "허용된 값을 선택하세요.",
+      "already_taken": "이미 사용 중인 값입니다."
+    },
+    "auth": {
+      "unauthenticated": "로그인하세요.",
+      "invalid_credentials": "이메일과 비밀번호를 확인하세요.",
+      "token_expired": "로그인 인증이 만료되었습니다.",
+      "token_invalid": "인증 토큰이 올바르지 않습니다.",
+      "refresh_token_reused": "갱신 토큰이 재사용되었습니다. 다시 로그인하세요.",
+      "oauth_code_invalid": "소셜 로그인 코드가 올바르지 않거나 만료되었습니다.",
+      "reauthentication_required": "다시 로그인하세요.",
+      "oauth_denied": "소셜 로그인을 취소했습니다.",
+      "oauth_failed": "소셜 로그인에 실패했습니다.",
+      "email_not_verified": "이메일을 인증하세요.",
+      "account_deactivated": "비활성화된 계정입니다.",
+      "verification_token_invalid": "인증 링크가 올바르지 않거나 만료되었습니다."
+    },
+    "permission": {
+      "denied": "이 작업을 할 권한이 없습니다."
+    },
+    "role": {
+      "system_role_protected": "시스템 역할은 변경할 수 없습니다.",
+      "last_admin_protected": "마지막 관리자는 변경할 수 없습니다."
+    },
+    "resource": {
+      "not_found": "요청한 자료를 찾을 수 없습니다.",
+      "conflict": "현재 상태에서는 요청을 처리할 수 없습니다."
+    },
+    "post": {
+      "invalid_transition": "이 글 상태로 변경할 수 없습니다."
+    },
+    "file": {
+      "too_large": "파일 크기는 {max}바이트 이하여야 합니다.",
+      "type_not_allowed": "지원하지 않는 파일 형식입니다.",
+      "upload_incomplete": "파일 업로드를 완료하세요.",
+      "quota_exceeded": "파일 저장 한도를 초과했습니다."
+    },
+    "rate_limit": {
+      "exceeded": "요청이 너무 많습니다. 잠시 후 다시 시도하세요."
+    },
+    "internal": {
+      "unexpected": "오류가 발생했습니다. 다시 시도하세요."
+    },
+    "service": {
+      "unavailable": "서비스를 사용할 수 없습니다. 잠시 후 다시 시도하세요."
+    }
+  }
+}

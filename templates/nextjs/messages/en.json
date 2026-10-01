@@ -1,0 +1,69 @@
+{
+  "home": {
+    "title": "Web template",
+    "description": "Start your new service."
+  },
+  "errors": {
+    "jsonapi": {
+      "unsupported_media_type": "Send the request in JSON:API format.",
+      "not_acceptable": "Accept responses in JSON:API format.",
+      "content_too_large": "The request body is too large.",
+      "invalid_document": "The request document is invalid.",
+      "invalid_query": "The query is invalid.",
+      "unsupported_include": "This include path is not supported.",
+      "unsupported_sort": "This sort field is not supported."
+    },
+    "validation": {
+      "required": "Enter a required value.",
+      "too_short": "Enter at least {min} characters.",
+      "too_long": "Enter no more than {max} characters.",
+      "invalid_format": "Enter a value in the correct format.",
+      "out_of_range": "Enter a value within the allowed range.",
+      "invalid_choice": "Choose an allowed value.",
+      "already_taken": "This value is already in use."
+    },
+    "auth": {
+      "unauthenticated": "Please sign in.",
+      "invalid_credentials": "Check your email or password.",
+      "token_expired": "Your sign-in has expired.",
+      "token_invalid": "The authentication token is invalid.",
+      "refresh_token_reused": "The refresh token was reused. Sign in again.",
+      "oauth_code_invalid": "The social sign-in code is invalid or expired.",
+      "reauthentication_required": "Please sign in again.",
+      "oauth_denied": "Social sign-in was cancelled.",
+      "oauth_failed": "Social sign-in failed.",
+      "email_not_verified": "Verify your email address.",
+      "account_deactivated": "This account is deactivated.",
+      "verification_token_invalid": "The verification link is invalid or expired."
+    },
+    "permission": {
+      "denied": "You do not have permission to do this."
+    },
+    "role": {
+      "system_role_protected": "This system role is protected.",
+      "last_admin_protected": "The last administrator is protected."
+    },
+    "resource": {
+      "not_found": "The requested resource was not found.",
+      "conflict": "The request conflicts with the current state."
+    },
+    "post": {
+      "invalid_transition": "This post status change is not allowed."
+    },
+    "file": {
+      "too_large": "The file must be no larger than {max} bytes.",
+      "type_not_allowed": "This file type is not allowed.",
+      "upload_incomplete": "Complete the file upload.",
+      "quota_exceeded": "Your file storage quota has been exceeded."
+    },
+    "rate_limit": {
+      "exceeded": "Too many requests. Try again later."
+    },
+    "internal": {
+      "unexpected": "An unexpected error occurred. Try again."
+    },
+    "service": {
+      "unavailable": "The service is unavailable. Try again later."
+    }
+  }
+}

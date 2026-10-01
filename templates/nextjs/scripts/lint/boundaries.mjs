@@ -42,6 +42,7 @@ export function architectureConfig(root) {
     settings: {
       "boundaries/root-path": root,
       "boundaries/elements": [
+        { type: "messages", pattern: "messages" },
         { type: "feature", pattern: "src/features/*", capture: ["name"] },
         { type: "app", pattern: "src/app" },
         { type: "lib", pattern: "src/lib" },

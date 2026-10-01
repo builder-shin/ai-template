@@ -14,6 +14,8 @@ beforeAll(() => {
   );
   mkdirSync(`${root}/src`, { recursive: true });
   writeFileSync(`${root}/src/unknown.ts`, "export const x = 1;\n");
+  mkdirSync(`${root}/messages`, { recursive: true });
+  writeFileSync(`${root}/messages/ko.json`, '{"home":{"title":"홈"}}\n');
   for (const name of ["app", "features/a", "features/b", "lib/api", "lib/session", "components"]) {
     mkdirSync(`${root}/src/${name}`, { recursive: true });
     for (const file of ["index.ts", "internal.ts"])
@@ -55,6 +57,8 @@ describe("경계 린트", () => {
     ["src/features/a/view.ts", 'import { x } from "../b/index";'],
     ["src/features/a/view.ts", 'import { x } from "./internal";'],
     ["src/app/page.ts", 'import { x } from "../lib/api";'],
+    ["src/lib/i18n.ts", 'const catalog = import("../../messages/ko.json");'],
+    ["src/lib/i18n.ts", 'import type messages from "../../messages/ko.json";'],
   ])("공개 인터페이스와 같은 기능 내부는 허용한다: %s %s", async (file, code) => {
     expect(await lint(file, code)).toEqual([]);
   });

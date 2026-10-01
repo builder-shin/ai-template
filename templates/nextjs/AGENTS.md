@@ -8,7 +8,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 | -------------------------------- | ----------------------------------------------------------------------- |
 | `pnpm setup`                     | 고정 의존성 설치, 환경 파일의 없는 키 보충, 독립 저장소의 git hook 설치 |
 | `pnpm dev`                       | 단독 모드: 목(4010)과 web(3000), 백엔드 모드: web만 실행                |
-| `pnpm check`                     | 포맷, 린트, 타입, 단위·통합 테스트, 생성물, 하네스                      |
+| `pnpm check`                     | 포맷, 린트, 타입, 단위·통합 테스트, 생성물, i18n, 계약, 하네스          |
 | `pnpm check --fast -- <파일...>` | Stop hook용 빠른 검사와 관련 테스트                                     |
 | `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                              |
 | `pnpm test`                      | Vitest 단위·통합 테스트                                                 |
@@ -18,16 +18,18 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 
 ## 구조
 
-| 경로              | 내용                                                 |
-| ----------------- | ---------------------------------------------------- |
-| `src/app/`        | 페이지·레이아웃                                      |
-| `src/features/`   | 기능별 구현과 공개 `index.ts`. posts는 W3에서 채운다 |
-| `src/lib/`        | 설정, API·세션 등 공통 기반                          |
-| `src/components/` | 공통 UI를 더할 자리                                  |
-| `scripts/`        | check, setup, gen, 경계 린트, 외부 도구              |
-| `.claude/hooks/`  | 편집·종료·위험 명령·세션 시작 hook                   |
-| `e2e/`            | Playwright 흐름을 더할 자리                          |
-| `docs/`           | 아키텍처, 버전 문서, 레시피                          |
+| 경로                | 내용                                                  |
+| ------------------- | ----------------------------------------------------- |
+| `src/app/[locale]/` | ko/en 페이지·레이아웃                                 |
+| `messages/`         | ko 기준 메시지 타입, ko/en 번역과 모든 계약 에러 코드 |
+| `src/proxy.ts`      | next-intl 로케일 라우팅                               |
+| `src/features/`     | 기능별 구현과 공개 `index.ts`. posts는 W3에서 채운다  |
+| `src/lib/`          | 설정, API·세션 등 공통 기반                           |
+| `src/components/`   | 공통 UI를 더할 자리                                   |
+| `scripts/`          | check, setup, gen, 경계 린트, 외부 도구               |
+| `.claude/hooks/`    | 편집·종료·위험 명령·세션 시작 hook                    |
+| `e2e/`              | Playwright 흐름을 더할 자리                           |
+| `docs/`             | 아키텍처, 버전 문서, 레시피                           |
 
 ## 핵심 규칙
 
@@ -37,7 +39,8 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - `lib/api`, `lib/session`, 기능의 `actions.ts`·`queries.ts`에는 `import "server-only"`를 둔다.
 - 폼은 `<form action>`과 `useActionState`로 만든다. 백엔드가 검증의 원본이다.
 - 로딩은 스피너나 스켈레톤만 쓴다. 로딩 문구는 쓰지 않는다. 스피너에는 화면 낭독기용 `aria-label`만 붙인다.
-- i18n을 붙인 뒤 문구는 ko/en 카탈로그에 둔다. 날짜·시간은 `TIME_ZONE`을 쓴다.
+- 문구는 ko/en 카탈로그에 둔다. ko는 `/`, en은 `/en`이며 선택은 `NEXT_LOCALE`, 첫 방문은 `Accept-Language`를 따른다. 메시지 타입은 ko에서 파생한다.
+- 에러 번역은 `errors` namespace에 코드와 `meta.params`를 전달한다. 서버·클라이언트의 `getFormatter`/`useFormatter`는 요청 설정과 provider의 같은 `TIME_ZONE`을 쓴다.
 - `.env`를 읽거나 출력하지 않는다. 키는 `.env.example`과 `src/lib/env.ts`에서 확인한다. 운영에는 예시 `SESSION_SECRET`을 쓸 수 없다.
 - 환경 검증은 `next.config.ts`의 개발·운영 서버 phase에서 한다. 빌드에는 서버 비밀이 필요 없다. 잘못된 설정은 서버 시작 때 변수마다 한 줄을 알리고 종료한다.
 - 의존성 버전은 정확히 고정한다. pnpm의 `minimumReleaseAge: 1440`을 유지한다.
