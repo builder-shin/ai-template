@@ -1,0 +1,63 @@
+import { describe, expect, it } from "vitest";
+import { checkHarness } from "./harness";
+
+const base = {
+  "AGENTS.md": "# 지침\n",
+  "CLAUDE.md": "@AGENTS.md\n",
+  ".env.example": "A=one\nB=two\n",
+};
+const inspect = (files: Record<string, string>) => checkHarness(files, ["A", "B"]);
+
+describe("하네스", () => {
+  it("정상 파일을 통과시킨다", () => expect(inspect(base)).toEqual([]));
+  it("양방향 지침 짝과 CLAUDE 내용을 검사한다", () => {
+    expect(inspect({ ...base, "src/AGENTS.md": "규칙" }).join()).toMatch(/CLAUDE/);
+    expect(inspect({ ...base, "src/CLAUDE.md": "@AGENTS.md" }).join()).toMatch(/AGENTS/);
+    expect(inspect({ ...base, "CLAUDE.md": "다른 규칙" }).join()).toMatch(/@AGENTS.md/);
+    const { "AGENTS.md": _agents, ...missing } = base;
+    expect(inspect(missing).join()).toMatch(/AGENTS/);
+  });
+  it("루트 200줄, 소스 400줄, 테스트 600줄 한도를 지킨다", () => {
+    expect(inspect({ ...base, "AGENTS.md": "x\n".repeat(201) }).join()).toMatch(/200/);
+    expect(inspect({ ...base, "src/a.ts": "\n".repeat(401) }).join()).toMatch(/400/);
+    expect(inspect({ ...base, "src/a.test.ts": "\n".repeat(601) }).join()).toMatch(/600/);
+    expect(inspect({ ...base, "src/a.ts": "\n".repeat(400) })).toEqual([]);
+    expect(inspect({ ...base, "src/a.test.ts": "\n".repeat(600) })).toEqual([]);
+  });
+  it.each([
+    "// eslint-disable-next-line no-console",
+    "// @ts-ignore",
+    "// @ts-expect-error",
+    "let value: any;",
+  ])("사유 없는 억제를 막는다: %s", (code) => {
+    expect(inspect({ ...base, "src/a.ts": code }).join()).toMatch(/사유/);
+    expect(inspect({ ...base, "src/a.ts": `${code} // 사유: 외부 경계 타입 확인\n` })).toEqual([]);
+  });
+  it("문자열 속 예시와 일반 주석의 any는 억제로 보지 않는다", () => {
+    expect(
+      inspect({
+        ...base,
+        "src/a.ts": 'const text = "any @ts-ignore eslint-disable";\n// any 값 설명\n',
+      }),
+    ).toEqual([]);
+  });
+  it("환경 예시의 빠진 키와 남는 키를 모두 검사한다", () => {
+    const result = inspect({ ...base, ".env.example": "A=x\nC=y\n" }).join();
+    expect(result).toMatch(/B/);
+    expect(result).toMatch(/C/);
+  });
+  it("생성물의 첫 줄 헤더를 검사하고 크기와 억제는 제외한다", () => {
+    expect(inspect({ ...base, "src/generated/a.ts": "export {};" }).join()).toMatch(
+      /직접 수정 금지/,
+    );
+    expect(inspect({ ...base, "src/lib/api/schema.d.ts": "export {};" }).join()).toMatch(
+      /직접 수정 금지/,
+    );
+    expect(
+      inspect({
+        ...base,
+        "src/generated/a.ts": "// 직접 수정 금지\n" + "let x: any;\n".repeat(700),
+      }),
+    ).toEqual([]);
+  });
+});

@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+# 동기화한 계약 사본과 생성물만 제외한다. 수기 코드는 계속 검사한다.
+[[allowlists]]
+paths = [
+  '''^contract/''',
+  '''(^|/)generated/''',
+  '''^src/lib/api/schema\.d\.ts$''',
+]
