@@ -5,57 +5,11 @@ import { useTranslations } from "next-intl";
 import { SubmitButton } from "../../components/submit-button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { Link } from "../../lib/i18n/navigation";
+import { FormErrors, ResendForm } from "./form-feedback";
 import type { AuthAction, AuthResult } from "./state";
 
 const initialResend: AuthResult = { ok: false, formError: null, fieldErrors: {} };
-
-function FormErrors({ state }: { state: AuthResult }) {
-  const t = useTranslations("auth");
-  if (state.ok) return null;
-  return (
-    <>
-      {state.formError && (
-        <p role="alert" className="whitespace-pre-line text-sm text-destructive">
-          {state.formError}
-        </p>
-      )}
-      {state.retryAfter != null && (
-        <p className="text-sm">{t("retryAfter", { seconds: state.retryAfter })}</p>
-      )}
-    </>
-  );
-}
-
-function ResendForm({
-  email,
-  action,
-  state,
-}: {
-  email: string;
-  action: (data: FormData) => void;
-  state: AuthResult;
-}) {
-  const t = useTranslations("auth");
-  return (
-    <form action={action} className="space-y-3">
-      <input type="hidden" name="email" value={email} />
-      <p className="text-sm">{t("verificationGuidance")}</p>
-      <FormErrors state={state} />
-      {!state.ok &&
-        state.fieldErrors.email?.map((message) => (
-          <p key={message} role="alert">
-            {message}
-          </p>
-        ))}
-      {state.ok && (
-        <p role="status" className="text-sm">
-          {t("verificationSent")}
-        </p>
-      )}
-      <SubmitButton>{t("resend")}</SubmitButton>
-    </form>
-  );
-}
 
 export function LoginForm({
   loginAction,
@@ -125,6 +79,9 @@ export function LoginForm({
         <FormErrors state={state} />
         <SubmitButton>{t("login")}</SubmitButton>
       </form>
+      <Link href="/signup" className="text-sm underline">
+        {t("signup")}
+      </Link>
       {verificationEmail && (
         <ResendForm
           email={verificationEmail}

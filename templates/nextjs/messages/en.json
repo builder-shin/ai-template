@@ -16,6 +16,12 @@
   "locale": { "switcher": "Select language", "ko": "한국어", "en": "English" },
   "accessibility": { "spinner": "In progress" },
   "auth": {
+    "signup": "Sign up",
+    "name": "Name",
+    "checkEmail": "Check your email",
+    "verifyEmail": "Verify email",
+    "confirmVerification": "Confirm your email address using the button below.",
+    "verificationComplete": "Your email is verified. You can log in now.",
     "login": "Log in",
     "email": "Email",
     "passwordLabel": "Password",

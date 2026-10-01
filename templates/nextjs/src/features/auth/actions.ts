@@ -97,6 +97,50 @@ export async function resendVerificationAction(
   }
 }
 
+export async function signupAction(_state: AuthResult, data: FormData): Promise<AuthResult> {
+  const locale = await getLocale();
+  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  const name = text(data, "name");
+  const email = text(data, "email");
+  try {
+    await client.POST("/registrations", {
+      body: {
+        data: {
+          type: "registrations",
+          attributes: { name, email, password: text(data, "password") },
+        },
+      },
+    });
+    return { ok: true, verificationEmail: email };
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status < 400 || error.status >= 500) throw error;
+    return {
+      ...toFormResult(error, locale, ["name", "email", "password"]),
+      name,
+      email,
+      ...(error.status === 429 ? { retryAfter: error.retryAfter } : {}),
+    };
+  }
+}
+
+export async function verifyEmailAction(_state: AuthResult, data: FormData): Promise<AuthResult> {
+  const locale = await getLocale();
+  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  try {
+    await client.POST("/email-verifications", {
+      body: { data: { type: "email-verifications", attributes: { token: text(data, "token") } } },
+    });
+    return { ok: true };
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status < 400 || error.status >= 500) throw error;
+    // 토큰은 편집할 입력칸이 없으므로 pointer 오류도 화면 안내로 보낸다.
+    return {
+      ...toFormResult(error, locale, []),
+      ...(error.status === 429 ? { retryAfter: error.retryAfter } : {}),
+    };
+  }
+}
+
 export async function logoutAction(): Promise<void> {
   const locale = await getLocale();
   try {

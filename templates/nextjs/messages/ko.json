@@ -16,6 +16,12 @@
   "locale": { "switcher": "언어 선택", "ko": "한국어", "en": "English" },
   "accessibility": { "spinner": "진행 중" },
   "auth": {
+    "signup": "가입",
+    "name": "이름",
+    "checkEmail": "메일을 확인해 주세요",
+    "verifyEmail": "이메일 인증",
+    "confirmVerification": "아래 버튼을 눌러 이메일 주소를 확인해 주세요.",
+    "verificationComplete": "이메일 인증을 마쳤습니다. 이제 로그인할 수 있습니다.",
     "login": "로그인",
     "email": "이메일",
     "passwordLabel": "비밀번호",

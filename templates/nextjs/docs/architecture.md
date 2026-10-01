@@ -39,13 +39,21 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 ## 로그인 폼과 로그아웃
 
-`features/auth`의 공개 인터페이스가 로그인 화면과 세 Action을 제공한다. 입력 이름은 계약의 `email`·`password`다. `useActionState`에 실제 Server Action과 로케일별 permalink를 넘기므로 JS 없이도 HTML 폼을 제출하고 303으로 이동한다. 비밀번호는 반환 상태에 넣지 않는다. `useFormStatus`는 제출 중 버튼을 막고 스피너만 더하며 버튼의 접근성 이름은 유지한다.
+`features/auth`의 공개 인터페이스가 인증 화면과 Action을 제공한다. 입력 이름은 계약의 `name`·`email`·`password`다. `useActionState`에 실제 Server Action과 로케일별 permalink를 넘기므로 JS 없이도 HTML 폼을 제출한다. 로그인 성공은 303으로 이동하고 가입·메일 인증 결과는 HTML에 복원한다. 비밀번호는 반환 상태에 넣지 않는다. `useFormStatus`는 제출 중 버튼을 막고 스피너만 더하며 버튼의 접근성 이름은 유지한다.
 
 `toFormResult`가 속성 pointer를 입력 오류로, 나머지를 폼 오류로 번역한다. 로그인 자격증명의 401은 폼에 남는다. 미인증 이메일에는 안내와 재발송 폼을 보여 주고, 429는 `Retry-After`의 초를 안내한다. 연결 실패·서버 오류는 trace를 가진 오류 경계로 넘긴다. 이동 경로는 계정 로케일 접두사를 붙이기 전후의 상대 경로 규칙을 지킨다.
 
 레이아웃이 로그아웃 Action을 헤더에 넘긴다. 사용자 메뉴의 버튼은 바깥 HTML 폼과 `form` 속성으로 연결해 포털에서도 제출한다. Action은 `DELETE /sessions/current`를 호출하고 실패해도 `finally`에서 쿠키를 지운 뒤 현재 로케일 홈으로 간다.
 
-실제 Next HTTP 통합 검사는 홈의 세션 헤더와 로그인·재발송·로그아웃 폼을 사용한다. 테스트 중 페이지를 만들거나 Next 타입 파일을 백업하지 않는다. 거절되는 옛 access 토큰과 유효한 refresh 토큰으로 같은 렌더링·Action의 새 토큰 사용을 확인한다.
+실제 Next HTTP 통합 검사는 홈의 세션 헤더와 가입·메일 인증·로그인·재발송·로그아웃 폼을 사용한다. 테스트 중 페이지를 만들거나 Next 타입 파일을 백업하지 않는다. 거절되는 옛 access 토큰과 유효한 refresh 토큰으로 같은 렌더링·Action의 새 토큰 사용을 확인한다.
+
+## 가입과 메일 인증
+
+`/signup`은 가입 성공 뒤 같은 URL에서 메일 발송 안내와 재발송 폼으로 바뀐다. 이메일을 URL이나 별도 쿠키에 보관하지 않고 Action 결과에서 받는다. 가입과 재발송 hook은 같은 순서로 항상 호출하므로 JS 없는 재발송 응답도 안내 화면을 복원한다. `Accept-Language`에 UI 로케일을 보내 계정과 메일의 언어를 정한다. 재발송은 기존 Action을 공유하며 429의 `Retry-After` 초를 안내한다.
+
+목과 FastAPI는 `FRONTEND_URL`에 `/verify-email?token=…`를 붙인다. 이 경로를 그대로 제공하며 로케일 접두사가 없는 첫 요청은 `NEXT_LOCALE`, `Accept-Language`, 기본 ko 순으로 고른다. 영어는 토큰 쿼리를 유지한 `/en/verify-email`로 이동한다. 계정의 로케일은 인증 전에는 알 수 없으므로 메일의 언어를 URL에서 추측하지 않는다.
+
+링크의 GET은 확인 폼만 보여 주며 버튼의 Server Action이 `POST /email-verifications`를 호출한다. 메일 미리보기·prefetch·언어 전환으로 토큰을 소모하지 않는다. 성공은 로그인 링크를, 실패는 번역한 안내를 보여 준다. 토큰 누락·반복 쿼리는 실패 안내로 처리한다. 토큰은 반환 상태·API 로그에 넣지 않으며 토큰 pointer는 편집할 입력칸이 없어 폼 오류로 연결한다.
 
 `src/lib/i18n/request.ts`는 선택한 카탈로그와 `TIME_ZONE`을 반환한다. 레이아웃은 같은 메시지와 시간대를 `NextIntlClientProvider`에 전달한다. 서버의 `getFormatter`와 클라이언트의 `useFormatter`를 써서 호스트 시간대 차이에 따른 날짜 불일치를 막는다. 기본 시간대는 `Asia/Seoul`이다.
 
