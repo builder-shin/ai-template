@@ -25,9 +25,10 @@ function usePostRefresh() {
   };
 }
 
+// gen:feature: 고칠 곳 — 새 계약의 채널·이벤트·갱신 조건을 맞춘다.
 export function PostsRealtime() {
   const refresh = usePostRefresh();
-  useChannel("posts", refresh);
+  useChannel("posts", refresh); // gen:feature: 그대로
   return null;
 }
 

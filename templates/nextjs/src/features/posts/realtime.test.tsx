@@ -28,7 +28,7 @@ function event(name: "post.deleted" | "post.unpublished" | "post.updated", id = 
 it("공개 목록은 짧은 시간의 글 변경을 한 번으로 모으고 해제 때 타이머를 지운다", () => {
   vi.useFakeTimers();
   const view = render(<PostsRealtime />);
-  expect(useChannel).toHaveBeenCalledWith("posts", expect.any(Function));
+  expect(useChannel).toHaveBeenCalledWith("posts", expect.any(Function)); // gen:feature: 그대로
   event("post.updated");
   event("post.deleted");
   event("post.unpublished");

@@ -11,6 +11,7 @@ import { getPathname } from "../../lib/i18n/navigation";
 import { redirectOnUnauthorized } from "../../lib/session/request";
 import type { PostResult, PostValues } from "./state";
 
+// gen:feature: 고칠 곳 — 새 계약의 API·JSON:API type·상태 전이·입력칸 오류를 맞춘다.
 type Locale = "ko" | "en";
 function text(data: FormData, name: string) {
   const value = data.get(name);
@@ -39,7 +40,7 @@ function failure(error: unknown, locale: Locale, path: string, input?: PostValue
   return {
     ...toFormResult(error, locale, input ? ["title", "body"] : []),
     ...(input ? { values: input } : {}),
-    ...(error.code === "post.invalid_transition" ? { invalidTransition: true } : {}),
+    ...(error.code === "post.invalid_transition" ? { invalidTransition: true } : {}), // gen:feature: 그대로
     ...(error.status === 429 ? { retryAfter: error.retryAfter } : {}),
   };
 }

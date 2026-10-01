@@ -14,6 +14,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 | `pnpm test`                      | Vitest 단위·통합 테스트                                                               |
 | `pnpm test:e2e`                  | Playwright 인증 E2E. 목(4110)과 운영 web(3100)을 기동·종료                            |
 | `pnpm gen`                       | TypeSpec 계약, web API·실시간·에러 타입, 목 타입 생성                                 |
+| `pnpm gen:feature <이름>`        | 골든 posts와 화면·번역·테스트를 복사하고 보호 경로를 등록                             |
 | `pnpm build`, `pnpm start`       | 운영 빌드, 운영 서버(3000)                                                            |
 
 ## 구조
@@ -74,3 +75,4 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - [아키텍처](docs/architecture.md)
 - [버전과 공식 문서](docs/stack.md)
 - [페이지 추가](docs/recipes/add-page.md)
+- [기능 추가](docs/recipes/add-feature.md)

@@ -62,8 +62,10 @@ describe("ko/en 공개 글 HTTP 화면", () => {
       expect(main.textContent).toContain("Admin");
       expect(detailDocument.querySelector("img")?.getAttribute("src")).toContain("/_storage/");
       expect(main.querySelector("script")).toBeNull();
+      // gen:feature: 빼기 시작
       const home = await fetch(`${base}${prefix || "/"}`, { headers });
       expect(await home.text()).toContain(`href="${prefix}/posts"`);
+      // gen:feature: 빼기 끝
     },
     30000,
   );

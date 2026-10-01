@@ -11,6 +11,7 @@ import { getPathname } from "../../lib/i18n/navigation";
 import { redirectOnUnauthorized } from "../../lib/session/request";
 import { postSorts, type Post, type PostSort, type MyPost, type MyPostStatus } from "./model";
 
+// gen:feature: 고칠 곳 — 계약을 확장한 뒤 API 경로·계약 타입·포함 관계·권한을 바꾼다.
 type Schemas = components["schemas"];
 type Locale = Schemas["Locale"];
 

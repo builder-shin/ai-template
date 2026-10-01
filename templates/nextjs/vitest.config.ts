@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
@@ -10,6 +10,26 @@ export default defineConfig({
     },
   },
   test: {
+    // 독립 설치·중첩 web 검증은 기존 HTTP 검사 뒤에 실행해 서로 지연시키지 않는다.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "web",
+          exclude: [...configDefaults.exclude, "scripts/gen-feature.test.ts"],
+          sequence: { groupOrder: 0 },
+        },
+      },
+      {
+        extends: false,
+        test: {
+          name: "gen-feature",
+          include: ["scripts/gen-feature.test.ts"],
+          globalSetup: [],
+          sequence: { groupOrder: 1 },
+        },
+      },
+    ],
     include: [
       "src/**/*.test.ts",
       "src/**/*.test.tsx",

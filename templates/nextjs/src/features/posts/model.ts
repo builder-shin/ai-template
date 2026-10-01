@@ -1,3 +1,7 @@
+// gen:feature: 빼기 시작
+// posts는 이 템플릿의 골든 기능이다. 생성기는 이 설명을 복사하지 않는다.
+// gen:feature: 빼기 끝
+// gen:feature: 고칠 곳 — 속성·상태·검색·페이지 링크를 새 기능에 맞춘다.
 export type Post = {
   id: string;
   title: string;

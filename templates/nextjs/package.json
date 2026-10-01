@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "gen": "tsx scripts/gen.ts",
+    "gen:feature": "tsx scripts/gen-feature.ts",
     "tool": "tsx scripts/tools/cli.ts"
   },
   "dependencies": {
