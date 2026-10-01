@@ -1,4 +1,3 @@
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
@@ -8,25 +7,13 @@ import type { TestProject } from "vitest/node";
 import { startHttpServer } from "../http/server";
 import { startHeaderFailureBackend } from "./header-failure-backend";
 import { requireChromium } from "./browser";
+import { startProcessTree, stopProcessTree } from "../process-tree.mjs";
 
 declare module "vitest" {
   export interface ProvidedContext {
     mockBaseUrl: string;
     httpBaseUrl: string;
   }
-}
-
-async function stop(child: ChildProcess) {
-  if (!child.pid || child.exitCode !== null || child.signalCode !== null) return;
-  const exited = once(child, "exit", { signal: AbortSignal.timeout(10000) });
-  // 직접 시작한 목 프로세스 트리만 내린다.
-  if (process.platform === "win32") {
-    spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
-      windowsHide: true,
-      stdio: "ignore",
-    });
-  } else process.kill(-child.pid, "SIGTERM");
-  await exited;
 }
 
 export default async function setup(project: TestProject) {
@@ -41,8 +28,7 @@ export default async function setup(project: TestProject) {
   if (port === 3000 || port === 4010) throw new Error("개발 포트를 테스트에 쓰지 않는다.");
   const base = `http://127.0.0.1:${port}`;
   const require = createRequire(import.meta.url);
-  const child = spawn(
-    process.execPath,
+  const child = startProcessTree(
     ["--import", pathToFileURL(require.resolve("tsx")).href, "contract/mock/src/main.ts"],
     {
       cwd: new URL("../../", import.meta.url),
@@ -63,8 +49,6 @@ export default async function setup(project: TestProject) {
         RATE_LIMIT_MAIL_IP: "1000",
         RATE_LIMIT_MAIL_EMAIL: "3",
       },
-      windowsHide: true,
-      detached: process.platform !== "win32",
     },
   );
   let output = "";
@@ -113,12 +97,12 @@ export default async function setup(project: TestProject) {
         try {
           await backend.stop();
         } finally {
-          await stop(child);
+          await stopProcessTree(child);
         }
       }
     };
   } catch (error) {
-    await stop(child);
+    await stopProcessTree(child);
     throw error;
   }
 }

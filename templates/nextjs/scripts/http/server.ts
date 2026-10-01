@@ -1,9 +1,9 @@
-import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { setTimeout } from "node:timers/promises";
 import { EXAMPLE_SESSION_SECRET } from "../../src/lib/env";
+import { startProcessTree, stopProcessTree } from "../process-tree.mjs";
 
 export async function startHttpServer(mockBaseUrl: string) {
   const listener = createServer();
@@ -16,8 +16,7 @@ export async function startHttpServer(mockBaseUrl: string) {
   await new Promise<void>((resolve) => listener.close(() => resolve()));
   const base = `http://localhost:${port}`;
   const require = createRequire(import.meta.url);
-  const child = spawn(
-    process.execPath,
+  const child = startProcessTree(
     [
       require.resolve("next/dist/bin/next"),
       "dev",
@@ -38,8 +37,6 @@ export async function startHttpServer(mockBaseUrl: string) {
         TIME_ZONE: "America/New_York",
         NEXT_PUBLIC_REALTIME_URL: mockBaseUrl,
       },
-      windowsHide: true,
-      detached: process.platform !== "win32",
     },
   );
   let output = "";
@@ -54,15 +51,7 @@ export async function startHttpServer(mockBaseUrl: string) {
     startError = error;
   });
   async function stop() {
-    if (!child.pid || child.exitCode !== null || child.signalCode !== null) return;
-    const exited = once(child, "exit", { signal: AbortSignal.timeout(10000) });
-    if (process.platform === "win32")
-      spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
-        windowsHide: true,
-        stdio: "ignore",
-      });
-    else process.kill(-child.pid, "SIGTERM");
-    await exited;
+    await stopProcessTree(child);
   }
   try {
     const deadline = Date.now() + 60000;

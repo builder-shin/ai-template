@@ -1,4 +1,4 @@
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { type ChildProcess } from "node:child_process";
 import { once } from "node:events";
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
@@ -6,6 +6,7 @@ import { createServer } from "node:net";
 import { setTimeout } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { mockOrigin, webOrigin, targetName, requireImplementedTarget } from "../e2e/targets";
+import { startProcessTree, stopProcessTree } from "./process-tree.mjs";
 
 const root = new URL("../", import.meta.url);
 const require = createRequire(import.meta.url);
@@ -16,28 +17,19 @@ async function stop(code: number) {
   if (stopping) return;
   stopping = true;
   process.exitCode = code;
-  await Promise.all(
-    [...children].map(async (child) => {
-      if (!child.pid || child.exitCode !== null || child.signalCode !== null) return;
-      const exited = once(child, "exit", { signal: AbortSignal.timeout(10000) });
-      // 이 실행에서 만든 트리만 종료한다. Playwright도 부모 프로세스 그룹을 정리한다.
-      if (process.platform === "win32")
-        spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
-          windowsHide: true,
-          stdio: "ignore",
-        });
-      else child.kill("SIGTERM");
-      await exited;
-    }),
-  );
+  const results = await Promise.allSettled([...children].map((child) => stopProcessTree(child)));
+  for (const result of results)
+    if (result.status === "rejected") {
+      console.error(result.reason.message);
+      process.exitCode = 1;
+    }
 }
 
 function start(args: string[], env = process.env, server = true) {
-  const child = spawn(process.execPath, args, {
+  const child = startProcessTree(args, {
     cwd: root,
     env,
     stdio: "inherit",
-    windowsHide: true,
   });
   children.add(child);
   child.on("error", (error) => {
@@ -45,7 +37,6 @@ function start(args: string[], env = process.env, server = true) {
     void stop(1);
   });
   child.on("exit", (code) => {
-    children.delete(child);
     if (server && !stopping) void stop(code || 1);
   });
   return child;
