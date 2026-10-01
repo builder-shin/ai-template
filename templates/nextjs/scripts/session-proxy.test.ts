@@ -53,6 +53,28 @@ describe("세션과 로케일 proxy 합성", () => {
     }
   });
 
+  it.each(
+    ["/me/100%25", "/en/%6d%65/100%25", "/my-posts/a%25b"].flatMap((path) =>
+      ["GET", "POST"].map((method) => [path, method] as const),
+    ),
+  )("유효한 퍼센트 경로 %s의 %s도 로그인으로 보낸다", async (path, method) => {
+    const result = await proxy(request(path, undefined, method));
+    expect(result.status).toBe(303);
+    expect(new URL(result.headers.get("location")!).pathname).toBe(
+      path.startsWith("/en/") ? "/en/login" : "/login",
+    );
+    expect(result.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it.each(["GET", "POST"])(
+    "%s의 경로 디코딩 오류도 로그인 검사를 통과하지 못한다",
+    async (method) => {
+      const result = await proxy(request("/me/%", undefined, method));
+      expect(result.status).toBe(303);
+      expect(new URL(result.headers.get("location")!).pathname).toBe("/login");
+    },
+  );
+
   it.each(["/x/../en/me?tab=profile#details", "/%2e%2e/en/me?tab=profile#details"])(
     "점 구간 %s를 정규화하고 쿼리와 hash는 보존한다",
     (path) => expect(safeReturnTo(path)).toBe("/en/me?tab=profile#details"),

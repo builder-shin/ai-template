@@ -1,13 +1,13 @@
 import "server-only";
 import type { routing } from "../i18n/routing";
 
-/** next-intl과 같은 decodeURI·경로 정리 뒤 URL의 점 구간을 정규화한다. */
+/** next-intl처럼 한 번만 decodeURI·경로 정리 뒤 URL의 점 구간을 정규화한다. */
 function canonicalPathname(pathname: string) {
   const path = decodeURI(pathname)
     .replace(/\\/g, "%5C")
     .replace(/[\t\n\r]/g, "")
     .replace(/\/+/g, "/");
-  return decodeURI(new URL(path, "https://return-to.invalid").pathname);
+  return new URL(path, "https://return-to.invalid").pathname;
 }
 
 /** 경로의 중첩 인코딩·역슬래시·제어 문자를 거절하고 쿼리·hash는 보존한다. */
@@ -46,7 +46,7 @@ export function requiresLogin(pathname: string) {
     const path = canonicalPathname(pathname).replace(/^\/(ko|en)(?=\/|$)/, "") || "/";
     return ["/me", "/my-posts"].some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
   } catch {
-    // 잘못된 인코딩은 next-intl처럼 Next의 400 처리에 맡긴다.
-    return false;
+    // 디코딩·정규화 오류가 로그인 검사를 우회하지 못하게 한다.
+    return true;
   }
 }
