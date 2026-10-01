@@ -41,16 +41,17 @@ type QueryFor<P extends keyof ApiPaths> = ApiPaths[P] extends {
 }
   ? NonNullable<Q>
   : never;
-type Group<Q, Prefix extends string> = {
-  [K in keyof Q as K extends `${Prefix}[${infer Name}]` ? Name : never]?: Q[K];
-};
+type Group<Q, Prefix extends string> =
+  Extract<keyof Q, `${Prefix}[${string}]`> extends never
+    ? never
+    : { [K in keyof Q as K extends `${Prefix}[${infer Name}]` ? Name : never]?: Q[K] };
 type List = string | readonly string[];
 type QueryOptions<Q> = {
   filter?: Group<Q, "filter">;
   sort?: Q extends { sort?: string } ? List : never;
   include?: Q extends { include?: string } ? List : never;
   page?: Group<Q, "page">;
-  fields?: { [K in keyof Group<Q, "fields">]?: List };
+  fields?: Group<Q, "fields"> extends never ? never : { [K in keyof Group<Q, "fields">]?: List };
 };
 
 export function buildQuery<P extends keyof ApiPaths>(

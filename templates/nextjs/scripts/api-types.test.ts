@@ -41,13 +41,24 @@ const client = createApiClient({ baseUrl: "http://localhost/api/v1", locale: "en
   try {
     const valid = compile(`
 const query = buildQuery("/posts", { filter: { status: "published" }, fields: { users: ["name"] } });
+buildQuery("/me", { fields: { users: ["name"] } });
 client.GET("/posts", { params: { query } });
 resolveIncluded(document, { type: "users", id: "id" })?.attributes.name;
 client.POST("/sessions", { body: { data: { type: "sessions", attributes: { grantType: "refreshToken", refreshToken: "token" } } } });
 `);
     expect(valid.status, valid.stdout + valid.stderr).toBe(0);
+    for (const [path, options] of [
+      ["/me", '{ filter: { status: "published" } }'],
+      ["/me", "{ page: { number: 1 } }"],
+      ["/sessions/current", '{ fields: { users: ["name"] } }'],
+    ]) {
+      const absent = compile(`buildQuery("${path}", ${options});`);
+      expect.soft(absent.status, options + absent.stdout + absent.stderr).toBe(2);
+      if (absent.status !== 0) expect(absent.stdout).toContain("TS2322");
+    }
     const invalid = compile(`
 buildQuery("/posts", { filter: { status: "invalid_status" } });
+buildQuery("/posts", { page: { size: "invalid_page_size" } });
 buildQuery("/posts", { filter: { nonexistent_filter: "x" } });
 buildQuery("/posts", { fields: { nonexistent_resource: ["name"] } });
 client.GET("/nonexistent_path", {});
@@ -57,6 +68,7 @@ resolveIncluded(document, { type: "users", id: "id" })?.attributes.email;
     expect(invalid.status).toBe(2);
     for (const rejected of [
       "invalid_status",
+      "Type 'string' is not assignable to type 'number'",
       "nonexistent_filter",
       "nonexistent_resource",
       "nonexistent_path",

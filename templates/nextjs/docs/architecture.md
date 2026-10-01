@@ -74,7 +74,7 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 미들웨어가 JSON:API 미디어 타입, 현재 로케일, 세션 토큰과 W3C traceparent를 설정한다. 데이터는 캐시하지 않는다. 로그에는 메서드, 계약 경로, 상태, trace id, 소요 시간만 남기며 `log` 옵션으로 서버 로거를 연결할 수 있다. 기본값은 구조화된 콘솔 로그다.
 
-`jsonapi.ts`는 생성 스키마에서 포함 리소스와 쿼리 타입을 파생한다. 관계는 type과 id로 연결하고 페이지 이동은 응답 링크를 그대로 쓴다. 비정상 응답은 `ApiError`다. `toFormResult`는 코드와 params를 카탈로그로 번역하고 속성 pointer를 필드별 메시지 배열로 바꾼다. 입력칸 목록을 넘기면 짝이 없는 속성도 폼 에러가 된다. `FormResult`는 Server Action에서 직렬화할 성공/실패 타입이며 `mapApiError`는 로그인·권한·없는 리소스·요청 한도·예상 밖 에러를 분류한다.
+`jsonapi.ts`는 생성 스키마에서 포함 리소스와 쿼리 타입을 파생한다. `buildQuery`의 filter·page·fields는 해당 GET 계약에 있는 그룹만 받으며 없는 그룹은 `never`다. filter·page의 값 타입과 fields의 문자열·배열 입력을 유지한다. 관계는 type과 id로 연결하고 페이지 이동은 응답 링크를 그대로 쓴다. 비정상 응답은 `ApiError`다. `toFormResult`는 코드와 params를 카탈로그로 번역하고 속성 pointer를 필드별 메시지 배열로 바꾼다. 입력칸 목록을 넘기면 짝이 없는 속성도 폼 에러가 된다. `FormResult`는 Server Action에서 직렬화할 성공/실패 타입이며 `mapApiError`는 로그인·권한·없는 리소스·요청 한도·예상 밖 에러를 분류한다.
 
 단위·통합 테스트는 Vitest의 global setup이 자유 포트에 띄운 실제 `contract/mock` 사본을 쓴다. 개발 포트 3000/4010을 쓰지 않으며 종료 때 자신이 시작한 프로세스 트리를 내린다. `server-only` 별칭은 Node 테스트에서만 표식을 비우고 Next 빌드의 서버 경계는 유지한다.
 
