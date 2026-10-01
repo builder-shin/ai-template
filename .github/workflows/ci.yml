@@ -67,8 +67,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: templates/nextjs/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check
       - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm check
       - run: pnpm test:e2e
         env:
           E2E_TARGET: mock

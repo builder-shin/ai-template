@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import type { TestProject } from "vitest/node";
 import { startHttpServer } from "../http/server";
 import { startHeaderFailureBackend } from "./header-failure-backend";
+import { requireChromium } from "./browser";
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -29,6 +30,7 @@ async function stop(child: ChildProcess) {
 }
 
 export default async function setup(project: TestProject) {
+  requireChromium();
   const listener = createServer();
   listener.listen(0, "127.0.0.1");
   await once(listener, "listening");

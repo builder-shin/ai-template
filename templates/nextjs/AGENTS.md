@@ -4,17 +4,17 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 
 ## 명령
 
-| 명령                             | 하는 일                                                              |
-| -------------------------------- | -------------------------------------------------------------------- |
-| `pnpm setup`                     | 고정 의존성·Chromium 설치, 환경 키 보충, 독립 저장소의 git hook 설치 |
-| `pnpm dev`                       | 단독 모드: 목(4010)과 web(3000), 백엔드 모드: web만 실행             |
-| `pnpm check`                     | 포맷, 린트, 타입, 단위·통합 테스트, 생성물, i18n, 계약, 하네스       |
-| `pnpm check --fast -- <파일...>` | Stop hook용 빠른 검사와 관련 테스트                                  |
-| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                           |
-| `pnpm test`                      | Vitest 단위·통합 테스트                                              |
-| `pnpm test:e2e`                  | Playwright 인증 E2E. 목(4110)과 운영 web(3100)을 기동·종료           |
-| `pnpm gen`                       | TypeSpec 계약, web API·실시간·에러 타입, 목 타입 생성                |
-| `pnpm build`, `pnpm start`       | 운영 빌드, 운영 서버(3000)                                           |
+| 명령                             | 하는 일                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------- |
+| `pnpm setup`                     | 고정 의존성·Chromium 설치, 환경 키 보충, 독립 저장소의 git hook 설치                  |
+| `pnpm dev`                       | 단독 모드: 목(4010)과 web(3000), 백엔드 모드: web만 실행                              |
+| `pnpm check`                     | 포맷, 린트, 타입, 단위·통합 테스트, 생성물, i18n, 계약, 하네스. setup의 Chromium 필요 |
+| `pnpm check --fast -- <파일...>` | Stop hook용 빠른 검사와 관련 테스트                                                   |
+| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                                            |
+| `pnpm test`                      | Vitest 단위·통합 테스트                                                               |
+| `pnpm test:e2e`                  | Playwright 인증 E2E. 목(4110)과 운영 web(3100)을 기동·종료                            |
+| `pnpm gen`                       | TypeSpec 계약, web API·실시간·에러 타입, 목 타입 생성                                 |
+| `pnpm build`, `pnpm start`       | 운영 빌드, 운영 서버(3000)                                                            |
 
 ## 구조
 
@@ -65,7 +65,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 
 ## 완료 기준과 문서
 
-`pnpm check`가 통과해야 끝난다. UI·런타임 변경은 `pnpm build`, 사용자 흐름은 E2E도 확인한다.
+`pnpm check`가 통과해야 끝난다. 헤더 오류의 브라우저 통합 검사를 위해 `pnpm setup`이 설치한 Chromium이 필요하며 없으면 설치 안내로 실패한다. UI·런타임 변경은 `pnpm build`, 사용자 흐름은 E2E도 확인한다.
 캐시를 무시하고 재검사하려면 `.cache/check.json`을 지운다. check의 성공 출력은 한 줄이며 실패한 단계만 상세 출력한다.
 
 - [아키텍처](docs/architecture.md)
