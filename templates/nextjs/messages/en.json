@@ -15,6 +15,15 @@
   },
   "locale": { "switcher": "Select language", "ko": "한국어", "en": "English" },
   "accessibility": { "spinner": "In progress" },
+  "auth": {
+    "login": "Log in",
+    "email": "Email",
+    "passwordLabel": "Password",
+    "verificationGuidance": "Open the verification link in your email.",
+    "resend": "Resend verification email",
+    "verificationSent": "Verification email sent. Check your inbox.",
+    "retryAfter": "Try again in {seconds} seconds."
+  },
   "errorPage": {
     "title": "Something went wrong",
     "description": "Please try again shortly.",

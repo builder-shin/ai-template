@@ -35,7 +35,17 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 ## 로케일과 시간대
 
-화면은 `src/app/[locale]/`에 둔다. `src/proxy.ts`의 next-intl middleware는 ko의 접두사를 없애고 en에 `/en`을 붙인다. URL, `NEXT_LOCALE` 쿠키, `Accept-Language`, 기본 ko 순으로 로케일을 고른다. 헤더와 다른 언어를 선택하면 middleware가 쿠키를 갱신한다. 헤더와 같은 첫 선택에는 불필요한 쿠키를 쓰지 않는다. 계정 로케일 동기화는 인증 단계에서 연결한다.
+화면은 `src/app/[locale]/`에 둔다. `src/proxy.ts`의 next-intl middleware는 ko의 접두사를 없애고 en에 `/en`을 붙인다. URL, `NEXT_LOCALE` 쿠키, `Accept-Language`, 기본 ko 순으로 로케일을 고른다. 헤더와 다른 언어를 선택하면 middleware가 쿠키를 갱신한다. 헤더와 같은 첫 선택에는 불필요한 쿠키를 쓰지 않는다. 로그인 Action은 발급된 access 토큰으로 `/me`를 읽어 계정 로케일로 쿠키와 이동 URL을 맞춘다.
+
+## 로그인 폼과 로그아웃
+
+`features/auth`의 공개 인터페이스가 로그인 화면과 세 Action을 제공한다. 입력 이름은 계약의 `email`·`password`다. `useActionState`에 실제 Server Action과 로케일별 permalink를 넘기므로 JS 없이도 HTML 폼을 제출하고 303으로 이동한다. 비밀번호는 반환 상태에 넣지 않는다. `useFormStatus`는 제출 중 버튼을 막고 스피너만 더하며 버튼의 접근성 이름은 유지한다.
+
+`toFormResult`가 속성 pointer를 입력 오류로, 나머지를 폼 오류로 번역한다. 로그인 자격증명의 401은 폼에 남는다. 미인증 이메일에는 안내와 재발송 폼을 보여 주고, 429는 `Retry-After`의 초를 안내한다. 연결 실패·서버 오류는 trace를 가진 오류 경계로 넘긴다. 이동 경로는 계정 로케일 접두사를 붙이기 전후의 상대 경로 규칙을 지킨다.
+
+레이아웃이 로그아웃 Action을 헤더에 넘긴다. 사용자 메뉴의 버튼은 바깥 HTML 폼과 `form` 속성으로 연결해 포털에서도 제출한다. Action은 `DELETE /sessions/current`를 호출하고 실패해도 `finally`에서 쿠키를 지운 뒤 현재 로케일 홈으로 간다.
+
+실제 Next HTTP 통합 검사는 홈의 세션 헤더와 로그인·재발송·로그아웃 폼을 사용한다. 테스트 중 페이지를 만들거나 Next 타입 파일을 백업하지 않는다. 거절되는 옛 access 토큰과 유효한 refresh 토큰으로 같은 렌더링·Action의 새 토큰 사용을 확인한다.
 
 `src/lib/i18n/request.ts`는 선택한 카탈로그와 `TIME_ZONE`을 반환한다. 레이아웃은 같은 메시지와 시간대를 `NextIntlClientProvider`에 전달한다. 서버의 `getFormatter`와 클라이언트의 `useFormatter`를 써서 호스트 시간대 차이에 따른 날짜 불일치를 막는다. 기본 시간대는 `Asia/Seoul`이다.
 

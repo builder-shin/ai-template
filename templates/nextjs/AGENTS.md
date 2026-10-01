@@ -38,7 +38,8 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - `app`은 기능의 공개 `index.ts`, `lib`, `components`를 쓴다. 다른 기능의 내부 import는 금지한다.
 - `lib/api`, `lib/session`, 기능의 `actions.ts`·`queries.ts`에는 `import "server-only"`를 둔다.
 - 갱신은 proxy에서만 한다. 화면·Action은 `createSessionApiClient`로 요청의 토큰을 읽고, 401은 `redirectOnUnauthorized`로 쿠키 정리 route에 보낸다. `/me`·`/my-posts`는 로그인 경로다.
-- 폼은 `<form action>`과 `useActionState`로 만든다. 백엔드가 검증의 원본이다.
+- 폼은 `<form action>`과 `useActionState`로 만든다. 백엔드가 검증의 원본이다. 제출 버튼은 `useFormStatus`로 막는다. 로그인·재발송은 로케일별 permalink로 JS 없이도 제출한다.
+- 로그인은 `/me`의 계정 로케일로 `NEXT_LOCALE`과 이동 URL을 맞춘다. `returnTo`는 로케일 접두사 제거 뒤에도 검증한다. 로그아웃은 API 실패여도 쿠키를 지우고 현재 로케일 홈으로 간다.
 - 로딩은 스피너나 스켈레톤만 쓴다. 로딩 문구는 쓰지 않는다. 스피너에는 화면 낭독기용 `aria-label`만 붙인다.
 - 하네스는 TSX 문구와 카탈로그의 로딩 문구를 막는다. `accessibility.spinner`는 aria-label 전용이다.
 - 기본 UI 부품은 `pnpm exec shadcn add <부품>`으로만 추가한다. 공식 `.claude/skills/shadcn/`의 latest 명령은 설치된 고정 CLI로 바꿔 실행한다. 다크 모드는 시스템만 따른다.

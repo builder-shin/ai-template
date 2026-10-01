@@ -1,10 +1,12 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useFormStatus } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { Link } from "../lib/i18n/navigation";
 import { LocaleSwitcher } from "./locale-switcher";
 import { Button } from "./ui/button";
+import { Spinner } from "./spinner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +15,37 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 
-export function Header({ user }: { user: { name: string | null } | null }) {
+function UserMenu({ name }: { name: string }) {
+  const t = useTranslations("layout");
+  const { pending } = useFormStatus();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button type="button" variant="ghost" />}
+        disabled={pending}
+        aria-label={t("userMenu", { name })}
+      >
+        <span className="max-w-32 truncate">{name}</span>
+        {pending ? <Spinner /> : <ChevronDown aria-hidden="true" data-icon="inline-end" />}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuGroup>
+          <DropdownMenuItem disabled={pending} render={<button type="submit" form="logout-form" />}>
+            {t("logout")}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function Header({
+  user,
+  logoutAction,
+}: {
+  user: { name: string | null } | null;
+  logoutAction: () => Promise<void>;
+}) {
   const t = useTranslations("layout");
   const name = user?.name?.trim() || t("unnamedUser");
   return (
@@ -29,21 +61,9 @@ export function Header({ user }: { user: { name: string | null } | null }) {
         <div className="flex flex-wrap items-center gap-3">
           <LocaleSwitcher />
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<Button variant="ghost" />}
-                aria-label={t("userMenu", { name })}
-              >
-                <span className="max-w-32 truncate">{name}</span>
-                <ChevronDown aria-hidden="true" data-icon="inline-end" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {/* 로그아웃 Action은 Task 7에서 연결한다. */}
-                <DropdownMenuGroup>
-                  <DropdownMenuItem disabled>{t("logout")}</DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <form id="logout-form" action={logoutAction}>
+              <UserMenu name={name} />
+            </form>
           ) : (
             <Link
               href="/login"

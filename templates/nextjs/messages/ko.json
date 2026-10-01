@@ -15,6 +15,15 @@
   },
   "locale": { "switcher": "언어 선택", "ko": "한국어", "en": "English" },
   "accessibility": { "spinner": "진행 중" },
+  "auth": {
+    "login": "로그인",
+    "email": "이메일",
+    "passwordLabel": "비밀번호",
+    "verificationGuidance": "받은 메일에서 인증 링크를 눌러 주세요.",
+    "resend": "인증 메일 재발송",
+    "verificationSent": "인증 메일을 보냈습니다. 받은 편지함을 확인해 주세요.",
+    "retryAfter": "{seconds}초 뒤에 다시 시도해 주세요."
+  },
   "errorPage": {
     "title": "오류가 발생했습니다",
     "description": "잠시 후 다시 시도하세요.",

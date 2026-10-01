@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { routing } from "../../lib/i18n/routing";
 import { Header } from "../../components/header";
 import { getHeaderUser } from "../../lib/session/user";
+import { logoutAction } from "../../features/auth";
 import "../globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -38,7 +39,7 @@ export default async function LocaleLayout({
           >
             {t("skipToContent")}
           </a>
-          <Header user={user} />
+          <Header user={user} logoutAction={logoutAction} />
           <main
             id="main"
             tabIndex={-1}

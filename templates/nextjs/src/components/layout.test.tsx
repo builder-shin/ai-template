@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
-import type { ReactNode } from "react";
+import { act, type ReactNode } from "react";
 import ko from "../../messages/ko.json";
 import en from "../../messages/en.json";
 import { Header } from "./header";
@@ -38,7 +38,7 @@ function show(children: ReactNode, locale: "ko" | "en" = "ko") {
 
 describe("헤더", () => {
   it("비로그인 상태에 홈과 로그인 링크를 보여 준다", () => {
-    show(<Header user={null} />);
+    show(<Header user={null} logoutAction={async () => {}} />);
     const header = within(screen.getByRole("banner"));
     expect(header.getByRole("link", { name: "홈" }).getAttribute("href")).toBe("/");
     expect(header.getByRole("link", { name: "로그인" }).getAttribute("href")).toBe("/login");
@@ -46,7 +46,15 @@ describe("헤더", () => {
   });
   it.each(["마우스", "키보드"])("세션이 있으면 %s로 이름과 로그아웃 메뉴를 연다", async (input) => {
     const user = userEvent.setup();
-    show(<Header user={{ name: "관리자" }} />);
+    let logouts = 0;
+    show(
+      <Header
+        user={{ name: "관리자" }}
+        logoutAction={async () => {
+          logouts++;
+        }}
+      />,
+    );
     expect(screen.queryByRole("link", { name: "로그인" })).toBeNull();
     const trigger = screen.getByRole("button", { name: "사용자 메뉴: 관리자" });
     if (input === "마우스") await user.click(trigger);
@@ -54,13 +62,41 @@ describe("헤더", () => {
       trigger.focus();
       await user.keyboard("{Enter}");
     }
-    expect(
-      (await screen.findByRole("menuitem", { name: "로그아웃" })).getAttribute("aria-disabled"),
-    ).toBe("true");
+    const logout = await screen.findByRole("menuitem", { name: "로그아웃" });
+    expect(logout.getAttribute("aria-disabled")).not.toBe("true");
+    if (input === "마우스") await user.click(logout);
+    else {
+      logout.focus();
+      await user.keyboard("{Enter}");
+    }
+    expect(logouts).toBe(1);
   });
   it("이름이 없는 계정에는 번역한 대체 이름을 쓴다", async () => {
-    show(<Header user={{ name: null }} />, "en");
+    show(<Header user={{ name: null }} logoutAction={async () => {}} />, "en");
     expect(screen.getByRole("button", { name: "User menu: User" })).toBeTruthy();
+  });
+  it("로그아웃을 제출하면 메뉴를 막고 사용자 버튼에 스피너를 보여 준다", async () => {
+    let finish!: () => void;
+    show(
+      <Header
+        user={{ name: "관리자" }}
+        logoutAction={async () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          })
+        }
+      />,
+    );
+    const user = userEvent.setup();
+    const trigger = screen.getByRole("button", {
+      name: "사용자 메뉴: 관리자",
+    }) as HTMLButtonElement;
+    await user.click(trigger);
+    await user.click(await screen.findByRole("menuitem", { name: "로그아웃" }));
+    expect(trigger.disabled).toBe(true);
+    expect(screen.getByRole("status", { name: "진행 중" })).toBeTruthy();
+    await act(async () => finish());
+    expect(trigger.disabled).toBe(false);
   });
 });
 
