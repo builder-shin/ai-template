@@ -1,12 +1,23 @@
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { mockTarget } from "./mock";
 
 export const webOrigin = "http://localhost:3100";
 export const mockOrigin = "http://127.0.0.1:4110";
 export type TargetName = "mock" | "fastapi";
+export type SocialProvider = "google" | "kakao" | "naver";
+export interface SocialIdentity {
+  username: string;
+  name: string;
+}
 export interface TargetAdapter {
   mailLink(email: string, purpose: "verification" | "reset"): Promise<string>;
   expireRecentLogin(): Promise<void>;
+  completeSocialLogin(
+    page: Page,
+    provider: SocialProvider,
+    identity: SocialIdentity,
+  ): Promise<void>;
+  denySocialLogin(page: Page, provider: SocialProvider): Promise<void>;
 }
 
 export function targetName(value = process.env.E2E_TARGET ?? "mock"): TargetName {
