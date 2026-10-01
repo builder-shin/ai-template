@@ -27,7 +27,7 @@ web은 3000에서 뜬다. `dev`는 단독 모드에서 목도 함께 띄운다.
 
 `src/proxy.ts`는 next-intl 라우팅, `/me`·`/my-posts`와 하위 경로의 로그인 검사, 토큰 갱신을 합성한다. next-intl과 같은 decodeURI·슬래시 정리와 URL의 점 구간 정규화 뒤 로케일 접두사를 제외한다. `safeReturnTo`도 같은 정규화한 경로에 원래 쿼리·hash를 붙여 반환한다. 로그인은 그 결과에서 로케일을 제거·재검증하고 계정 로케일을 붙인다. access 만료까지 60초 미만이면 refresh grant를 보내고 새 쿠키를 응답과 같은 요청의 쿠키 헤더에 함께 넣는다. next-intl의 로케일 헤더·rewrite·쿠키를 보존한다. matcher는 페이지로 가는 Server Action POST와 `/me/a.b` 같은 하위 경로도 포함하며 공개 정적 파일은 이름으로 제외한다.
 
-같은 refresh 토큰은 모듈의 Map에 하나의 진행 중 요청을 두고, 완료 결과를 30초 동안 기억한다. 실패도 기억해 결과가 불확실한 토큰을 즉시 다시 보내지 않는다. 시간이 지나면 결과를 메모리에서 치운다. 갱신 실패는 쿠키 삭제와 303 로그인 리다이렉트로 처리한다. `returnTo`는 같은 사이트의 상대 경로만 받고, 외부 주소·중첩 인코딩 우회·역슬래시·제어 문자는 `/`로 바꾼다.
+같은 refresh 토큰은 모듈의 Map에 하나의 진행 중 요청을 두고, 완료 결과를 30초 동안 기억한다. 실패한 Promise도 그대로 재사용하며 실패 완료 시각부터 30초 뒤 만료된다. 결과가 불확실한 토큰을 즉시 다시 보내지 않는다. 재요청이 없어도 타이머가 결과를 메모리에서 치우며 옛 항목의 타이머는 새 항목을 지우지 않는다. 실제 목 통합 검사가 실패 Promise 재사용·완료 후 만료 경계·타이머 교체를 확인한다. 갱신 실패는 쿠키 삭제와 303 로그인 리다이렉트로 처리한다. `returnTo`는 같은 사이트의 상대 경로만 받고, 외부 주소·중첩 인코딩 우회·역슬래시·제어 문자는 `/`로 바꾼다.
 
 Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 요청 쿠키를 읽기만 하며 갱신하지 않는다. 로그인 Action은 `writeSession`으로 쿠키를 쓴다. 쿠키를 쓸 수 있는 Action은 `clearSessionAndRedirect`로 직접 정리할 수 있다. 공통 `redirectOnUnauthorized`는 `ApiError`의 401일 때 `/session/clear`로 보낸다. Server Component는 쿠키를 삭제할 수 없으므로 이 route의 GET 응답에서 지운 뒤 303으로 로그인에 간다. 정리 route는 Origin을 `APP_URL`의 origin과 비교하고, Origin 없는 이동은 `Sec-Fetch-Site: same-origin`으로 확인한다. cross-site·same-site·출처를 확인할 수 없는 요청은 Set-Cookie 없이 403으로 거절한다. 다른 오류는 원래 흐름에서 처리한다.
 

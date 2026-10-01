@@ -17,6 +17,57 @@ afterEach(() => {
 });
 
 describe("실제 목의 일회용 refresh 갱신 묶기", () => {
+  it("실패한 Promise도 진행 중·완료 후에 같은 토큰의 요청에 재사용한다", async () => {
+    const old = await login();
+    await mockClient(old.accessToken).DELETE("/sessions/current");
+    const first = refreshSession(old.refreshToken, "ko");
+    expect(refreshSession(old.refreshToken, "en")).toBe(first);
+    await expect(first).rejects.toMatchObject({ status: 401 });
+    const late = refreshSession(old.refreshToken, "en");
+    await expect(late).rejects.toMatchObject({ status: 401 });
+    expect(late).toBe(first);
+  });
+
+  it("실패가 완료된 시각부터 30초를 기억하고 정확한 경계에서 다시 요청한다", async () => {
+    const old = await login();
+    await mockClient(old.accessToken).DELETE("/sessions/current");
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const first = refreshSession(old.refreshToken, "ko");
+    // 요청이 진행 중인 동안 10초가 흘러도 기억 시간은 완료 뒤부터 센다.
+    clock.mockReturnValue(now + 10000);
+    await expect(first).rejects.toMatchObject({ status: 401 });
+    clock.mockReturnValue(now + 39999);
+    expect(refreshSession(old.refreshToken, "en")).toBe(first);
+    clock.mockReturnValue(now + 40000);
+    const next = refreshSession(old.refreshToken, "ko");
+    expect(next).not.toBe(first);
+    await expect(next).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("옛 타이머는 새 항목을 지우지 않고 현재 타이머는 재요청 없이도 치운다", async () => {
+    const old = await login();
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    // 실제 HTTP와 Date는 유지하고 만료 콜백만 앞당겨 실행한다.
+    const timers = vi.spyOn(globalThis, "setTimeout");
+    await refreshSession(old.refreshToken, "ko");
+    const staleTimer = timers.mock.calls.find(([, delay]) => delay === 30000)![0];
+    timers.mockClear();
+    clock.mockReturnValue(now + 30000);
+    const newer = refreshSession(old.refreshToken, "ko");
+    await expect(newer).rejects.toMatchObject({ status: 401 });
+    const currentTimer = timers.mock.calls.find(([, delay]) => delay === 30000)![0];
+    staleTimer();
+    const afterStale = refreshSession(old.refreshToken, "en");
+    await expect(afterStale).rejects.toMatchObject({ status: 401 });
+    expect(afterStale).toBe(newer);
+    currentTimer();
+    const afterCleanup = refreshSession(old.refreshToken, "ko");
+    expect(afterCleanup).not.toBe(newer);
+    await expect(afterCleanup).rejects.toMatchObject({ status: 401 });
+  });
+
   it("동시 요청이 하나의 새 토큰 쌍을 받고 세션이 살아 있다", async () => {
     const old = await login();
     const results = await Promise.all(
