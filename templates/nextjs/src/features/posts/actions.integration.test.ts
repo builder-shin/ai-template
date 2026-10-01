@@ -4,6 +4,8 @@ import { EXAMPLE_SESSION_SECRET } from "../../lib/env";
 import { ApiError } from "../../lib/api/errors";
 import { readSession } from "../../lib/session/request";
 import { myPostFixture } from "./my-post-fixture";
+import { loginSeedAccount } from "../../lib/testing/account";
+import { startMock } from "../../../scripts/test/mock-server";
 import { getMyPost, getMyPosts } from "./queries";
 import {
   createPostAction,
@@ -101,6 +103,79 @@ describe("내 글 Action과 실제 목", () => {
     expect(await getMyPost("en", foreign.id)).toBeNull();
     expect(await getMyPost("en", "invalid")).toBeNull();
   });
+  it("실제 관리자도 내 글 목록과 상세에서는 다른 작성자의 글을 볼 수 없다", async () => {
+    const admin = await loginSeedAccount({
+      origin: inject("mockBaseUrl"),
+      locale: "en",
+      account: {
+        email: "admin@example.com",
+        password: "admin-password", // betterleaks:allow 사유: 테스트 시드
+      },
+    });
+    const prefix = `admin-own-${randomUUID()}`;
+    const own = (
+      await admin.client.POST("/posts", {
+        body: {
+          data: { type: "posts", attributes: { title: prefix, body: "본문", status: "draft" } },
+        },
+      })
+    ).data!.data;
+    const foreign = await other.create("draft");
+    try {
+      expect((await admin.client.GET("/me")).data!.data.attributes.name).toBe("Admin");
+      // 관리자 API가 읽을 수 있는 남의 초안도 내 글 화면에서는 제외한다.
+      expect(
+        (await admin.client.GET("/posts/{id}", { params: { path: { id: foreign.id } } })).data!.data
+          .id,
+      ).toBe(foreign.id);
+      vi.mocked(readSession).mockResolvedValue(admin.session);
+      const list = await getMyPosts("en", "all", 1, 100);
+      expect(list.posts.map((post) => post.id)).toContain(own.id);
+      expect(list.posts.map((post) => post.id)).not.toContain(foreign.id);
+      expect(list.posts.every((post) => post.authorName === "Admin")).toBe(true);
+      expect(await getMyPost("en", own.id)).toMatchObject({ id: own.id, title: prefix });
+      expect(await getMyPost("en", foreign.id)).toBeNull();
+    } finally {
+      await admin.client.DELETE("/posts/{id}", { params: { path: { id: own.id } } });
+      await admin.client.DELETE("/sessions/{id}", { params: { path: { id: admin.id } } });
+    }
+  });
+  it("실제 낮은 한도의 429를 번역 안내와 retryAfter로 바꾸고 페이지를 갱신하지 않는다", async () => {
+    const mock = await startMock({ env: { RATE_LIMIT_GLOBAL: "4" } });
+    try {
+      const limited = await myPostFixture("en", mock.base);
+      vi.stubEnv("API_BASE_URL", `${mock.base}/api/v1`);
+      vi.mocked(readSession).mockResolvedValue(limited.session);
+      const actual = globalThis.fetch;
+      let response: Response | undefined;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const result = await actual(input, init);
+        if (
+          input instanceof Request &&
+          input.method === "POST" && // gen:feature: 그대로
+          new URL(input.url).pathname === "/api/v1/posts" // gen:feature: 그대로
+        )
+          response = result.clone();
+        return result;
+      });
+      const result = await createPostAction(initial, fields("한도 초과"));
+      expect(response?.status).toBe(429);
+      const retryAfter = Number(response!.headers.get("Retry-After"));
+      expect(retryAfter).toBeGreaterThan(0);
+      expect(retryAfter).toBeLessThanOrEqual(60);
+      expect(result).toMatchObject({
+        ok: false,
+        formError: "Too many requests. Try again later.",
+        retryAfter,
+        values: { title: "한도 초과", body: "**새 본문**" },
+      });
+      expect(revalidatePath).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+      vi.stubEnv("API_BASE_URL", `${inject("mockBaseUrl")}/api/v1`);
+      await mock.stop();
+    }
+  });
   it("빈 제목의 pointer 오류를 입력칸에 연결하고 값을 보존한다", async () => {
     expect(await createPostAction(initial, fields("", "남길 본문"))).toMatchObject({
       ok: false,
@@ -177,6 +252,37 @@ describe("내 글 Action과 실제 목", () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
     try {
       await expect(createPostAction(initial, fields("제목"))).rejects.toBeInstanceOf(ApiError);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+  it("HTTP 500은 폼 오류로 바꾸지 않고 다시 던지며 페이지를 갱신하지 않는다", async () => {
+    // 정상 목은 500을 만들지 않아 계약 응답만 HTTP 경계에서 주입한다.
+    const actual = globalThis.fetch;
+    const traceId = "123456789abcdef0123456789abcdef0";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (
+        input instanceof Request &&
+        input.method === "POST" && // gen:feature: 그대로
+        new URL(input.url).pathname === "/api/v1/posts" // gen:feature: 그대로
+      )
+        return new Response(
+          JSON.stringify({
+            errors: [{ status: "500", code: "internal.unexpected" }],
+            meta: { traceId },
+          }),
+          { status: 500, headers: { "Content-Type": "application/vnd.api+json" } },
+        );
+      return actual(input, init);
+    });
+    try {
+      await expect(createPostAction(initial, fields("서버 오류"))).rejects.toMatchObject({
+        name: "ApiError",
+        status: 500,
+        code: "internal.unexpected",
+        traceId,
+      });
+      expect(revalidatePath).not.toHaveBeenCalled();
     } finally {
       vi.restoreAllMocks();
     }

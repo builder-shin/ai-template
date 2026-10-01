@@ -10,15 +10,17 @@ const testSupport = {
   },
   create(context) {
     const path = context.filename.replaceAll("\\", "/");
-    if (/\.(test|spec)\.[cm]?tsx?$|(?:^|[/\-])fixture\.[cm]?tsx?$|\/lib\/testing\//.test(path))
-      return {};
+    if (/\.(test|spec)\.[cm]?tsx?$|(?:^|[/\-])fixture\.[cm]?tsx?$/.test(path)) return {};
     function check(node) {
       const source = node.source;
       if (!source || typeof source.value !== "string") return;
       const target = source.value.startsWith("@/")
-        ? `/src/${source.value.slice(2)}`
+        ? resolve("/src", source.value.slice(2)).replaceAll("\\", "/")
         : resolve(dirname(context.filename), source.value).replaceAll("\\", "/");
-      if (/\/src\/lib\/testing(?:\/|$)/.test(target))
+      if (
+        /\/scripts\/test(?:\/|$)/.test(target) ||
+        (/\/src\/lib\/testing(?:\/|$)/.test(target) && !/\/lib\/testing\//.test(path))
+      )
         context.report({ node: source, messageId: "forbidden" });
     }
     return {
@@ -76,6 +78,7 @@ export function architectureConfig(root) {
       "boundaries/root-path": root,
       "boundaries/elements": [
         { type: "messages", pattern: "messages" },
+        { type: "test-support", pattern: "scripts/test" },
         { type: "feature", pattern: "src/features/*", capture: ["name"] },
         { type: "app", pattern: "src/app" },
         { type: "lib", pattern: "src/lib" },

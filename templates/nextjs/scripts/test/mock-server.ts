@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { startProcessTree, stopProcessTree } from "../process-tree.mjs";
 
 type Options = {
-  env: NodeJS.ProcessEnv | ((base: string) => NodeJS.ProcessEnv);
+  env: Partial<NodeJS.ProcessEnv> | ((base: string) => Partial<NodeJS.ProcessEnv>);
   entry?: string;
   timeoutMs?: number;
 };

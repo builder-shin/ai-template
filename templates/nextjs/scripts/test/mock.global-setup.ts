@@ -9,7 +9,6 @@ declare module "vitest" {
     mockBaseUrl: string;
     httpBaseUrl: string;
     deletionMockBaseUrl: string;
-    rateLimitMockBaseUrl: string;
   }
 }
 
@@ -48,9 +47,6 @@ export default async function setup(project: TestProject) {
     const deletionMock = await startDeletionMock();
     stops.push(deletionMock.stop);
     project.provide("deletionMockBaseUrl", deletionMock.base);
-    const rateLimitMock = await startMock({ env: { RATE_LIMIT_GLOBAL: "4" } });
-    stops.push(rateLimitMock.stop);
-    project.provide("rateLimitMockBaseUrl", rateLimitMock.base);
     const backend = await startHeaderFailureBackend(mock.base);
     stops.push(backend.stop);
     const http = await startHttpServer(backend.base, httpBase, mock.base);

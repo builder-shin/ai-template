@@ -15,6 +15,8 @@ beforeAll(() => {
   mkdirSync(`${root}/src`, { recursive: true });
   writeFileSync(`${root}/src/unknown.ts`, "export const x = 1;\n");
   mkdirSync(`${root}/messages`, { recursive: true });
+  mkdirSync(`${root}/scripts/test`, { recursive: true });
+  writeFileSync(`${root}/scripts/test/mock-server.ts`, "export const x = 1;\n");
   writeFileSync(`${root}/messages/ko.json`, '{"home":{"title":"홈"}}\n');
   for (const name of [
     "app",
@@ -51,6 +53,9 @@ describe("경계 린트", () => {
     ["src/features/a/view.ts", 'export { x } from "../../lib/testing/internal";'],
     ["src/lib/util.ts", 'const promise = import("./testing/internal");'],
     ["src/lib/index.ts", 'export * from "@/lib/testing/internal";'],
+    ["src/features/a/view.ts", 'import { x } from "../../../scripts/test/mock-server";'],
+    ["src/lib/util.ts", 'import { x } from "../../scripts/test/mock-server";'],
+    ["src/lib/testing/account.ts", 'import { x } from "../../../scripts/test/mock-server";'],
   ])("제품 코드는 테스트 지원을 가져오지 못한다: %s", async (file, code) => {
     expect(await lint(file, code)).toContain("template/test-support");
   });
