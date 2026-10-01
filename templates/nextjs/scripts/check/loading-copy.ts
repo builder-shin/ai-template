@@ -22,8 +22,29 @@ export function loadingCopyProblems(path: string, source: string): string[] {
     const file = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     const visit = (node: ts.Node) => {
       if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return;
-      if (ts.isJsxAttribute(node) && node.name.getText(file) === "aria-label") return;
-      if (ts.isJsxText(node) || ts.isStringLiteralLike(node)) {
+      if (
+        ts.isJsxAttribute(node) &&
+        /^(aria-label|href|src|srcSet|action|formAction|poster|cite)$/.test(node.name.getText(file))
+      )
+        return;
+      const parent = node.parent;
+      if (
+        parent &&
+        (ts.isPropertyAssignment(parent) ||
+          ts.isPropertyDeclaration(parent) ||
+          ts.isPropertySignature(parent) ||
+          ts.isMethodDeclaration(parent) ||
+          ts.isMethodSignature(parent)) &&
+        parent.name === node
+      )
+        return;
+      if (
+        ts.isJsxText(node) ||
+        ts.isStringLiteralLike(node) ||
+        ts.isTemplateHead(node) ||
+        ts.isTemplateMiddle(node) ||
+        ts.isTemplateTail(node)
+      ) {
         report(node.text, file.getLineAndCharacterOfPosition(node.getStart(file)).line + 1);
       }
       ts.forEachChild(node, visit);

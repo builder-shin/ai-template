@@ -43,7 +43,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - `/forgot-password`는 계정 존재 여부와 관계없이 같은 메일 안내를 보여 준다. 메일 링크 `/reset-password?token=…`에서 새 비밀번호를 제출하면 성공·로그인 링크를 표시하고 폐기된 세션 쿠키를 지운다.
 - 로그인은 `/me`의 계정 로케일로 `NEXT_LOCALE`과 이동 URL을 맞춘다. `returnTo`는 로케일 접두사 제거 뒤에도 검증한다. 로그아웃은 API 실패여도 쿠키를 지우고 현재 로케일 홈으로 간다.
 - 로딩은 스피너나 스켈레톤만 쓴다. 로딩 문구는 쓰지 않는다. 스피너에는 화면 낭독기용 `aria-label`만 붙인다.
-- 하네스는 TSX 문구와 카탈로그의 로딩 문구를 막는다. `accessibility.spinner`는 aria-label 전용이다.
+- 하네스는 TSX의 문자열·템플릿 문구와 카탈로그의 로딩 문구를 막는다. URL 속성과 객체 속성 이름은 문구가 아니다. 접근성 예외는 `aria-label`과 카탈로그의 `accessibility.spinner`뿐이며 스피너 이름에만 쓴다.
 - 기본 UI 부품은 `pnpm exec shadcn add <부품>`으로만 추가한다. 공식 `.claude/skills/shadcn/`의 latest 명령은 설치된 고정 CLI로 바꿔 실행한다. 다크 모드는 시스템만 따른다.
 - 문구는 ko/en 카탈로그에 둔다. ko는 `/`, en은 `/en`이며 선택은 `NEXT_LOCALE`, 첫 방문은 `Accept-Language`를 따른다. 메시지 타입은 ko에서 파생한다.
 - 에러 번역은 `errors` namespace에 코드와 `meta.params`를 전달한다. 서버·클라이언트의 `getFormatter`/`useFormatter`는 요청 설정과 provider의 같은 `TIME_ZONE`을 쓴다.
