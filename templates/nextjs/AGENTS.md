@@ -38,6 +38,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - `app`은 기능의 공개 `index.ts`, `lib`, `components`를 쓴다. 다른 기능의 내부 import는 금지한다.
 - `lib/api`, `lib/session`, 기능의 `actions.ts`·`queries.ts`에는 `import "server-only"`를 둔다.
 - 갱신은 proxy에서만 한다. 화면·Action은 `createSessionApiClient`로 요청의 토큰을 읽고, 401은 `redirectOnUnauthorized`로 쿠키 정리 route에 보낸다. `/me`·`/my-posts`는 로그인 경로다.
+- `/session/clear`는 `APP_URL`과 같은 Origin을 요구하며 이동 GET에 Origin이 없으면 `Sec-Fetch-Site: same-origin`을 확인한다. cross-site·확인할 수 없는 요청은 403이며 쿠키를 쓰지 않는다.
 - 폼은 `<form action>`과 `useActionState`로 만든다. 백엔드가 검증의 원본이다. 제출 버튼은 `useFormStatus`로 막는다. 인증 폼은 로케일별 permalink로 JS 없이도 제출한다.
 - 가입은 `/signup`에서 메일 안내·재발송 화면으로 전환한다. 메일 링크 `/verify-email?token=…`는 쿠키·언어 헤더로 로케일을 고르고 확인 버튼의 Action만 토큰을 소비한다.
 - `/forgot-password`는 계정 존재 여부와 관계없이 같은 메일 안내를 보여 준다. 메일 링크 `/reset-password?token=…`에서 새 비밀번호를 제출하면 성공·로그인 링크를 표시하고 폐기된 세션 쿠키를 지운다.

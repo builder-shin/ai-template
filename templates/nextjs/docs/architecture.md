@@ -29,7 +29,7 @@ web은 3000에서 뜬다. `dev`는 단독 모드에서 목도 함께 띄운다.
 
 같은 refresh 토큰은 모듈의 Map에 하나의 진행 중 요청을 두고, 완료 결과를 30초 동안 기억한다. 실패도 기억해 결과가 불확실한 토큰을 즉시 다시 보내지 않는다. 시간이 지나면 결과를 메모리에서 치운다. 갱신 실패는 쿠키 삭제와 303 로그인 리다이렉트로 처리한다. `returnTo`는 같은 사이트의 상대 경로만 받고, 외부 주소·중첩 인코딩 우회·역슬래시·제어 문자는 `/`로 바꾼다.
 
-Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 요청 쿠키를 읽기만 하며 갱신하지 않는다. 로그인 Action은 `writeSession`으로 쿠키를 쓴다. 쿠키를 쓸 수 있는 Action은 `clearSessionAndRedirect`로 직접 정리할 수 있다. 공통 `redirectOnUnauthorized`는 `ApiError`의 401일 때 `/session/clear`로 보낸다. Server Component는 쿠키를 삭제할 수 없으므로 이 route의 GET 응답에서 지운 뒤 303으로 로그인에 간다. 다른 오류는 원래 흐름에서 처리한다.
+Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 요청 쿠키를 읽기만 하며 갱신하지 않는다. 로그인 Action은 `writeSession`으로 쿠키를 쓴다. 쿠키를 쓸 수 있는 Action은 `clearSessionAndRedirect`로 직접 정리할 수 있다. 공통 `redirectOnUnauthorized`는 `ApiError`의 401일 때 `/session/clear`로 보낸다. Server Component는 쿠키를 삭제할 수 없으므로 이 route의 GET 응답에서 지운 뒤 303으로 로그인에 간다. 정리 route는 Origin을 `APP_URL`의 origin과 비교하고, Origin 없는 이동은 `Sec-Fetch-Site: same-origin`으로 확인한다. cross-site·same-site·출처를 확인할 수 없는 요청은 Set-Cookie 없이 403으로 거절한다. 다른 오류는 원래 흐름에서 처리한다.
 
 동시 갱신 묶기는 프로세스 안에서만 유효하다. 기본 배포는 인스턴스 하나다.
 여러 인스턴스에서는 sticky session이 필요하며, 인스턴스를 넘는 갱신 조율은 별도 설계 대상이다.

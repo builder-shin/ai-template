@@ -108,8 +108,11 @@ describe("렌더링과 Action의 세션 읽기 및 401 처리", () => {
     "정리 route는 %s 쿠키를 지우고 안전한 로그인 주소만 사용한다",
     (mode) => {
       vi.stubEnv("NODE_ENV", mode);
+      vi.stubEnv("SESSION_SECRET", "test-only-cleanup-secret-32-chars"); // betterleaks:allow 사유: 쿠키 삭제 route 테스트 키
       const result = GET(
-        new NextRequest("http://localhost:3000/session/clear?returnTo=https%3A%2F%2Fevil.example"),
+        new NextRequest("http://localhost:3000/session/clear?returnTo=https%3A%2F%2Fevil.example", {
+          headers: { "Sec-Fetch-Site": "same-origin" },
+        }),
       );
       expect(result.status).toBe(303);
       expect(result.headers.get("location")).toBe("http://localhost:3000/login?returnTo=%2F");
@@ -125,4 +128,26 @@ describe("렌더링과 Action의 세션 읽기 및 401 처리", () => {
       });
     },
   );
+
+  it.each([
+    { Origin: "https://evil.example" },
+    { "Sec-Fetch-Site": "cross-site" },
+    { Origin: "http://localhost:3000", "Sec-Fetch-Site": "cross-site" },
+    { "Sec-Fetch-Site": "same-site" },
+    {},
+  ])("같은 origin을 확인할 수 없는 정리 요청은 쿠키를 바꾸지 않는다 %j", (headers) => {
+    const result = GET(new NextRequest("http://localhost:3000/session/clear", { headers }));
+    expect(result.status).toBe(403);
+    expect(result.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("같은 Origin의 요청은 쿠키를 정리한다", () => {
+    const result = GET(
+      new NextRequest("http://localhost:3000/session/clear", {
+        headers: { Origin: "http://localhost:3000" },
+      }),
+    );
+    expect(result.status).toBe(303);
+    expect(result.cookies.get("session")?.maxAge).toBe(0);
+  });
 });

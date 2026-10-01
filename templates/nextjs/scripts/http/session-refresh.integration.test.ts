@@ -110,9 +110,27 @@ describe("§13 #3/#4/#5 실제 페이지·헤더·로그아웃 Action", () => {
     expect(response.status).toBe(307);
     const clearUrl = new URL(response.headers.get("location")!, base);
     expect(clearUrl.pathname).toBe("/session/clear");
-    const cleared = await fetch(clearUrl, { headers: sessionHeaders(cookie), redirect: "manual" });
+    // 브라우저의 같은 origin 이동에는 Origin이 없어도 Fetch Metadata가 있다.
+    const cleared = await fetch(clearUrl, {
+      headers: { ...sessionHeaders(cookie), "Sec-Fetch-Site": "same-origin" },
+      redirect: "manual",
+    });
     expect(cleared.status).toBe(303);
     expect(cleared.headers.get("set-cookie")).toContain("Max-Age=0");
     expect(new URL(cleared.headers.get("location")!, base).pathname).toBe("/en/login");
+  });
+
+  it("cross-site 쿠키 정리 요청은 실제 HTTP에서도 Set-Cookie를 보내지 않는다", async () => {
+    const cookie = await sealSession(await login(), EXAMPLE_SESSION_SECRET);
+    const response = await fetch(`${base}/session/clear?returnTo=%2Fen`, {
+      headers: {
+        ...sessionHeaders(cookie),
+        "Sec-Fetch-Site": "cross-site",
+        Origin: "https://evil.example",
+      },
+      redirect: "manual",
+    });
+    expect(response.status).toBe(403);
+    expect(response.headers.get("set-cookie")).toBeNull();
   });
 });

@@ -26,7 +26,7 @@ export async function clearSessionAndRedirect(returnTo = "/"): Promise<never> {
   redirect(loginPath(returnTo));
 }
 
-/** 렌더링에서는 쿠키를 지울 수 없어 정리 route의 GET 응답에서 지운다. */
+/** 렌더링에서는 쿠키를 지울 수 없어 같은 origin을 검증하는 정리 GET으로 보낸다. */
 export function redirectOnUnauthorized(error: unknown, returnTo = "/") {
   if (error instanceof ApiError && error.status === 401) {
     redirect(`/session/clear?${new URLSearchParams({ returnTo: safeReturnTo(returnTo) })}`);
