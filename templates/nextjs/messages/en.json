@@ -18,7 +18,30 @@
     "pagination": "Post pages",
     "previous": "Previous",
     "next": "Next",
-    "back": "All posts"
+    "back": "All posts",
+    "myTitle": "My posts",
+    "myEmpty": "You have not written any posts.",
+    "newPost": "New post",
+    "editPost": "Edit post",
+    "titleLabel": "Title",
+    "bodyLabel": "Body",
+    "bodyMode": "Body view",
+    "write": "Write",
+    "preview": "Preview",
+    "save": "Save",
+    "status": "Status",
+    "allStatuses": "All",
+    "draft": "Draft",
+    "published": "Published",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "deletePost": "Delete post",
+    "deleteConfirmation": "Delete “{title}”? This cannot be undone.",
+    "cancel": "Cancel",
+    "backToMine": "Back to my posts",
+    "viewPublic": "View public post",
+    "invalidTransitionGuidance": "Refresh to check the current status, then try again.",
+    "retryAfter": "Try again in {seconds} seconds."
   },
   "layout": {
     "posts": "Posts",
@@ -29,10 +52,17 @@
     "userMenu": "User menu: {name}",
     "unnamedUser": "User",
     "skipToContent": "Skip to content",
-    "footer": "Build your next service together."
+    "footer": "Build your next service together.",
+    "myPosts": "My posts"
   },
-  "locale": { "switcher": "Select language", "ko": "한국어", "en": "English" },
-  "accessibility": { "spinner": "In progress" },
+  "locale": {
+    "switcher": "Select language",
+    "ko": "한국어",
+    "en": "English"
+  },
+  "accessibility": {
+    "spinner": "In progress"
+  },
   "auth": {
     "signup": "Sign up",
     "name": "Name",

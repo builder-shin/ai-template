@@ -8,7 +8,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Skeleton } from "../../components/ui/skeleton";
-import { postPageHref, type Post, type PostSort } from "./model";
+import { postPageHref, myPostPageHref, type Post, type PostSort } from "./model";
 
 function PostCover({ post }: { post: Post }) {
   const t = useTranslations("posts");
@@ -102,16 +102,19 @@ export function PostSearchForm({ q, sort, size }: { q: string; sort: PostSort; s
 
 export function PostPagination({
   links,
+  myPosts = false,
 }: {
   links: { previous: string | null; next: string | null };
+  myPosts?: boolean;
 }) {
   const t = useTranslations("posts");
+  const href = myPosts ? myPostPageHref : postPageHref;
   if (!links.previous && !links.next) return null;
   return (
     <nav aria-label={t("pagination")} className="flex justify-between gap-4">
       {links.previous ? (
         <Link
-          href={postPageHref(links.previous)}
+          href={href(links.previous)}
           className="rounded-md underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
         >
           {t("previous")}
@@ -121,7 +124,7 @@ export function PostPagination({
       )}
       {links.next && (
         <Link
-          href={postPageHref(links.next)}
+          href={href(links.next)}
           className="rounded-md underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
         >
           {t("next")}

@@ -18,7 +18,30 @@
     "pagination": "글 페이지",
     "previous": "이전",
     "next": "다음",
-    "back": "글 목록"
+    "back": "글 목록",
+    "myTitle": "내 글",
+    "myEmpty": "작성한 글이 없습니다.",
+    "newPost": "글 작성",
+    "editPost": "글 수정",
+    "titleLabel": "제목",
+    "bodyLabel": "본문",
+    "bodyMode": "본문 보기",
+    "write": "작성",
+    "preview": "미리보기",
+    "save": "저장",
+    "status": "상태",
+    "allStatuses": "전체",
+    "draft": "초안",
+    "published": "발행됨",
+    "publish": "발행",
+    "unpublish": "발행 취소",
+    "deletePost": "글 삭제",
+    "deleteConfirmation": "“{title}” 글을 삭제할까요? 되돌릴 수 없습니다.",
+    "cancel": "취소",
+    "backToMine": "내 글로",
+    "viewPublic": "공개 글 보기",
+    "invalidTransitionGuidance": "새로고침으로 현재 상태를 확인한 뒤 다시 시도하세요.",
+    "retryAfter": "{seconds}초 뒤에 다시 시도해 주세요."
   },
   "layout": {
     "posts": "글",
@@ -29,10 +52,17 @@
     "userMenu": "사용자 메뉴: {name}",
     "unnamedUser": "사용자",
     "skipToContent": "본문으로 건너뛰기",
-    "footer": "새 서비스를 함께 만듭니다."
+    "footer": "새 서비스를 함께 만듭니다.",
+    "myPosts": "내 글"
   },
-  "locale": { "switcher": "언어 선택", "ko": "한국어", "en": "English" },
-  "accessibility": { "spinner": "진행 중" },
+  "locale": {
+    "switcher": "언어 선택",
+    "ko": "한국어",
+    "en": "English"
+  },
+  "accessibility": {
+    "spinner": "진행 중"
+  },
   "auth": {
     "signup": "가입",
     "name": "이름",

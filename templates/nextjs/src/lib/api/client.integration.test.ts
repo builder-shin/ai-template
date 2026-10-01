@@ -8,6 +8,7 @@ import { buildQuery, pageLinks, resolveRelationship } from "./jsonapi";
 const traceId = "1234567890abcdef1234567890abcdef";
 const baseUrl = () => `${inject("mockBaseUrl")}/api/v1`;
 let accessToken: string;
+let adminId: string;
 beforeAll(async () => {
   const client = createApiClient({ baseUrl: baseUrl(), locale: "en" });
   const { data } = await client.POST("/sessions", {
@@ -23,6 +24,8 @@ beforeAll(async () => {
     },
   });
   accessToken = data!.data.attributes.accessToken;
+  adminId = (await createApiClient({ baseUrl: baseUrl(), locale: "en", accessToken }).GET("/me"))
+    .data!.data.id;
 });
 
 describe("실제 목 프로세스의 요청별 API 클라이언트", () => {
@@ -77,7 +80,12 @@ describe("실제 목 프로세스의 요청별 API 클라이언트", () => {
     const client = createApiClient({ baseUrl: baseUrl(), locale: "en", traceId });
     const { data, response } = await client.GET("/posts", {
       params: {
-        query: buildQuery("/posts", { include: ["author"], page: { number: 1, size: 1 } }),
+        // 공유 목의 다른 테스트가 만든 글과 삭제된 작성자를 제외한다.
+        query: buildQuery("/posts", {
+          filter: { author: adminId },
+          include: ["author"],
+          page: { number: 1, size: 1 },
+        }),
       },
     });
     expect(response.status).toBe(200);

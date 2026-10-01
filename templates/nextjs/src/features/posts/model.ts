@@ -7,6 +7,29 @@ export type Post = {
   publishedAt: string | null;
 };
 
+export type PostStatus = "draft" | "published";
+export type MyPost = Post & { status: PostStatus };
+export type MyPostStatus = PostStatus | "all";
+
+export function parseMyPostSearch(params: Record<string, string | string[] | undefined>) {
+  const status = Array.isArray(params.status) ? params.status[0] : params.status;
+  const { page, size } = parsePostSearch(params);
+  return {
+    status: status === "draft" || status === "published" ? status : ("all" as MyPostStatus),
+    page,
+    size,
+  };
+}
+
+export function myPostPageHref(link: string) {
+  const api = new URL(link, "http://localhost").searchParams;
+  const query = new URLSearchParams();
+  query.set("status", api.get("filter[status]") ?? "all");
+  query.set("page", api.get("page[number]") ?? "1");
+  query.set("size", api.get("page[size]") ?? "10");
+  return `/my-posts?${query}`;
+}
+
 export const postSorts = {
   latest: "-createdAt",
   published: "-publishedAt",
