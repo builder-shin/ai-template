@@ -56,7 +56,6 @@ describe("헤더", () => {
       />,
     );
     expect(screen.queryByRole("link", { name: "로그인" })).toBeNull();
-    expect(screen.getByRole("link", { name: "내 정보" }).getAttribute("href")).toBe("/me");
     const trigger = screen.getByRole("button", { name: "사용자 메뉴: 관리자" });
     if (input === "마우스") await user.click(trigger);
     else {
@@ -71,6 +70,55 @@ describe("헤더", () => {
       await user.keyboard("{Enter}");
     }
     expect(logouts).toBe(1);
+  });
+  it.each([
+    ["ko", "마우스"],
+    ["ko", "키보드"],
+    ["en", "마우스"],
+    ["en", "키보드"],
+  ] as const)("%s 사용자 메뉴의 내 정보를 %s로 활성화한다", async (locale, input) => {
+    const user = userEvent.setup();
+    let logouts = 0;
+    show(
+      <Header
+        user={{ name: "관리자" }}
+        logoutAction={async () => {
+          logouts++;
+        }}
+      />,
+      locale,
+    );
+    const trigger = screen.getByRole("button", {
+      name: locale === "ko" ? "사용자 메뉴: 관리자" : "User menu: 관리자",
+    });
+    if (input === "마우스") await user.click(trigger);
+    else {
+      trigger.focus();
+      await user.keyboard("{Enter}");
+    }
+    const label = locale === "ko" ? "내 정보" : "My profile";
+    const profile = await screen.findByRole("menuitem", { name: label });
+    const href = locale === "ko" ? "/me" : "/en/me";
+    expect(profile.tagName).toBe("A");
+    expect(profile.getAttribute("href")).toBe(href);
+    expect(within(screen.getByRole("banner")).queryByRole("link", { name: label })).toBeNull();
+    // jsdom의 페이지 이동 대신 실제 링크 클릭에 실린 목적지를 확인한다.
+    let destination: string | null = null;
+    profile.addEventListener(
+      "click",
+      (event) => {
+        destination = profile.getAttribute("href");
+        event.preventDefault();
+      },
+      { once: true },
+    );
+    if (input === "마우스") await user.click(profile);
+    else {
+      profile.focus();
+      await user.keyboard("{Enter}");
+    }
+    expect(destination).toBe(href);
+    expect(logouts).toBe(0);
   });
   it("이름이 없는 계정에는 번역한 대체 이름을 쓴다", async () => {
     show(<Header user={{ name: null }} logoutAction={async () => {}} />, "en");

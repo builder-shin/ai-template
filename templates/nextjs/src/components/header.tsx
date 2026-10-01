@@ -30,6 +30,9 @@ function UserMenu({ name }: { name: string }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
+          <DropdownMenuItem disabled={pending} render={<Link href="/me" />}>
+            {t("me")}
+          </DropdownMenuItem>
           <DropdownMenuItem disabled={pending} render={<button type="submit" form="logout-form" />}>
             {t("logout")}
           </DropdownMenuItem>
@@ -65,14 +68,6 @@ export function Header({
           >
             {t("posts")}
           </Link>
-          {user && (
-            <Link
-              href="/me"
-              className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              {t("me")}
-            </Link>
-          )}
           {user && (
             <Link
               href="/my-posts"
