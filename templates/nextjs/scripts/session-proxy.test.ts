@@ -38,6 +38,26 @@ describe("세션과 로케일 proxy 합성", () => {
     },
   );
 
+  it.each(["GET", "POST"])("%s의 인코딩된 보호 경로도 로그인으로 보낸다", async (method) => {
+    for (const [path, canonical] of [
+      ["/%6d%65", "/me"],
+      ["/my%2dposts?page=2", "/my-posts?page=2"],
+      ["/en/%6d%65/security", "/en/me/security"],
+      ["/en//%6d%65/security", "/"],
+    ]) {
+      const result = await proxy(request(path!, undefined, method));
+      expect(result.status).toBe(303);
+      const location = new URL(result.headers.get("location")!);
+      expect(location.searchParams.get("returnTo")).toBe(canonical);
+      expect(location.pathname).toBe(path!.startsWith("/en") ? "/en/login" : "/login");
+    }
+  });
+
+  it.each(["/x/../en/me?tab=profile#details", "/%2e%2e/en/me?tab=profile#details"])(
+    "점 구간 %s를 정규화하고 쿼리와 hash는 보존한다",
+    (path) => expect(safeReturnTo(path)).toBe("/en/me?tab=profile#details"),
+  );
+
   it.each([
     "https://evil.example/x",
     "//evil.example",
@@ -155,7 +175,9 @@ describe("세션과 로케일 proxy 합성", () => {
 
   it("matcher는 페이지 Server Action POST를 포함하고 쿠키 정리 route를 제외한다", () => {
     const matcher = new RegExp(`^${config.matcher[0]}$`);
-    for (const path of ["/me", "/en/me", "/my-posts"]) expect(matcher.test(path)).toBe(true);
+    for (const path of ["/me", "/en/me", "/my-posts", "/me/a.b", "/en/%6d%65/a.b"])
+      expect(matcher.test(path)).toBe(true);
     expect(matcher.test("/session/clear")).toBe(false);
+    expect(matcher.test("/icon.svg")).toBe(false);
   });
 });

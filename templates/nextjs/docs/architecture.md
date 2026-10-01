@@ -25,7 +25,7 @@ web은 3000에서 뜬다. `dev`는 단독 모드에서 목도 함께 띄운다.
 
 `src/lib/session/cookie.ts`는 `SESSION_SECRET`의 SHA-256 키와 jose의 JWE(dir/A256GCM)로 두 토큰을 함께 암호화한다. 토큰 내용은 해석하지 않는다. `accessTokenExpiresAt`과 `refreshTokenExpiresAt`은 계약 응답에서 가져오며 쿠키·JWE의 수명은 refresh 만료까지다. 쿠키는 httpOnly, SameSite=Lax, Path=/이고 운영에서는 Secure와 `__Host-session` 이름을 쓴다.
 
-`src/proxy.ts`는 next-intl 라우팅, `/me`·`/my-posts`와 하위 경로의 로그인 검사, 토큰 갱신을 합성한다. 로케일 접두사는 검사 전에 제외한다. access 만료까지 60초 미만이면 refresh grant를 보내고 새 쿠키를 응답과 같은 요청의 쿠키 헤더에 함께 넣는다. next-intl의 로케일 헤더·rewrite·쿠키를 보존한다. matcher는 페이지로 가는 Server Action POST도 포함한다.
+`src/proxy.ts`는 next-intl 라우팅, `/me`·`/my-posts`와 하위 경로의 로그인 검사, 토큰 갱신을 합성한다. next-intl과 같은 decodeURI·슬래시 정리와 URL의 점 구간 정규화 뒤 로케일 접두사를 제외한다. `safeReturnTo`도 같은 정규화한 경로에 원래 쿼리·hash를 붙여 반환한다. 로그인은 그 결과에서 로케일을 제거·재검증하고 계정 로케일을 붙인다. access 만료까지 60초 미만이면 refresh grant를 보내고 새 쿠키를 응답과 같은 요청의 쿠키 헤더에 함께 넣는다. next-intl의 로케일 헤더·rewrite·쿠키를 보존한다. matcher는 페이지로 가는 Server Action POST와 `/me/a.b` 같은 하위 경로도 포함하며 공개 정적 파일은 이름으로 제외한다.
 
 같은 refresh 토큰은 모듈의 Map에 하나의 진행 중 요청을 두고, 완료 결과를 30초 동안 기억한다. 실패도 기억해 결과가 불확실한 토큰을 즉시 다시 보내지 않는다. 시간이 지나면 결과를 메모리에서 치운다. 갱신 실패는 쿠키 삭제와 303 로그인 리다이렉트로 처리한다. `returnTo`는 같은 사이트의 상대 경로만 받고, 외부 주소·중첩 인코딩 우회·역슬래시·제어 문자는 `/`로 바꾼다.
 
