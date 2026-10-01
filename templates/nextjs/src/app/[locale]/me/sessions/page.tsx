@@ -9,6 +9,7 @@ import {
   revokeOthersAction,
   revokeAllAction,
   SessionsList,
+  parseSessionsPage,
 } from "../../../../features/sessions";
 
 export default async function SessionsPage({
@@ -20,9 +21,7 @@ export default async function SessionsPage({
 }) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
-  const input = (await searchParams).page;
-  const number = Number(Array.isArray(input) ? input[0] : input);
-  const page = Number.isSafeInteger(number) && number > 0 ? number : 1;
+  const page = parseSessionsPage((await searchParams).page);
   const [sessions, t] = await Promise.all([
     getSessions(locale, page),
     getTranslations({ locale, namespace: "sessions" }),
