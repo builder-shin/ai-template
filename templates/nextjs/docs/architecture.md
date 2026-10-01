@@ -72,7 +72,7 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 `src/lib/api/client.ts`의 `createApiClient`에 요청의 baseUrl(`/api/v1` 포함), locale, accessToken과 선택 traceId를 넘긴다. 화면·Action에서는 `await createSessionApiClient({locale})`로 요청 세션의 access 토큰을 연결한다. 호출 경로는 `/posts`처럼 쓴다. 클라이언트를 전역에 보관하지 않는다. 읽기의 요청 내 중복 제거는 기능 queries에서 `React.cache`로 한다.
 
-미들웨어가 JSON:API 미디어 타입, 현재 로케일, 세션 토큰과 W3C traceparent를 설정한다. 데이터는 캐시하지 않는다. 로그에는 메서드, 계약 경로, 상태, trace id, 소요 시간만 남기며 `log` 옵션으로 서버 로거를 연결할 수 있다. 기본값은 구조화된 콘솔 로그다.
+미들웨어가 JSON:API 미디어 타입, 현재 로케일, 세션 토큰과 W3C traceparent를 설정한다. 요청·응답 trace id는 같은 검증으로 0이 아닌 32자리 소문자 16진수만 받는다. 응답 trace가 잘못되면 요청 trace를 오류와 digest에 유지한다. 데이터는 캐시하지 않는다. 로그에는 메서드, 계약 경로, 상태, trace id, 소요 시간만 남기며 `log` 옵션으로 서버 로거를 연결할 수 있다. 기본값은 구조화된 콘솔 로그다.
 
 `jsonapi.ts`는 생성 스키마에서 포함 리소스와 쿼리 타입을 파생한다. `buildQuery`의 filter·page·fields는 해당 GET 계약에 있는 그룹만 받으며 없는 그룹은 `never`다. filter·page의 값 타입과 fields의 문자열·배열 입력을 유지한다. 관계는 type과 id로 연결하고 페이지 이동은 응답 링크를 그대로 쓴다. 비정상 응답은 `ApiError`다. `toFormResult`는 코드와 params를 카탈로그로 번역하고 지정한 입력칸의 속성 pointer만 필드별 메시지 배열로 바꾼다. 목록에 없는 속성은 폼 에러이며 목록을 생략하면 필드 에러를 만들지 않는다. `FormResult`는 Server Action에서 직렬화할 성공/실패 타입이며 `mapApiError`는 로그인·권한·없는 리소스·요청 한도·예상 밖 에러를 분류한다.
 

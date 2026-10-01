@@ -4,6 +4,19 @@ import { ApiError, mapApiError, toFormResult, translateApiError } from "./errors
 const traceId = "1234567890abcdef1234567890abcdef";
 
 describe("API 에러와 폼 결과", () => {
+  it.each([
+    ["0".repeat(32), traceId],
+    ["malformed", traceId],
+    ["ABCDEF1234567890ABCDEF1234567890", traceId],
+    ["abcdef1234567890abcdef1234567890", "abcdef1234567890abcdef1234567890"],
+  ])("응답 trace %s는 0이 아닌 소문자 16진수만 사용한다", async (responseTrace, expected) => {
+    const error = await ApiError.fromResponse(
+      new Response(JSON.stringify({ meta: { traceId: responseTrace } }), { status: 500 }),
+      traceId,
+    );
+    expect(error.traceId).toBe(expected);
+    expect(error.digest).toBe(expected);
+  });
   it("코드와 params만 번역하고 여러 필드·폼 에러를 보존한다", () => {
     const error = new ApiError({
       status: 422,

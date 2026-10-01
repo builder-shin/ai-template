@@ -5,6 +5,7 @@ import en from "../../../messages/en.json";
 import { errorCodes, type ErrorCode } from "../generated/error-codes";
 import type { routing } from "../i18n/routing";
 import type { components } from "./schema";
+import { isTraceId } from "./trace";
 
 type Locale = (typeof routing.locales)[number];
 type Params = Record<string, string | number>;
@@ -99,10 +100,7 @@ export class ApiError extends Error {
     }
     const document = record(body) ? body : {};
     const meta = record(document.meta) ? document.meta : {};
-    const traceId =
-      typeof meta.traceId === "string" && /^[0-9a-f]{32}$/.test(meta.traceId)
-        ? meta.traceId
-        : fallbackTraceId;
+    const traceId = isTraceId(meta.traceId) ? meta.traceId : fallbackTraceId;
     return new ApiError({
       status: response.status,
       traceId,

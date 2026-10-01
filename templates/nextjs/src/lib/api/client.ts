@@ -5,6 +5,7 @@ import type { routing } from "../i18n/routing";
 import { ApiError } from "./errors";
 import { serializeQuery } from "./jsonapi";
 import type { ApiPaths } from "./paths";
+import { isTraceId } from "./trace";
 
 export type ApiLog = {
   method: string;
@@ -25,7 +26,7 @@ export type ApiClientOptions = {
 /** 요청 문맥과 토큰을 공유 상태에 보관하지 않는다. */
 export function createApiClient(options: ApiClientOptions) {
   const traceId = options.traceId ?? randomBytes(16).toString("hex");
-  if (!/^[0-9a-f]{32}$/.test(traceId) || traceId === "0".repeat(32)) {
+  if (!isTraceId(traceId)) {
     throw new Error("trace id는 0이 아닌 32자리 소문자 16진수로 넘긴다.");
   }
   const log = options.log ?? ((entry: ApiLog) => console.info(JSON.stringify(entry)));
