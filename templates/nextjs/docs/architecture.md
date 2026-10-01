@@ -117,7 +117,7 @@ Vitest global setup이 자유 포트의 실제 복사 목과 Next dev를 하나�
 
 `pnpm setup`은 의존성 설치 → 환경 키 보충 → 독립 저장소 hook 설치 → 고정 Playwright 1.63.0의 Chromium 설치 순서다. 브라우저 설치가 실패해도 환경과 hook 준비는 남고 실패 코드로 끝난다. 재실행은 기존 환경 값을 유지한다. `pnpm test:e2e`는 headless Chromium에서 운영 코드를 검사한다. Playwright `webServer`가 `scripts/e2e-server.ts`를 실행해 복사 목 readiness → `next build` → `next start` 순서를 보장한다. web은 localhost:3100, 목은 127.0.0.1:4110이다. 두 포트가 사용 중이면 실패하며 기존 서버를 재사용하거나 종료하지 않는다. 개발 서버와 동시에 실행할 수 있는 포트지만 Next 빌드 산출물을 함께 쓰므로 이 프로젝트의 dev·build·check와 E2E는 동시에 실행하지 않는다.
 
-운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. 운영의 Secure·`__Host-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
+운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. Playwright 설정은 상속한 `NO_COLOR`를 지우고 서버와 worker에 `FORCE_COLOR=1`을 사용해 색상 경고를 막는다. 운영의 Secure·`__Host-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
 
 `e2e/targets/`는 `E2E_TARGET`의 부수 채널 어댑터다. 기본 mock은 실제 `/_test/mail?to=…`에서 목적별 메일 링크를 읽는다. FastAPI는 W4에서 같은 인터페이스에 Mailpit 조회와 백엔드 스택 기동을 연결한다. 현재 fastapi 선택은 W4 안내와 함께 실패하며 목으로 바뀌지 않는다. 인증 흐름은 실제 브라우저 폼으로 가입·인증·로그인·로그아웃·재설정·returnTo를 검사한다. `/me` 화면은 W3 범위이므로 returnTo 검사는 이동 URL과 로그인 헤더를 확인한다.
 
