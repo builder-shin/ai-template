@@ -48,3 +48,16 @@ lockfile은 openapi-fetch의 `openapi-typescript-helpers` 0.1.0, Next 린트의 
 CI는 위 @playwright/test의 CLI로 `pnpm exec playwright install --with-deps chromium`을 실행해 Chromium과 Linux 시스템 의존성을 설치한다. `pnpm setup`은 로컬 Chromium을 설치한다. 별도 에이전트 도구 `@playwright/cli` 0.1.22와 공식 skill은 W4 범위로 아직 설치하지 않았다.
 
 공식 shadcn 스킬은 `shadcn@4.21.0` 태그(commit `7c9eaba1c0a6404c990c144a654792e3313c650d`)의 `skills/shadcn/` Markdown 파일을 그대로 담는다. 바이너리 아이콘과 도구별 에이전트 메타데이터는 제외한다. [원본](https://github.com/shadcn-ui/ui/tree/shadcn%404.21.0/skills/shadcn), [프로젝트 스킬](../.claude/skills/shadcn/SKILL.md).
+
+### 알려진 peer 경고
+
+2026-10-01에 `pnpm peers check`와 각 패키지의 `pnpm view <패키지> versions`, `time`, `<패키지>@<버전> peerDependencies`로 확인했다. 아래는 버전 순으로 가장 최근 안정 릴리스 5개씩이며, 모두 공개 후 하루가 지났다. 최신 안정 릴리스에도 ESLint 10.11.0 또는 TypeScript 6.0.3을 포함하는 peer 선언이 없어 현재 pin을 유지한다.
+
+| 패키지                 | 확인한 안정 버전                       | 최신 버전 공개 시각(UTC) | 최신 버전의 peer 선언                                                    |
+| ---------------------- | -------------------------------------- | ------------------------ | ------------------------------------------------------------------------ |
+| eslint-plugin-import   | 2.29.0, 2.29.1, 2.30.0, 2.31.0, 2.32.0 | 2025-06-20 21:59:09.822  | eslint: `^2 \|\| ^3 \|\| ^4 \|\| ^5 \|\| ^6 \|\| ^7.2.0 \|\| ^8 \|\| ^9` |
+| eslint-plugin-jsx-a11y | 6.8.0, 6.9.0, 6.10.0, 6.10.1, 6.10.2   | 2024-10-26 04:45:18.067  | eslint: `^3 \|\| ^4 \|\| ^5 \|\| ^6 \|\| ^7 \|\| ^8 \|\| ^9`             |
+| eslint-plugin-react    | 7.37.1, 7.37.2, 7.37.3, 7.37.4, 7.37.5 | 2025-04-03 20:01:15.958  | eslint: `^3 \|\| ^4 \|\| ^5 \|\| ^6 \|\| ^7 \|\| ^8 \|\| ^9.7`           |
+| openapi-typescript     | 7.9.1, 7.10.0, 7.10.1, 7.12.0, 7.13.0  | 2026-02-11 16:02:25.378  | typescript: `^5.x`                                                       |
+
+이 선언 범위 차이 때문에 `pnpm peers check`는 실패한다. 현재 템플릿의 린트·타입·계약 생성 검사와 인증 E2E에서는 동작하며, React 플러그인의 context API는 위의 `@eslint/compat`으로 보완한다. 경고를 없애기 위한 peer 허용 규칙이나 강제 override는 두지 않는다. 상위 패키지가 지원 범위를 넓힌 안정 버전을 내면 하루 뒤 실제 검사로 확인하고 정확한 pin으로 갱신한다.
