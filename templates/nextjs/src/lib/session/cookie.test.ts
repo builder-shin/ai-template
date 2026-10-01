@@ -2,7 +2,13 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { EncryptJWT, decodeProtectedHeader } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sealSession, unsealSession, sessionCookie, sessionCookieName } from "./cookie";
+import {
+  sealSession,
+  unsealSession,
+  sessionCookie,
+  sessionCookieName,
+  sessionFromTokens,
+} from "./cookie";
 
 const secret = "test-session-secret-with-at-least-32-bytes"; // betterleaks:allow 테스트 키
 const session = {
@@ -11,6 +17,19 @@ const session = {
   accessTokenExpiresAt: "2030-01-01T00:15:00.000Z",
   refreshTokenExpiresAt: "2030-01-31T00:00:00.000Z",
 };
+
+it("세션 리소스의 식별자를 토큰과 별도로 암호화해 보관한다", async () => {
+  const tokens = {
+    ...session,
+    userAgent: null,
+    createdAt: "2030-01-01T00:00:00Z",
+    lastUsedAt: "2030-01-01T00:00:00Z",
+    current: true,
+  };
+  const identified = sessionFromTokens(tokens, "login-session-id");
+  expect(identified).toEqual({ ...session, sessionId: "login-session-id" });
+  expect(await unsealSession(await sealSession(identified, secret), secret)).toEqual(identified);
+});
 afterEach(() => vi.useRealTimers());
 
 describe("암호화 세션 쿠키", () => {

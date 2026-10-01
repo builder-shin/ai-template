@@ -27,11 +27,11 @@ const knownCodes = new Set<string>(errorCodes);
 export function RealtimeProvider({
   children,
   url,
-  authenticated,
+  sessionKey,
 }: {
   children: ReactNode;
   url: string;
-  authenticated: boolean;
+  sessionKey: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
@@ -70,7 +70,7 @@ export function RealtimeProvider({
       // 같은 effect 안에서도 새 인증 시도가 이전 응답·실패를 무효화한다.
       const generation = ++authGeneration;
       const current = () => active && !signingOut && generation === authGeneration;
-      if (!authenticated) {
+      if (sessionKey === null) {
         if (current()) answer({});
         return;
       }
@@ -154,7 +154,7 @@ export function RealtimeProvider({
       socket.off("connect_error", failed);
       socket.disconnect();
     };
-  }, [socket, authenticated, mutations]);
+  }, [socket, sessionKey, mutations]);
   return (
     <RealtimeMutationsContext value={mutations}>
       <RealtimeContext value={socket}>{children}</RealtimeContext>

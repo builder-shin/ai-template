@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { routing } from "../../lib/i18n/routing";
 import { Header } from "../../components/header";
 import { getHeaderUser } from "../../lib/session/user";
+import { readSession } from "../../lib/session/request";
 import { logoutAction } from "../../features/auth";
 import { RealtimeProvider } from "../../lib/realtime";
 import { getEnv } from "../../lib/env";
@@ -25,17 +26,21 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
-  const [messages, timeZone, t, user] = await Promise.all([
+  const [messages, timeZone, t, user, session] = await Promise.all([
     getMessages(),
     getTimeZone(),
     getTranslations("layout"),
     getHeaderUser(locale),
+    readSession(),
   ]);
   return (
     <html lang={locale}>
       <body className="flex min-h-dvh flex-col">
         <NextIntlClientProvider locale={locale} messages={messages} timeZone={timeZone}>
-          <RealtimeProvider url={getEnv().NEXT_PUBLIC_REALTIME_URL} authenticated={user !== null}>
+          <RealtimeProvider
+            url={getEnv().NEXT_PUBLIC_REALTIME_URL}
+            sessionKey={user ? (session?.sessionId ?? "unknown") : null}
+          >
             <a
               href="#main"
               className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-md focus:bg-background focus:p-3"

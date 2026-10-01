@@ -6,6 +6,7 @@ import type { components } from "../api/schema";
 import { deriveSessionKey } from "./key";
 
 const sessionSchema = z.object({
+  sessionId: z.string().min(1).optional(),
   accessToken: z.string().min(1),
   refreshToken: z.string().min(1),
   accessTokenExpiresAt: z.iso.datetime({ offset: true }),
@@ -13,11 +14,12 @@ const sessionSchema = z.object({
 });
 export type Session = z.infer<typeof sessionSchema>;
 
-/** 토큰은 불투명하다. 만료 시각은 계약 응답에서만 가져온다. */
+/** 식별자와 만료 시각은 계약 응답에서 가져온다. 토큰은 불투명하다. */
 export function sessionFromTokens(
   tokens: components["schemas"]["SessionWithTokensAttributes"],
+  sessionId: string,
 ): Session {
-  return sessionSchema.parse(tokens);
+  return sessionSchema.parse({ ...tokens, sessionId: z.string().min(1).parse(sessionId) });
 }
 
 export async function sealSession(session: Session, secret = getEnv().SESSION_SECRET) {

@@ -15,8 +15,11 @@ describe("§13 #3/#4/#5 실제 페이지·헤더·로그아웃 Action", () => {
   it.each(["/", "/en"])(
     "%s의 같은 렌더링은 거절된 옛 토큰 대신 갱신 토큰으로 헤더를 읽는다",
     async (path) => {
+      const tokens = await login();
+      const { data: sessions } = await mockClient(tokens.accessToken).GET("/sessions");
       const old = {
-        ...(await login()),
+        ...tokens,
+        sessionId: sessions!.data.find((session) => session.attributes.current)!.id,
         accessToken: "rejected-old-access",
         accessTokenExpiresAt: new Date(Date.now() + 1000).toISOString(),
       };
@@ -32,6 +35,7 @@ describe("§13 #3/#4/#5 실제 페이지·헤더·로그아웃 Action", () => {
       expect(html).not.toContain(session.accessToken);
       expect(html).not.toContain(session.refreshToken);
       expect(session.accessToken).not.toBe(old.accessToken);
+      expect(session.sessionId).toBe(old.sessionId);
       if (path === "/en")
         expect(
           response.headers.getSetCookie().some((value) => value.startsWith("NEXT_LOCALE=en;")),
@@ -59,6 +63,8 @@ describe("§13 #3/#4/#5 실제 페이지·헤더·로그아웃 Action", () => {
     }
     expect(new Set(sessions.map((session) => session.accessToken)).size).toBe(1);
     expect(new Set(sessions.map((session) => session.refreshToken)).size).toBe(1);
+    expect(new Set(sessions.map((session) => session.sessionId)).size).toBe(1);
+    expect(typeof sessions[0]!.sessionId).toBe("string");
     expect((await mockClient(sessions[0]!.accessToken).GET("/me")).response.status).toBe(200);
   });
 

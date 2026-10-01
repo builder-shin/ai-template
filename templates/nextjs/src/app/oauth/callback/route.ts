@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         },
       },
     });
-    const session = sessionFromTokens(data!.data.attributes);
+    const session = sessionFromTokens(data!.data.attributes, data!.data.id);
     const authenticated = createApiClient({
       baseUrl: env.API_BASE_URL,
       locale,

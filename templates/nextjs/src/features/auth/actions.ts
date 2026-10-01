@@ -40,7 +40,7 @@ export async function loginAction(
         },
       },
     });
-    const session = sessionFromTokens(document!.data.attributes);
+    const session = sessionFromTokens(document!.data.attributes, document!.data.id);
     // 세션 응답에는 계정 로케일이 없으므로 발급된 토큰으로 본인을 읽는다.
     const authenticated = createApiClient({
       baseUrl: getEnv().API_BASE_URL,

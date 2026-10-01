@@ -29,7 +29,10 @@ afterEach(() => {
 });
 function show(authenticated = true) {
   return render(
-    <RealtimeProvider url="http://localhost:4010" authenticated={authenticated}>
+    <RealtimeProvider
+      url="http://localhost:4010"
+      sessionKey={authenticated ? "current-session" : null}
+    >
       <span />
     </RealtimeProvider>,
   );
@@ -66,7 +69,7 @@ it("익명 연결은 티켓 Action을 호출하지 않고 인증 변경은 연�
   expect(await handshake()).toHaveBeenCalledWith({});
   expect(getRealtimeTicket).not.toHaveBeenCalled();
   view.rerender(
-    <RealtimeProvider url="http://localhost:4010" authenticated>
+    <RealtimeProvider url="http://localhost:4010" sessionKey="current-session">
       <span />
     </RealtimeProvider>,
   );
@@ -156,7 +159,7 @@ function LocalForm({ pending }: { pending: boolean }) {
 }
 it("현재 폼 제출 중의 확인·재인증은 제출 결과가 로그아웃하면 취소한다", async () => {
   const view = render(
-    <RealtimeProvider url="http://localhost:4010" authenticated>
+    <RealtimeProvider url="http://localhost:4010" sessionKey="current-session">
       <LocalForm pending />
     </RealtimeProvider>,
   );
@@ -171,7 +174,7 @@ it("현재 폼 제출 중의 확인·재인증은 제출 결과가 로그아웃�
   expect(router.refresh).not.toHaveBeenCalled();
   await act(async () =>
     view.rerender(
-      <RealtimeProvider url="http://localhost:4010" authenticated={false}>
+      <RealtimeProvider url="http://localhost:4010" sessionKey={null}>
         <LocalForm pending={false} />
       </RealtimeProvider>,
     ),
@@ -182,7 +185,7 @@ it("현재 폼 제출 중의 확인·재인증은 제출 결과가 로그아웃�
 });
 it("현재 폼이 끝나고 로그인이 유지되면 대기한 확인을 한 번 실행한다", async () => {
   const view = render(
-    <RealtimeProvider url="http://localhost:4010" authenticated>
+    <RealtimeProvider url="http://localhost:4010" sessionKey="current-session">
       <LocalForm pending />
     </RealtimeProvider>,
   );
@@ -193,7 +196,7 @@ it("현재 폼이 끝나고 로그인이 유지되면 대기한 확인을 한 �
   expect(checkRealtimeSession).not.toHaveBeenCalled();
   await act(async () =>
     view.rerender(
-      <RealtimeProvider url="http://localhost:4010" authenticated>
+      <RealtimeProvider url="http://localhost:4010" sessionKey="current-session">
         <LocalForm pending={false} />
       </RealtimeProvider>,
     ),
@@ -212,9 +215,98 @@ function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
+
+function identity(sessionKey: string | null) {
+  return (
+    <RealtimeProvider url="http://localhost:4010" sessionKey={sessionKey}>
+      <span />
+    </RealtimeProvider>
+  );
+}
+
+it.each([
+  { nextKey: "account-b-session", ticket: null, state: "revoked" },
+  { nextKey: "account-b-session", ticket: "late-a-ticket", state: "active" },
+  { nextKey: "account-a-new-session", ticket: null, state: "revoked" },
+  { nextKey: "account-a-new-session", ticket: "late-a-ticket", state: "active" },
+] as const)(
+  "새 로그인 $nextKey는 연결을 교체하고 이전 $state·$ticket 결과를 버린다",
+  async ({ nextKey, ticket, state }) => {
+    const oldTicket = deferred<string | null>();
+    const oldCheck = deferred<Awaited<ReturnType<typeof checkRealtimeSession>>>();
+    vi.mocked(getRealtimeTicket)
+      .mockResolvedValueOnce("a-ticket")
+      .mockReturnValueOnce(oldTicket.promise);
+    vi.mocked(checkRealtimeSession).mockReturnValueOnce(oldCheck.promise);
+    const view = render(identity("account-a-session"));
+    expect(await handshake()).toHaveBeenCalledExactlyOnceWith({ ticket: "a-ticket" });
+    const oldAnswer = vi.fn();
+    await act(async () => {
+      socket.auth(oldAnswer);
+      socket.fire("session.revoked", { meta: { reason: "revoked" } });
+    });
+    await act(async () => view.rerender(identity(nextKey)));
+    expect(socket.disconnect).toHaveBeenCalledTimes(1);
+    expect(socket.connect).toHaveBeenCalledTimes(2);
+    expect(socket.disconnect.mock.invocationCallOrder[0]).toBeLessThan(
+      socket.connect.mock.invocationCallOrder[1]!,
+    );
+    expect(await handshake()).toHaveBeenCalledExactlyOnceWith({ ticket: "first-ticket" });
+    await act(async () => {
+      oldTicket.resolve(ticket);
+      oldCheck.resolve(state);
+    });
+    expect(oldAnswer).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
+    await act(async () => socket.fire("session.revoked", { meta: { reason: "revoked" } }));
+    expect(checkRealtimeSession).toHaveBeenCalledTimes(2);
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("로그인 교체는 폼 뒤에 대기한 이전 티켓·세션 확인·화면 갱신도 취소한다", async () => {
+  const form = (sessionKey: string, pending: boolean) => (
+    <RealtimeProvider url="http://localhost:4010" sessionKey={sessionKey}>
+      <LocalForm pending={pending} />
+    </RealtimeProvider>
+  );
+  const view = render(form("account-a-session", true));
+  const answer = vi.fn();
+  await act(async () => {
+    socket.auth(answer);
+    socket.fire("session.revoked", { meta: { reason: "revoked" } });
+    socket.fire("me.updated", { meta: { changed: ["profile"] } });
+  });
+  await act(async () => view.rerender(form("account-b-session", false)));
+  expect(answer).not.toHaveBeenCalled();
+  expect(getRealtimeTicket).not.toHaveBeenCalled();
+  expect(checkRealtimeSession).not.toHaveBeenCalled();
+  expect(router.replace).not.toHaveBeenCalled();
+  expect(router.refresh).not.toHaveBeenCalled();
+  expect(await handshake()).toHaveBeenCalledExactlyOnceWith({ ticket: "first-ticket" });
+});
+
+it("토큰 갱신 뒤에도 같은 세션 키는 연결과 진행 중인 인증을 유지한다", async () => {
+  const ticket = deferred<string>();
+  vi.mocked(getRealtimeTicket).mockReturnValueOnce(ticket.promise);
+  const view = render(identity("account-a-session"));
+  const answer = vi.fn();
+  await act(async () => socket.auth(answer));
+  await act(async () => view.rerender(identity("account-a-session")));
+  await act(async () => ticket.resolve("refreshed-ticket"));
+  expect(answer).toHaveBeenCalledExactlyOnceWith({ ticket: "refreshed-ticket" });
+  expect(socket.connect).toHaveBeenCalledTimes(1);
+  expect(socket.disconnect).not.toHaveBeenCalled();
+  expect(getRealtimeTicket).toHaveBeenCalledTimes(1);
+});
+
 function form(pending: boolean, authenticated = true) {
   return (
-    <RealtimeProvider url="http://localhost:4010" authenticated={authenticated}>
+    <RealtimeProvider
+      url="http://localhost:4010"
+      sessionKey={authenticated ? "current-session" : null}
+    >
       <LocalForm pending={pending} />
     </RealtimeProvider>
   );

@@ -3,6 +3,7 @@ import { expect, inject, it, vi } from "vitest";
 import { sessionsFixture } from "../../src/features/sessions/test-fixture";
 import { sealSession } from "../../src/lib/session/cookie";
 import { EXAMPLE_SESSION_SECRET } from "../../src/lib/env";
+import en from "../../messages/en.json";
 
 vi.setConfig({ testTimeout: 60000 });
 const browserExpect = playwrightExpect.configure({ timeout: 30000 });
@@ -28,6 +29,107 @@ function waitForRealtime(page: Page, subscribed: boolean) {
     page.on("websocket", listen);
   });
 }
+
+/** 프레임 본문은 보관하지 않고 draft 변경의 글 id만 확인한다. */
+function observeDraftUpdates(page: Page) {
+  const received = new Set<string>();
+  const listeners = new Set<(id: string) => void>();
+  page.on("websocket", (socket) => {
+    if (new URL(socket.url()).pathname !== "/socket.io/") return;
+    socket.on("framereceived", ({ payload }) => {
+      const frame = String(payload).match(/^42\d*(\[.*)$/);
+      if (!frame) return;
+      const [name, document] = JSON.parse(frame[1]!) as [string, { data: { id: string } }];
+      if (name !== "post.updated") return;
+      received.add(document.data.id);
+      for (const listener of listeners) listener(document.data.id);
+    });
+  });
+  return {
+    received,
+    wait(id: string) {
+      return new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          listeners.delete(receive);
+          reject(new Error("작성자 방의 draft 변경이 도착하지 않았다."));
+        }, 30000);
+        const receive = (updated: string) => {
+          if (updated !== id) return;
+          clearTimeout(timer);
+          listeners.delete(receive);
+          resolve();
+        };
+        listeners.add(receive);
+      });
+    },
+  };
+}
+
+it("로그아웃 없이 A에서 B로 로그인하면 이전 draft는 받지 않고 B의 방을 받는다", async () => {
+  const owner = await sessionsFixture("en");
+  const replacement = await sessionsFixture("en");
+  const { data: me } = await replacement.client.GET("/me");
+  const draft = async (account: typeof owner) =>
+    (
+      await account.client.POST("/posts", {
+        body: {
+          data: {
+            type: "posts",
+            attributes: { title: `Private ${account.id}`, body: "Private draft", status: "draft" },
+          },
+        },
+      })
+    ).data!.data;
+  const a = await draft(owner);
+  const b = await draft(replacement);
+  const change = (account: typeof owner, id: string) =>
+    account.client.PATCH("/posts/{id}", {
+      params: { path: { id } },
+      body: { data: { type: "posts", id, attributes: { body: "Changed private draft" } } },
+    });
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ locale: "en-US" });
+    await context.addCookies([
+      {
+        name: "session",
+        value: await sealSession({ ...owner.session, sessionId: owner.id }, EXAMPLE_SESSION_SECRET),
+        url: inject("httpBaseUrl"),
+      },
+      { name: "NEXT_LOCALE", value: "en", url: inject("httpBaseUrl") },
+    ]);
+    const page = await context.newPage();
+    const updates = observeDraftUpdates(page);
+    const connected = waitForRealtime(page, false);
+    await page.goto(`${inject("httpBaseUrl")}/en/login?returnTo=%2Fen%2Fposts`);
+    await connected;
+    const initial = updates.wait(a.id);
+    await change(owner, a.id);
+    await initial;
+    updates.received.clear();
+    let documents = 0;
+    page.on("request", (request) => {
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents++;
+    });
+    const rebound = waitForRealtime(page, false);
+    await page.getByLabel(en.auth.email, { exact: true }).fill(me!.data.attributes.email!);
+    await page.getByLabel(en.auth.passwordLabel, { exact: true }).fill("sessions-test-password"); // betterleaks:allow 사유: 실제 목 fixture의 테스트 비밀번호
+    await page.getByRole("button", { name: en.auth.login, exact: true }).click();
+    await browserExpect(page).toHaveURL(`${inject("httpBaseUrl")}/en/posts`);
+    await rebound;
+    const receivedB = updates.wait(b.id);
+    await change(owner, a.id);
+    await change(replacement, b.id);
+    await receivedB;
+    expect(updates.received.has(a.id)).toBe(false);
+    expect(updates.received.has(b.id)).toBe(true);
+    expect(documents).toBe(0);
+  } finally {
+    await browser.close();
+    await owner.stop();
+    await replacement.stop();
+  }
+});
 
 it("실제 브라우저의 공개 채널은 목록·상세·404 뒤 안내를 반영한다", async () => {
   const owner = await sessionsFixture();

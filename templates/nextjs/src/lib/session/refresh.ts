@@ -24,7 +24,7 @@ export function refreshSession(refreshToken: string, locale: (typeof routing.loc
       })
       .then(({ data }) => {
         if (!data) throw new Error("갱신 응답에 세션이 없다.");
-        return sessionFromTokens(data.data.attributes);
+        return sessionFromTokens(data.data.attributes, data.data.id);
       }),
   };
   flights.set(refreshToken, flight);
