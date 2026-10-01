@@ -32,7 +32,17 @@ web은 3000에서 뜬다. 현재 `dev`는 web만 띄운다. 목 사본을 넣는
 
 `src/lib/i18n/request.ts`는 선택한 카탈로그와 `TIME_ZONE`을 반환한다. 레이아웃은 같은 메시지와 시간대를 `NextIntlClientProvider`에 전달한다. 서버의 `getFormatter`와 클라이언트의 `useFormatter`를 써서 호스트 시간대 차이에 따른 날짜 불일치를 막는다. 기본 시간대는 `Asia/Seoul`이다.
 
-`AppConfig`의 메시지 타입은 `messages/ko.json`에서 파생한다. 없는 번역 키는 컴파일 오류이며, check의 i18n 단계는 ko/en의 키와 생성된 모든 ErrorCode의 번역을 검사한다. 에러 코드는 `errors` 아래 영역별 객체로 두고 `getTranslations("errors")`에 코드와 `meta.params`를 넘겨 ICU 값을 치환한다. API 에러 매핑은 다음 단계에서 붙인다.
+`AppConfig`의 메시지 타입은 `messages/ko.json`에서 파생한다. 없는 번역 키는 컴파일 오류이며, check의 i18n 단계는 ko/en의 키와 생성된 모든 ErrorCode의 번역을 검사한다. 에러 코드는 `errors` 아래 영역별 객체로 두고 코드와 `meta.params`를 넘겨 ICU 값을 치환한다.
+
+## API 호출과 에러
+
+`src/lib/api/client.ts`의 `createApiClient`에 요청의 baseUrl(`/api/v1` 포함), locale, accessToken과 선택 traceId를 넘긴다. 호출 경로는 `/posts`처럼 쓴다. 클라이언트를 전역에 보관하지 않는다. 읽기의 요청 내 중복 제거는 기능 queries에서 `React.cache`로 한다. 세션에서 토큰을 얻는 일은 인증 단계에서 연결한다.
+
+미들웨어가 JSON:API 미디어 타입, 현재 로케일, 세션 토큰과 W3C traceparent를 설정한다. 데이터는 캐시하지 않는다. 로그에는 메서드, 계약 경로, 상태, trace id, 소요 시간만 남기며 `log` 옵션으로 서버 로거를 연결할 수 있다. 기본값은 구조화된 콘솔 로그다.
+
+`jsonapi.ts`는 생성 스키마에서 포함 리소스와 쿼리 타입을 파생한다. 관계는 type과 id로 연결하고 페이지 이동은 응답 링크를 그대로 쓴다. 비정상 응답은 `ApiError`다. `toFormResult`는 코드와 params를 카탈로그로 번역하고 속성 pointer를 필드별 메시지 배열로 바꾼다. 입력칸 목록을 넘기면 짝이 없는 속성도 폼 에러가 된다. `FormResult`는 Server Action에서 직렬화할 성공/실패 타입이며 `mapApiError`는 로그인·권한·없는 리소스·요청 한도·예상 밖 에러를 분류한다.
+
+단위·통합 테스트는 Vitest의 global setup이 자유 포트에 띄운 실제 `contract/mock` 사본을 쓴다. 개발 포트 3000/4010을 쓰지 않으며 종료 때 자신이 시작한 프로세스 트리를 내린다. `server-only` 별칭은 Node 테스트에서만 표식을 비우고 Next 빌드의 서버 경계는 유지한다.
 
 ## 하네스
 
