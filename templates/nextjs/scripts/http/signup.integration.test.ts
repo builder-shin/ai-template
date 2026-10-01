@@ -122,4 +122,17 @@ describe("Task 8 가입·메일 인증·재발송의 JS 없는 실제 폼", () =
     expect(missing.status).toBe(200);
     expect(await missing.text()).toContain("The verification link is invalid or expired.");
   });
+
+  it.each([
+    ["/verify-email", "인증 링크가 올바르지 않거나 만료되었습니다."],
+    ["/en/verify-email", "The verification link is invalid or expired."],
+  ])("%s의 중복 token 쿼리는 번역한 오류만 보여 주고 제출을 막는다", async (path, notice) => {
+    const response = await fetch(`${base}${path}?token=a&token=b`, {
+      headers: { "Accept-Language": "ko" },
+    });
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain(`>${notice}</p>`);
+    expect(html).not.toContain('type="submit"');
+  });
 });

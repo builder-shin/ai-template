@@ -23,6 +23,17 @@ describe("로케일 proxy 단위 테스트", () => {
       (await route("/", { "Accept-Language": "en;q=0.5,ko-KR;q=1" })).headers.get("location"),
     ).toBeNull();
   });
+  it.each([
+    ["/", "ko-KR,ko;q=0.9", "ko"],
+    ["/en", "en-US,en;q=0.9", "en"],
+  ])(
+    "첫 방문 %s에서 언어 헤더와 로케일이 일치하면 쿠키를 쓰지 않는다",
+    async (path, language, locale) => {
+      const result = await route(path!, { "Accept-Language": language! });
+      expect(result.headers.get("x-middleware-request-x-next-intl-locale")).toBe(locale);
+      expect(result.cookies.get("NEXT_LOCALE")).toBeUndefined();
+    },
+  );
   it("기존 쿠키가 첫 방문 헤더보다 우선한다", async () => {
     expect(
       (await route("/", { "Accept-Language": "en", Cookie: "NEXT_LOCALE=ko" })).headers.get(
