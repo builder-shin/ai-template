@@ -10,7 +10,10 @@ import type { CreateFileResult, ReadyFileResult, UploadFailure } from "./state";
 function failure(error: unknown, locale: "ko" | "en", returnTo: string): UploadFailure {
   redirectOnUnauthorized(error, returnTo);
   if (!(error instanceof ApiError) || error.status < 400 || error.status >= 500) throw error;
-  return toFormResult(error, locale, ["filename", "contentType", "size"]);
+  return {
+    ...toFormResult(error, locale, ["filename", "contentType", "size"]),
+    ...(error.status === 429 ? { retryAfter: error.retryAfter } : {}),
+  };
 }
 function text(data: FormData, name: string) {
   const value = data.get(name);

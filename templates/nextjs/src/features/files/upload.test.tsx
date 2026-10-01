@@ -182,3 +182,76 @@ it.each(["put", "network", "ready"])(
     else expect(readyFileAction).not.toHaveBeenCalled();
   },
 );
+it.each([
+  ["ko", "create"],
+  ["en", "create"],
+  ["ko", "ready"],
+  ["en", "ready"],
+] as const)("%s의 %s 한도 오류는 대기 시간을 안내한다", async (locale, stage) => {
+  show(locale);
+  const failure = {
+    ok: false as const,
+    formError:
+      locale === "ko"
+        ? "요청이 너무 많습니다. 잠시 뒤에 다시 시도하세요."
+        : "Too many requests. Try again later.",
+    fieldErrors: {},
+    retryAfter: 12,
+  };
+  vi.mocked(createFileAction).mockResolvedValue(
+    stage === "create"
+      ? failure
+      : {
+          ok: true,
+          id: "new-id",
+          upload: {
+            url: "https://storage.example/new",
+            method: "PUT",
+            headers: { "Content-Type": "image/png" },
+            expiresAt: "2026-10-01T00:00:00Z",
+          },
+        },
+  );
+  vi.mocked(readyFileAction).mockResolvedValue(failure);
+  const put = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+  const label = locale === "ko" ? "커버 이미지" : "Cover image";
+  await userEvent
+    .setup()
+    .upload(screen.getByLabelText(label), new File(["x"], "x.png", { type: "image/png" }));
+  expect(await screen.findByRole("alert")).toHaveProperty(
+    "textContent",
+    `${failure.formError}\n${locale === "ko" ? "12초 뒤에 다시 시도해 주세요." : "Try again in 12 seconds."}`,
+  );
+  expect(document.querySelector<HTMLInputElement>('input[name="coverImage"]')?.value).toBe(
+    "old-id",
+  );
+  await waitFor(() =>
+    expect((screen.getByLabelText(label) as HTMLInputElement).disabled).toBe(false),
+  );
+  expect(put).toHaveBeenCalledTimes(stage === "create" ? 0 : 1);
+  expect(readyFileAction).toHaveBeenCalledTimes(stage === "create" ? 0 : 1);
+  // 다시 올리면 대기 안내를 지우고 같은 파일도 선택할 수 있다.
+  vi.mocked(createFileAction).mockResolvedValue({
+    ok: true,
+    id: "new-id",
+    upload: {
+      url: "https://storage.example/new",
+      method: "PUT",
+      headers: { "Content-Type": "image/png" },
+      expiresAt: "2026-10-01T00:00:00Z",
+    },
+  });
+  vi.mocked(readyFileAction).mockResolvedValue({
+    ok: true,
+    file: { id: "new-id", url: "https://storage.example/ready" },
+  });
+  await userEvent
+    .setup()
+    .upload(screen.getByLabelText(label), new File(["x"], "x.png", { type: "image/png" }));
+  await waitFor(() =>
+    expect(document.querySelector<HTMLInputElement>('input[name="coverImage"]')?.value).toBe(
+      "new-id",
+    ),
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
+});

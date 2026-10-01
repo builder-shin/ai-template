@@ -154,7 +154,8 @@
   "uploads": {
     "jsRequired": "파일 업로드에는 JavaScript가 필요합니다.",
     "clear": "이미지 해제",
-    "failed": "파일을 올리지 못했습니다. 다시 시도하세요."
+    "failed": "파일을 올리지 못했습니다. 다시 시도하세요.",
+    "retryAfter": "{seconds}초 뒤에 다시 시도해 주세요."
   },
   "errors": {
     "jsonapi": {
