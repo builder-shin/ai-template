@@ -67,26 +67,34 @@ it("PUT과 ready 완료 전에는 기존 값을 유지하고 스피너와 비활
   show();
   let finish!: (response: Response) => void;
   let request: RequestInit | undefined;
-  vi.mocked(createFileAction).mockResolvedValue({
-    ok: true,
-    id: "new-id",
-    upload: {
-      url: "https://storage.example/new",
-      method: "PUT",
-      headers: { "Content-Type": "image/png" },
-      expiresAt: "2026-10-01T00:00:00Z",
-    },
+  const order: string[] = [];
+  vi.mocked(createFileAction).mockImplementation(async () => {
+    order.push("create");
+    return {
+      ok: true,
+      id: "new-id",
+      upload: {
+        url: "https://storage.example/new",
+        method: "PUT",
+        headers: { "Content-Type": "image/png" },
+        expiresAt: "2026-10-01T00:00:00Z",
+      },
+    };
   });
   vi.spyOn(globalThis, "fetch").mockImplementation(
     async (_url, init) =>
       new Promise((resolve) => {
+        order.push("PUT");
         request = init;
         finish = resolve;
       }),
   );
-  vi.mocked(readyFileAction).mockResolvedValue({
-    ok: true,
-    file: { id: "new-id", url: "https://storage.example/ready" },
+  vi.mocked(readyFileAction).mockImplementation(async () => {
+    order.push("ready");
+    return {
+      ok: true,
+      file: { id: "new-id", url: "https://storage.example/ready" },
+    };
   });
   const file = new File([new Uint8Array([137, 80, 78, 71])], "cover.png", { type: "image/png" });
   await userEvent.setup().upload(screen.getByLabelText("커버 이미지"), file);
@@ -109,9 +117,11 @@ it("PUT과 ready 완료 전에는 기존 값을 유지하고 스피너와 비활
   expect(screen.getByRole("img").getAttribute("src")).toBe("https://storage.example/ready");
   expect(screen.queryByRole("status")).toBeNull();
   expect((screen.getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(order).toEqual(["create", "PUT", "ready"]);
 });
 it("생성 검증 실패는 기존 값을 유지하고 입력칸 오류를 표시한다", async () => {
   show("en");
+  const put = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
   vi.mocked(createFileAction).mockResolvedValue({
     ok: false,
     formError: null,
@@ -124,6 +134,8 @@ it("생성 검증 실패는 기존 값을 유지하고 입력칸 오류를 표�
   expect(document.querySelector<HTMLInputElement>('input[name="coverImage"]')?.value).toBe(
     "old-id",
   );
+  expect(put).not.toHaveBeenCalled();
+  expect(readyFileAction).not.toHaveBeenCalled();
 });
 it.each(["put", "network", "ready"])(
   "%s 실패는 현재 값을 유지하고 재시도를 허용한다",
@@ -165,5 +177,8 @@ it.each(["put", "network", "ready"])(
     await waitFor(() =>
       expect((screen.getByLabelText("커버 이미지") as HTMLInputElement).disabled).toBe(false),
     );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    if (stage === "ready") expect(readyFileAction).toHaveBeenCalledTimes(1);
+    else expect(readyFileAction).not.toHaveBeenCalled();
   },
 );
