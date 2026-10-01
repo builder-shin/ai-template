@@ -1,124 +1,64 @@
-import { once } from "node:events";
-import { createRequire } from "node:module";
-import { createServer } from "node:net";
-import { setTimeout } from "node:timers/promises";
-import { pathToFileURL } from "node:url";
 import type { TestProject } from "vitest/node";
 import { reserveHttpBase, startHttpServer } from "../http/server";
 import { startHeaderFailureBackend } from "./header-failure-backend";
 import { requireChromium } from "./browser";
-import { startDeletionMock } from "./mock-server";
-import { startProcessTree, stopProcessTree } from "../process-tree.mjs";
+import { startDeletionMock, startMock } from "./mock-server";
 
 declare module "vitest" {
   export interface ProvidedContext {
     mockBaseUrl: string;
     httpBaseUrl: string;
     deletionMockBaseUrl: string;
+    rateLimitMockBaseUrl: string;
   }
 }
 
 export default async function setup(project: TestProject) {
   requireChromium();
-  const listener = createServer();
-  listener.listen(0, "127.0.0.1");
-  await once(listener, "listening");
-  const address = listener.address();
-  if (!address || typeof address === "string") throw new Error("목 테스트 포트를 얻지 못했다.");
-  const port = address.port;
-  await new Promise<void>((resolve) => listener.close(() => resolve()));
-  if (port === 3000 || port === 4010) throw new Error("개발 포트를 테스트에 쓰지 않는다.");
-  const base = `http://127.0.0.1:${port}`;
   const httpBase = await reserveHttpBase();
-  const require = createRequire(import.meta.url);
-  const child = startProcessTree(
-    ["--import", pathToFileURL(require.resolve("tsx")).href, "contract/mock/src/main.ts"],
-    {
-      cwd: new URL("../../", import.meta.url),
-      env: {
-        ...process.env,
-        PORT: String(port),
-        HOST: "127.0.0.1",
-        API_URL: base,
+  const stops: (() => Promise<void>)[] = [];
+  async function stop() {
+    // 나중에 만든 자원부터 정리하고 실패해도 나머지를 모두 종료한다.
+    const errors: unknown[] = [];
+    for (const cleanup of stops.reverse()) {
+      try {
+        await cleanup();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    if (errors.length) throw new AggregateError(errors, "테스트 서버 종료 실패");
+  }
+  try {
+    const mock = await startMock({
+      env: (base) => ({
         FRONTEND_URL: base,
         OAUTH_REDIRECT_URIS: `${httpBase}/oauth/callback`,
         REALTIME_ALLOWED_ORIGINS: httpBase,
-        MOCK_TEST_ENDPOINTS: "true",
-        SEED_ADMIN_EMAIL: "admin@example.com",
-        SEED_ADMIN_PASSWORD: "admin-password", // betterleaks:allow 테스트 시드
-        IDENTIFIER_HASH_SECRET: "test-only-identifier-hash-secret-32", // betterleaks:allow 테스트 키
         RATE_LIMIT_GLOBAL: "10000",
         RATE_LIMIT_LOGIN_IP: "1000",
         RATE_LIMIT_LOGIN_IDENTIFIER: "1000",
         RATE_LIMIT_REGISTRATION_IP: "1000",
         RATE_LIMIT_MAIL_IP: "1000",
         RATE_LIMIT_MAIL_EMAIL: "3",
-      },
-    },
-  );
-  let output = "";
-  child.stdout?.on("data", (data) => {
-    output += data;
-  });
-  child.stderr?.on("data", (data) => {
-    output += data;
-  });
-  let startError: Error | undefined;
-  child.on("error", (error) => {
-    startError = error;
-  });
-  let deletionMock: Awaited<ReturnType<typeof startDeletionMock>> | undefined;
-  try {
-    const deadline = Date.now() + 15000;
-    let isReady = false;
-    while (Date.now() < deadline) {
-      if (startError) throw startError;
-      if (child.exitCode !== null) throw new Error(`목 테스트 서버 종료:\n${output}`);
-      try {
-        const ready = await fetch(`${base}/health/ready`, { signal: AbortSignal.timeout(1000) });
-        if (ready.ok) {
-          isReady = true;
-          break;
-        }
-      } catch {
-        /* 시작할 때만 연결 실패를 기다린다. */
-      }
-      await setTimeout(50);
-    }
-    if (!isReady) throw new Error(`목 테스트 서버 시작 실패:\n${output}`);
-    project.provide("mockBaseUrl", base);
-    deletionMock = await startDeletionMock();
+      }),
+    });
+    stops.push(mock.stop);
+    project.provide("mockBaseUrl", mock.base);
+    const deletionMock = await startDeletionMock();
+    stops.push(deletionMock.stop);
     project.provide("deletionMockBaseUrl", deletionMock.base);
-    const backend = await startHeaderFailureBackend(base);
-    let http;
-    try {
-      http = await startHttpServer(backend.base, httpBase, base);
-    } catch (error) {
-      await backend.stop();
-      throw error;
-    }
+    const rateLimitMock = await startMock({ env: { RATE_LIMIT_GLOBAL: "4" } });
+    stops.push(rateLimitMock.stop);
+    project.provide("rateLimitMockBaseUrl", rateLimitMock.base);
+    const backend = await startHeaderFailureBackend(mock.base);
+    stops.push(backend.stop);
+    const http = await startHttpServer(backend.base, httpBase, mock.base);
+    stops.push(http.stop);
     project.provide("httpBaseUrl", http.base);
-    return async () => {
-      try {
-        await http.stop();
-      } finally {
-        try {
-          await backend.stop();
-        } finally {
-          try {
-            await deletionMock!.stop();
-          } finally {
-            await stopProcessTree(child);
-          }
-        }
-      }
-    };
+    return stop;
   } catch (error) {
-    try {
-      await deletionMock?.stop();
-    } finally {
-      await stopProcessTree(child);
-    }
+    await stop();
     throw error;
   }
 }
