@@ -9,6 +9,7 @@ import {
   PostList,
   PostPagination,
   PostSearchForm,
+  PostsRealtime,
 } from "../../../features/posts";
 
 export default async function PostsPage({
@@ -27,6 +28,7 @@ export default async function PostsPage({
   ]);
   return (
     <section className="flex flex-col gap-6 py-8">
+      <PostsRealtime />
       <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
       <PostSearchForm q={q} sort={sort} size={size} />
       <PostList posts={list.posts} />

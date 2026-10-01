@@ -18,7 +18,11 @@ export async function reserveHttpBase() {
   return `http://localhost:${port}`;
 }
 
-export async function startHttpServer(mockBaseUrl: string, requestedBase?: string) {
+export async function startHttpServer(
+  mockBaseUrl: string,
+  requestedBase?: string,
+  realtimeBaseUrl = mockBaseUrl,
+) {
   const base = requestedBase ?? (await reserveHttpBase());
   const port = new URL(base).port;
   const require = createRequire(import.meta.url);
@@ -41,7 +45,7 @@ export async function startHttpServer(mockBaseUrl: string, requestedBase?: strin
         APP_URL: base,
         SESSION_SECRET: EXAMPLE_SESSION_SECRET,
         TIME_ZONE: "America/New_York",
-        NEXT_PUBLIC_REALTIME_URL: mockBaseUrl,
+        NEXT_PUBLIC_REALTIME_URL: realtimeBaseUrl,
       },
     },
   );

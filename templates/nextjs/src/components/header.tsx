@@ -7,6 +7,7 @@ import { Link } from "../lib/i18n/navigation";
 import { LocaleSwitcher } from "./locale-switcher";
 import { Button } from "./ui/button";
 import { Spinner } from "./spinner";
+import { useRealtimeFormStatus } from "../lib/realtime/mutations";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ import {
 function UserMenu({ name }: { name: string }) {
   const t = useTranslations("layout");
   const { pending } = useFormStatus();
+  useRealtimeFormStatus(pending);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger

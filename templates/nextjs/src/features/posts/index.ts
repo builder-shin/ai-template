@@ -10,6 +10,7 @@ export {
 } from "./actions";
 export { PostEditor, PostMutationForm } from "./editor";
 export { MyPostFilter, MyPostList } from "./my-posts";
+export { PostsRealtime, PostRealtime } from "./realtime";
 export {
   PostDetail,
   PostList,

@@ -7,6 +7,8 @@ import { routing } from "../../lib/i18n/routing";
 import { Header } from "../../components/header";
 import { getHeaderUser } from "../../lib/session/user";
 import { logoutAction } from "../../features/auth";
+import { RealtimeProvider } from "../../lib/realtime";
+import { getEnv } from "../../lib/env";
 import "../globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -33,23 +35,25 @@ export default async function LocaleLayout({
     <html lang={locale}>
       <body className="flex min-h-dvh flex-col">
         <NextIntlClientProvider locale={locale} messages={messages} timeZone={timeZone}>
-          <a
-            href="#main"
-            className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-md focus:bg-background focus:p-3"
-          >
-            {t("skipToContent")}
-          </a>
-          <Header user={user} logoutAction={logoutAction} />
-          <main
-            id="main"
-            tabIndex={-1}
-            className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 focus:outline-none sm:px-6"
-          >
-            {children}
-          </main>
-          <footer className="border-t px-4 py-5 text-center text-sm text-muted-foreground">
-            {t("footer")}
-          </footer>
+          <RealtimeProvider url={getEnv().NEXT_PUBLIC_REALTIME_URL} authenticated={user !== null}>
+            <a
+              href="#main"
+              className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-md focus:bg-background focus:p-3"
+            >
+              {t("skipToContent")}
+            </a>
+            <Header user={user} logoutAction={logoutAction} />
+            <main
+              id="main"
+              tabIndex={-1}
+              className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 focus:outline-none sm:px-6"
+            >
+              {children}
+            </main>
+            <footer className="border-t px-4 py-5 text-center text-sm text-muted-foreground">
+              {t("footer")}
+            </footer>
+          </RealtimeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

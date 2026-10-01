@@ -5,6 +5,8 @@
     "posts": "공개 글 보기"
   },
   "posts": {
+    "deletedNotice": "이 글이 삭제되었습니다.",
+    "unpublishedNotice": "이 글의 발행이 취소되었습니다.",
     "coverLabel": "커버 이미지",
     "title": "글",
     "search": "글 검색",

@@ -5,6 +5,8 @@
     "posts": "Browse public posts"
   },
   "posts": {
+    "deletedNotice": "This post was deleted.",
+    "unpublishedNotice": "This post is no longer published.",
     "coverLabel": "Cover image",
     "title": "Posts",
     "search": "Search posts",

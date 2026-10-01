@@ -41,7 +41,7 @@ Next의 관리 지침 삽입은 `agentRules: false`로 끈다. 설치 문서 `01
 typescript-eslint는 설계 버전 8.71.0을 쓴다. 경계 플러그인은 ESLint 10에서 실제 import 픽스처로 검증한다.
 Next 설정이 가져오는 React 플러그인은 아직 ESLint 10의 context API를 지원하지 않아 `@eslint/compat` 2.1.1의 `fixupConfigRules`로 감싼다([공식 호환 도구](https://github.com/eslint/rewrite/tree/main/packages/compat)).
 
-계약과 목의 의존성은 사본 package.json의 정확한 pin을 유지한다. 목의 `@ai-template/contract: workspace:*`는 이 프로젝트 안의 TypeSpec 사본만 가리킨다. Socket.IO 클라이언트는 현재 목의 테스트 의존성이며 web의 실시간 기능은 W3에서 구현한다.
+계약과 목의 의존성은 사본 package.json의 정확한 pin을 유지한다. 목의 `@ai-template/contract: workspace:*`는 이 프로젝트 안의 TypeSpec 사본만 가리킨다. Socket.IO 클라이언트 4.8.4는 web의 실시간 런타임 의존성이다. 2026-09-25 08:35 UTC에 공개되어 `minimumReleaseAge: 1440`을 만족한다.
 
 lockfile은 openapi-fetch의 `openapi-typescript-helpers` 0.1.0, Next 린트의 `eslint-plugin-import` 2.32.0·`eslint-plugin-jsx-a11y` 6.10.2·`eslint-plugin-react` 7.37.5도 고정한다. next-intl의 네이티브 전이 의존성 `@parcel/watcher` 2.6.0·`@swc/core` 1.16.12는 빌드 허용 목록에 추가했다. 공개 후 1440분 규칙은 유지한다.
 

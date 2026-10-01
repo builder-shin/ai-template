@@ -42,6 +42,7 @@ export default async function setup(project: TestProject) {
         API_URL: base,
         FRONTEND_URL: base,
         OAUTH_REDIRECT_URIS: `${httpBase}/oauth/callback`,
+        REALTIME_ALLOWED_ORIGINS: httpBase,
         MOCK_TEST_ENDPOINTS: "true",
         SEED_ADMIN_EMAIL: "admin@example.com",
         SEED_ADMIN_PASSWORD: "admin-password", // betterleaks:allow 테스트 시드
@@ -91,7 +92,7 @@ export default async function setup(project: TestProject) {
     const backend = await startHeaderFailureBackend(base);
     let http;
     try {
-      http = await startHttpServer(backend.base, httpBase);
+      http = await startHttpServer(backend.base, httpBase, base);
     } catch (error) {
       await backend.stop();
       throw error;

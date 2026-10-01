@@ -97,6 +97,7 @@ try {
       FRONTEND_URL: webOrigin,
       OAUTH_REDIRECT_URIS: `${webOrigin}/oauth/callback`,
       STORAGE_ALLOWED_ORIGINS: webOrigin,
+      REALTIME_ALLOWED_ORIGINS: webOrigin,
       MOCK_TEST_ENDPOINTS: "true",
       RECENT_LOGIN_SECONDS: String(mockRecentLoginSeconds),
       IDENTIFIER_HASH_SECRET: randomBytes(32).toString("hex"),
