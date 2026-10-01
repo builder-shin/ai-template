@@ -2,7 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import nextEnv from "@next/env";
-import { isStandalone } from "./dev-mode.mjs";
+import { isStandalone, mockHost } from "./dev-mode.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const require = createRequire(import.meta.url);
@@ -58,8 +58,8 @@ if (isStandalone(process.env.API_BASE_URL)) {
   start("tsx", ["src/main.ts"], resolve(root, "contract/mock"), {
     ...process.env,
     PORT: "4010",
-    HOST: "127.0.0.1",
-    API_URL: "http://localhost:4010",
+    HOST: mockHost(process.env.API_BASE_URL),
+    API_URL: new URL(process.env.API_BASE_URL ?? "http://localhost:4010/api/v1").origin,
     FRONTEND_URL: process.env.APP_URL ?? "http://localhost:3000",
   });
 }

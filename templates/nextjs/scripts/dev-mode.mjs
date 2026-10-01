@@ -13,3 +13,8 @@ export function isStandalone(apiBaseUrl) {
     return false;
   }
 }
+
+/** URL의 IPv6 괄호는 listen의 호스트 인자에서 제거한다. */
+export function mockHost(apiBaseUrl) {
+  return new URL(apiBaseUrl ?? "http://localhost:4010/api/v1").hostname.replace(/^\[|\]$/g, "");
+}

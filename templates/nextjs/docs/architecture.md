@@ -109,7 +109,7 @@ Hook JSON 형식의 기준은 [Claude Code 공식 문서](https://code.claude.co
 `pnpm gen`은 TypeSpec을 컴파일하고 API 선언, 실시간 이벤트 이름·payload 매핑, 에러 코드 목록과 목 타입을 다시 만든다. `pnpm check`는 임시 디렉터리의 생성 결과를 비교하고 계약 두 패키지의 자체 검사도 돌린다. 사본은 원본 포맷을 보존하므로 web 포맷·린트에서 제외한다.
 web 자체 생성물은 첫 줄에 직접 수정 금지 헤더를 둔다. 계약 사본은 원본 헤더를 보존하고 자체 freshness 검사와 저장소 사본 비교로 확인한다. 이 저장소 안의 사본은 원본 수정 뒤 sync하고, 독립 복사본에서는 그 프로젝트의 TypeSpec과 목을 확장한다.
 
-`pnpm dev`는 Next 환경 로더로 설정을 준비한다. API 주소가 HTTP loopback의 4010 `/api/v1`이면 목과 web을 함께 시작하며, 외부 백엔드 주소라면 web만 시작한다. 어느 자식이 종료하거나 Ctrl+C를 받으면 자신이 시작한 프로세스 트리를 함께 내린다.
+`pnpm dev`는 Next 환경 로더로 설정을 준비한다. API 주소가 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 같은 loopback에 목과 web을 함께 시작하며, 외부 백엔드 주소라면 web만 시작한다. 어느 자식이 종료하거나 Ctrl+C를 받으면 자신이 시작한 프로세스 트리를 함께 내린다.
 
 ## HTTP 통합과 E2E
 
