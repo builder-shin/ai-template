@@ -1,8 +1,8 @@
 import "server-only";
-import { createHash } from "node:crypto";
 import { EncryptJWT, jwtDecrypt } from "jose";
 import { z } from "zod";
 import { getEnv } from "../env";
+import { deriveSessionKey } from "./key";
 import { safeReturnTo } from "./redirect";
 
 export const oauthProviders = ["google", "kakao", "naver"] as const;
@@ -13,12 +13,6 @@ const attemptSchema = z.object({
   locale: z.enum(["ko", "en"]),
 });
 export type OAuthAttempt = z.input<typeof attemptSchema>;
-
-function key(secret: string) {
-  if (Buffer.byteLength(secret, "utf8") < 32)
-    throw new Error("SESSION_SECRET은 32바이트 이상으로 설정한다.");
-  return createHash("sha256").update(secret, "utf8").digest();
-}
 
 export function oauthCookieOptions(mode = process.env.NODE_ENV) {
   return {
@@ -41,7 +35,7 @@ export async function oauthCookie(
     .setSubject("oauth")
     .setIssuedAt()
     .setExpirationTime("10m")
-    .encrypt(key(secret));
+    .encrypt(deriveSessionKey(secret));
   return { ...oauthCookieOptions(mode), value, maxAge: 600 };
 }
 
@@ -50,7 +44,7 @@ export async function unsealOAuthAttempt(
   secret?: string,
 ): Promise<OAuthAttempt | null> {
   if (!value) return null;
-  const encryptionKey = key(secret ?? getEnv().SESSION_SECRET);
+  const encryptionKey = deriveSessionKey(secret ?? getEnv().SESSION_SECRET);
   try {
     const { payload } = await jwtDecrypt(value, encryptionKey, {
       keyManagementAlgorithms: ["dir"],

@@ -66,7 +66,10 @@ export async function GET(request: NextRequest) {
     response.cookies.set({ name: "NEXT_LOCALE", value: accountLocale, path: "/", sameSite: "lax" });
     return complete(response);
   } catch (error) {
-    if (!(error instanceof ApiError)) throw error;
+    if (!(error instanceof ApiError))
+      console.error(
+        `OAuth 콜백 처리 실패: ${error instanceof Error ? error.name : "UnknownError"}`,
+      );
     return failed();
   }
 }

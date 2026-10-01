@@ -1,9 +1,9 @@
 import "server-only";
-import { createHash } from "node:crypto";
 import { EncryptJWT, jwtDecrypt } from "jose";
 import { z } from "zod";
 import { getEnv } from "../env";
 import type { components } from "../api/schema";
+import { deriveSessionKey } from "./key";
 
 const sessionSchema = z.object({
   accessToken: z.string().min(1),
@@ -20,18 +20,12 @@ export function sessionFromTokens(
   return sessionSchema.parse(tokens);
 }
 
-function key(secret: string) {
-  if (Buffer.byteLength(secret, "utf8") < 32)
-    throw new Error("SESSION_SECRET은 32바이트 이상으로 설정한다.");
-  return createHash("sha256").update(secret, "utf8").digest();
-}
-
 export async function sealSession(session: Session, secret = getEnv().SESSION_SECRET) {
   const data = sessionSchema.parse(session);
   return new EncryptJWT(data)
     .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
     .setExpirationTime(Math.floor(Date.parse(data.refreshTokenExpiresAt) / 1000))
-    .encrypt(key(secret));
+    .encrypt(deriveSessionKey(secret));
 }
 
 export async function unsealSession(
@@ -39,7 +33,7 @@ export async function unsealSession(
   secret?: string,
 ): Promise<Session | null> {
   if (!value) return null;
-  const encryptionKey = key(secret ?? getEnv().SESSION_SECRET);
+  const encryptionKey = deriveSessionKey(secret ?? getEnv().SESSION_SECRET);
   try {
     const { payload } = await jwtDecrypt(value, encryptionKey, {
       keyManagementAlgorithms: ["dir"],

@@ -87,6 +87,7 @@ async function failed(
   expect(cookies.some((value) => /^oauth=;/.test(value) && /Max-Age=0/i.test(value))).toBe(true);
   expect(cookies.some((value) => value.startsWith("session="))).toBe(false);
   expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("referrer-policy")).toBe("no-referrer");
   const page = await fetch(url, { headers });
   const html = new JSDOM(await page.text()).window.document;
   // Next의 스트림 조각은 JS 실행 전에는 main 밖에 있을 수 있다.
@@ -216,6 +217,26 @@ describe("실제 목 제공자를 거치는 OAuth HTTP", () => {
     const url = await providerCallback(google.authorize, "google");
     await failed(await callback(url, naver.cookie));
   });
+
+  it.each(["duplicate-provider", "missing-code", "empty-code", "duplicate-code"])(
+    "%s 입력을 거절하고 원래 코드를 소비하지 않는다",
+    async (kind) => {
+      const attempt = await start();
+      const original = await providerCallback(attempt.authorize, "google");
+      const invalid = new URL(original);
+      if (kind === "duplicate-provider") {
+        invalid.searchParams.append("provider", "google");
+        invalid.searchParams.append("provider", "google");
+      } else if (kind === "missing-code") invalid.searchParams.delete("code");
+      else if (kind === "empty-code") invalid.searchParams.set("code", "");
+      else invalid.searchParams.append("code", original.searchParams.get("code")!);
+      await failed(await callback(invalid, attempt.cookie));
+      const valid = await callback(original, attempt.cookie);
+      expect(valid.status).toBe(303);
+      const session = await responseSession(valid);
+      await mockClient(session.accessToken).DELETE("/me");
+    },
+  );
 
   it.each(["tampered", "expired", "session"])("%s 쿠키를 거절한다", async (kind) => {
     const attempt = await start();
