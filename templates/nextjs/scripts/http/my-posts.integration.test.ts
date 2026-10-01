@@ -52,7 +52,12 @@ describe("ko/en 내 글 폼의 JS 없는 HTTP 흐름", () => {
       expect(document(newHtml).querySelector("h1")?.textContent).toBe(
         locale === "ko" ? "글 작성" : "New post",
       );
-      expect(document(newHtml).querySelector('textarea[name="body"]')).toBeTruthy();
+      const bodyInput = document(newHtml).querySelector('form textarea[name="body"]')!;
+      expect(bodyInput).toBeTruthy();
+      const writePanel = bodyInput.closest('[role="tabpanel"]')!;
+      expect(writePanel).toBeTruthy();
+      expect(writePanel.hasAttribute("hidden")).toBe(false);
+      expect(writePanel.hasAttribute("inert")).toBe(false);
       const invalid = form(newHtml, "post-editor");
       invalid.body.set("title", "");
       invalid.body.set("body", "남길 본문");

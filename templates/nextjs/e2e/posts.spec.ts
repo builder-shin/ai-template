@@ -23,7 +23,9 @@ for (const locale of ["ko", "en"] as const) {
     await page.getByLabel(t.posts.titleLabel, { exact: true }).fill(title);
     await page.getByLabel(t.posts.bodyLabel, { exact: true }).fill("**W3 markdown**");
     await page.getByRole("tab", { name: t.posts.preview, exact: true }).click();
-    await expect(page.getByRole("tabpanel")).toHaveText("W3 markdown");
+    await expect(page.getByRole("tabpanel", { name: t.posts.preview, exact: true })).toHaveText(
+      "W3 markdown",
+    );
     await page.getByLabel(t.posts.coverLabel, { exact: true }).setInputFiles({
       name: "cover.png",
       mimeType: "image/png",

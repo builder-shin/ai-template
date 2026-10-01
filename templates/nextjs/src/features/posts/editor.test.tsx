@@ -2,7 +2,7 @@
 import { act } from "react";
 import type { ReactNode } from "react";
 import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import ko from "../../../messages/ko.json";
@@ -51,7 +51,7 @@ it.each(["ko", "en"] as const)(
         permalink="/my-posts/new"
         values={{
           title: "초안",
-          body: "## 소제목\n\n**굵게**\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n[위험](javascript:alert(1))",
+          body: "## 소제목\n\n**굵게**\n\n| 열 |\n| --- |\n| 값 |\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n[위험](javascript:alert(1))",
         }}
       />,
       locale,
@@ -68,9 +68,13 @@ it.each(["ko", "en"] as const)(
     await userEvent
       .setup()
       .click(screen.getByRole("tab", { name: locale === "ko" ? "미리보기" : "Preview" }));
-    expect(screen.getByRole("heading", { name: "소제목" })).toBeTruthy();
-    expect(document.querySelector("strong")?.textContent).toBe("굵게");
-    expect(document.querySelector("script, img, a[href^='javascript:']")).toBeNull();
+    const preview = screen.getByRole("tabpanel", {
+      name: locale === "ko" ? "미리보기" : "Preview",
+    });
+    expect(within(preview).getByRole("heading", { name: "소제목" })).toBeTruthy();
+    expect(within(preview).getByRole("cell", { name: "값" })).toBeTruthy();
+    expect(preview.querySelector("strong")?.textContent).toBe("굵게");
+    expect(preview.querySelector("script, img, a[href^='javascript:']")).toBeNull();
     await userEvent
       .setup()
       .click(screen.getByRole("tab", { name: locale === "ko" ? "작성" : "Write" }));
@@ -79,6 +83,42 @@ it.each(["ko", "en"] as const)(
     ).toContain("**굵게**");
   },
 );
+it("작성 탭에서 오른쪽 방향키를 누르면 미리보기로 포커스와 선택을 옮긴다", async () => {
+  show(<PostEditor action={async () => ({ ok: true })} permalink="/my-posts/new" />);
+  const user = userEvent.setup();
+  const write = screen.getByRole("tab", { name: "작성" });
+  const preview = screen.getByRole("tab", { name: "미리보기" });
+  await user.click(write);
+  expect(document.activeElement).toBe(write);
+  await user.keyboard("{ArrowRight}");
+  expect(document.activeElement).toBe(preview);
+  expect(preview.getAttribute("aria-selected")).toBe("true");
+  expect(write.getAttribute("aria-selected")).toBe("false");
+  expect(write.tabIndex).toBe(-1);
+  expect(preview.tabIndex).toBe(0);
+});
+it("미리보기에서 제출해도 수정한 제목과 본문을 보낸다", async () => {
+  let received: FormData | undefined;
+  show(
+    <PostEditor
+      action={async (_state, data) => {
+        received = data;
+        return { ok: true };
+      }}
+      permalink="/my-posts/new"
+    />,
+  );
+  const user = userEvent.setup();
+  await user.type(screen.getByRole("textbox", { name: "제목" }), "미리보기 제목");
+  const body = screen.getByRole("textbox", { name: "본문" });
+  await user.type(body, "**미리보기 본문**");
+  await user.click(screen.getByRole("tab", { name: "미리보기" }));
+  expect(screen.queryByRole("textbox", { name: "본문" })).toBeNull();
+  expect(body.isConnected).toBe(true);
+  await user.click(screen.getByRole("button", { name: "저장" }));
+  expect(received?.get("title")).toBe("미리보기 제목");
+  expect(received?.get("body")).toBe("**미리보기 본문**");
+});
 it("Action의 입력칸 오류와 폼 오류를 표시하며 수정 값을 유지한다", async () => {
   let received: FormData | undefined;
   show(

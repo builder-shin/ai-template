@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SubmitButton } from "../../components/submit-button";
-import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Link } from "../../lib/i18n/navigation";
 import { FileUpload, type FileValue } from "../files";
 import type { PostAction, PostResult, PostValues } from "./state";
@@ -44,7 +44,6 @@ export function PostEditor({
   const [state, submit] = useActionState(action, { ok: true } as PostResult, permalink);
   const [title, setTitle] = useState(state.values?.title ?? values?.title ?? "");
   const [body, setBody] = useState(state.values?.body ?? values?.body ?? "");
-  const [preview, setPreview] = useState(false);
   const [cover, setCover] = useState<FileValue>({
     id: state.values?.coverImage ?? values?.coverImage ?? "",
     url: coverUrl ?? "",
@@ -73,38 +72,12 @@ export function PostEditor({
           </div>
         )}
       </div>
-      <div className="space-y-2">
-        <div role="tablist" aria-label={t("bodyMode")} className="flex gap-2">
-          <Button
-            type="button"
-            role="tab"
-            id="post-write-tab"
-            aria-controls="post-write"
-            aria-selected={!preview}
-            variant={preview ? "outline" : "default"}
-            onClick={() => setPreview(false)}
-          >
-            {t("write")}
-          </Button>
-          <Button
-            type="button"
-            role="tab"
-            id="post-preview-tab"
-            aria-controls="post-preview"
-            aria-selected={preview}
-            variant={preview ? "default" : "outline"}
-            onClick={() => setPreview(true)}
-          >
-            {t("preview")}
-          </Button>
-        </div>
-        <div
-          id="post-write"
-          role="tabpanel"
-          aria-labelledby="post-write-tab"
-          hidden={preview}
-          className="space-y-2"
-        >
+      <Tabs defaultValue="write">
+        <TabsList aria-label={t("bodyMode")} activateOnFocus>
+          <TabsTrigger value="write">{t("write")}</TabsTrigger>
+          <TabsTrigger value="preview">{t("preview")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="write" keepMounted className="space-y-2">
           <Label htmlFor="post-body">{t("bodyLabel")}</Label>
           {/* 기본 textarea는 JS 없이 본문을 제출한다. 미리보기만 클라이언트 상태다. */}
           <textarea
@@ -125,19 +98,16 @@ export function PostEditor({
               ))}
             </div>
           )}
-        </div>
-        <div
-          id="post-preview"
-          role="tabpanel"
-          aria-labelledby="post-preview-tab"
-          hidden={!preview}
+        </TabsContent>
+        <TabsContent
+          value="preview"
           className="min-h-48 break-words rounded-lg border p-4 leading-relaxed [&_a]:underline [&_h2]:text-xl [&_p]:my-3 [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto"
         >
           <Markdown skipHtml remarkPlugins={[remarkGfm]}>
             {body}
           </Markdown>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
       <FileUpload
         name="coverImage"
         label={t("coverLabel")}
