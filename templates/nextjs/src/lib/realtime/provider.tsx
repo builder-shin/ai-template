@@ -18,9 +18,11 @@ import {
   type PostEvent,
 } from "./channel";
 import type { components } from "../api/schema";
+import { errorCodes } from "../generated/error-codes";
 import { createMutationBarrier, RealtimeMutationsContext } from "./mutations";
 
 const RealtimeContext = createContext<RealtimeSocket | null>(null);
+const knownCodes = new Set<string>(errorCodes);
 
 export function RealtimeProvider({
   children,
@@ -51,11 +53,13 @@ export function RealtimeProvider({
   const refresh = useEffectEvent(() => router.refresh());
   useEffect(() => {
     let active = true;
+    let authGeneration = 0;
     let checking: Promise<void> | undefined;
     let signingOut = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const retry = () => {
       if (!active || signingOut || retryTimer) return;
+      authGeneration++;
       socket.disconnect();
       retryTimer = setTimeout(() => {
         retryTimer = undefined;
@@ -63,15 +67,20 @@ export function RealtimeProvider({
       }, 1000);
     };
     setSocketAuthentication(socket, (answer) => {
+      // 같은 effect 안에서도 새 인증 시도가 이전 응답·실패를 무효화한다.
+      const generation = ++authGeneration;
+      const current = () => active && !signingOut && generation === authGeneration;
       if (!authenticated) {
-        answer({});
+        if (current()) answer({});
         return;
       }
       void mutations
         .wait()
-        .then(() => (active && !signingOut ? getRealtimeTicket() : undefined))
-        .then((ticket) => {
-          if (!active || signingOut) return;
+        .then(() => (current() ? getRealtimeTicket() : undefined))
+        .then(async (ticket) => {
+          // 요청 도중 시작한 폼도 결과를 적용하기 전에 기다린다.
+          await mutations.wait();
+          if (!current()) return;
           if (ticket) answer({ ticket });
           else {
             signingOut = true;
@@ -79,8 +88,9 @@ export function RealtimeProvider({
             goToLogin();
           }
         })
-        .catch(() => {
-          if (active) {
+        .catch(async () => {
+          await mutations.wait();
+          if (current()) {
             console.warn("실시간 티켓 발급 실패");
             retry();
           }
@@ -91,8 +101,9 @@ export function RealtimeProvider({
       checking = mutations
         .wait()
         .then(() => (active ? checkRealtimeSession() : undefined))
-        .then((state) => {
-          if (!active) return;
+        .then(async (state) => {
+          await mutations.wait();
+          if (!active || signingOut) return;
           if (state === "revoked") {
             signingOut = true;
             socket.disconnect();
@@ -107,10 +118,19 @@ export function RealtimeProvider({
         });
     };
     const disconnected = (reason: string) => {
+      authGeneration++;
       if (reason === "io server disconnect" && active && !signingOut) socket.connect();
     };
-    const failed = () => {
-      console.warn("실시간 연결 실패");
+    const failed = (error: Error & { data?: unknown }) => {
+      const candidate =
+        error.data !== null && typeof error.data === "object" && "code" in error.data
+          ? error.data.code
+          : undefined;
+      const code =
+        typeof candidate === "string" && knownCodes.has(candidate)
+          ? candidate
+          : "internal.unexpected";
+      console.warn("실시간 연결 실패", { code });
       // 네트워크 단절은 Socket.IO가 재시도하고, 인증 거부만 새 티켓으로 다시 연결한다.
       if (!socket.active) retry();
     };
@@ -126,6 +146,7 @@ export function RealtimeProvider({
     socket.connect();
     return () => {
       active = false;
+      authGeneration++;
       if (retryTimer) clearTimeout(retryTimer);
       socket.off("session.revoked", revoked);
       socket.off("me.updated", updated);

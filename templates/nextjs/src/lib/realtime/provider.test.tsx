@@ -25,6 +25,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 function show(authenticated = true) {
   return render(
@@ -200,4 +201,182 @@ it("현재 폼이 끝나고 로그인이 유지되면 대기한 확인을 한 �
   expect(checkRealtimeSession).toHaveBeenCalledTimes(1);
   expect(router.refresh).toHaveBeenCalledTimes(1);
   expect(router.replace).not.toHaveBeenCalled();
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+function form(pending: boolean, authenticated = true) {
+  return (
+    <RealtimeProvider url="http://localhost:4010" authenticated={authenticated}>
+      <LocalForm pending={pending} />
+    </RealtimeProvider>
+  );
+}
+
+it.each([
+  { state: "revoked", authenticated: true },
+  { state: "active", authenticated: true },
+  { state: "revoked", authenticated: false },
+  { state: "active", authenticated: false },
+] as const)(
+  "늦은 $state 세션 결과는 폼 뒤 authenticated=$authenticated 상태에서 적용한다",
+  async ({ state, authenticated }) => {
+    const result = deferred<Awaited<ReturnType<typeof checkRealtimeSession>>>();
+    vi.mocked(checkRealtimeSession).mockReturnValueOnce(result.promise);
+    const view = render(form(false));
+    await act(async () => socket.fire("session.revoked", { meta: { reason: "revoked" } }));
+    expect(checkRealtimeSession).toHaveBeenCalledTimes(1);
+    await act(async () => view.rerender(form(true)));
+    await act(async () => result.resolve(state));
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
+    await act(async () => view.rerender(form(false, authenticated)));
+    if (!authenticated) {
+      expect(router.replace).not.toHaveBeenCalled();
+      expect(router.refresh).not.toHaveBeenCalled();
+    } else if (state === "revoked") {
+      expect(router.replace).toHaveBeenCalledWith("/en/login?returnTo=%2Fen%2Fme%2Fsessions");
+    } else {
+      expect(router.replace).not.toHaveBeenCalled();
+      expect(router.refresh).toHaveBeenCalledTimes(1);
+    }
+  },
+);
+
+it.each([
+  { ticket: null, authenticated: true },
+  { ticket: "late-ticket", authenticated: true },
+  { ticket: null, authenticated: false },
+  { ticket: "late-ticket", authenticated: false },
+] as const)(
+  "늦은 $ticket 티켓 결과는 폼 뒤 authenticated=$authenticated 상태에서 적용한다",
+  async ({ ticket, authenticated }) => {
+    const result = deferred<string | null>();
+    vi.mocked(getRealtimeTicket).mockReturnValueOnce(result.promise);
+    const view = render(form(false));
+    const answer = vi.fn();
+    await act(async () => socket.auth(answer));
+    expect(getRealtimeTicket).toHaveBeenCalledTimes(1);
+    await act(async () => view.rerender(form(true)));
+    await act(async () => result.resolve(ticket));
+    expect(answer).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
+    await act(async () => view.rerender(form(false, authenticated)));
+    if (!authenticated) {
+      expect(answer).not.toHaveBeenCalled();
+      expect(router.replace).not.toHaveBeenCalled();
+      expect(router.refresh).not.toHaveBeenCalled();
+    } else if (ticket) {
+      expect(answer).toHaveBeenCalledExactlyOnceWith({ ticket });
+      expect(router.replace).not.toHaveBeenCalled();
+    } else {
+      expect(answer).not.toHaveBeenCalled();
+      expect(router.replace).toHaveBeenCalledWith("/en/login?returnTo=%2Fen%2Fme%2Fsessions");
+    }
+  },
+);
+
+it.each([
+  { disconnect: true, oldFirst: true },
+  { disconnect: true, oldFirst: false },
+  { disconnect: false, oldFirst: true },
+  { disconnect: false, oldFirst: false },
+])(
+  "새 인증은 이전 티켓을 버린다: disconnect=$disconnect, oldFirst=$oldFirst",
+  async ({ disconnect, oldFirst }) => {
+    const oldTicket = deferred<string>();
+    const freshTicket = deferred<string>();
+    vi.mocked(getRealtimeTicket)
+      .mockReturnValueOnce(oldTicket.promise)
+      .mockReturnValueOnce(freshTicket.promise);
+    show();
+    const oldConnect = vi.fn();
+    const freshConnect = vi.fn();
+    await act(async () => socket.auth(oldConnect));
+    if (disconnect) act(() => socket.fire("disconnect", "transport close"));
+    await act(async () => socket.auth(freshConnect));
+    expect(getRealtimeTicket).toHaveBeenCalledTimes(2);
+    if (oldFirst) {
+      await act(async () => oldTicket.resolve("old-ticket"));
+      expect(oldConnect).not.toHaveBeenCalled();
+      expect(freshConnect).not.toHaveBeenCalled();
+      await act(async () => freshTicket.resolve("fresh-ticket"));
+    } else {
+      await act(async () => freshTicket.resolve("fresh-ticket"));
+      await act(async () => oldTicket.resolve("old-ticket"));
+    }
+    expect(oldConnect).not.toHaveBeenCalled();
+    expect(freshConnect).toHaveBeenCalledExactlyOnceWith({ ticket: "fresh-ticket" });
+  },
+);
+
+it.each(["success", "failure"] as const)(
+  "연결이 끊긴 인증의 늦은 %s는 CONNECT와 재시도를 만들지 않는다",
+  async (outcome) => {
+    vi.useFakeTimers();
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const ticket = deferred<string>();
+    vi.mocked(getRealtimeTicket).mockReturnValueOnce(ticket.promise);
+    show();
+    const answer = vi.fn();
+    await act(async () => socket.auth(answer));
+    act(() => socket.fire("disconnect", "transport close"));
+    await act(async () => {
+      if (outcome === "success") ticket.resolve("old-ticket");
+      else ticket.reject(new Error("old failure"));
+    });
+    expect(answer).not.toHaveBeenCalled();
+    expect(warning).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(socket.connect).toHaveBeenCalledTimes(1);
+    expect(socket.disconnect).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
+  },
+);
+
+it("이전 티켓 실패는 재연결로 인증한 연결에 재시도를 걸지 않는다", async () => {
+  vi.useFakeTimers();
+  const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const oldTicket = deferred<string>();
+  vi.mocked(getRealtimeTicket)
+    .mockReturnValueOnce(oldTicket.promise)
+    .mockResolvedValueOnce("fresh-ticket");
+  show();
+  const oldConnect = vi.fn();
+  await act(async () => socket.auth(oldConnect));
+  act(() => socket.fire("disconnect", "transport close"));
+  const freshConnect = await handshake();
+  act(() => socket.fire("connect"));
+  expect(freshConnect).toHaveBeenCalledExactlyOnceWith({ ticket: "fresh-ticket" });
+  await act(async () => oldTicket.reject(new Error("old failure")));
+  expect(oldConnect).not.toHaveBeenCalled();
+  expect(warning).not.toHaveBeenCalled();
+  act(() => vi.advanceTimersByTime(1000));
+  expect(socket.connect).toHaveBeenCalledTimes(1);
+  expect(socket.disconnect).not.toHaveBeenCalled();
+  expect(router.replace).not.toHaveBeenCalled();
+});
+
+it.each([
+  { code: "auth.token_invalid", expected: "auth.token_invalid" },
+  { code: "private-code", expected: "internal.unexpected" },
+  { code: undefined, expected: "internal.unexpected" },
+  { code: 42, expected: "internal.unexpected" },
+])("연결 실패는 허용한 $expected 코드만 기록한다: $code", ({ code, expected }) => {
+  vi.useFakeTimers();
+  const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+  show();
+  const error = Object.assign(new Error("private message"), {
+    data: { code, detail: "private detail", ticket: "private ticket" },
+  });
+  act(() => socket.fire("connect_error", error));
+  expect(warning.mock.calls).toEqual([["실시간 연결 실패", { code: expected }]]);
 });
