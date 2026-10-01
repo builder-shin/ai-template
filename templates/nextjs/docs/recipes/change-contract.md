@@ -1,8 +1,9 @@
 # 계약 확장
 
-이 저장소에서는 루트의 `contract/typespec/src/`를 고친 뒤 루트에서 `pnpm gen`, `pnpm sync`를 실행한다. 템플릿 사본을 직접 고치지 않는다.
+이 저장소에서는 루트의 `contract/typespec/src/`를 고친 뒤 루트에서 `pnpm gen`, `pnpm sync`를 실행한다. 템플릿 사본을 직접 고치지 않는다. 루트 check의 `verify-templates`가 사본과 원본의 일치를 검사한다.
 
 독립 복사본에서는 다음 순서를 따른다.
+Claude 권한은 TypeSpec과 목의 수기 소스 편집을 허용한다. `contract/openapi.yaml`, 목의 `src/generated/`, web 생성물은 Edit·Write를 차단하므로 생성기를 쓴다.
 
 1. `contract/typespec/src/`의 리소스와 operation을 고친다. 새 에러 코드는 `docs/conventions/error-codes.md`에도 같은 순서로 넣는다.
 2. `pnpm gen`으로 `contract/openapi.yaml`, 목 타입, `src/lib/api/schema.d.ts`, `src/lib/generated/`를 다시 만든다.

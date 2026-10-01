@@ -439,6 +439,7 @@ DB가 없으므로 `db:*`는 두지 않는다(기반 설계 §6.2).
 
 - `src/lib/api/schema.d.ts`, 실시간 이벤트 타입, 에러 코드 목록, `contract/openapi.yaml`(TypeSpec 컴파일 결과)
 - 저장소의 사본(`contract/`, 그 아래 `contract/mock/` 포함)은 템플릿 저장소에서는 동기화 대상이다. 생성한 프로젝트에서는 그 프로젝트의 소스가 된다.
+- Claude 권한은 `contract/` 전체를 막지 않고 `contract/openapi.yaml`, 목의 `src/generated/`, web 생성물의 Edit·Write만 막는다. 저장소 사본의 일치는 루트 `verify-templates`로 검사하며 독립 프로젝트의 TypeSpec·목 수기 소스는 편집할 수 있다.
 
 ### 9.7 생성기, 레시피, skill
 
