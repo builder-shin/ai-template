@@ -2,7 +2,7 @@
 
 Next.js App Router의 BFF다. Server Component가 데이터를 읽고 Server Action이 쓴다.
 브라우저는 백엔드 API를 직접 부르지 않는다. 실시간 Socket.IO와 presigned URL 업로드만 직접 연결한다.
-API 계약·목 사본은 다음 단계에서 이 프로젝트의 `contract/` 안에 들어온다.
+API 계약·목 사본은 이 프로젝트의 `contract/` 안에 두고 자체 workspace로 실행한다.
 
 ## 경계
 
@@ -32,7 +32,15 @@ check는 단계별 입력 해시를 캐시한다. 삭제도 변경으로 본다.
 Stop은 세션 시작 또는 마지막 통과 때의 스냅샷과 비교하므로 셸 편집도 감지한다.
 세션별 상태는 `.cache/hooks/`에만 두며 환경 파일·의존성·빌드 산출물은 읽지 않는다.
 빠른 검사는 변경 관련 테스트를 쓰고, 전체 검사는 pre-push와 CI에서 쓴다.
-생성물 검사와 E2E는 아직 대상이 없는 실행 지점이며 후속 단계에서 구현한다.
+생성물 검사는 TypeSpec 계약과 web·목 타입을 재생성해 비교한다. E2E 흐름은 후속 단계에서 구현한다.
 
 PreToolUse의 셸 검사는 단어 기반의 최선 검사다. 별도 프로그램 안에서 파일을 여는 동작까지 해석하지 않는다.
 Hook JSON 형식의 기준은 [Claude Code 공식 문서](https://code.claude.com/docs/en/hooks)다.
+
+## 계약과 단독 개발
+
+`contract/*`는 pnpm workspace다. 목의 `@ai-template/contract`는 TypeSpec 사본으로 연결되고 두 패키지는 루트 `tsconfig.base.json`과 고정된 개발 도구를 사용한다. API 규약도 `docs/conventions/`에 함께 복사해 계약 테스트와 AI가 같은 문서를 읽는다.
+
+`pnpm gen`은 TypeSpec을 컴파일하고 API 선언, 실시간 이벤트 이름·payload 매핑, 에러 코드 목록과 목 타입을 다시 만든다. `pnpm check`는 임시 디렉터리의 생성 결과를 비교하고 계약 두 패키지의 자체 검사도 돌린다. 사본은 원본 포맷을 보존하므로 web 포맷·린트에서 제외한다.
+
+`pnpm dev`는 Next 환경 로더로 설정을 준비한다. API 주소가 HTTP loopback의 4010 `/api/v1`이면 목과 web을 함께 시작하며, 외부 백엔드 주소라면 web만 시작한다. 어느 자식이 종료하거나 Ctrl+C를 받으면 자신이 시작한 프로세스 트리를 함께 내린다.

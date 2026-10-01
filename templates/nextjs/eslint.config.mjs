@@ -6,6 +6,7 @@ import { architectureConfig } from "./scripts/lint/boundaries.mjs";
 
 export default defineConfig(
   globalIgnores([
+    "contract/**",
     ".next/**",
     ".cache/**",
     "coverage/**",

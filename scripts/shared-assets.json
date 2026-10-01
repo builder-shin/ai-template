@@ -3,6 +3,23 @@
     {
       "source": "contract/api-style/dist/lint.mjs",
       "targets": [{ "template": "fastapi", "path": "api-style/lint.mjs" }]
+    },
+    { "source": "contract/mock", "targets": [{ "template": "nextjs", "path": "contract/mock" }] },
+    {
+      "source": "contract/typespec",
+      "targets": [{ "template": "nextjs", "path": "contract/typespec" }]
+    },
+    {
+      "source": "contract/openapi.yaml",
+      "targets": [{ "template": "nextjs", "path": "contract/openapi.yaml" }]
+    },
+    {
+      "source": "docs/conventions/jsonapi.md",
+      "targets": [{ "template": "nextjs", "path": "docs/conventions/jsonapi.md" }]
+    },
+    {
+      "source": "docs/conventions/error-codes.md",
+      "targets": [{ "template": "nextjs", "path": "docs/conventions/error-codes.md" }]
     }
   ]
 }

@@ -1,4 +1,5 @@
-packages: []
+packages:
+  - contract/*
 minimumReleaseAge: 1440
 allowBuilds:
   esbuild: true

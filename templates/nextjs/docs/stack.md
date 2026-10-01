@@ -23,3 +23,5 @@
 Next의 관리 지침 삽입은 `agentRules: false`로 끈다. 설치 문서 `01-app/02-guides/ai-agents.md`에 있는 옵션이다.
 typescript-eslint는 설계 버전 8.71.0을 쓴다. 경계 플러그인은 ESLint 10에서 실제 import 픽스처로 검증한다.
 Next 설정이 가져오는 React 플러그인은 아직 ESLint 10의 context API를 지원하지 않아 `@eslint/compat` 2.1.1의 `fixupConfigRules`로 감싼다([공식 호환 도구](https://github.com/eslint/rewrite/tree/main/packages/compat)).
+
+계약 도구는 TypeSpec 1.16.0, openapi-typescript 7.13.0, yaml 2.9.1을 고정한다. 개발 환경 로더 `@next/env`는 Next와 같은 16.3.7이다. 목은 Hono 4.13.11 / @hono/node-server 2.1.3 / Socket.IO 4.8.4 / Ajv 8.20.0을 원본 그대로 사용한다.

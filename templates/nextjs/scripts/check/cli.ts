@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { envSchema } from "../../src/lib/env";
-import { binary } from "../process.mjs";
+import { binary, pnpm } from "../process.mjs";
 import { readProjectFiles } from "./files";
 import { checkHarness } from "./harness";
 import { fingerprint, runChecks, parseCheckArgs, type Step } from "./runner";
@@ -39,14 +39,25 @@ const steps: Step[] = [
   },
   { name: "generated", args: ["tsx", "scripts/gen.ts", "--check"], key: key(/^(src|contract)\//) },
 ];
-if (!fast) steps.push({ name: "harness", args: [], key: fingerprint(files) });
+if (!fast) {
+  for (const directory of ["typespec", "mock"]) {
+    steps.push({
+      name: `contract-${directory}`,
+      args: ["--dir", `contract/${directory}`, "run", "check"],
+      key: key(/^contract\/|^docs\/conventions\/|tsconfig.base|pnpm-workspace/),
+    });
+  }
+  steps.push({ name: "harness", args: [], key: fingerprint(files) });
+}
 const result = await runChecks(steps, previous, async (step) => {
   if (step.name === "harness") {
     const problems = checkHarness(files, Object.keys(envSchema.shape));
     return { ok: !problems.length, output: problems.join("\n") };
   }
   const [command, ...args] = step.args;
-  const run = binary(command!, args, { cwd: root });
+  const run = step.name.startsWith("contract-")
+    ? pnpm(step.args, { cwd: root, maxBuffer: 16 * 1024 * 1024 })
+    : binary(command!, args, { cwd: root });
   return {
     ok: run.status === 0,
     output: `${run.stdout ?? ""}${run.stderr ?? ""}${run.error?.message ?? ""}`,

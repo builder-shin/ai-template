@@ -14,4 +14,8 @@ it("네 hook이 node exec form이고 권한은 예시 파일을 막지 않는다
   expect(settings.permissions.deny).not.toContain("Read(./.env.example)");
   expect(settings.permissions.deny).toContain("Edit(./**/generated/**)");
   expect(settings.permissions.deny).toContain("Write(./**/generated/**)");
+  expect(settings.permissions.deny).toContain("Edit(./contract/**)");
+  expect(settings.permissions.deny).toContain("Write(./contract/**)");
+  expect(settings.permissions.deny).toContain("Edit(./src/lib/api/schema.d.ts)");
+  expect(settings.permissions.deny).toContain("Write(./src/lib/api/schema.d.ts)");
 });

@@ -7,13 +7,13 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 | 명령                             | 하는 일                                                                 |
 | -------------------------------- | ----------------------------------------------------------------------- |
 | `pnpm setup`                     | 고정 의존성 설치, 환경 파일의 없는 키 보충, 독립 저장소의 git hook 설치 |
-| `pnpm dev`                       | web 개발 서버(3000). 목 동시 실행은 계약 사본을 더할 때 연결한다        |
+| `pnpm dev`                       | 단독 모드: 목(4010)과 web(3000), 백엔드 모드: web만 실행                |
 | `pnpm check`                     | 포맷, 린트, 타입, 단위·통합 테스트, 생성물, 하네스                      |
 | `pnpm check --fast -- <파일...>` | Stop hook용 빠른 검사와 관련 테스트                                     |
 | `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                              |
 | `pnpm test`                      | Vitest 단위·통합 테스트                                                 |
 | `pnpm test:e2e`                  | E2E 실행 지점. 현재 등록된 흐름 없음                                    |
-| `pnpm gen`                       | 코드 생성 실행 지점. 현재 생성 대상 없음                                |
+| `pnpm gen`                       | TypeSpec 계약, web API·실시간·에러 타입, 목 타입 생성                   |
 | `pnpm build`, `pnpm start`       | 운영 빌드, 운영 서버(3000)                                              |
 
 ## 구조
@@ -42,6 +42,9 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 환경 검증은 `next.config.ts`의 개발·운영 서버 phase에서 한다. 빌드에는 서버 비밀이 필요 없다. 잘못된 설정은 서버 시작 때 변수마다 한 줄을 알리고 종료한다.
 - 의존성 버전은 정확히 고정한다. pnpm의 `minimumReleaseAge: 1440`을 유지한다.
 - 생성물은 직접 고치지 않는다. 생성 원본을 고치고 `pnpm gen`한다.
+- 첫 줄의 직접 수정 금지 헤더는 web 생성물에 적용한다. `contract/` 사본은 원본 헤더를 보존하고 패키지 검사로 최신 여부를 확인한다.
+- 이 저장소의 `contract/`와 `docs/conventions/`는 sync 사본이다. 원본 수정 뒤 저장소 루트에서 `pnpm sync`한다. 독립 복사본에서는 TypeSpec을 확장하고 `pnpm gen`한다.
+- `pnpm dev`는 Next 환경 로더 뒤 `API_BASE_URL`이 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 목도 시작한다. 그 밖의 주소는 web만 시작한다. Ctrl+C로 두 서버를 함께 내린다.
 - 소스 400줄, 테스트 600줄을 넘기지 않는다. 타입·린트 억제에는 같은 줄에 `사유: 설명`을 적는다.
 - 템플릿 밖의 파일에 의존하지 않는다. 비밀 스캔 허용 목록은 계약 사본과 생성물로 제한한다.
 - 커밋 메시지는 영문 Conventional Commits다. AI 태그와 트레일러, `--no-verify`는 쓰지 않는다.

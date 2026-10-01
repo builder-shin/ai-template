@@ -41,6 +41,8 @@
       "Write(./src/lib/api/schema.d.ts)",
       "Edit(./contract/openapi.yaml)",
       "Write(./contract/openapi.yaml)",
+      "Edit(./contract/**)",
+      "Write(./contract/**)",
       "Bash(git push --force *)",
       "Bash(git push --force-with-lease *)",
       "Bash(git push -f *)",

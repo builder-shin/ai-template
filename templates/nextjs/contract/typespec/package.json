@@ -1,0 +1,21 @@
+{
+  "name": "@ai-template/contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsp compile src/main.tsp",
+    "gen": "pnpm run build",
+    "format": "tsp format \"src/**/*.tsp\"",
+    "check:format": "tsp format \"src/**/*.tsp\" --check",
+    "check:fresh": "tsx scripts/check-fresh.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "check": "pnpm run check:format && pnpm run check:fresh && pnpm run typecheck && pnpm run test"
+  },
+  "devDependencies": {
+    "@typespec/compiler": "1.16.0",
+    "@typespec/http": "1.16.0",
+    "@typespec/openapi": "1.16.0",
+    "@typespec/openapi3": "1.16.0"
+  }
+}

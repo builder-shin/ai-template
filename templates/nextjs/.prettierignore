@@ -9,3 +9,5 @@ next-env.d.ts
 **/generated/**
 src/lib/api/schema.d.ts
 contract/openapi.yaml
+contract/
+docs/conventions/

@@ -9,6 +9,8 @@ filter.matchesAny(attributes["path"], [
   `^pnpm-lock\.yaml$`,
   `^contract/openapi\.yaml$`,
   `^contract/typespec/src/.+\.tsp$`,
+  `^templates/nextjs/contract/openapi\.yaml$`,
+  `^templates/nextjs/contract/typespec/src/.+\.tsp$`,
   `^templates/[^/]+/openapi\.json$`,
   `^contract/api-style/dist/lint\.mjs$`,
   `^templates/[^/]+/api-style/lint\.mjs$`,
@@ -17,6 +19,13 @@ filter.matchesAny(attributes["path"], [
 
 [extend]
 useDefault = true
+
+[[allowlists]]
+description = "생성한 nextjs 잠금 파일의 @inquirer/password 패키지 이름"
+targetRules = ["generic-password"]
+paths = ['''^templates/nextjs/pnpm-lock\.yaml$''']
+regexTarget = "line"
+regexes = ['''@inquirer/password''']
 
 # 계획 문서(docs/superpowers/plans)는 템플릿과 적합성 스위트의 코드를 그대로 옮겨 적는다. 마크다운 안의
 # 타입 선언과 테스트 상수(`password: Password`, `password: PASSWORD`)를 generic-password 규칙이 비밀번호로

@@ -65,6 +65,8 @@ export function checkHarness(
     if (path === "AGENTS.md" && lineCount(content) > 200)
       problems.push(`${path}:201 크기 — 200줄 이하로 나눈다.`);
     if (isGenerated(path)) {
+      // 동기화한 계약은 원본 헤더를 보존하고 각 패키지에서 최신 여부를 검사한다.
+      if (path.startsWith("contract/")) continue;
       if (!/직접 수정 금지|do not edit/i.test(content.split("\n")[0] ?? "")) {
         problems.push(`${path}:1 생성물 — 생성기에 직접 수정 금지 헤더를 더한다.`);
       }
