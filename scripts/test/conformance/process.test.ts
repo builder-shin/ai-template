@@ -3,7 +3,7 @@
  * 준비 대기, 프로세스 트리 끝내기(Windows는 taskkill /T /F, POSIX는 프로세스 그룹).
  */
 
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -127,23 +127,40 @@ describe("startProcess와 stopProcess", () => {
       script,
       [
         'import { spawn } from "node:child_process";',
-        'import { writeFileSync } from "node:fs";',
+        'import { writeFileSync, renameSync } from "node:fs";',
+        'import { setTimeout as sleep } from "node:timers/promises";',
         'const grandchild = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });',
-        "writeFileSync(process.argv[2], JSON.stringify([process.pid, grandchild.pid]));",
+        // 느린 쓰기를 재현해도 최종 이름에서는 완성된 JSON만 보인다.
+        'writeFileSync(process.argv[2] + ".tmp", "");',
+        "await sleep(150);",
+        'writeFileSync(process.argv[2] + ".tmp", JSON.stringify([process.pid, grandchild.pid]));',
+        'renameSync(process.argv[2] + ".tmp", process.argv[2]);',
         "setInterval(() => {}, 1000);",
       ].join("\n"),
     );
     const started = startProcess(["node", script, pids]);
-    for (let waited = 0; !existsSync(pids) && waited < 10_000; waited += 50) await sleep(50);
-    const [child, grandchild] = JSON.parse(readFileSync(pids, "utf8")) as [number, number];
-    expect(isAlive(child) && isAlive(grandchild)).toBe(true);
+    try {
+      for (let waited = 0; !existsSync(pids) && waited < 10_000; waited += 50) await sleep(50);
+      const [child, grandchild] = JSON.parse(readFileSync(pids, "utf8")) as [number, number];
+      expect(isAlive(child) && isAlive(grandchild)).toBe(true);
 
-    await stopProcess(started);
+      await stopProcess(started);
 
-    for (let waited = 0; (isAlive(child) || isAlive(grandchild)) && waited < 5_000; waited += 50) {
-      await sleep(50);
+      for (
+        let waited = 0;
+        (isAlive(child) || isAlive(grandchild)) && waited < 5_000;
+        waited += 50
+      ) {
+        await sleep(50);
+      }
+      expect([isAlive(child), isAlive(grandchild)]).toEqual([false, false]);
+    } finally {
+      try {
+        await stopProcess(started);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     }
-    expect([isAlive(child), isAlive(grandchild)]).toEqual([false, false]);
   }, 20_000);
 
   it("이미 끝난 프로세스를 끝내도 바로 돌아온다", async () => {
