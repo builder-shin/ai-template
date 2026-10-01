@@ -90,6 +90,14 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 비밀번호 폼은 `POST /password-changes`에 `currentPassword`와 `newPassword`를 보낸다. 백엔드는 다른 세션만 폐기하므로 현재 쿠키·access token·refresh token을 유지한다. 다른 기기에서 로그아웃된다는 안내를 제출 전과 성공 뒤에 표시한다. `auth.invalid_credentials`의 `currentPassword` pointer가 있는 401은 입력 오류로 번역하고, 실제 세션 오류의 401은 기존 쿠키 정리 route로 보낸다. 비밀번호는 폼 결과에 돌려주지 않는다.
 
+## 세션 관리
+
+`/me/sessions`는 내 정보에서 들어가는 보호된 화면이다. `features/sessions`가 활성 세션을 최근 사용 순서로 10개씩 읽고 현재 세션·기기 정보·로그인과 최근 사용 시각을 표시한다. API 페이지 링크는 번호만 web 경로로 옮긴다. 클라이언트에는 토큰이나 사용자 관계를 전달하지 않는다.
+
+개별 폐기는 `DELETE /sessions/{id}`, 다른 기기와 전체 로그아웃은 `POST /session-revocations`의 `others`·`all`을 쓴다. 개별 폐기 뒤 현재 토큰의 `/me`가 401이면 현재 세션도 끝난 것이므로 쿠키를 지우고 로그인으로 이동한다. 전체 로그아웃도 쿠키를 지운다. 다른 기기 로그아웃은 현재 토큰을 유지하며 백엔드의 실제 폐기 개수를 표시한다. 전체 로그아웃은 확인 체크를 서버에서도 검사한다. 모든 폼은 로케일별 permalink와 `useActionState`로 JavaScript 없이 제출한다.
+
+폐기된 다른 세션이 다음 요청을 보내면 기존 401 처리와 `/session/clear`가 쿠키를 지우고 로그인으로 보낸다. 요청 없이 열린 화면의 즉시 로그아웃은 W3 실시간 기능에서 연결한다. 404와 요청 한도는 번역한 폼 안내, 연결·5xx는 오류 경계로 보낸다.
+
 ## API 호출과 에러
 
 `src/lib/api/client.ts`의 `createApiClient`에 요청의 baseUrl(`/api/v1` 포함), locale, accessToken과 선택 traceId를 넘긴다. 화면·Action에서는 `await createSessionApiClient({locale})`로 요청 세션의 access 토큰을 연결한다. 호출 경로는 `/posts`처럼 쓴다. 클라이언트를 전역에 보관하지 않는다. 읽기의 요청 내 중복 제거는 기능 queries에서 `React.cache`로 한다.

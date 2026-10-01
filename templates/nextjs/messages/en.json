@@ -45,6 +45,7 @@
     "retryAfter": "Try again in {seconds} seconds."
   },
   "me": {
+    "sessions": "Sessions",
     "title": "My profile",
     "nameLabel": "Name",
     "localeLabel": "Language",
@@ -56,6 +57,26 @@
     "newPasswordLabel": "New password",
     "passwordGuidance": "Changing your password signs out other devices. This device stays signed in.",
     "passwordChanged": "Password changed. Other devices have been signed out.",
+    "retryAfter": "Try again in {seconds} seconds."
+  },
+  "sessions": {
+    "title": "Sessions",
+    "guidance": "Review active sessions and sign out devices. Revoking the current session signs out this device too.",
+    "current": "Current session",
+    "unknownDevice": "Unknown device",
+    "createdAt": "Signed in",
+    "lastUsedAt": "Last used",
+    "revoke": "Revoke session",
+    "others": "Sign out other devices",
+    "all": "Sign out everywhere",
+    "allConfirmation": "Sign out all devices, including this one.",
+    "confirmRequired": "Select the confirmation to sign out everywhere.",
+    "revoked": "Revoked {count} session(s).",
+    "empty": "No active sessions.",
+    "back": "Back to my profile",
+    "pagination": "Session pages",
+    "previous": "Previous",
+    "next": "Next",
     "retryAfter": "Try again in {seconds} seconds."
   },
   "layout": {
