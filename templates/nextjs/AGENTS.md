@@ -22,7 +22,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 | ------------------- | ----------------------------------------------------- |
 | `src/app/[locale]/` | ko/en 페이지·레이아웃                                 |
 | `messages/`         | ko 기준 메시지 타입, ko/en 번역과 모든 계약 에러 코드 |
-| `src/proxy.ts`      | next-intl 로케일 라우팅                               |
+| `src/proxy.ts`      | 로케일 라우팅, 로그인 검사, 세션 갱신                 |
 | `src/features/`     | 기능별 구현과 공개 `index.ts`. posts는 W3에서 채운다  |
 | `src/lib/`          | 설정, API·세션 등 공통 기반                           |
 | `src/components/`   | 공통 UI를 더할 자리                                   |
@@ -37,6 +37,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 브라우저가 백엔드 API를 직접 부르지 않는다. 읽기는 Server Component, 쓰기는 Server Action이다. 토큰을 클라이언트·URL·로그에 내보내지 않는다.
 - `app`은 기능의 공개 `index.ts`, `lib`, `components`를 쓴다. 다른 기능의 내부 import는 금지한다.
 - `lib/api`, `lib/session`, 기능의 `actions.ts`·`queries.ts`에는 `import "server-only"`를 둔다.
+- 갱신은 proxy에서만 한다. 화면·Action은 `createSessionApiClient`로 요청의 토큰을 읽고, 401은 `redirectOnUnauthorized`로 쿠키 정리 route에 보낸다. `/me`·`/my-posts`는 로그인 경로다.
 - 폼은 `<form action>`과 `useActionState`로 만든다. 백엔드가 검증의 원본이다.
 - 로딩은 스피너나 스켈레톤만 쓴다. 로딩 문구는 쓰지 않는다. 스피너에는 화면 낭독기용 `aria-label`만 붙인다.
 - 문구는 ko/en 카탈로그에 둔다. ko는 `/`, en은 `/en`이며 선택은 `NEXT_LOCALE`, 첫 방문은 `Accept-Language`를 따른다. 메시지 타입은 ko에서 파생한다.

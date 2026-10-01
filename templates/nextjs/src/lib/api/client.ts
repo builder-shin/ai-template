@@ -22,7 +22,7 @@ export type ApiClientOptions = {
   log?: (entry: ApiLog) => void;
 };
 
-/** 요청 문맥과 토큰을 공유 상태에 보관하지 않는다. Task 5가 세션 토큰을 넘긴다. */
+/** 요청 문맥과 토큰을 공유 상태에 보관하지 않는다. */
 export function createApiClient(options: ApiClientOptions) {
   const traceId = options.traceId ?? randomBytes(16).toString("hex");
   if (!/^[0-9a-f]{32}$/.test(traceId) || traceId === "0".repeat(32)) {

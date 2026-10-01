@@ -18,11 +18,18 @@ API·세션과 기능 actions/queries는 `server-only` 표식이 없으면 린�
 운영 서버는 예시 `SESSION_SECRET`을 거절한다. 빌드의 `NODE_ENV=production`만으로 서버 검증을 실행하지 않는다.
 `setup`이 의존성과 환경 파일을 준비한다. 기존 값은 보존하고 예시에서 새 키만 더한다.
 API 기본 주소는 `http://localhost:4010/api/v1`, Socket.IO는 `http://localhost:4010`이다.
-web은 3000에서 뜬다. 현재 `dev`는 web만 띄운다. 목 사본을 넣는 단계에서 함께 실행한다.
+web은 3000에서 뜬다. `dev`는 단독 모드에서 목도 함께 띄운다.
 
 ## 세션 설계
 
-인증 단계에서는 access/refresh 토큰을 암호화한 쿠키에 보관하고, 갱신은 proxy 한 곳에서만 한다.
+`src/lib/session/cookie.ts`는 `SESSION_SECRET`의 SHA-256 키와 jose의 JWE(dir/A256GCM)로 두 토큰을 함께 암호화한다. 토큰 내용은 해석하지 않는다. `accessTokenExpiresAt`과 `refreshTokenExpiresAt`은 계약 응답에서 가져오며 쿠키·JWE의 수명은 refresh 만료까지다. 쿠키는 httpOnly, SameSite=Lax, Path=/이고 운영에서는 Secure와 `__Host-session` 이름을 쓴다.
+
+`src/proxy.ts`는 next-intl 라우팅, `/me`·`/my-posts`와 하위 경로의 로그인 검사, 토큰 갱신을 합성한다. 로케일 접두사는 검사 전에 제외한다. access 만료까지 60초 미만이면 refresh grant를 보내고 새 쿠키를 응답과 같은 요청의 쿠키 헤더에 함께 넣는다. next-intl의 로케일 헤더·rewrite·쿠키를 보존한다. matcher는 페이지로 가는 Server Action POST도 포함한다.
+
+같은 refresh 토큰은 모듈의 Map에 하나의 진행 중 요청을 두고, 완료 결과를 30초 동안 기억한다. 실패도 기억해 결과가 불확실한 토큰을 즉시 다시 보내지 않는다. 시간이 지나면 결과를 메모리에서 치운다. 갱신 실패는 쿠키 삭제와 303 로그인 리다이렉트로 처리한다. `returnTo`는 같은 사이트의 상대 경로만 받고, 외부 주소·중첩 인코딩 우회·역슬래시·제어 문자는 `/`로 바꾼다.
+
+Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 요청 쿠키를 읽기만 하며 갱신하지 않는다. 로그인 Action은 `writeSession`으로 쿠키를 쓴다. 쿠키를 쓸 수 있는 Action은 `clearSessionAndRedirect`로 직접 정리할 수 있다. 공통 `redirectOnUnauthorized`는 `ApiError`의 401일 때 `/session/clear`로 보낸다. Server Component는 쿠키를 삭제할 수 없으므로 이 route의 GET 응답에서 지운 뒤 303으로 로그인에 간다. 다른 오류는 원래 흐름에서 처리한다.
+
 동시 갱신 묶기는 프로세스 안에서만 유효하다. 기본 배포는 인스턴스 하나다.
 여러 인스턴스에서는 sticky session이 필요하며, 인스턴스를 넘는 갱신 조율은 별도 설계 대상이다.
 
@@ -36,7 +43,7 @@ web은 3000에서 뜬다. 현재 `dev`는 web만 띄운다. 목 사본을 넣는
 
 ## API 호출과 에러
 
-`src/lib/api/client.ts`의 `createApiClient`에 요청의 baseUrl(`/api/v1` 포함), locale, accessToken과 선택 traceId를 넘긴다. 호출 경로는 `/posts`처럼 쓴다. 클라이언트를 전역에 보관하지 않는다. 읽기의 요청 내 중복 제거는 기능 queries에서 `React.cache`로 한다. 세션에서 토큰을 얻는 일은 인증 단계에서 연결한다.
+`src/lib/api/client.ts`의 `createApiClient`에 요청의 baseUrl(`/api/v1` 포함), locale, accessToken과 선택 traceId를 넘긴다. 화면·Action에서는 `await createSessionApiClient({locale})`로 요청 세션의 access 토큰을 연결한다. 호출 경로는 `/posts`처럼 쓴다. 클라이언트를 전역에 보관하지 않는다. 읽기의 요청 내 중복 제거는 기능 queries에서 `React.cache`로 한다.
 
 미들웨어가 JSON:API 미디어 타입, 현재 로케일, 세션 토큰과 W3C traceparent를 설정한다. 데이터는 캐시하지 않는다. 로그에는 메서드, 계약 경로, 상태, trace id, 소요 시간만 남기며 `log` 옵션으로 서버 로거를 연결할 수 있다. 기본값은 구조화된 콘솔 로그다.
 
