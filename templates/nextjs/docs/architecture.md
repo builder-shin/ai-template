@@ -95,6 +95,7 @@ Stop은 세션 시작 또는 마지막 통과 때의 스냅샷과 비교하므�
 세션별 상태는 `.cache/hooks/`에만 두며 환경 파일·의존성·빌드 산출물은 읽지 않는다.
 빠른 검사는 변경 관련 테스트를 쓰고, 전체 검사는 pre-push와 CI에서 쓴다.
 두 검사의 타입 단계는 `.next/types`를 비우고 `next typegen`으로 현재 route 타입을 만든 뒤 `tsconfig.check.json`으로 검사한다. 실행 중인 dev가 소유한 `.next/dev/types`는 보존하고 검사에서 제외한다. 타입 캐시에는 소스·설정과 현재 `.next/types` 내용을 포함한다.
+App Router 템플릿은 Pages 전용 `no-html-link-for-pages` 규칙만 끈다. 저장소 루트의 pre-commit과 프로젝트 안의 린트가 같은 설정을 쓴다.
 생성물 검사는 TypeSpec 계약과 web·목 타입을 재생성해 비교한다. E2E는 별도 `pnpm test:e2e`로 실행한다.
 
 PreToolUse의 셸 검사는 단어 기반의 최선 검사다. `git push -fv`처럼 짧은 옵션 그룹의 어느 위치에든 `f`가 있으면 래퍼 안에서도 강제 push를 막는다. 권한 deny 글롭도 결합 옵션을 보수적으로 막는다. 별도 프로그램 안에서 파일을 여는 동작까지 해석하지 않는다.

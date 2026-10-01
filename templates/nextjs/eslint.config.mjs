@@ -18,6 +18,7 @@ export default defineConfig(
   ...fixupConfigRules([...nextVitals, ...tseslint.configs.recommended]),
   {
     rules: {
+      "@next/next/no-html-link-for-pages": "off", // 사유: Pages 디렉터리 없는 App Router 템플릿이다.
       "@typescript-eslint/no-explicit-any": "off", // 사유: 하네스에서 사유를 붙인 any만 허용한다.
       "@typescript-eslint/no-unused-vars": [
         "error",
