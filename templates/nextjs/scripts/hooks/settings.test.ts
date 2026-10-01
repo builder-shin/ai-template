@@ -19,3 +19,10 @@ it("네 hook이 node exec form이고 권한은 예시 파일을 막지 않는다
   expect(settings.permissions.deny).toContain("Edit(./src/lib/api/schema.d.ts)");
   expect(settings.permissions.deny).toContain("Write(./src/lib/api/schema.d.ts)");
 });
+
+it("강제 push 권한의 짧은 옵션 그룹과 hook의 방어 범위를 맞춘다", () => {
+  const settings = JSON.parse(readFileSync(".claude/settings.json", "utf8"));
+  for (const tool of ["Bash", "PowerShell"]) {
+    expect(settings.permissions.deny).toContain(`${tool}(git push *-*f* *)`);
+  }
+});

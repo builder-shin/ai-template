@@ -5,7 +5,7 @@ export function denial(command) {
   const plain = command.replace(/["'`]/g, "").replace(/\\\r?\n/g, " ");
   const lower = plain.toLowerCase();
   if (
-    /\bgit\b[^\n;|&]*\bpush\b[^\n;|&]*(?:--force\b|--force-with-lease\b|\s-[a-z]*f\b|\s\+\S)/.test(
+    /\bgit\b[^\n;|&]*\bpush\b[^\n;|&]*(?:--force\b|--force-with-lease\b|\s-[a-z]*f[a-z]*\b|\s\+\S)/.test(
       lower,
     )
   )

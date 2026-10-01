@@ -97,7 +97,7 @@ Stop은 세션 시작 또는 마지막 통과 때의 스냅샷과 비교하므�
 두 검사의 타입 단계는 `.next/types`를 비우고 `next typegen`으로 현재 route 타입을 만든 뒤 `tsconfig.check.json`으로 검사한다. 실행 중인 dev가 소유한 `.next/dev/types`는 보존하고 검사에서 제외한다. 타입 캐시에는 소스·설정과 현재 `.next/types` 내용을 포함한다.
 생성물 검사는 TypeSpec 계약과 web·목 타입을 재생성해 비교한다. E2E는 별도 `pnpm test:e2e`로 실행한다.
 
-PreToolUse의 셸 검사는 단어 기반의 최선 검사다. 별도 프로그램 안에서 파일을 여는 동작까지 해석하지 않는다.
+PreToolUse의 셸 검사는 단어 기반의 최선 검사다. `git push -fv`처럼 짧은 옵션 그룹의 어느 위치에든 `f`가 있으면 래퍼 안에서도 강제 push를 막는다. 권한 deny 글롭도 결합 옵션을 보수적으로 막는다. 별도 프로그램 안에서 파일을 여는 동작까지 해석하지 않는다.
 Hook JSON 형식의 기준은 [Claude Code 공식 문서](https://code.claude.com/docs/en/hooks)다.
 
 ## 계약과 단독 개발
