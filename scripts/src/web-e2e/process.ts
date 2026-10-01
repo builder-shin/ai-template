@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { lookup } from "node:dns/promises";
 import { createServer } from "node:net";
 import { ROOT } from "./plan.ts";
@@ -10,6 +10,7 @@ export interface CommandResult {
 export interface CommandOptions {
   capture?: boolean;
   signal?: AbortSignal;
+  tree?: boolean;
 }
 /** compose의 자동 .env 로드와 셸의 COMPOSE_* 덮어쓰기를 막는다. */
 export function commandEnv(env: Record<string, string>): NodeJS.ProcessEnv {
@@ -35,6 +36,7 @@ export function execute(
       env: commandEnv(env),
       windowsHide: true,
       shell: false,
+      detached: options.tree === true && process.platform !== "win32",
       stdio: options.capture ? ["ignore", "pipe", "inherit"] : "inherit",
     });
     let stdout = "";
@@ -43,7 +45,21 @@ export function execute(
       stdout += chunk;
     });
     const abort = () => {
-      child.kill("SIGTERM");
+      if (options.tree === true && child.pid) {
+        if (process.platform === "win32")
+          spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+            windowsHide: true,
+            stdio: "ignore",
+            timeout: 10000,
+          });
+        else {
+          try {
+            process.kill(-child.pid, "SIGTERM");
+          } catch (error) {
+            if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) throw error;
+          }
+        }
+      } else child.kill("SIGTERM");
     };
     options.signal?.addEventListener("abort", abort, { once: true });
     if (options.signal?.aborted === true) abort();

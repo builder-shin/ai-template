@@ -54,3 +54,9 @@ export function createPlan(runId: string, root = ROOT) {
 }
 
 export type Plan = ReturnType<typeof createPlan>;
+
+export function webCommand(plan: Plan, pnpm = process.env.npm_execpath): string[] {
+  if (!pnpm) throw new Error("pnpm web-e2e로 실행한다.");
+  const launcher = /\.(?:c?js|mjs)$/i.test(pnpm) ? [process.execPath, pnpm] : [pnpm];
+  return [...launcher, "--dir", resolve(plan.root, "templates/nextjs"), "test:e2e"];
+}

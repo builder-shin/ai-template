@@ -1,13 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
-import { mockOrigin, webOrigin, targetName, requireImplementedTarget } from "./e2e/targets";
+import { webOrigin, targetName, targetEnvironment } from "./e2e/targets";
 
 // Playwright가 worker에 FORCE_COLOR를 전달하므로 서버도 같은 정책을 쓴다.
 delete process.env.NO_COLOR;
 process.env.FORCE_COLOR = "1";
 
 const target = targetName();
-requireImplementedTarget(target);
+const targetEnv = targetEnvironment(target);
 
 export default defineConfig({
   testDir: "./e2e",
@@ -33,14 +33,11 @@ export default defineConfig({
     gracefulShutdown: { signal: "SIGTERM", timeout: 10000 },
     env: {
       FORCE_COLOR: "1",
-      E2E_TARGET: target,
+      ...targetEnv,
       NODE_ENV: "production",
       NEXT_TELEMETRY_DISABLED: "1",
-      API_BASE_URL: `${mockOrigin}/api/v1`,
-      APP_URL: webOrigin,
       SESSION_SECRET: randomBytes(32).toString("base64url"),
       TIME_ZONE: "Asia/Seoul",
-      NEXT_PUBLIC_REALTIME_URL: mockOrigin,
     },
   },
 });

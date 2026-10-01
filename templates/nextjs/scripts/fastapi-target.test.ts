@@ -8,7 +8,7 @@ import {
 } from "@playwright/test";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { fastapiTarget, parseFastapiTargetEnv } from "../e2e/targets/fastapi";
-import { requireImplementedTarget } from "../e2e/targets";
+import { createTarget } from "../e2e/targets";
 
 type Handler = (request: IncomingMessage, response: ServerResponse) => void | Promise<void>;
 const cleanups: (() => Promise<void>)[] = [];
@@ -105,9 +105,14 @@ describe("FastAPI 대상 설정", () => {
     expect(parse).not.toThrow("private-value");
   });
 
-  it("Task 6 전에 fastapi 실행을 계속 거절한다", () => {
-    expect(() => requireImplementedTarget("fastapi")).toThrow("W4");
-    expect(() => requireImplementedTarget("mock")).not.toThrow();
+  it("fastapi 대상은 누락한 설정을 알리고 목으로 대체하지 않는다", () => {
+    vi.stubEnv("E2E_MAILPIT_URL", undefined);
+    try {
+      expect(() => createTarget("fastapi", request)).toThrow("E2E_MAILPIT_URL");
+      expect(() => createTarget("mock", request)).not.toThrow();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 
