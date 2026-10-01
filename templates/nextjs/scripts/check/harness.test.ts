@@ -55,6 +55,8 @@ describe("하네스", () => {
   });
   it.each([
     'let value: any = "reason: this is string content";',
+    "let value: any = `x${1}// reason: this is string content`;",
+    "let value: any = `x${1}/* reason: this is string content */`;",
     "let value: any = count-- + 12345;",
     '/* @ts-ignore */ const value = "reason: this is string content";',
     "/* @ts-nocheck */ // reason: unrelated comment",
@@ -65,6 +67,8 @@ describe("하네스", () => {
     "// @ts-nocheck -- 외부 라이브러리 경계",
     "/* @ts-ignore reason: external library boundary */",
     "let value: any; // reason: external library boundary",
+    "let value: any = `x${1}// example`; // 사유: 외부 라이브러리 경계",
+    "let value: any = `x${1 /* 사유: 외부 라이브러리 경계 */}`;",
   ])("같은 억제 주석과 any의 뒤따르는 주석에 적은 사유를 인정한다: %s", (code) => {
     expect(inspect({ ...base, "src/a.ts": code })).toEqual([]);
   });

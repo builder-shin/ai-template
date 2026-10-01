@@ -32,26 +32,28 @@ function suppressionProblems(path: string, source: string): string[] {
       problems.push(`${path}:${line + 1} 억제 — 같은 줄에 사유: 설명을 적는다.`);
     }
   }
-  const scanner = ts.createScanner(
-    ts.ScriptTarget.Latest,
-    false,
-    ts.LanguageVariant.Standard,
-    source,
-  );
-  const comments: { pos: number; end: number }[] = [];
-  for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
-    if (
-      token === ts.SyntaxKind.SingleLineCommentTrivia ||
-      token === ts.SyntaxKind.MultiLineCommentTrivia
-    ) {
-      const comment = { pos: scanner.getTokenPos(), end: scanner.getTextPos() };
-      comments.push(comment);
-      for (const match of scanner
-        .getTokenText()
-        .matchAll(/eslint-disable\b|@ts-(?:expect-error|ignore|nocheck)\b/g))
-        check(comment.pos + match.index, [comment]);
+  const ranges = new Map<number, { pos: number; end: number }>();
+  function collectComments(node: ts.Node) {
+    const children = node.getChildren(file);
+    if (children.length) {
+      children.forEach(collectComments);
+    } else if (node.kind !== ts.SyntaxKind.JsxText) {
+      // 파서가 구분한 토큰 앞의 trivia만 읽어 템플릿·JSX 본문을 제외한다.
+      const start = node.getStart(file);
+      const collect = (pos: number, end: number) => {
+        if (end <= start) ranges.set(pos, { pos, end });
+      };
+      ts.forEachLeadingCommentRange(source, node.pos, collect);
+      ts.forEachTrailingCommentRange(source, node.pos, collect);
     }
   }
+  collectComments(file);
+  const comments = [...ranges.values()];
+  for (const comment of comments)
+    for (const match of source
+      .slice(comment.pos, comment.end)
+      .matchAll(/eslint-disable\b|@ts-(?:expect-error|ignore|nocheck)\b/g))
+      check(comment.pos + match.index, [comment]);
   function visit(node: ts.Node) {
     if (node.kind === ts.SyntaxKind.AnyKeyword) {
       const position = node.getStart(file);
