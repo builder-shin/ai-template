@@ -1,13 +1,13 @@
 # 버전과 공식 문서
 
 먼저 설치된 버전의 문서를 읽는다. Next.js는 `node_modules/next/dist/docs`가 기준이다.
-의존성은 `package.json`에 정확히 고정하고, lockfile을 커밋한다. pnpm의 `minimumReleaseAge: 1440`으로 공개 후 하루가 지난 버전만 설치한다. 아래는 W3까지 검증한 pin이다.
+의존성은 `package.json`에 정확히 고정하고, lockfile을 커밋한다. pnpm의 `minimumReleaseAge: 1440`으로 공개 후 하루가 지난 버전만 설치한다. 아래는 W3 pin에 W4 Task 1의 Next 보안 패치를 반영한 버전이다.
 
 | 도구                                                                         | 버전                     | 문서                                                                                                                                                                                           |
 | ---------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Node.js / pnpm                                                               | 24 LTS / 12.6.0          | [Node](https://nodejs.org/docs/latest-v24.x/api/), [pnpm](https://pnpm.io/settings)                                                                                                            |
-| Next.js / eslint-config-next                                                 | 16.3.7                   | 설치된 `node_modules/next/dist/docs`, [Next](https://nextjs.org/docs)                                                                                                                          |
-| @next/env                                                                    | 16.3.7                   | [Next 환경 로더](https://nextjs.org/docs/app/guides/environment-variables#loading-environment-variables-with-nextenv)                                                                          |
+| Next.js / eslint-config-next                                                 | 16.3.8                   | 설치된 `node_modules/next/dist/docs`, [Next](https://nextjs.org/docs)                                                                                                                          |
+| @next/env                                                                    | 16.3.8                   | [Next 환경 로더](https://nextjs.org/docs/app/guides/environment-variables#loading-environment-variables-with-nextenv)                                                                          |
 | React / React DOM                                                            | 19.3.0                   | [React](https://react.dev/reference/react)                                                                                                                                                     |
 | react-markdown / remark-gfm                                                  | 10.1.0 / 4.0.1           | [Markdown](https://github.com/remarkjs/react-markdown/tree/10.1.0), [GFM](https://github.com/remarkjs/remark-gfm/tree/4.0.1)                                                                   |
 | @types/jsdom                                                                 | 30.0.0                   | [jsdom 타입](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/jsdom)                                                                                                       |
@@ -52,6 +52,25 @@ lockfile은 openapi-fetch의 `openapi-typescript-helpers` 0.1.0, Next 린트의 
 CI는 위 @playwright/test의 CLI로 `pnpm exec playwright install --with-deps chromium`을 실행해 Chromium과 Linux 시스템 의존성을 설치한다. `pnpm setup`은 로컬 Chromium을 설치한다. 별도 에이전트 도구 `@playwright/cli` 0.1.22와 공식 skill은 W4 범위로 아직 설치하지 않았다.
 
 공식 shadcn 스킬은 `shadcn@4.21.0` 태그(commit `7c9eaba1c0a6404c990c144a654792e3313c650d`)의 `skills/shadcn/` Markdown 파일을 그대로 담는다. 바이너리 아이콘과 도구별 에이전트 메타데이터는 제외한다. [원본](https://github.com/shadcn-ui/ui/tree/shadcn%404.21.0/skills/shadcn), [프로젝트 스킬](../.claude/skills/shadcn/SKILL.md).
+
+### W4 호환성 확인 (2026-10-02)
+
+Next.js·@next/env·eslint-config-next만 16.3.7에서 16.3.8로 올렸다. [16.3.8 공식 릴리스](https://github.com/vercel/next.js/releases/tag/v16.3.8)는 이미지 최적화의 SSRF와 메타데이터·캐시·개발 MCP의 보안 문제를 고친다. 다른 직접 의존성은 유지하며, lockfile은 Next의 SWC·린트 플러그인과 Next를 참조하는 peer 연결만 함께 바뀐다.
+
+`pnpm view <패키지>@<버전> time --json`으로 확인한 npm 공개 시각과 1440분 뒤 설치 가능 시각은 다음과 같다. 모두 2026-10-02에 정책을 만족한다.
+
+| 패키지                                                              | 버전   | 공개 시각(UTC)          | 설치 가능 시각(UTC)     |
+| ------------------------------------------------------------------- | ------ | ----------------------- | ----------------------- |
+| [next](https://registry.npmjs.org/next)                             | 16.3.8 | 2026-09-30 16:07:21.198 | 2026-10-01 16:07:21.198 |
+| [@next/env](https://registry.npmjs.org/@next%2fenv)                 | 16.3.8 | 2026-09-30 15:56:43.745 | 2026-10-01 15:56:43.745 |
+| [eslint-config-next](https://registry.npmjs.org/eslint-config-next) | 16.3.8 | 2026-09-30 15:59:39.390 | 2026-10-01 15:59:39.390 |
+| [@playwright/cli](https://registry.npmjs.org/@playwright%2fcli)     | 0.1.22 | 2026-09-28 23:24:31.286 | 2026-09-29 23:24:31.286 |
+
+Node 24 LTS를 유지한다. Node 26의 compiled JWT 호환성을 고치는 [Next PR #97492](https://github.com/vercel/next.js/pull/97492)는 아직 open·draft이며 병합되지 않았다. Next의 `engines.node >=20.9.0`만으로 Node 26에서 동작한다고 판단하지 않는다. 검증 환경은 Node 24.19.0이다.
+
+TypeScript 6.0.3과 typescript-eslint 8.71.0도 유지한다. `pnpm view typescript-eslint@8.71.0 peerDependencies --json`과 [버전별 npm 메타데이터](https://registry.npmjs.org/typescript-eslint/8.71.0)의 TypeScript 범위는 `>=4.8.4 <6.1.0`으로 TS7을 포함하지 않는다. strict 설정도 유지한다.
+
+`pnpm view @playwright/cli dist-tags --json`의 `latest`는 0.1.22다. [공식 릴리스](https://github.com/microsoft/playwright-cli/releases/tag/v0.1.22)와 공개 시각을 확인했으며, 이 안정판과 공식 skill은 W4 Task 9에서 추가한다. 기존 @playwright/test 1.63.0은 유지한다.
 
 ### 알려진 peer 경고
 
