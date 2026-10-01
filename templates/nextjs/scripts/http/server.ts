@@ -5,16 +5,22 @@ import { setTimeout } from "node:timers/promises";
 import { EXAMPLE_SESSION_SECRET } from "../../src/lib/env";
 import { startProcessTree, stopProcessTree } from "../process-tree.mjs";
 
-export async function startHttpServer(mockBaseUrl: string) {
+export async function reserveHttpBase() {
   const listener = createServer();
   listener.listen(0, "localhost");
   await once(listener, "listening");
   const address = listener.address();
   if (!address || typeof address === "string") throw new Error("테스트 포트를 얻지 못했다.");
   const port = address.port;
-  if (port === 3000 || port === 4010) throw new Error("개발 포트를 테스트에 쓰지 않는다.");
+  if ([3000, 4010, 3100, 4110].includes(port))
+    throw new Error("고정 포트를 통합 검사에 쓰지 않는다.");
   await new Promise<void>((resolve) => listener.close(() => resolve()));
-  const base = `http://localhost:${port}`;
+  return `http://localhost:${port}`;
+}
+
+export async function startHttpServer(mockBaseUrl: string, requestedBase?: string) {
+  const base = requestedBase ?? (await reserveHttpBase());
+  const port = new URL(base).port;
   const require = createRequire(import.meta.url);
   const child = startProcessTree(
     [

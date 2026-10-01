@@ -95,6 +95,7 @@ try {
       HOST: new URL(mockOrigin).hostname,
       API_URL: mockOrigin,
       FRONTEND_URL: webOrigin,
+      OAUTH_REDIRECT_URIS: `${webOrigin}/oauth/callback`,
       STORAGE_ALLOWED_ORIGINS: webOrigin,
       MOCK_TEST_ENDPOINTS: "true",
       RECENT_LOGIN_SECONDS: String(mockRecentLoginSeconds),

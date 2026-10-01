@@ -111,6 +111,11 @@
     "spinner": "진행 중"
   },
   "auth": {
+    "social": {
+      "google": "Google로 로그인",
+      "kakao": "카카오로 로그인",
+      "naver": "네이버로 로그인"
+    },
     "signup": "가입",
     "name": "이름",
     "checkEmail": "메일을 확인해 주세요",

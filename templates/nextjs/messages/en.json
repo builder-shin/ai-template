@@ -111,6 +111,11 @@
     "spinner": "In progress"
   },
   "auth": {
+    "social": {
+      "google": "Continue with Google",
+      "kakao": "Continue with Kakao",
+      "naver": "Continue with Naver"
+    },
     "signup": "Sign up",
     "name": "Name",
     "checkEmail": "Check your email",

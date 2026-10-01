@@ -63,6 +63,6 @@ export default async function proxy(request: NextRequest) {
 export const config = {
   // 점이 있는 보호 경로도 검사한다. 공개 정적 파일은 이름으로 제외한다.
   matcher: [
-    "/((?!api|_next|_vercel|session/clear|icon\\.svg|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
+    "/((?!api|_next|_vercel|oauth(?:/|$)|session/clear|icon\\.svg|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
   ],
 };

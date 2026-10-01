@@ -4,7 +4,7 @@ import { createServer } from "node:net";
 import { setTimeout } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import type { TestProject } from "vitest/node";
-import { startHttpServer } from "../http/server";
+import { reserveHttpBase, startHttpServer } from "../http/server";
 import { startHeaderFailureBackend } from "./header-failure-backend";
 import { requireChromium } from "./browser";
 import { startDeletionMock } from "./mock-server";
@@ -29,6 +29,7 @@ export default async function setup(project: TestProject) {
   await new Promise<void>((resolve) => listener.close(() => resolve()));
   if (port === 3000 || port === 4010) throw new Error("개발 포트를 테스트에 쓰지 않는다.");
   const base = `http://127.0.0.1:${port}`;
+  const httpBase = await reserveHttpBase();
   const require = createRequire(import.meta.url);
   const child = startProcessTree(
     ["--import", pathToFileURL(require.resolve("tsx")).href, "contract/mock/src/main.ts"],
@@ -40,6 +41,7 @@ export default async function setup(project: TestProject) {
         HOST: "127.0.0.1",
         API_URL: base,
         FRONTEND_URL: base,
+        OAUTH_REDIRECT_URIS: `${httpBase}/oauth/callback`,
         MOCK_TEST_ENDPOINTS: "true",
         SEED_ADMIN_EMAIL: "admin@example.com",
         SEED_ADMIN_PASSWORD: "admin-password", // betterleaks:allow 테스트 시드
@@ -89,7 +91,7 @@ export default async function setup(project: TestProject) {
     const backend = await startHeaderFailureBackend(base);
     let http;
     try {
-      http = await startHttpServer(backend.base);
+      http = await startHttpServer(backend.base, httpBase);
     } catch (error) {
       await backend.stop();
       throw error;

@@ -48,6 +48,31 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 동시 갱신 묶기는 프로세스 안에서만 유효하다. 기본 배포는 인스턴스 하나다.
 여러 인스턴스에서는 sticky session이 필요하며, 인스턴스를 넘는 갱신 조율은 별도 설계 대상이다.
 
+## 소셜 로그인
+
+로그인 화면의 Google·카카오·네이버 링크는 JS 없이 `/oauth/{provider}/start`로 간다.
+start는 같은 Origin 이동인지 확인하고 시도마다 무작위 PKCE verifier를 만든다. 제공자·검증한
+`returnTo`·화면 언어와 함께 JWE로 암호화해 10분짜리 httpOnly·SameSite=Lax 쿠키에 둔다.
+운영에서는 Secure·Path=/·`__Host-oauth`를 쓴다. 세션과 같은 키를 쓰되 JWE의 sub로 용도를 구분한다.
+백엔드 authorize 주소에는 `APP_URL`의 `/oauth/callback`과 S256 challenge만 보낸다.
+두 OAuth route는 로케일 proxy에서 제외해 콜백 주소가 바뀌지 않는다.
+
+콜백은 제공자에서 돌아오는 cross-site GET이므로 같은 Origin만 요구할 수 없다. 유효한 verifier
+쿠키와 PKCE로 시작한 브라우저를 확인하며, 쿠키 누락·만료·변조는 코드 교환 전에 거절한다.
+기존 백엔드 계약은 콜백에 code 또는 error만 돌려주고 provider는 주지 않는다. provider가 명시되면
+쿠키와 직접 비교한다. 값이 없으면 서로 다른 제공자 시도의 코드·쿠키 교차 사용을 백엔드의
+PKCE 검사가 거절한다. 계약의 oauthCode grant에는 provider 필드가 없어 이를 새로 보내지 않는다.
+
+성공은 서버 간 `POST /sessions`와 `GET /me` 뒤 세션 쿠키를 만들고 계정 언어로
+`NEXT_LOCALE`과 목적지 URL을 맞춘다. 성공·실패 모두 verifier 쿠키를 지우고 no-store·no-referrer로
+응답한다. 거부·실패는 검증한 목적지를 보존한 로그인 화면에 기존 오류 번역을 표시한다.
+기존 로그인 세션은 OAuth 실패로 지우지 않는다. 토큰과 verifier는 URL·클라이언트 코드·API 로그에 넣지 않는다.
+
+백엔드의 `OAUTH_REDIRECT_URIS`에 정확한 `APP_URL` 콜백을 등록해야 한다. 기본 개발 주소는
+`http://localhost:3000/oauth/callback`이다. HTTP 검사는 예약한 자유 포트의 콜백을,
+E2E 기동기는 `http://localhost:3100/oauth/callback`을 목의 허용 목록에 넣는다.
+실제 목 제공자의 username·claims 폼을 POST해 세 제공자의 로그인과 거부·실패·PKCE 불일치를 검사한다.
+
 ## 회원 탈퇴
 
 내 정보에서 `/me/delete` 확인 화면으로 간다. `features/me`의 `deleteAccountAction`은 확인 체크를

@@ -35,6 +35,13 @@ export function safeReturnTo(value: string | null | undefined): string {
   return "/";
 }
 
+/** 검증한 목적지에 계정 로케일을 붙인다. 비밀번호·소셜 로그인이 함께 쓴다. */
+export function loginDestination(returnTo: string, locale: (typeof routing.locales)[number]) {
+  const path = safeReturnTo(returnTo).replace(/^\/(ko|en)(?=\/|[?#]|$)/i, "") || "/";
+  const relative = safeReturnTo(path.startsWith("/") ? path : `/${path}`);
+  return locale === "ko" ? relative : `/en${relative.replace(/^\/(?=[?#]|$)/, "")}`;
+}
+
 export function loginPath(returnTo: string, locale?: (typeof routing.locales)[number]) {
   const path = safeReturnTo(returnTo);
   const language = locale ?? (/^\/en(?:\/|[?#]|$)/i.test(path) ? "en" : "ko");

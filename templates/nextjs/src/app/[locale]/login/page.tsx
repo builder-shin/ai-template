@@ -11,17 +11,22 @@ export default async function LoginPage({
   const returnTo = safeReturnTo(typeof params.returnTo === "string" ? params.returnTo : undefined);
   const locale = await getLocale();
   const reauthentication = params.notice === "reauthentication";
+  const oauthNotice =
+    params.notice === "auth.oauth_denied" || params.notice === "auth.oauth_failed"
+      ? params.notice
+      : undefined;
   const t = await getTranslations({ locale, namespace: "errors" });
   return (
     <>
-      {reauthentication && (
+      {(reauthentication || oauthNotice) && (
         <p role="alert" className="mx-auto mb-6 max-w-sm text-sm">
-          {t("auth.reauthentication_required")}
+          {t(oauthNotice ?? "auth.reauthentication_required")}
         </p>
       )}
       <LoginForm
         loginAction={loginAction.bind(null, returnTo)}
         resendAction={resendVerificationAction}
+        returnTo={returnTo}
         permalink={`${loginPath(returnTo, locale)}${reauthentication ? "&notice=reauthentication" : ""}`}
       />
     </>

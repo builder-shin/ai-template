@@ -9,19 +9,13 @@ import { createSessionApiClient } from "../../lib/api/session-client";
 import { ApiError, toFormResult } from "../../lib/api/errors";
 import { getEnv } from "../../lib/env";
 import { expiredSessionCookie, sessionFromTokens } from "../../lib/session/cookie";
-import { safeReturnTo } from "../../lib/session/redirect";
+import { loginDestination } from "../../lib/session/redirect";
 import { readSession, writeSession } from "../../lib/session/request";
 import type { AuthResult } from "./state";
 
 function text(data: FormData, name: string) {
   const value = data.get(name);
   return typeof value === "string" ? value : "";
-}
-
-function destination(returnTo: string, locale: "ko" | "en") {
-  const path = safeReturnTo(returnTo).replace(/^\/(ko|en)(?=\/|[?#]|$)/i, "") || "/";
-  const relative = safeReturnTo(path.startsWith("/") ? path : `/${path}`);
-  return locale === "ko" ? relative : `/en${relative.replace(/^\/(?=[?#]|$)/, "")}`;
 }
 
 export async function loginAction(
@@ -62,7 +56,7 @@ export async function loginAction(
       path: "/",
       sameSite: "lax",
     });
-    target = destination(returnTo, accountLocale);
+    target = loginDestination(returnTo, accountLocale);
   } catch (error) {
     if (!(error instanceof ApiError) || error.status < 400 || error.status >= 500) throw error;
     return {

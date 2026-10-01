@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { SubmitButton } from "../../components/submit-button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -15,12 +15,15 @@ export function LoginForm({
   loginAction,
   resendAction,
   permalink,
+  returnTo = "/",
 }: {
   loginAction: AuthAction;
   resendAction: AuthAction;
   permalink: string;
+  returnTo?: string;
 }) {
   const t = useTranslations("auth");
+  const locale = useLocale();
   const [state, action] = useActionState<AuthResult, FormData>(
     loginAction,
     { ok: true },
@@ -79,6 +82,17 @@ export function LoginForm({
         <FormErrors state={state} />
         <SubmitButton>{t("login")}</SubmitButton>
       </form>
+      <div className="grid gap-2">
+        {(["google", "kakao", "naver"] as const).map((provider) => (
+          <a
+            key={provider}
+            href={`/oauth/${provider}/start?${new URLSearchParams({ returnTo, locale })}`}
+            className="rounded-md border px-4 py-2 text-center text-sm hover:bg-accent"
+          >
+            {t(`social.${provider}`)}
+          </a>
+        ))}
+      </div>
       <div className="flex gap-4 text-sm underline">
         <Link href="/signup">{t("signup")}</Link>
         <Link href="/forgot-password">{t("forgotPasswordLink")}</Link>
