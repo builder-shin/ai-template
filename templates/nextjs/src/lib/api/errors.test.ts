@@ -54,6 +54,19 @@ describe("API 에러와 폼 결과", () => {
     });
   });
 
+  it("입력칸 목록을 생략한 알 수 없는 속성은 숨기지 않고 폼 오류로 보낸다", () => {
+    const error = new ApiError({
+      status: 422,
+      traceId,
+      errors: [{ code: "validation.required", params: {}, pointer: "/data/attributes/missing" }],
+    });
+    expect(toFormResult(error, "en")).toEqual({
+      ok: false,
+      formError: "Enter a required value.",
+      fieldErrors: {},
+    });
+  });
+
   it("JSON Pointer의 이스케이프를 풀고 특수 필드 이름도 안전하게 돌려준다", () => {
     const error = new ApiError({
       status: 422,
@@ -63,7 +76,7 @@ describe("API 에러와 폼 결과", () => {
         { code: "validation.required", params: {}, pointer: "/data/attributes/__proto__" },
       ],
     });
-    const result = toFormResult(error, "en");
+    const result = toFormResult(error, "en", ["a/b~c", "__proto__"]);
     expect(result.fieldErrors["a/b~c"]).toEqual(["Enter a required value."]);
     expect(Object.hasOwn(result.fieldErrors, "__proto__")).toBe(true);
     expect(Object.getPrototypeOf(result.fieldErrors)).toBe(Object.prototype);
@@ -108,7 +121,7 @@ describe("API 에러와 폼 결과", () => {
     );
     const error = await ApiError.fromResponse(response, "fallback");
     expect(error.params).toEqual({ max: 100 });
-    expect(toFormResult(error, "en").fieldErrors.name).toEqual([
+    expect(toFormResult(error, "en", ["name"]).fieldErrors.name).toEqual([
       "Enter no more than 100 characters.",
     ]);
     expect(error.traceId).toBe(traceId);

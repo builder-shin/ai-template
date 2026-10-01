@@ -46,7 +46,7 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 `features/auth`의 공개 인터페이스가 인증 화면과 Action을 제공한다. 입력 이름은 계약의 `name`·`email`·`password`다. `useActionState`에 실제 Server Action과 로케일별 permalink를 넘기므로 JS 없이도 HTML 폼을 제출한다. 로그인 성공은 303으로 이동하고 가입·메일 인증 결과는 HTML에 복원한다. 비밀번호는 반환 상태에 넣지 않는다. `useFormStatus`는 제출 중 버튼을 막고 스피너만 더하며 버튼의 접근성 이름은 유지한다.
 
-`toFormResult`가 속성 pointer를 입력 오류로, 나머지를 폼 오류로 번역한다. 로그인 자격증명의 401은 폼에 남는다. 미인증 이메일에는 안내와 재발송 폼을 보여 주고, 429는 `Retry-After`의 초를 안내한다. 연결 실패·서버 오류는 trace를 가진 오류 경계로 넘긴다. 이동 경로는 계정 로케일 접두사를 붙이기 전후의 상대 경로 규칙을 지킨다.
+`toFormResult`에는 실제 입력칸 목록을 넘긴다. 목록에 있는 속성 pointer만 입력 오류로, 나머지는 폼 오류로 번역한다. 목록의 기본값은 빈 배열이므로 생략하면 모든 오류가 폼 안내에 남는다. 로그인 자격증명의 401은 폼에 남는다. 미인증 이메일에는 안내와 재발송 폼을 보여 주고, 429는 `Retry-After`의 초를 안내한다. 연결 실패·서버 오류는 trace를 가진 오류 경계로 넘긴다. 이동 경로는 계정 로케일 접두사를 붙이기 전후의 상대 경로 규칙을 지킨다.
 
 레이아웃이 로그아웃 Action을 헤더에 넘긴다. 사용자 메뉴의 버튼은 바깥 HTML 폼과 `form` 속성으로 연결해 포털에서도 제출한다. Action은 `DELETE /sessions/current`를 호출하고 실패해도 `finally`에서 쿠키를 지운 뒤 현재 로케일 홈으로 간다.
 
@@ -74,7 +74,7 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 미들웨어가 JSON:API 미디어 타입, 현재 로케일, 세션 토큰과 W3C traceparent를 설정한다. 데이터는 캐시하지 않는다. 로그에는 메서드, 계약 경로, 상태, trace id, 소요 시간만 남기며 `log` 옵션으로 서버 로거를 연결할 수 있다. 기본값은 구조화된 콘솔 로그다.
 
-`jsonapi.ts`는 생성 스키마에서 포함 리소스와 쿼리 타입을 파생한다. `buildQuery`의 filter·page·fields는 해당 GET 계약에 있는 그룹만 받으며 없는 그룹은 `never`다. filter·page의 값 타입과 fields의 문자열·배열 입력을 유지한다. 관계는 type과 id로 연결하고 페이지 이동은 응답 링크를 그대로 쓴다. 비정상 응답은 `ApiError`다. `toFormResult`는 코드와 params를 카탈로그로 번역하고 속성 pointer를 필드별 메시지 배열로 바꾼다. 입력칸 목록을 넘기면 짝이 없는 속성도 폼 에러가 된다. `FormResult`는 Server Action에서 직렬화할 성공/실패 타입이며 `mapApiError`는 로그인·권한·없는 리소스·요청 한도·예상 밖 에러를 분류한다.
+`jsonapi.ts`는 생성 스키마에서 포함 리소스와 쿼리 타입을 파생한다. `buildQuery`의 filter·page·fields는 해당 GET 계약에 있는 그룹만 받으며 없는 그룹은 `never`다. filter·page의 값 타입과 fields의 문자열·배열 입력을 유지한다. 관계는 type과 id로 연결하고 페이지 이동은 응답 링크를 그대로 쓴다. 비정상 응답은 `ApiError`다. `toFormResult`는 코드와 params를 카탈로그로 번역하고 지정한 입력칸의 속성 pointer만 필드별 메시지 배열로 바꾼다. 목록에 없는 속성은 폼 에러이며 목록을 생략하면 필드 에러를 만들지 않는다. `FormResult`는 Server Action에서 직렬화할 성공/실패 타입이며 `mapApiError`는 로그인·권한·없는 리소스·요청 한도·예상 밖 에러를 분류한다.
 
 단위·통합 테스트는 Vitest의 global setup이 자유 포트에 띄운 실제 `contract/mock` 사본을 쓴다. 개발 포트 3000/4010을 쓰지 않으며 종료 때 자신이 시작한 프로세스 트리를 내린다. `server-only` 별칭은 Node 테스트에서만 표식을 비우고 Next 빌드의 서버 경계는 유지한다.
 

@@ -148,14 +148,14 @@ function pointerField(pointer: string | undefined): string | undefined {
 export function toFormResult(
   error: ApiError,
   locale: Locale,
-  fields?: readonly string[],
+  fields: readonly string[] = [],
 ): Extract<FormResult, { ok: false }> {
   const fieldErrors: Record<string, string[]> = {};
   const formErrors: string[] = [];
   for (const item of error.errors) {
     const name = pointerField(item.pointer);
     const message = translateIssue(item, locale);
-    if (name === undefined || (fields !== undefined && !fields.includes(name))) {
+    if (name === undefined || !fields.includes(name)) {
       formErrors.push(message);
     } else if (Object.hasOwn(fieldErrors, name)) {
       fieldErrors[name]!.push(message);
