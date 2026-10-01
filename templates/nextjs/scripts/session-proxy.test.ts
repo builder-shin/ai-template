@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, inject, it, vi } from "vitest"
 import proxy, { config } from "../src/proxy";
 import { EXAMPLE_SESSION_SECRET } from "../src/lib/env";
 import { sealSession, unsealSession } from "../src/lib/session/cookie";
-import { safeReturnTo } from "../src/lib/session/redirect";
+import { loginPath, safeReturnTo } from "../src/lib/session/redirect";
 import { login, mockClient } from "./test/session";
 
 beforeEach(() => {
@@ -26,6 +26,30 @@ function request(path: string, cookie = "NEXT_LOCALE=ko", method = "GET") {
 }
 
 describe("세션과 로케일 proxy 합성", () => {
+  it.each(["GET", "POST"])(
+    "%s의 대소문자가 섞인 로케일도 첫 요청에서 로그인으로 보낸다",
+    async (method) => {
+      for (const [path, target, returnTo] of [
+        ["/EN/me?tab=profile", "/en/login", "/EN/me?tab=profile"],
+        ["/Ko/my-posts/x", "/login", "/Ko/my-posts/x"],
+        ["/%45N/me", "/en/login", "/EN/me"],
+      ]) {
+        const result = await proxy(request(path!, undefined, method));
+        expect(result.status).toBe(303);
+        const location = new URL(result.headers.get("location")!);
+        expect(location.pathname).toBe(target);
+        expect(location.searchParams.get("returnTo")).toBe(returnTo);
+        expect(result.headers.get("x-middleware-rewrite")).toBeNull();
+      }
+    },
+  );
+
+  it("대문자 영어 returnTo도 영어 로그인으로 보내며 접두사 뒤 외부 경로를 거절한다", () => {
+    expect(loginPath("/EN/me")).toBe("/en/login?returnTo=%2FEN%2Fme");
+    expect(safeReturnTo("/EN//evil.example")).toBe("/");
+    expect(safeReturnTo("/Ko/%2F%2Fevil.example")).toBe("/");
+  });
+
   it.each(["/me", "/my-posts?page=2", "/en/me/security"])(
     "%s는 로그인과 안전한 returnTo로 보낸다",
     async (path) => {

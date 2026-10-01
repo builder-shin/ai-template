@@ -72,6 +72,9 @@ describe("로그인 Action과 실제 목", () => {
   it.each([
     ["en", "/my-posts?tag=a&tag=b", "/en/my-posts?tag=a&tag=b"],
     ["ko", "/en/me?tab=profile", "/me?tab=profile"],
+    ["ko", "/EN/me?tab=profile", "/me?tab=profile"],
+    ["en", "/Ko/my-posts/x", "/en/my-posts/x"],
+    ["en", "/EN//evil.example", "/en"],
     ["ko", "/x/../en/me?tab=profile#details", "/me?tab=profile#details"],
     ["ko", "/%2e%2e/en/me?tab=profile#details", "/me?tab=profile#details"],
     ["en", "https://evil.example", "/en"],

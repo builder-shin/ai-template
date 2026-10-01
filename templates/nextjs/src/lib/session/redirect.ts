@@ -19,7 +19,7 @@ export function safeReturnTo(value: string | null | undefined): string {
     for (let depth = 0; depth < 5; depth++) {
       if (!path.startsWith("/") || path.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(path))
         return "/";
-      if (path.replace(/^\/(ko|en)(?=\/|$)/, "").startsWith("//")) return "/";
+      if (path.replace(/^\/(ko|en)(?=\/|$)/i, "").startsWith("//")) return "/";
       const decoded = decodeURIComponent(path);
       if (decoded === path) {
         const parsed = new URL(path, "https://return-to.invalid");
@@ -37,13 +37,14 @@ export function safeReturnTo(value: string | null | undefined): string {
 
 export function loginPath(returnTo: string, locale?: (typeof routing.locales)[number]) {
   const path = safeReturnTo(returnTo);
-  const language = locale ?? (/^\/en(?:\/|[?#]|$)/.test(path) ? "en" : "ko");
+  const language = locale ?? (/^\/en(?:\/|[?#]|$)/i.test(path) ? "en" : "ko");
   return `${language === "en" ? "/en" : ""}/login?${new URLSearchParams({ returnTo: path })}`;
 }
 
 export function requiresLogin(pathname: string) {
   try {
-    const path = canonicalPathname(pathname).replace(/^\/(ko|en)(?=\/|$)/, "") || "/";
+    // next-intl의 getNormalizedPathname과 같은 대소문자 무시 접두사 규칙이다.
+    const path = canonicalPathname(pathname).replace(/^\/(ko|en)(?=\/|$)/i, "") || "/";
     return ["/me", "/my-posts"].some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
   } catch {
     // 디코딩·정규화 오류가 로그인 검사를 우회하지 못하게 한다.

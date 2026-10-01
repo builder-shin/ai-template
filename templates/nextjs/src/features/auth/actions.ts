@@ -19,7 +19,7 @@ function text(data: FormData, name: string) {
 }
 
 function destination(returnTo: string, locale: "ko" | "en") {
-  const path = safeReturnTo(returnTo).replace(/^\/(ko|en)(?=\/|[?#]|$)/, "") || "/";
+  const path = safeReturnTo(returnTo).replace(/^\/(ko|en)(?=\/|[?#]|$)/i, "") || "/";
   const relative = safeReturnTo(path.startsWith("/") ? path : `/${path}`);
   return locale === "ko" ? relative : `/en${relative.replace(/^\/(?=[?#]|$)/, "")}`;
 }
