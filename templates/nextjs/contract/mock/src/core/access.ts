@@ -79,9 +79,13 @@ export function authorize(
  * require_recent_login). refresh로는 풀리지 않는다. 클라이언트는 다시 로그인해 받은 새 세션으로 부른다.
  * WWW-Authenticate는 RFC 9470(step-up)의 error와 max_age(초)를 담는다.
  */
-export function requireRecentLogin(principal: Principal, now: Instant): void {
-  if (now - principal.loggedInAt <= RECENT_LOGIN) return;
-  const seconds = String(RECENT_LOGIN / SECOND);
+export function requireRecentLogin(
+  principal: Principal,
+  now: Instant,
+  recentLoginSeconds = RECENT_LOGIN / SECOND,
+): void {
+  if ((now - principal.loggedInAt) / SECOND <= recentLoginSeconds) return;
+  const seconds = String(recentLoginSeconds);
   const challenge = `Bearer error="insufficient_user_authentication", max_age=${seconds}`;
   const detail = `Log in again: this needs a session that logged in within ${seconds} seconds.`;
   throw new ApiError(401, "auth.reauthentication_required", detail, {

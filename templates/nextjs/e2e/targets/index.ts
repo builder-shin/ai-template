@@ -6,6 +6,7 @@ export const mockOrigin = "http://127.0.0.1:4110";
 export type TargetName = "mock" | "fastapi";
 export interface TargetAdapter {
   mailLink(email: string, purpose: "verification" | "reset"): Promise<string>;
+  expireRecentLogin(): Promise<void>;
 }
 
 export function targetName(value = process.env.E2E_TARGET ?? "mock"): TargetName {

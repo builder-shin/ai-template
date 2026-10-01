@@ -15,3 +15,8 @@ export type ProfileResult = FormResult & {
 export type PasswordResult = FormResult & { changed?: boolean; retryAfter?: number | null };
 export type ProfileAction = (state: ProfileResult, data: FormData) => Promise<ProfileResult>;
 export type PasswordAction = (state: PasswordResult, data: FormData) => Promise<PasswordResult>;
+export type DeletionResult = FormResult & {
+  lastAdminProtected?: boolean;
+  retryAfter?: number | null;
+};
+export type DeletionAction = (state: DeletionResult, data: FormData) => Promise<DeletionResult>;

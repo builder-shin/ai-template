@@ -76,7 +76,7 @@ function meRoutes(api: JsonApiRouter, config: MockConfig, state: MockState): voi
   });
 
   api.route("Me_delete", { auth: "required" }, ({ c, principal }) => {
-    deleteMe(state, principal, clientOf(c));
+    deleteMe(state, principal, clientOf(c), config.recentLoginSeconds);
     return c.body(null, 204);
   });
 }

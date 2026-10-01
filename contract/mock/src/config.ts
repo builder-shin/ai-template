@@ -41,6 +41,8 @@ export interface FileLimits {
 }
 
 export interface MockConfig {
+  /** 최근 로그인 창(초, RECENT_LOGIN_SECONDS). 기본 600이며 테스트에서만 줄인다. */
+  readonly recentLoginSeconds: number;
   /** HTTP 포트(PORT). API, 실시간, 가짜 스토리지, 테스트 통로가 이 포트 하나에 뜬다. */
   readonly port: number;
   /**
@@ -95,6 +97,7 @@ export interface MockConfig {
 }
 
 export const DEFAULT_CONFIG: MockConfig = {
+  recentLoginSeconds: 600,
   port: 4010,
   host: "127.0.0.1",
   apiUrl: "http://localhost:4010",
@@ -233,6 +236,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
     read(name, defaults.rateLimits[key], positiveInteger);
   const listenPort = read("PORT", defaults.port, port);
   const config: MockConfig = {
+    recentLoginSeconds: read("RECENT_LOGIN_SECONDS", defaults.recentLoginSeconds, positiveInteger),
     port: listenPort,
     host: read("HOST", defaults.host, text),
     apiUrl: read("API_URL", `http://localhost:${String(listenPort)}`, httpUrl),

@@ -45,6 +45,16 @@
     "retryAfter": "Try again in {seconds} seconds."
   },
   "me": {
+    "deletion": {
+      "title": "Delete account",
+      "guidance": "Deleting your account removes personal information and signs out all devices. Your posts remain. This cannot be undone.",
+      "confirmation": "I have read the notice and confirm account deletion.",
+      "confirmRequired": "Confirm account deletion.",
+      "submit": "Delete account",
+      "cancel": "Back to profile",
+      "lastAdminGuidance": "Assign another active user as an administrator before deleting your account.",
+      "retryAfter": "Try again in {seconds} seconds."
+    },
     "sessions": "Sessions",
     "title": "My profile",
     "nameLabel": "Name",

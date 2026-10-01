@@ -45,6 +45,16 @@
     "retryAfter": "{seconds}초 뒤에 다시 시도해 주세요."
   },
   "me": {
+    "deletion": {
+      "title": "회원 탈퇴",
+      "guidance": "탈퇴하면 개인정보가 삭제되고 모든 기기에서 로그아웃됩니다. 작성한 글은 남으며, 탈퇴는 되돌릴 수 없습니다.",
+      "confirmation": "안내를 확인했으며 계정을 탈퇴합니다.",
+      "confirmRequired": "탈퇴를 확인해 주세요.",
+      "submit": "탈퇴하기",
+      "cancel": "내 정보로 돌아가기",
+      "lastAdminGuidance": "다른 활성 사용자를 관리자로 지정한 뒤 탈퇴해 주세요.",
+      "retryAfter": "{seconds}초 뒤에 다시 시도해 주세요."
+    },
     "sessions": "세션 관리",
     "title": "내 정보",
     "nameLabel": "이름",

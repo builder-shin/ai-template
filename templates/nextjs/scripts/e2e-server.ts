@@ -6,6 +6,7 @@ import { createServer } from "node:net";
 import { setTimeout } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { mockOrigin, webOrigin, targetName, requireImplementedTarget } from "../e2e/targets";
+import { mockRecentLoginSeconds } from "../e2e/targets/mock";
 import { startProcessTree, stopProcessTree } from "./process-tree.mjs";
 
 const root = new URL("../", import.meta.url);
@@ -96,6 +97,7 @@ try {
       FRONTEND_URL: webOrigin,
       STORAGE_ALLOWED_ORIGINS: webOrigin,
       MOCK_TEST_ENDPOINTS: "true",
+      RECENT_LOGIN_SECONDS: String(mockRecentLoginSeconds),
       IDENTIFIER_HASH_SECRET: randomBytes(32).toString("hex"),
       RATE_LIMIT_GLOBAL: "10000",
       RATE_LIMIT_REGISTRATION_IP: "1000",

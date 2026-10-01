@@ -1,8 +1,15 @@
 import type { APIRequestContext } from "@playwright/test";
 import type { TargetAdapter } from "./index";
 
+export const mockRecentLoginSeconds = 10;
+
 export function mockTarget(request: APIRequestContext, origin: string): TargetAdapter {
   return {
+    async expireRecentLogin() {
+      await new Promise<void>((resolve) =>
+        setTimeout(resolve, mockRecentLoginSeconds * 1000 + 100),
+      );
+    },
     async mailLink(email, purpose) {
       const path = purpose === "verification" ? "/verify-email" : "/reset-password";
       const response = await request.get(`${origin}/_test/mail`, { params: { to: email } });

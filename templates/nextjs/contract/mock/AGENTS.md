@@ -44,17 +44,18 @@
 
 없거나 빈 변수는 FastAPI 템플릿 `.env.example`의 개발용 값을 쓰고, 틀린 변수는 한 줄씩 알리고 멈춘다(`src/config.ts`).
 
-| 변수                                                     | 뜻                                                                                |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `PORT`, `API_URL`                                        | 포트(기본 4010)와 브라우저가 보는 목의 주소(presigned URL, OAuth 화면)            |
-| `HOST`                                                   | 들을 인터페이스(기본 127.0.0.1). 컨테이너는 `HOST=0.0.0.0`으로 연다               |
-| `MOCK_TEST_ENDPOINTS`                                    | 테스트 통로를 연다(기본 켜짐)                                                     |
-| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`                | 시드 관리자                                                                       |
-| `FRONTEND_URL`, `OAUTH_REDIRECT_URIS`                    | 메일 링크의 프론트 주소, 소셜 로그인 뒤 돌아갈 프론트 콜백                        |
-| `IDENTIFIER_HASH_SECRET`                                 | 이메일 해시(HMAC) 키                                                              |
-| `RATE_LIMIT_*`                                           | 레이트 리밋 한도: `GLOBAL`(IP별 분당 600), 로그인, 가입, 메일 요청, 비밀번호 변경 |
-| `FILE_MAX_SIZE`, `FILE_ALLOWED_TYPES`, `FILE_USER_QUOTA` | 업로드 한도                                                                       |
-| `STORAGE_ALLOWED_ORIGINS`, `REALTIME_ALLOWED_ORIGINS`    | 가짜 스토리지의 CORS와 Socket.IO 연결이 받는 브라우저 Origin                      |
+| 변수                                                     | 뜻                                                                                    |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `PORT`, `API_URL`                                        | 포트(기본 4010)와 브라우저가 보는 목의 주소(presigned URL, OAuth 화면)                |
+| `HOST`                                                   | 들을 인터페이스(기본 127.0.0.1). 컨테이너는 `HOST=0.0.0.0`으로 연다                   |
+| `MOCK_TEST_ENDPOINTS`                                    | 테스트 통로를 연다(기본 켜짐)                                                         |
+| `RECENT_LOGIN_SECONDS`                                   | 탈퇴에 필요한 최근 로그인 창(초, 1 이상의 정수, 기본 600). 재인증 테스트에서만 줄인다 |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`                | 시드 관리자                                                                           |
+| `FRONTEND_URL`, `OAUTH_REDIRECT_URIS`                    | 메일 링크의 프론트 주소, 소셜 로그인 뒤 돌아갈 프론트 콜백                            |
+| `IDENTIFIER_HASH_SECRET`                                 | 이메일 해시(HMAC) 키                                                                  |
+| `RATE_LIMIT_*`                                           | 레이트 리밋 한도: `GLOBAL`(IP별 분당 600), 로그인, 가입, 메일 요청, 비밀번호 변경     |
+| `FILE_MAX_SIZE`, `FILE_ALLOWED_TYPES`, `FILE_USER_QUOTA` | 업로드 한도                                                                           |
+| `STORAGE_ALLOWED_ORIGINS`, `REALTIME_ALLOWED_ORIGINS`    | 가짜 스토리지의 CORS와 Socket.IO 연결이 받는 브라우저 Origin                          |
 
 ## 테스트 통로와 화면
 
@@ -77,6 +78,7 @@
 
 ## FastAPI와 다른 점
 
+- `RECENT_LOGIN_SECONDS`로 탈퇴의 재인증 창을 줄일 수 있다. 기본 600초는 FastAPI의 `core/access.py`와 같다. refresh는 로그인 시각을 바꾸지 않으며, 창이 지나면 새 로그인이 필요하다. web 통합 검사는 별도 목에서 2초, E2E는 10초를 쓴다. W4의 FastAPI E2E 대상은 같은 조건을 만드는 방법이 필요하다.
 - access token은 JWT가 아닌 불투명한 문자열이다. 만료는 세션 응답의 `accessTokenExpiresAt`, `refreshTokenExpiresAt`으로 본다.
 - 메일은 요청 안에서 바로 보관함에 들어가고(FastAPI는 요청 뒤 잡으로 보낸다) 텍스트 본문만 있다.
 - 비밀번호 해시(scrypt), 소셜 로그인 제공자(가짜 OAuth 서버), 스토리지(메모리 버킷)는 개발용이다. 재시작하면 옛 presigned URL은 맞지 않는다.

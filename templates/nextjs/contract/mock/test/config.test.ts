@@ -16,6 +16,7 @@ function problemsOf(env: Record<string, string>): readonly string[] {
 describe("loadConfig", () => {
   it("변수가 없으면 FastAPI 템플릿 .env.example의 개발용 값으로 뜬다", () => {
     expect(loadConfig({})).toEqual({
+      recentLoginSeconds: 600,
       port: 4010,
       host: "127.0.0.1",
       apiUrl: "http://localhost:4010",
@@ -45,6 +46,7 @@ describe("loadConfig", () => {
 
   it("값을 읽는다. 불리언은 true/false, 1/0, yes/no, on/off를 받는다", () => {
     const env = {
+      RECENT_LOGIN_SECONDS: "2",
       PORT: "4999",
       HOST: " 0.0.0.0 ",
       API_URL: "https://mock.example.com/",
@@ -69,6 +71,7 @@ describe("loadConfig", () => {
       REALTIME_ALLOWED_ORIGINS: " http://LOCALHOST:3000/, https://web.example.com:443,,",
     };
     expect(loadConfig(env)).toEqual({
+      recentLoginSeconds: 2,
       port: 4999,
       host: "0.0.0.0",
       apiUrl: "https://mock.example.com/",

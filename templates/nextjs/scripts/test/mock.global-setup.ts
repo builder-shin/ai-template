@@ -7,12 +7,14 @@ import type { TestProject } from "vitest/node";
 import { startHttpServer } from "../http/server";
 import { startHeaderFailureBackend } from "./header-failure-backend";
 import { requireChromium } from "./browser";
+import { startDeletionMock } from "./mock-server";
 import { startProcessTree, stopProcessTree } from "../process-tree.mjs";
 
 declare module "vitest" {
   export interface ProvidedContext {
     mockBaseUrl: string;
     httpBaseUrl: string;
+    deletionMockBaseUrl: string;
   }
 }
 
@@ -62,6 +64,7 @@ export default async function setup(project: TestProject) {
   child.on("error", (error) => {
     startError = error;
   });
+  let deletionMock: Awaited<ReturnType<typeof startDeletionMock>> | undefined;
   try {
     const deadline = Date.now() + 15000;
     let isReady = false;
@@ -81,6 +84,8 @@ export default async function setup(project: TestProject) {
     }
     if (!isReady) throw new Error(`목 테스트 서버 시작 실패:\n${output}`);
     project.provide("mockBaseUrl", base);
+    deletionMock = await startDeletionMock();
+    project.provide("deletionMockBaseUrl", deletionMock.base);
     const backend = await startHeaderFailureBackend(base);
     let http;
     try {
@@ -97,12 +102,20 @@ export default async function setup(project: TestProject) {
         try {
           await backend.stop();
         } finally {
-          await stopProcessTree(child);
+          try {
+            await deletionMock!.stop();
+          } finally {
+            await stopProcessTree(child);
+          }
         }
       }
     };
   } catch (error) {
-    await stopProcessTree(child);
+    try {
+      await deletionMock?.stop();
+    } finally {
+      await stopProcessTree(child);
+    }
     throw error;
   }
 }

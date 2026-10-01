@@ -4,13 +4,15 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createSessionApiClient } from "../../lib/api/session-client";
 import { ApiError, toFormResult } from "../../lib/api/errors";
 import type { components } from "../../lib/api/schema";
 import { getPathname } from "../../lib/i18n/navigation";
 import { redirectOnUnauthorized } from "../../lib/session/request";
-import type { ProfileResult, ProfileValues, PasswordResult } from "./state";
+import { expiredSessionCookie } from "../../lib/session/cookie";
+import { loginPath } from "../../lib/session/redirect";
+import type { ProfileResult, ProfileValues, PasswordResult, DeletionResult } from "./state";
 
 function text(data: FormData, name: string) {
   const value = data.get(name);
@@ -102,4 +104,40 @@ export async function changePasswordAction(
       ...(error.status === 429 ? { retryAfter: error.retryAfter } : {}),
     };
   }
+}
+
+export async function deleteAccountAction(
+  _state: DeletionResult,
+  data: FormData,
+): Promise<DeletionResult> {
+  const locale = await getLocale();
+  if (data.get("confirm") !== "on") {
+    const t = await getTranslations({ locale, namespace: "me.deletion" });
+    return { ok: false, formError: t("confirmRequired"), fieldErrors: {} };
+  }
+  const returnTo = getPathname({ locale, href: "/me/delete" });
+  const client = await createSessionApiClient({ locale });
+  try {
+    await client.DELETE("/me");
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      error.status === 401 &&
+      error.code === "auth.reauthentication_required"
+    ) {
+      // refreshでは最近のログインにならない。確認を保留し、新しいセッションで戻ってくる。
+      (await cookies()).set(expiredSessionCookie());
+      redirect(`${loginPath(returnTo, locale)}&notice=reauthentication`);
+    }
+    redirectOnUnauthorized(error, returnTo);
+    if (!(error instanceof ApiError) || error.status < 400 || error.status >= 500) throw error;
+    return {
+      ...toFormResult(error, locale, []),
+      ...(error.code === "role.last_admin_protected" ? { lastAdminProtected: true } : {}),
+      ...(error.status === 429 ? { retryAfter: error.retryAfter } : {}),
+    };
+  }
+  (await cookies()).set(expiredSessionCookie());
+  revalidatePath("/[locale]", "layout");
+  redirect(getPathname({ locale, href: "/" }));
 }

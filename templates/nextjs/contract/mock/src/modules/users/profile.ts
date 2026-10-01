@@ -55,9 +55,14 @@ export function updateMe(state: MockState, actor: Principal, changes: ProfileCha
 }
 
 /** 탈퇴: 개인정보를 지우고 계정을 닫는다. */
-export function deleteMe(state: MockState, actor: Principal, client: Client): void {
+export function deleteMe(
+  state: MockState,
+  actor: Principal,
+  client: Client,
+  recentLoginSeconds?: number,
+): void {
   const { store } = state;
-  requireRecentLogin(actor, state.clock.now());
+  requireRecentLogin(actor, state.clock.now(), recentLoginSeconds);
   const user = requireUser(store, actor.userId);
   protectLastAdmin(store, user);
   user.email = null;

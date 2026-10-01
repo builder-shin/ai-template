@@ -27,6 +27,9 @@ export default async function MePage({ params }: { params: Promise<{ locale: str
       </Link>
       <ProfileForm profile={profile} action={updateProfileAction} permalink={permalink} />
       <PasswordChangeForm action={changePasswordAction} permalink={permalink} />
+      <Link href="/me/delete" className="inline-block text-sm underline">
+        {t("deletion.title")}
+      </Link>
     </section>
   );
 }

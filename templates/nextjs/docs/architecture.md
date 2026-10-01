@@ -48,6 +48,21 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 동시 갱신 묶기는 프로세스 안에서만 유효하다. 기본 배포는 인스턴스 하나다.
 여러 인스턴스에서는 sticky session이 필요하며, 인스턴스를 넘는 갱신 조율은 별도 설계 대상이다.
 
+## 회원 탈퇴
+
+내 정보에서 `/me/delete` 확인 화면으로 간다. `features/me`의 `deleteAccountAction`은 확인 체크를
+서버에서도 검사한 뒤 `DELETE /me`를 부른다. `useActionState`와 로케일별 permalink로 JS 없이 제출한다.
+성공하면 세션 쿠키를 지우고 레이아웃을 갱신해 현재 언어의 홈으로 간다. 개인정보와 모든 세션은
+백엔드가 지우며 작성한 글은 남는다. 마지막 관리자는 번역한 오류와 다른 활성 관리자 지정 안내를 본다.
+
+`auth.reauthentication_required`는 쿠키를 지우고 로그인으로 보낸다. 로그인 화면은 기존 에러 코드의
+번역을 안내하고 `returnTo`로 확인 화면에 돌아온다. 로그인 뒤에도 확인을 다시 받으며 자동 탈퇴하지 않는다.
+다른 401은 기존 쿠키 정리 route를 쓴다. refresh로는 최근 로그인 조건을 충족할 수 없다.
+
+목의 `RECENT_LOGIN_SECONDS` 기본값은 600초다. Vitest는 기존 목과 별도로 자유 포트에 2초 창의 목을
+띄우며, Playwright 대상 어댑터의 `expireRecentLogin`은 10초 창을 기다린다. W4는 FastAPI에서 같은
+재인증 조건을 준비해야 한다. 두 검사 모두 실제 목의 오류를 쓰고 종료 때 시작한 프로세스를 내린다.
+
 ## 로케일과 시간대
 
 화면은 `src/app/[locale]/`에 둔다. `src/proxy.ts`의 next-intl middleware는 ko의 접두사를 없애고 en에 `/en`을 붙인다. URL, `NEXT_LOCALE` 쿠키, `Accept-Language`, 기본 ko 순으로 로케일을 고른다. 헤더와 다른 언어를 선택하면 middleware가 쿠키를 갱신한다. 헤더와 같은 첫 선택에는 불필요한 쿠키를 쓰지 않는다. 로그인 Action은 발급된 access 토큰으로 `/me`를 읽어 계정 로케일로 쿠키와 이동 URL을 맞춘다.
@@ -144,7 +159,7 @@ web 자체 생성물은 첫 줄에 직접 수정 금지 헤더를 둔다. 계약
 
 ## HTTP 통합과 E2E
 
-Vitest global setup이 자유 포트의 실제 복사 목과 Next dev를 하나씩 시작한다. 헤더 오류 검사는 별도 자유 포트의 HTTP 중계에서 `/me` 500만 주입하고, 나머지 요청은 실제 목에 전달한다. `pnpm check`·`pnpm test`는 이 오류 화면을 브라우저에서 확인하므로 `pnpm setup`이 설치한 Chromium이 필요하다. 없으면 서버를 시작하기 전에 설치 안내 한 줄로 실패한다. `scripts/http/`의 i18n·세션 갱신·로그인·가입·비밀번호 재설정 파일은 같은 `helpers.ts`에서 서버 주소·API·폼 제출을 가져온다. 브라우저는 검사 finally에서, Next → 중계 → 목은 global setup의 finally에서 내린다. 개발 포트 3000·4010을 사용하지 않는다.
+Vitest global setup이 자유 포트의 실제 복사 목 두 개(기본·재인증용)와 Next dev를 시작한다. 헤더 오류 검사는 별도 자유 포트의 HTTP 중계에서 `/me` 500만 주입하고, 나머지 요청은 기본 목에 전달한다. `pnpm check`·`pnpm test`는 이 오류 화면을 브라우저에서 확인하므로 `pnpm setup`이 설치한 Chromium이 필요하다. 없으면 서버를 시작하기 전에 설치 안내 한 줄로 실패한다. `scripts/http/`의 i18n·세션 갱신·로그인·가입·비밀번호 재설정 파일은 같은 `helpers.ts`에서 서버 주소·API·폼 제출을 가져온다. 브라우저는 검사 finally에서, Next → 중계 → 목은 global setup의 finally에서 내린다. 개발 포트 3000·4010을 사용하지 않는다.
 
 `pnpm setup`은 의존성 설치 → 환경 키 보충 → 독립 저장소 hook 설치 → 고정 Playwright 1.63.0의 Chromium 설치 순서다. 브라우저 설치가 실패해도 환경과 hook 준비는 남고 실패 코드로 끝난다. 재실행은 기존 환경 값을 유지한다. `pnpm test:e2e`는 headless Chromium에서 운영 코드를 검사한다. Playwright `webServer`가 `scripts/e2e-server.ts`를 실행해 복사 목 readiness → `next build` → `next start` 순서를 보장한다. web은 localhost:3100, 목은 127.0.0.1:4110이다. 두 포트가 사용 중이면 실패하며 기존 서버를 재사용하거나 종료하지 않는다. 개발 서버와 동시에 실행할 수 있는 포트지만 Next 빌드 산출물을 함께 쓰므로 이 프로젝트의 dev·build·check와 E2E는 동시에 실행하지 않는다.
 
