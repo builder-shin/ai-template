@@ -1,13 +1,13 @@
 # Next.js web 템플릿 설계 (하위 프로젝트 2)
 
 - 작성일: 2026-09-30
-- 상태: 승인됨(2026-09-30). W1(목 서버) 구현 완료. W1에서 찾은 FastAPI·계약 문제는 보정했다(2026-09-30, §12.1)
+- 상태: 승인됨(2026-09-30). W1(목 서버)·W2(web 뼈대) 구현 완료. W1에서 찾은 FastAPI·계약 문제는 보정했다(2026-09-30, §12.1)
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 2로 미룬 결정을 내리고, `templates/nextjs`, 목 서버(`contract/mock`), 이번 사이클의 저장소 변경을 설계한다.
   - 기반 설계의 규칙은 그대로 따른다: 플랫폼 기능(§4), API 규약(§5), 하네스(§6), 인프라와 품질(§7).
   - 백엔드의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md)와 [보강 설계](2026-09-29-fastapi-hardening-design.md)다. 목 서버는 그 동작을 따른다.
 - 구현 계획: [W1](../plans/2026-09-30-nextjs-w1.md)
-- 다음 단계: W2(web 뼈대)
+- 다음 단계: W3(기능 화면과 실시간)
 
 ## 1. 목표와 범위
 
@@ -60,24 +60,41 @@
 
 ## 3. 스택
 
-버전은 2026-09-29에 확인했다(§14). 모두 정확히 고정한다(`^`, `~`, 범위 금지).
+설계 버전은 2026-09-29에 확인했다(§14). W1·W2에서 선택한 버전도 아래에 기록했다. 모두 정확히 고정한다(`^`, `~`, 범위 금지). W2는 pnpm의 `minimumReleaseAge: 1440`을 유지하고 공개 시각 확인과 frozen 설치를 통과했다.
 
 | 항목                                        | 버전                          | 비고                                                                     |
 | ------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------ |
-| Node / pnpm                                 | 24 LTS / 12                   | N13                                                                      |
+| Node / pnpm                                 | 24 LTS / 12.6.0               | N13. W2 검증 환경은 Node 24.19.0                                         |
 | Next.js / React                             | 16.3.7 / 19.3.0               | 16.3.6이 2026-09 보안 릴리스(next/og RCE)다                              |
+| react-dom / @types/react / @types/react-dom | 19.3.0 / 19.3.0 / 19.3.0      | React와 같은 버전                                                        |
+| @next/env                                   | 16.3.7                        | Next와 같은 버전의 개발 환경 로더                                        |
 | TypeScript                                  | 6.0.3                         | N12                                                                      |
+| @types/node                                 | 24.13.6                       | Node 24, 저장소 pin 재사용                                                |
 | Tailwind CSS / shadcn CLI                   | 4.3.3 / 4.21.0                | Base UI 기반(`-b base`)                                                  |
+| @tailwindcss/postcss / postcss              | 4.3.3 / 8.5.28                | 공식 Tailwind 플러그인과 처리기                                          |
+| @base-ui/react / lucide-react               | 1.8.0 / 1.49.0                | CLI 기본 부품, Loader2와 메뉴 아이콘                                     |
+| cn / class-variance-authority / tw-animate-css | 0.4.0 / 0.7.1 / 1.4.0     | shadcn CLI가 선택한 유틸리티와 테마                                      |
 | next-intl / Zod                             | 4.14.7 / 4.6.5                |                                                                          |
+| jose / server-only                          | 6.2.12 / 0.0.1                | JWE 세션 쿠키와 서버 경계 표식                                           |
 | openapi-typescript / openapi-fetch          | 7.13.0 / 0.17.0               | `application/vnd.api+json`은 직렬화 설정이 필요하다(§13 #2)              |
+| openapi-typescript-helpers                   | 0.1.0                         | openapi-fetch의 전이 의존성, lock에 고정                                 |
+| @typespec/compiler / @typespec/http / @typespec/openapi / @typespec/openapi3 | 1.16.0 | 원본 계약 사본의 pin 유지                                    |
+| yaml / ajv / ajv-formats                     | 2.9.1 / 8.20.0 / 3.0.1        | 계약 생성과 목의 JSON Schema 검증                                       |
 | socket.io-client / socket.io                | 4.8.4 / 4.8.4                 | python-socketio 5.x(프로토콜 v5)와 호환                                  |
 | Hono / @hono/node-server                    | 4.13.11 / 2.1.3               | 목 서버                                                                  |
 | ESLint / typescript-eslint / eslint-config-next | 10.11.0 / 8.71.0 / 16.3.7 | flat config만(Next 16에서 `next lint` 제거)                              |
-| Vitest                                      | 5                             | 저장소와 같게                                                            |
-| Playwright / @playwright/cli                | 1.63.0 / 0.1.22               |                                                                          |
+| eslint-plugin-boundaries / @eslint/compat   | 7.2.0 / 2.1.1                 | ESLint 10의 경계 검사, Next React 플러그인의 context API 호환             |
+| eslint-plugin-import / eslint-plugin-jsx-a11y / eslint-plugin-react | 2.32.0 / 6.10.2 / 7.37.5 | Next의 전이 플러그인, lock에 고정                   |
+| Prettier / tsx                              | 3.9.9 / 4.23.15               | 저장소 pin 재사용                                                        |
+| Vitest                                      | 5.0.1                         | 저장소 pin 재사용                                                        |
+| @testing-library/react / @testing-library/user-event / jsdom | 16.3.3 / 14.6.7 / 30.1.1 | 실제 DOM의 역할·이름·입력 검사                     |
+| @playwright/test / playwright / playwright-core | 1.63.0 / 1.63.0 / 1.63.0 | W2의 headless Chromium 인증 E2E                                          |
+| @playwright/cli                             | 0.1.22                        | 에이전트용 CLI와 skill은 W4에서 추가한다. W2에는 설치하지 않았다          |
+| @parcel/watcher / @swc/core                 | 2.6.0 / 1.16.12               | next-intl의 네이티브 전이 의존성, lock과 빌드 허용 목록                   |
+| lefthook / Betterleaks                      | 2.1.14 / 1.8.1                | 저장소 pin과 FastAPI의 바이너리 pin 재사용                               |
 | next-devtools-mcp                           | 0.4.0                         |                                                                          |
 
-아직 확인하지 않은 것(Ajv, jose, react-markdown과 remark-gfm, 경계 린트 플러그인, Prettier, tsx)은 해당 마일스톤의 계획을 쓸 때 확인해 고정하고 이 표에 더한다.
+W2의 새 선택은 각 태스크 보고서에 공개 시각과 이유를 기록했다. typescript-eslint는 저장소 루트의 8.70.1 대신 설계의 8.71.0을 썼고 전체 린트·타입 검사를 통과했다. react-markdown과 remark-gfm은 W3에서 확인해 고정하고 이 표에 더한다.
 
 ## 4. 템플릿 구조
 
@@ -356,7 +373,10 @@ templates/nextjs/
 ### 8.8 web 템플릿과의 관계
 
 - `pnpm sync`가 `contract/mock`, `contract/openapi.yaml`, `contract/typespec`을 그대로 web 템플릿의 `contract/`(`contract/mock/`, `contract/openapi.yaml`, `contract/typespec/`) 아래로 복사한다. 목이 `../openapi.yaml`을 패키지 기준 상대 경로로 읽으므로 계약 사본 옆(`contract/mock/`)에 있어야 한다. 저장소 CI는 사본이 원본과 같은지 본다.
-- **W2에서 정할 것:** `contract/mock`을 파일 그대로 복사하는 것만으로는 뜨지 않는다. 패키지가 자기 밖을 셋 쓴다: `tsconfig.json`이 `../../tsconfig.base.json`을 확장하고, `package.json`의 dev dependency `@ai-template/contract`는 워크스페이스 패키지를 찾으며, `tsx`·`typescript`·`vitest`·`@types/node`는 저장소 루트의(버전을 고정한) devDependencies에서 온다. 그대로 복사만 하면 `tsc -p`가 실패하고 `@ai-template/contract`라는 워크스페이스 패키지가 없어 `pnpm install`이 실패한다. web 템플릿은 적어도 다음을 갖춰야 한다: `contract/*`를 포함하는 pnpm 워크스페이스(계약 패키지를 함께 두거나 그 dev dependency를 고친 것), 템플릿 루트의 `tsconfig.base.json`, 버전을 고정한 루트 dev dependencies. 어떻게 갖출지는 W2 계획이 정한다.
+- **W2 결정(Task 2):** 템플릿 자체의 `pnpm-workspace.yaml`에 `contract/*`를 둔다. 목의 `@ai-template/contract: workspace:*`는 TypeSpec 사본으로 연결된다. 두 사본은 템플릿 루트의 `tsconfig.base.json`을 확장하고, 루트에 고정한 `tsx`·`typescript`·`vitest`·`@types/node`를 쓴다. 사본의 package.json이나 tsconfig를 고치지 않고 독립 실행에 필요한 구조를 템플릿에 갖췄다.
+- `docs/conventions/jsonapi.md`와 `error-codes.md`도 함께 sync한다. TypeSpec의 에러 코드 문서 테스트가 읽는 `../../../docs/conventions/error-codes.md`를 충족하고 템플릿 AI도 같은 규약을 읽는다. 전체 `check`는 TypeSpec·목의 자체 검사를 각각 돌린다.
+- 계약 사본은 원본 헤더와 포맷을 보존한다. 첫 줄의 직접 수정 금지 헤더는 web 자체 생성물에 적용하고, 사본은 자체 생성물 최신 여부 검사와 루트 사본 비교로 확인한다(Task 2에서 승인한 예외).
+- Task 2에서 3개 workspace의 frozen 설치, 두 번의 `gen` 뒤 diff 없음, 단독 `dev`의 목 4010 readiness·web 3000 HTTP 200, 백엔드 모드의 web만 기동을 확인했다. HTTP loopback의 4010 `/api/v1` 주소이면 단독 모드다.
 - 단독 web 프로젝트가 API를 넓힐 때는 TypeSpec을 고치고 `pnpm gen`으로 `openapi.yaml`과 타입을 다시 만든 뒤, 목에 핸들러를 더한다(레시피).
 - 조합 프로젝트에서는 백엔드의 `openapi.json`이 원본이고, 목은 프론트만 개발할 때 쓴다.
 
@@ -465,8 +485,8 @@ E2E 흐름
 - `verify-templates`: Next.js 템플릿 규칙(필수 명령, hook 4종의 exec form, 골든 기능 `features/posts`, `.env.example`, 레시피, 사본 최신 여부)
 - CI 작업
   - `conformance-mock`: `pnpm conformance mock`
-  - `nextjs`: 템플릿의 `check`, 목 대상 `test:e2e`, Docker 이미지 빌드
-  - `nextjs-e2e-fastapi`: FastAPI 스택을 띄우고 같은 E2E를 FastAPI 대상으로 돌린다
+  - `nextjs`(W2): 기존 작업과 같은 Node 24·pnpm 설정 Action을 쓰고 pnpm 12.6.0을 고정한다. 템플릿 lockfile 캐시 → `templates/nextjs`의 frozen 설치 → `check` → Chromium과 Linux 의존성 설치 → `E2E_TARGET=mock`의 `test:e2e` 순서다. Docker 이미지 빌드는 W4에서 더한다.
+  - `nextjs-e2e-fastapi`(W4): FastAPI 스택을 띄우고 같은 E2E를 FastAPI 대상으로 돌린다
 
 ### 11.2 FastAPI 템플릿 (필요하면)
 
@@ -481,7 +501,7 @@ web이 실제 백엔드에 붙으려면 다음이 FastAPI 설정에 있어야 �
 | #   | 내용                                                                                                                                         | 완료 기준                                   |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | W1  | 목 서버(§8), 적합성 `mock` 대상과 부수 채널 어댑터, CI 작업                                                                                  | `pnpm conformance mock` 전체 통과 — 상태: 완료(2026-09-30) |
-| W2  | web 뼈대: 하네스(§9), BFF 세션·토큰 갱신·API 클라이언트·JSON:API 도우미(§5), i18n, 레이아웃, 인증 화면(§6.2), 목과 함께 도는 `setup`·`dev`, sync | web `check`, 인증 E2E가 목에서 통과        |
+| W2  | web 뼈대: 하네스(§9), BFF 세션·토큰 갱신·API 클라이언트·JSON:API 도우미(§5), i18n, 레이아웃, 비밀번호 인증 화면(§6.2), 목과 함께 도는 `setup`·`dev`, sync, 목 대상 CI | web `check`, 인증 E2E가 목에서 통과 — 상태: 완료 |
 | W3  | 기능 화면: 글(§6.1, §6.6), 내 정보·세션·탈퇴(§6.3~§6.5), 소셜 로그인, 실시간(§6.7), 업로드(§6.8), `gen:feature`                                | 기능 E2E가 목에서 통과                      |
 | W4  | E2E의 FastAPI 대상, FastAPI 설정 보강(§11.2), CI, 레시피·skill·문서, Docker 이미지                                                              | §1.2의 완료 조건                            |
 
@@ -518,6 +538,20 @@ W1에서 목을 FastAPI와 맞추면서 찾았다. W2를 시작하기 전에 모
 | 8   | Server Action과 `useActionState`가 로케일 경로에서 JS 없이도 제출·리다이렉트되는가                                            | JS가 필요한 폼으로 명시한다                                        |
 | 9   | `output: 'standalone'` 이미지를 비루트 사용자와 헬스체크로 만들 수 있는가                                                     | 일반 `next start` 이미지                                           |
 | 10  | W4 시점에 Next.js가 Node 26을 지원하는가(PR #97492), typescript-eslint가 TS7을 지원하는가                                     | Node 24와 TS 6을 유지한다                                          |
+
+### 13.1 W2 확인 결과
+
+Task 4·5·7의 보고서와 Task 10이 보존한 실제 목·Next HTTP 통합 테스트가 근거다. #3~#5는 Windows의 Next 16.3.7 dev에서 확인했고 운영 빌드와 Task 10의 운영 Chromium 인증 E2E 4개도 통과했다. #6·#7은 W3/W4, #9·#10은 W4에서 확인한다.
+
+| # | 결과 | 증거와 최종 검사 |
+| --- | --- | --- |
+| 2 | openapi-fetch 0.17.0 사용 가능. 얇은 fetch 래퍼 대안은 필요 없다 | Task 4: 실제 목에서 vendor Accept/Content-Type과 JSON.stringify로 목록 GET 200·included author, 세션 POST 201, 가입 POST 422·email pointer를 확인했다. `expectTypeOf`와 실제 tsc가 생성된 JSON:API 문서·grant·쿼리 타입을 검증했다. `src/lib/api/openapi-fetch.integration.test.ts` 1개와 API 집중 검사 35개 통과 |
+| 3 | 응답 쿠키와 같은 렌더링의 요청 쿠키를 함께 갱신할 수 있다. 갱신은 proxy에 유지한다 | Task 5에서 확인하고 Task 7에서 실제 홈·로그아웃 Action으로 다시 확인했다. 거절되는 옛 access와 유효한 refresh로 `/`·`/en` GET 200·Admin 헤더·새 JWE의 `/me` 200. JS 없는 영어 로그아웃 POST는 303 `/en`·쿠키 삭제·갱신된 세션의 `/me` 401. 최종 `scripts/http/session-refresh.integration.test.ts` |
+| 4 | proxy 호출 사이에 모듈 Map을 공유한다. globalThis 대안은 필요 없다 | Task 7: 같은 옛 쿠키의 동시 HTTP 요청 6개와 늦은 요청 1개가 모두 200이며 같은 새 access·refresh를 받았다. `scripts/session-refresh.integration.test.ts`도 동시 갱신 12개, 29,999ms 기억·30,000ms 만료를 검증한다. 프로세스 안에서만 유효하며 여러 인스턴스에는 §5.2의 sticky session 한계가 있다 |
+| 5 | next-intl과 세션 갱신을 단일 proxy에서 합성할 수 있다 | Task 5·7: 갱신 GET의 ko/en html lang·영어 NEXT_LOCALE·인증 헤더, 영어 Action POST 이동, 갱신 실패의 영어 로그인 303·쿠키 삭제를 확인했다. next-intl의 rewrite·로케일 헤더·기존 쿠키를 유지한다. 최종 `scripts/http/session-refresh.integration.test.ts`와 `scripts/session-proxy.test.ts` |
+| 8 | 로케일 경로에서 JS 없이 폼 제출·결과 복원·리다이렉트가 된다. JS-required 표시가 필요 없다 | Task 7: 실제 SSR `$ACTION_*` 필드의 multipart POST로 ko/en 로그인 303·계정 ko URL과 쿠키·`/me` 200, 영어 필드 오류 HTML 200, 미인증 안내·재발송 성공과 실제 메일 2개를 확인했다. Task 8·9에서 가입·인증·재설정도 확인했고 Task 10은 HTTP 21개·assertion 112개를 그대로 보존했다. 최종 `scripts/http/{login,signup,password-reset}.integration.test.ts`. 사용자 메뉴 열기의 JS 없는 동작을 뜻하지는 않는다 |
+
+쿠키 삭제가 필요한 Server Component의 401은 `/session/clear` Route Handler로 보내 지운 뒤 303 로그인한다. 갱신을 이 route로 옮기지는 않았다. Task 7은 임시 probe 페이지를 모두 없애고 제품 화면·Action만 사용하며, Task 10은 HTTP 테스트를 영역별 5개 파일로 나눴다.
 
 ## 14. 확인한 사실과 출처 (2026-09-29)
 
