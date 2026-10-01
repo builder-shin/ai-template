@@ -5,10 +5,12 @@ import { createServer } from "node:net";
 import { setTimeout } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import type { TestProject } from "vitest/node";
+import { startHttpServer } from "../http/server";
 
 declare module "vitest" {
   export interface ProvidedContext {
     mockBaseUrl: string;
+    httpBaseUrl: string;
   }
 }
 
@@ -75,21 +77,32 @@ export default async function setup(project: TestProject) {
   });
   try {
     const deadline = Date.now() + 15000;
+    let isReady = false;
     while (Date.now() < deadline) {
       if (startError) throw startError;
       if (child.exitCode !== null) throw new Error(`목 테스트 서버 종료:\n${output}`);
       try {
         const ready = await fetch(`${base}/health/ready`, { signal: AbortSignal.timeout(1000) });
         if (ready.ok) {
-          project.provide("mockBaseUrl", base);
-          return () => stop(child);
+          isReady = true;
+          break;
         }
       } catch {
         /* 시작할 때만 연결 실패를 기다린다. */
       }
       await setTimeout(50);
     }
-    throw new Error(`목 테스트 서버 시작 실패:\n${output}`);
+    if (!isReady) throw new Error(`목 테스트 서버 시작 실패:\n${output}`);
+    project.provide("mockBaseUrl", base);
+    const http = await startHttpServer(base);
+    project.provide("httpBaseUrl", http.base);
+    return async () => {
+      try {
+        await http.stop();
+      } finally {
+        await stop(child);
+      }
+    };
   } catch (error) {
     await stop(child);
     throw error;

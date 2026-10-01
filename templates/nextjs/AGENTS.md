@@ -4,17 +4,17 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 
 ## 명령
 
-| 명령                             | 하는 일                                                                 |
-| -------------------------------- | ----------------------------------------------------------------------- |
-| `pnpm setup`                     | 고정 의존성 설치, 환경 파일의 없는 키 보충, 독립 저장소의 git hook 설치 |
-| `pnpm dev`                       | 단독 모드: 목(4010)과 web(3000), 백엔드 모드: web만 실행                |
-| `pnpm check`                     | 포맷, 린트, 타입, 단위·통합 테스트, 생성물, i18n, 계약, 하네스          |
-| `pnpm check --fast -- <파일...>` | Stop hook용 빠른 검사와 관련 테스트                                     |
-| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                              |
-| `pnpm test`                      | Vitest 단위·통합 테스트                                                 |
-| `pnpm test:e2e`                  | E2E 실행 지점. 현재 등록된 흐름 없음                                    |
-| `pnpm gen`                       | TypeSpec 계약, web API·실시간·에러 타입, 목 타입 생성                   |
-| `pnpm build`, `pnpm start`       | 운영 빌드, 운영 서버(3000)                                              |
+| 명령                             | 하는 일                                                              |
+| -------------------------------- | -------------------------------------------------------------------- |
+| `pnpm setup`                     | 고정 의존성·Chromium 설치, 환경 키 보충, 독립 저장소의 git hook 설치 |
+| `pnpm dev`                       | 단독 모드: 목(4010)과 web(3000), 백엔드 모드: web만 실행             |
+| `pnpm check`                     | 포맷, 린트, 타입, 단위·통합 테스트, 생성물, i18n, 계약, 하네스       |
+| `pnpm check --fast -- <파일...>` | Stop hook용 빠른 검사와 관련 테스트                                  |
+| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                           |
+| `pnpm test`                      | Vitest 단위·통합 테스트                                              |
+| `pnpm test:e2e`                  | Playwright 인증 E2E. 목(4110)과 운영 web(3100)을 기동·종료           |
+| `pnpm gen`                       | TypeSpec 계약, web API·실시간·에러 타입, 목 타입 생성                |
+| `pnpm build`, `pnpm start`       | 운영 빌드, 운영 서버(3000)                                           |
 
 ## 구조
 
@@ -28,7 +28,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 | `src/components/`   | 헤더·상태 UI, CLI로 추가한 Base UI 기반 `ui/`         |
 | `scripts/`          | check, setup, gen, 경계 린트, 외부 도구               |
 | `.claude/hooks/`    | 편집·종료·위험 명령·세션 시작 hook                    |
-| `e2e/`              | Playwright 흐름을 더할 자리                           |
+| `e2e/`              | Playwright 인증 흐름과 대상별 메일 어댑터             |
 | `docs/`             | 아키텍처, 버전 문서, 레시피                           |
 
 ## 핵심 규칙
@@ -54,6 +54,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 첫 줄의 직접 수정 금지 헤더는 web 생성물에 적용한다. `contract/` 사본은 원본 헤더를 보존하고 패키지 검사로 최신 여부를 확인한다.
 - 이 저장소의 `contract/`와 `docs/conventions/`는 sync 사본이다. 원본 수정 뒤 저장소 루트에서 `pnpm sync`한다. 독립 복사본에서는 TypeSpec을 확장하고 `pnpm gen`한다.
 - `pnpm dev`는 Next 환경 로더 뒤 `API_BASE_URL`이 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 목도 시작한다. 그 밖의 주소는 web만 시작한다. Ctrl+C로 두 서버를 함께 내린다.
+- E2E는 기본 `E2E_TARGET=mock`이다. webServer가 목 → 운영 빌드 → start를 실행하고 매번 새 세션 비밀을 전달한다. 3100·4110은 비워 두며 기존 서버를 재사용하지 않는다. FastAPI 어댑터는 W4에서 구현한다.
 - 소스 400줄, 테스트 600줄을 넘기지 않는다. 타입·린트 억제에는 같은 줄에 `사유: 설명`을 적는다.
 - 템플릿 밖의 파일에 의존하지 않는다. 비밀 스캔 허용 목록은 계약 사본과 생성물로 제한한다.
 - 커밋 메시지는 영문 Conventional Commits다. AI 태그와 트레일러, `--no-verify`는 쓰지 않는다.

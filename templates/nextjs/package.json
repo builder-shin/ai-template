@@ -15,7 +15,7 @@
     "check:generated": "tsx scripts/gen.ts --check",
     "fix": "prettier --write . && eslint --fix .",
     "test": "vitest run",
-    "test:e2e": "node scripts/e2e.mjs",
+    "test:e2e": "playwright test",
     "gen": "tsx scripts/gen.ts",
     "tool": "tsx scripts/tools/cli.ts"
   },
@@ -37,6 +37,7 @@
   "devDependencies": {
     "@eslint/compat": "2.1.1",
     "@next/env": "16.3.7",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.7",

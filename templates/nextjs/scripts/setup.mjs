@@ -9,6 +9,8 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 process.chdir(root);
 const installed = pnpm(["install", "--frozen-lockfile"], { stdio: "inherit" });
 if (installed.status !== 0) process.exit(installed.status ?? 1);
+const browser = pnpm(["exec", "playwright", "install", "chromium"], { stdio: "inherit" });
+if (browser.status !== 0) process.exit(browser.status ?? 1);
 const current = existsSync(".env") ? readFileSync(".env", "utf8") : undefined;
 const merged = mergeEnv(current, readFileSync(".env.example", "utf8"));
 if (merged !== current) writeFileSync(".env", merged, { mode: 0o600 });
@@ -18,4 +20,4 @@ if (git.status === 0 && resolve(git.stdout.trim()) === resolve(root)) {
   const hook = pnpm(["exec", "lefthook", "install"], { stdio: "inherit" });
   if (hook.status !== 0) process.exit(hook.status ?? 1);
 }
-console.log("setup 완료: 의존성과 환경 파일을 준비했다.");
+console.log("setup 완료: 의존성, Chromium, 환경 파일을 준비했다.");

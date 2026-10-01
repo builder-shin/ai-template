@@ -93,7 +93,7 @@ check는 단계별 입력 해시를 캐시한다. 삭제도 변경으로 본다.
 Stop은 세션 시작 또는 마지막 통과 때의 스냅샷과 비교하므로 셸 편집도 감지한다.
 세션별 상태는 `.cache/hooks/`에만 두며 환경 파일·의존성·빌드 산출물은 읽지 않는다.
 빠른 검사는 변경 관련 테스트를 쓰고, 전체 검사는 pre-push와 CI에서 쓴다.
-생성물 검사는 TypeSpec 계약과 web·목 타입을 재생성해 비교한다. E2E 흐름은 후속 단계에서 구현한다.
+생성물 검사는 TypeSpec 계약과 web·목 타입을 재생성해 비교한다. E2E는 별도 `pnpm test:e2e`로 실행한다.
 
 PreToolUse의 셸 검사는 단어 기반의 최선 검사다. 별도 프로그램 안에서 파일을 여는 동작까지 해석하지 않는다.
 Hook JSON 형식의 기준은 [Claude Code 공식 문서](https://code.claude.com/docs/en/hooks)다.
@@ -105,3 +105,13 @@ Hook JSON 형식의 기준은 [Claude Code 공식 문서](https://code.claude.co
 `pnpm gen`은 TypeSpec을 컴파일하고 API 선언, 실시간 이벤트 이름·payload 매핑, 에러 코드 목록과 목 타입을 다시 만든다. `pnpm check`는 임시 디렉터리의 생성 결과를 비교하고 계약 두 패키지의 자체 검사도 돌린다. 사본은 원본 포맷을 보존하므로 web 포맷·린트에서 제외한다.
 
 `pnpm dev`는 Next 환경 로더로 설정을 준비한다. API 주소가 HTTP loopback의 4010 `/api/v1`이면 목과 web을 함께 시작하며, 외부 백엔드 주소라면 web만 시작한다. 어느 자식이 종료하거나 Ctrl+C를 받으면 자신이 시작한 프로세스 트리를 함께 내린다.
+
+## HTTP 통합과 E2E
+
+Vitest global setup이 자유 포트의 실제 복사 목과 Next dev를 하나씩 시작한다. `scripts/http/`의 i18n·세션 갱신·로그인·가입·비밀번호 재설정 파일은 같은 `helpers.ts`에서 서버 주소·API·폼 제출을 가져온다. 종료는 Next → 목 순서다. 개발 포트 3000·4010을 사용하지 않는다.
+
+`pnpm setup`은 고정 Playwright 1.63.0의 Chromium을 설치한다. `pnpm test:e2e`는 headless Chromium에서 운영 코드를 검사한다. Playwright `webServer`가 `scripts/e2e-server.ts`를 실행해 복사 목 readiness → `next build` → `next start` 순서를 보장한다. web은 localhost:3100, 목은 127.0.0.1:4110이다. 두 포트가 사용 중이면 실패하며 기존 서버를 재사용하거나 종료하지 않는다. 개발 서버와 동시에 실행할 수 있는 포트지만 Next 빌드 산출물을 함께 쓰므로 이 프로젝트의 dev·build·check와 E2E는 동시에 실행하지 않는다.
+
+운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. 운영의 Secure·`__Host-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
+
+`e2e/targets/`는 `E2E_TARGET`의 부수 채널 어댑터다. 기본 mock은 실제 `/_test/mail?to=…`에서 목적별 메일 링크를 읽는다. FastAPI는 W4에서 같은 인터페이스에 Mailpit 조회와 백엔드 스택 기동을 연결한다. 현재 fastapi 선택은 W4 안내와 함께 실패하며 목으로 바뀌지 않는다. 인증 흐름은 실제 브라우저 폼으로 가입·인증·로그인·로그아웃·재설정·returnTo를 검사한다. `/me` 화면은 W3 범위이므로 returnTo 검사는 이동 URL과 로그인 헤더를 확인한다.
