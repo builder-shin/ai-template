@@ -1,6 +1,7 @@
 import ts from "typescript";
 import { envKeys } from "../envfile.mjs";
 import { isGenerated } from "./files";
+import { loadingCopyProblems } from "./loading-copy";
 
 const lineCount = (text: string) => (text ? text.replace(/\n$/, "").split("\n").length : 0);
 
@@ -52,6 +53,7 @@ export function checkHarness(
   const problems: string[] = [];
   if (!("AGENTS.md" in files)) problems.push("AGENTS.md:1 지침 — 루트 지침을 만든다.");
   for (const [path, content] of Object.entries(files)) {
+    problems.push(...loadingCopyProblems(path, content));
     if (/(^|\/)AGENTS.md$/.test(path)) {
       const paired = path.replace(/AGENTS.md$/, "CLAUDE.md");
       if (!(paired in files)) problems.push(`${paired}:1 지침 — @AGENTS.md 한 줄을 적는다.`);

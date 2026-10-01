@@ -62,6 +62,7 @@ export class ApiError extends Error {
   readonly params: Params;
   readonly pointer: string | undefined;
   readonly traceId: string;
+  readonly digest: string;
   readonly retryAfter: number | null;
 
   constructor(options: {
@@ -80,6 +81,8 @@ export class ApiError extends Error {
     this.params = first.params;
     this.pointer = first.pointer;
     this.traceId = options.traceId;
+    // 운영 Server Component 오류에서 Next가 보존하는 식별자는 digest다.
+    this.digest = options.traceId;
     this.retryAfter = options.retryAfter ?? null;
   }
 

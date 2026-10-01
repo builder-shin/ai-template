@@ -3,6 +3,30 @@
     "title": "Web template",
     "description": "Start your new service."
   },
+  "layout": {
+    "brand": "Web template",
+    "home": "Home",
+    "login": "Log in",
+    "logout": "Log out",
+    "userMenu": "User menu: {name}",
+    "unnamedUser": "User",
+    "skipToContent": "Skip to content",
+    "footer": "Build your next service together."
+  },
+  "locale": { "switcher": "Select language", "ko": "한국어", "en": "English" },
+  "accessibility": { "spinner": "In progress" },
+  "errorPage": {
+    "title": "Something went wrong",
+    "description": "Please try again shortly.",
+    "traceId": "Trace ID: {traceId}",
+    "retry": "Try again",
+    "home": "Go home"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "Check the address or return home.",
+    "home": "Go home"
+  },
   "errors": {
     "jsonapi": {
       "unsupported_media_type": "Send the request in JSON:API format.",

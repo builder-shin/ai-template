@@ -11,3 +11,5 @@ src/lib/api/schema.d.ts
 contract/openapi.yaml
 contract/
 docs/conventions/
+# 공식 shadcn 스킬은 태그의 원본 텍스트를 보존한다.
+.claude/skills/shadcn/

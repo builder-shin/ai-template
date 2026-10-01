@@ -81,8 +81,8 @@ export default async function Page() {
   try { await client.GET("/me"); }
   catch (error) { redirectOnUnauthorized(error, path); throw error; }
   const session = await readSession();
-  return <main><p>session-authenticated</p><p>{session?.accessTokenExpiresAt}</p>
-    <form action={submit}><button type="submit">Submit</button></form></main>;
+  return <section><p>session-authenticated</p><p>{session?.accessTokenExpiresAt}</p>
+    <form action={submit}><button type="submit">Submit</button></form></section>;
 }
 `;
 
@@ -305,7 +305,7 @@ describe("실제 Next 서버의 로케일 렌더링", () => {
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain(`<html lang="${locale}">`);
-    expect(html).toContain(`<h1>${title}</h1>`);
+    expect(html).toMatch(new RegExp(`<h1[^>]*>${title}</h1>`));
     expect(html).toContain(`<title>${title}</title>`);
     expect(html).toContain("America/New_York");
   });
@@ -322,7 +322,7 @@ describe("실제 Next 서버의 로케일 렌더링", () => {
       headers: { "Accept-Language": "ko" },
     });
     expect(page.headers.get("set-cookie")).toContain("NEXT_LOCALE=en");
-    expect(await page.text()).toContain("<h1>Web template</h1>");
+    expect(await page.text()).toMatch(/<h1[^>]*>Web template<\/h1>/);
   });
 
   it("다음 방문에는 헤더보다 NEXT_LOCALE 쿠키를 따른다", async () => {
@@ -330,6 +330,6 @@ describe("실제 Next 서버의 로케일 렌더링", () => {
       headers: { "Accept-Language": "en", Cookie: "NEXT_LOCALE=ko" },
     });
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("<h1>Web 템플릿</h1>");
+    expect(await response.text()).toMatch(/<h1[^>]*>Web 템플릿<\/h1>/);
   });
 });

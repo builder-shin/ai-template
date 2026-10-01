@@ -5,11 +5,17 @@ export default defineConfig({
   resolve: {
     // Next 빌드의 서버 경계는 유지하고 Node 테스트에서만 표식을 비운다.
     alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
       "server-only": fileURLToPath(new URL("./scripts/test/server-only.ts", import.meta.url)),
     },
   },
   test: {
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.ts"],
+    include: [
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      "scripts/**/*.test.ts",
+      "scripts/**/*.test.tsx",
+    ],
     testTimeout: 15000,
     globalSetup: ["./scripts/test/mock.global-setup.ts"],
     // next-intl의 확장자 없는 next/server import는 Vite가 해석한다.

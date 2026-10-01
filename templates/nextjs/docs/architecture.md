@@ -51,6 +51,16 @@ Server Component·Server Action은 `readSession`과 `createSessionApiClient`로 
 
 단위·통합 테스트는 Vitest의 global setup이 자유 포트에 띄운 실제 `contract/mock` 사본을 쓴다. 개발 포트 3000/4010을 쓰지 않으며 종료 때 자신이 시작한 프로세스 트리를 내린다. `server-only` 별칭은 Node 테스트에서만 표식을 비우고 Next 빌드의 서버 경계는 유지한다.
 
+## UI와 상태 화면
+
+Tailwind 4와 shadcn의 Base UI 부품을 사용한다. `pnpm exec shadcn add <부품>`으로 필요한 기본 부품만 `src/components/ui/`에 추가한다. 공식 스킬의 원본 텍스트는 `.claude/skills/shadcn/`에 두며 latest 명령 대신 설치된 CLI를 쓴다. CSS의 `prefers-color-scheme`으로 색상 토큰과 dark 변형을 적용한다. 테마 저장소·스위치·외부 폰트는 필요 없다.
+
+레이아웃은 헤더, 본문, 푸터다. `getHeaderUser`가 세션이 있을 때만 `/me`를 읽고 요청 안에서 중복 호출을 묶는다. 클라이언트에는 이름만 넘긴다. 헤더의 로그아웃 메뉴는 인증 Action을 연결하기 전까지 비활성이다. 로케일 링크는 현재 경로와 반복 쿼리를 보존하며 next-intl이 언어 쿠키를 갱신한다. ko로 바꾸는 링크의 `/ko`는 proxy에서 제거된다.
+
+`Spinner`는 Loader2와 aria-label만 렌더링하고 `loading.tsx`는 문구 없는 스켈레톤이다. 하네스는 src의 TSX 문자열·JSX 문구와 ko/en 카탈로그에서 Loading·로딩 중·불러오는 중을 막는다. aria-label과 카탈로그의 `accessibility.spinner`만 예외다. import 경로·주석·테스트·계약 사본은 검사하지 않는다.
+
+경로 오류 경계는 번역된 안내·복구 버튼과 Next의 `digest`를 표시하며 원본 오류 문구를 출력하지 않는다. `ApiError.digest`에 traceId를 보존하므로 운영의 Server Component 오류에서도 서버 로그와 연결된다. 일반 Next 오류의 digest는 Next가 만든 진단 식별자다. catch-all 경로가 알 수 없는 URL을 로케일별 not-found 화면으로 연결한다. UI 테스트는 실제 Base UI와 next-intl을 사용하며 Next 요청 훅만 대체한다. E2E용 test id는 추가하지 않는다.
+
 ## 하네스
 
 check는 단계별 입력 해시를 캐시한다. 삭제도 변경으로 본다. 실패한 단계는 캐시하지 않는다.

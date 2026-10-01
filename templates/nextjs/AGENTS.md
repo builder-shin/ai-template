@@ -25,7 +25,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 | `src/proxy.ts`      | 로케일 라우팅, 로그인 검사, 세션 갱신                 |
 | `src/features/`     | 기능별 구현과 공개 `index.ts`. posts는 W3에서 채운다  |
 | `src/lib/`          | 설정, API·세션 등 공통 기반                           |
-| `src/components/`   | 공통 UI를 더할 자리                                   |
+| `src/components/`   | 헤더·상태 UI, CLI로 추가한 Base UI 기반 `ui/`         |
 | `scripts/`          | check, setup, gen, 경계 린트, 외부 도구               |
 | `.claude/hooks/`    | 편집·종료·위험 명령·세션 시작 hook                    |
 | `e2e/`              | Playwright 흐름을 더할 자리                           |
@@ -40,6 +40,8 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 갱신은 proxy에서만 한다. 화면·Action은 `createSessionApiClient`로 요청의 토큰을 읽고, 401은 `redirectOnUnauthorized`로 쿠키 정리 route에 보낸다. `/me`·`/my-posts`는 로그인 경로다.
 - 폼은 `<form action>`과 `useActionState`로 만든다. 백엔드가 검증의 원본이다.
 - 로딩은 스피너나 스켈레톤만 쓴다. 로딩 문구는 쓰지 않는다. 스피너에는 화면 낭독기용 `aria-label`만 붙인다.
+- 하네스는 TSX 문구와 카탈로그의 로딩 문구를 막는다. `accessibility.spinner`는 aria-label 전용이다.
+- 기본 UI 부품은 `pnpm exec shadcn add <부품>`으로만 추가한다. 공식 `.claude/skills/shadcn/`의 latest 명령은 설치된 고정 CLI로 바꿔 실행한다. 다크 모드는 시스템만 따른다.
 - 문구는 ko/en 카탈로그에 둔다. ko는 `/`, en은 `/en`이며 선택은 `NEXT_LOCALE`, 첫 방문은 `Accept-Language`를 따른다. 메시지 타입은 ko에서 파생한다.
 - 에러 번역은 `errors` namespace에 코드와 `meta.params`를 전달한다. 서버·클라이언트의 `getFormatter`/`useFormatter`는 요청 설정과 provider의 같은 `TIME_ZONE`을 쓴다.
 - `.env`를 읽거나 출력하지 않는다. 키는 `.env.example`과 `src/lib/env.ts`에서 확인한다. 운영에는 예시 `SESSION_SECRET`을 쓸 수 없다.
