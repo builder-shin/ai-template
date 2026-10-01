@@ -17,7 +17,21 @@ function text(data: FormData, name: string) {
   return typeof value === "string" ? value : "";
 }
 function values(data: FormData): PostValues {
-  return { title: text(data, "title"), body: text(data, "body") };
+  return {
+    title: text(data, "title"),
+    body: text(data, "body"),
+    ...(data.has("coverImage") ? { coverImage: text(data, "coverImage") } : {}),
+  };
+}
+function relationships(input?: PostValues) {
+  if (input?.coverImage === undefined) return {};
+  return {
+    relationships: {
+      coverImage: {
+        data: input.coverImage ? { type: "files" as const, id: input.coverImage } : null,
+      },
+    },
+  };
 }
 function failure(error: unknown, locale: Locale, path: string, input?: PostValues): PostResult {
   redirectOnUnauthorized(error, getPathname({ locale, href: path }));
@@ -51,9 +65,12 @@ export async function createPostAction(_state: PostResult, data: FormData): Prom
   try {
     const { data: document } = await client.POST("/posts", {
       body: {
-        data: { type: "posts", attributes: { ...input, status: "draft" } },
+        data: {
+          type: "posts",
+          attributes: { title: input.title, body: input.body, status: "draft" },
+          ...relationships(input),
+        },
       },
-      // 커버 업로드는 Task 3에서 relationships.coverImage로 연결한다.
     });
     id = document!.data.id;
   } catch (error) {
@@ -74,8 +91,7 @@ async function patchPost(
   try {
     await client.PATCH("/posts/{id}", {
       params: { path: { id } },
-      // relationships를 생략해 기존 커버를 보존한다. Task 3에서 설정·해제를 더한다.
-      body: { data: { type: "posts", id, attributes } },
+      body: { data: { type: "posts", id, attributes, ...relationships(input) } },
     });
   } catch (error) {
     return failure(error, locale, href, input);
@@ -86,7 +102,7 @@ async function patchPost(
 
 export async function updatePostAction(id: string, _state: PostResult, data: FormData) {
   const input = values(data);
-  return patchPost(id, input, input);
+  return patchPost(id, { title: input.title, body: input.body }, input);
 }
 export async function publishPostAction(id: string, _state: PostResult, _data: FormData) {
   return patchPost(id, { status: "published" });

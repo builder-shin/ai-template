@@ -34,7 +34,8 @@ export default async function EditPostPage({
       <PostEditor
         action={updatePostAction.bind(null, id)}
         permalink={permalink}
-        values={{ title: post.title, body: post.body }}
+        values={{ title: post.title, body: post.body, coverImage: post.coverImage ?? "" }}
+        coverUrl={post.coverUrl}
       />
       <div className="space-y-4 border-t pt-4">
         <PostMutationForm

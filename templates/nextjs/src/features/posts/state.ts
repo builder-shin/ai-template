@@ -1,6 +1,6 @@
 import type { FormResult } from "../../lib/api/errors";
 
-export type PostValues = { title: string; body: string };
+export type PostValues = { title: string; body: string; coverImage?: string };
 export type PostResult = FormResult & {
   values?: PostValues;
   invalidTransition?: boolean;

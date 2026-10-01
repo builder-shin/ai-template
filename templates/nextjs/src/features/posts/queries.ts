@@ -91,6 +91,7 @@ export const getMyPosts = cache(
         posts: data.data.map((post): MyPost => ({
           ...view(data, post),
           status: post.attributes.status,
+          coverImage: post.relationships.coverImage.data?.id ?? null,
         })),
         links: data.links,
         page: data.meta.page,
@@ -113,7 +114,11 @@ export const getMyPost = cache(async (locale: Locale, id: string): Promise<MyPos
     if (!data) throw new Error("내 글 상세 응답이 없다.");
     // 관리 권한이 있어도 내 글 화면에는 본인의 글만 둔다.
     if (data.data.relationships.author.data?.id !== me!.data.id) return null;
-    return { ...view(data, data.data), status: data.data.attributes.status };
+    return {
+      ...view(data, data.data),
+      status: data.data.attributes.status,
+      coverImage: data.data.relationships.coverImage.data?.id ?? null,
+    };
   } catch (error) {
     redirectOnUnauthorized(error, getPathname({ locale, href: `/my-posts/${id}/edit` }));
     if (error instanceof ApiError && error.status === 404) return null;

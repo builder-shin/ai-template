@@ -94,6 +94,7 @@ try {
       HOST: new URL(mockOrigin).hostname,
       API_URL: mockOrigin,
       FRONTEND_URL: webOrigin,
+      STORAGE_ALLOWED_ORIGINS: webOrigin,
       MOCK_TEST_ENDPOINTS: "true",
       IDENTIFIER_HASH_SECRET: randomBytes(32).toString("hex"),
       RATE_LIMIT_GLOBAL: "10000",

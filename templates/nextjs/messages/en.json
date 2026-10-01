@@ -5,6 +5,7 @@
     "posts": "Browse public posts"
   },
   "posts": {
+    "coverLabel": "Cover image",
     "title": "Posts",
     "search": "Search posts",
     "sort": "Sort",
@@ -96,6 +97,11 @@
     "title": "Page not found",
     "description": "Check the address or return home.",
     "home": "Go home"
+  },
+  "uploads": {
+    "jsRequired": "File uploads require JavaScript.",
+    "clear": "Clear image",
+    "failed": "Could not upload the file. Try again."
   },
   "errors": {
     "jsonapi": {

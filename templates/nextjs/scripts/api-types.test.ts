@@ -79,4 +79,5 @@ resolveIncluded(document, { type: "users", id: "id" })?.attributes.email;
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-});
+  // 각 tsc 프로세스의 15초 한도와 다섯 번 컴파일하는 테스트 전체 한도를 구분한다.
+}, 60000);

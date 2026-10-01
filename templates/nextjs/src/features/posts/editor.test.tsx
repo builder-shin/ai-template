@@ -22,6 +22,26 @@ function show(children: ReactNode, locale: "ko" | "en" = "ko") {
     </NextIntlClientProvider>,
   );
 }
+it("현재 커버 id를 폼에 넣고 해제하면 빈 값을 제출한다", async () => {
+  let received: FormData | undefined;
+  show(
+    <PostEditor
+      action={async (_state, data) => {
+        received = data;
+        return { ok: true };
+      }}
+      permalink="/my-posts/id/edit"
+      values={{ title: "제목", body: "본문", coverImage: "cover-id" }}
+      coverUrl="https://storage.example/cover"
+    />,
+  );
+  expect(document.querySelector<HTMLInputElement>('input[name="coverImage"]')?.value).toBe(
+    "cover-id",
+  );
+  await userEvent.setup().click(screen.getByRole("button", { name: "이미지 해제" }));
+  await userEvent.setup().click(screen.getByRole("button", { name: "저장" }));
+  expect(received?.get("coverImage")).toBe("");
+});
 it.each(["ko", "en"] as const)(
   "%s 편집기 이름·길이·초기 값과 Markdown 미리보기",
   async (locale) => {

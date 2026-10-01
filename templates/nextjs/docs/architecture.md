@@ -5,6 +5,20 @@ Next.js App Router의 BFF다. Server Component가 데이터를 읽고 Server Act
 API 계약·목 사본은 이 프로젝트의 `contract/` 안에 두고 자체 workspace로 실행한다.
 W2는 하네스·API·세션·i18n·레이아웃과 비밀번호 인증 흐름까지 구현했다. 글·내 정보·세션 화면, 소셜 로그인·실시간·업로드와 `gen:feature`는 W3이며 `features/posts`는 아직 골든 기능 자리다.
 
+## 파일 업로드
+
+`features/files`의 재사용 `FileUpload`는 JavaScript가 필요하며 화면에도 이를 안내한다.
+파일 본문은 Server Action으로 보내지 않는다. Action이 이름·타입·크기로 `POST /files`를 부르고,
+브라우저가 반환된 presigned URL에 PUT한 뒤 Action이 `PATCH /files/{id}`로 ready를 확인한다.
+PUT은 응답의 헤더를 그대로 쓰며 Content-Length는 브라우저가 본문에서 정한다.
+목의 `/_storage`는 web Origin의 CORS를 허용한다. 실제 스토리지도 해당 Origin의 PUT을 허용해야 한다.
+
+ready 확인이 끝난 id만 부모 폼의 hidden 값에 넣는다. 업로드 중 저장을 막고 스피너만 표시한다.
+오류가 나면 기존 커버를 유지하며 다시 같은 파일을 고를 수 있다. 글 작성·수정 Action은
+`relationships.coverImage`로 id를 저장하고, 빈 값은 null로 해제하며 필드 생략은 기존 관계를 보존한다.
+제목·본문·현재 커버 id의 저장은 JS 없이도 된다. 관계 해제·교체는 다음 저장 때 반영된다.
+저장하지 않은 파일은 연결되지 않으며 pending 파일 정리는 백엔드가 맡는다.
+
 ## 경계
 
 화면은 `features/<기능>/index.ts`, `lib`, `components`를 쓴다. 기능끼리도 공개 인터페이스만 쓴다.

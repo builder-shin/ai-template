@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Link } from "../../lib/i18n/navigation";
+import { FileUpload, type FileValue } from "../files";
 import type { PostAction, PostResult, PostValues } from "./state";
 
 function Feedback({ state }: { state: PostResult }) {
@@ -32,16 +33,23 @@ export function PostEditor({
   action,
   permalink,
   values,
+  coverUrl,
 }: {
   action: PostAction;
   permalink: string;
   values?: PostValues;
+  coverUrl?: string | null;
 }) {
   const t = useTranslations("posts");
   const [state, submit] = useActionState(action, { ok: true } as PostResult, permalink);
   const [title, setTitle] = useState(state.values?.title ?? values?.title ?? "");
   const [body, setBody] = useState(state.values?.body ?? values?.body ?? "");
   const [preview, setPreview] = useState(false);
+  const [cover, setCover] = useState<FileValue>({
+    id: state.values?.coverImage ?? values?.coverImage ?? "",
+    url: coverUrl ?? "",
+  });
+  const [uploading, setUploading] = useState(false);
   const errors = state.ok ? {} : state.fieldErrors;
   return (
     <form id="post-editor" action={submit} className="space-y-5">
@@ -130,9 +138,16 @@ export function PostEditor({
           </Markdown>
         </div>
       </div>
-      {/* Task 3의 커버 입력은 이 폼에 연결한다. 본문·제목과 같은 Action으로 저장한다. */}
+      <FileUpload
+        name="coverImage"
+        label={t("coverLabel")}
+        value={cover}
+        onChange={setCover}
+        returnTo={permalink}
+        onPendingChange={setUploading}
+      />
       <Feedback state={state} />
-      <SubmitButton>{t("save")}</SubmitButton>
+      <SubmitButton disabled={uploading}>{t("save")}</SubmitButton>
     </form>
   );
 }

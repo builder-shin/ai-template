@@ -8,7 +8,7 @@ export type Post = {
 };
 
 export type PostStatus = "draft" | "published";
-export type MyPost = Post & { status: PostStatus };
+export type MyPost = Post & { status: PostStatus; coverImage: string | null };
 export type MyPostStatus = PostStatus | "all";
 
 export function parseMyPostSearch(params: Record<string, string | string[] | undefined>) {
