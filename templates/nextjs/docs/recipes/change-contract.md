@@ -1,6 +1,6 @@
 # 계약 확장
 
-이 저장소에서는 루트의 `contract/typespec/src/`를 고친 뒤 루트에서 `pnpm gen`, `pnpm sync`를 실행한다. 템플릿 사본을 직접 고치지 않는다. 루트 check의 `verify-templates`가 사본과 원본의 일치를 검사한다.
+이 저장소에서는 루트의 `contract/typespec/src/`를 고친 뒤 루트에서 `pnpm gen`, `pnpm sync`, `pnpm --dir templates/nextjs gen`을 차례로 실행한다. 마지막 명령은 복사한 계약으로 web의 API·실시간·에러 타입을 다시 만든다. 템플릿 사본을 직접 고치지 않는다. 마지막으로 루트 `pnpm check`와 `pnpm --dir templates/nextjs check`를 모두 통과시킨다. 루트 check의 `verify-templates`가 사본과 원본의 일치를 검사한다.
 
 독립 복사본에서는 다음 순서를 따른다.
 Claude 권한은 TypeSpec과 목의 수기 소스 편집을 허용한다. `contract/openapi.yaml`, 목의 `src/generated/`, web 생성물은 Edit·Write를 차단하므로 생성기를 쓴다.
