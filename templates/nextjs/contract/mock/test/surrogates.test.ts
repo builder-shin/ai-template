@@ -40,7 +40,7 @@ function validatingApp() {
 
 const app = validatingApp();
 
-async function send(schema: string, body: string | Uint8Array): Promise<Response> {
+async function send(schema: string, body: string | Uint8Array<ArrayBuffer>): Promise<Response> {
   return app.request(`/api/v1/probe/${schema}`, {
     method: "POST",
     body,
@@ -48,7 +48,7 @@ async function send(schema: string, body: string | Uint8Array): Promise<Response
   });
 }
 
-async function accepted(schema: string, body: string | Uint8Array): Promise<unknown> {
+async function accepted(schema: string, body: string | Uint8Array<ArrayBuffer>): Promise<unknown> {
   const response = await send(schema, body);
   expect(response.status, await response.clone().text()).toBe(200);
   return response.json();
@@ -59,7 +59,7 @@ function create(type: string, attributes: unknown, data: Record<string, unknown>
 }
 
 /** 본문 JSON의 "@@" 자리에 raw 바이트를 넣는다. */
-function withBytes(json: string, raw: readonly number[]): Uint8Array {
+function withBytes(json: string, raw: readonly number[]): Uint8Array<ArrayBuffer> {
   const [before = "", after = ""] = json.split("@@");
   return Uint8Array.from([...Buffer.from(before), ...raw, ...Buffer.from(after)]);
 }

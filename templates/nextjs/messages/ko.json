@@ -1,9 +1,27 @@
 {
   "home": {
     "title": "Web 템플릿",
-    "description": "새 서비스를 시작하세요."
+    "description": "새 서비스를 시작하세요.",
+    "posts": "공개 글 보기"
+  },
+  "posts": {
+    "title": "글",
+    "search": "글 검색",
+    "sort": "정렬",
+    "sortLatest": "최신순",
+    "sortPublished": "발행일순",
+    "sortTitle": "제목순",
+    "apply": "검색",
+    "empty": "글이 없습니다.",
+    "unknownAuthor": "알 수 없는 작성자",
+    "coverAlt": "{title} 커버 이미지",
+    "pagination": "글 페이지",
+    "previous": "이전",
+    "next": "다음",
+    "back": "글 목록"
   },
   "layout": {
+    "posts": "글",
     "brand": "Web 템플릿",
     "home": "홈",
     "login": "로그인",

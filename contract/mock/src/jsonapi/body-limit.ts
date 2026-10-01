@@ -50,7 +50,8 @@ async function drain(reader: ReadableStreamDefaultReader<Uint8Array>, size = 0):
   }
 }
 
-type LimitedBody = { body: Buffer } | { body: undefined; close: boolean };
+// concat 결과는 공유 메모리가 아닌 ArrayBuffer다. DOM BodyInit과도 타입을 맞춘다.
+type LimitedBody = { body: Buffer<ArrayBuffer> } | { body: undefined; close: boolean };
 
 /** API 한도까지 저장한다. 초과하면 나머지를 버리고 연결을 유지할 수 있는지 돌려준다. */
 async function readUpTo(

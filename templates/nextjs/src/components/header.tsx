@@ -59,6 +59,12 @@ export function Header({
           {t("brand")}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/posts"
+            className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {t("posts")}
+          </Link>
           <LocaleSwitcher />
           {user ? (
             <form id="logout-form" action={logoutAction}>

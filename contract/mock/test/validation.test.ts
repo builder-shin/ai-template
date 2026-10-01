@@ -42,7 +42,7 @@ function validatingApp() {
 
 const app = validatingApp();
 
-async function send(schema: string, body: string | Uint8Array): Promise<Response> {
+async function send(schema: string, body: string | Uint8Array<ArrayBuffer>): Promise<Response> {
   return app.request(`/api/v1/probe/${schema}`, {
     method: "POST",
     body,
@@ -51,7 +51,7 @@ async function send(schema: string, body: string | Uint8Array): Promise<Response
 }
 
 /** 에러 문서의 에러 객체들. 문서가 계약의 ErrorDocument인지도 본다. */
-async function rejected(schema: string, body: string | Uint8Array, status: number) {
+async function rejected(schema: string, body: string | Uint8Array<ArrayBuffer>, status: number) {
   const response = await send(schema, body);
   const errors = await errorsOf(response.clone(), status);
   const validate = contractValidator("ErrorDocument");

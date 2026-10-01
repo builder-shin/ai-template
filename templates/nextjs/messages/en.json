@@ -1,9 +1,27 @@
 {
   "home": {
     "title": "Web template",
-    "description": "Start your new service."
+    "description": "Start your new service.",
+    "posts": "Browse public posts"
+  },
+  "posts": {
+    "title": "Posts",
+    "search": "Search posts",
+    "sort": "Sort",
+    "sortLatest": "Latest",
+    "sortPublished": "Published date",
+    "sortTitle": "Title",
+    "apply": "Search",
+    "empty": "No posts found.",
+    "unknownAuthor": "Unknown author",
+    "coverAlt": "Cover image for {title}",
+    "pagination": "Post pages",
+    "previous": "Previous",
+    "next": "Next",
+    "back": "All posts"
   },
   "layout": {
+    "posts": "Posts",
     "brand": "Web template",
     "home": "Home",
     "login": "Log in",
