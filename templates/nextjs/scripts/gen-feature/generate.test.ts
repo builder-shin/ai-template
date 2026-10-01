@@ -155,3 +155,11 @@ it("이름 변환의 출력 충돌에 두 원본 경로를 알리고 어떤 파�
   write(second, "export const second = true;\n");
   await rejectWithoutWriting(first, second);
 });
+
+it("대소문자만 다른 출력 충돌에도 두 원본 경로를 알리고 어떤 파일도 쓰지 않는다", async () => {
+  const first = "src/features/posts/Comment.ts";
+  const second = "src/features/posts/post.ts";
+  write(first, "export const first = true;\n");
+  write(second, "export const second = true;\n");
+  await rejectWithoutWriting(first, second);
+});

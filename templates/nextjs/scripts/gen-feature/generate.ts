@@ -59,11 +59,10 @@ export async function generateFeature(root: string, name: string, singular?: str
   const writes = new Map<string, string>();
   const sources = new Map<string, string>();
   function register(source: string, output: string, content: string) {
-    if (writes.has(output))
-      throw new GenerateError(
-        `${output}: ${sources.get(output)}와 ${source}의 출력 경로가 겹친다.`,
-      );
-    sources.set(output, source);
+    const key = output.replaceAll("\\", "/").toLowerCase();
+    if (sources.has(key))
+      throw new GenerateError(`${output}: ${sources.get(key)}와 ${source}의 출력 경로가 겹친다.`);
+    sources.set(key, source);
     writes.set(output, content);
   }
   for (const [source, target] of copies) {
