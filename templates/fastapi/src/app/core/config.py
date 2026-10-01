@@ -158,6 +158,8 @@ class Settings(BaseSettings):
     s3_access_key_id: NonEmpty
     s3_secret_access_key: SecretStr
     s3_bucket: NonEmpty
+    # 브라우저가 스토리지에 직접 요청할 Origin. 개발 web과 admin을 기본으로 허용한다
+    storage_allowed_origins: Origins = frozenset({"http://localhost:3000", "http://localhost:3001"})
     # 파일 업로드: 최대 크기(바이트)와 허용하는 MIME 타입(쉼표로 구분)
     file_max_size: Annotated[int, Field(ge=1)]
     file_allowed_types: CommaSeparated

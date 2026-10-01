@@ -103,7 +103,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 브라우저가 스토리지(S3 호환, 개발은 SeaweedFS)에 직접 올리고 내려받는다. 앱은 presigned URL을 만들고 상태를 확인한다.
 
 1. 만들기(`POST /files`): 크기(`FILE_MAX_SIZE`), 타입(`FILE_ALLOWED_TYPES`), 사용자별 한도(`FILE_USER_QUOTA`, 가진 파일 크기의 합)를 검사하고 `pending` 행을 만든다. 한도 검사는 사용자별 advisory lock으로 줄 세워 동시 요청도 한도를 넘지 않는다. `meta.upload`에 presigned PUT(15분)을 담는다. 서명은 SigV4라 `Content-Type`과 `Content-Length`가 서명에 들어가고, 선언과 다른 크기나 타입의 본문은 스토리지가 403으로 거절한다.
-2. 올리기: 브라우저가 `meta.upload.url`에 `meta.upload.headers`(`Content-Type`)를 붙여 PUT한다. 스토리지의 CORS는 `uv run poe setup`이 개발 프론트 출처로만 건다. 운영 버킷에는 프론트 출처의 CORS(올리기 PUT, 내려받기 GET)를 따로 건다.
+2. 올리기: 브라우저가 `meta.upload.url`에 `meta.upload.headers`(`Content-Type`)를 붙여 PUT한다. `uv run poe setup`과 이미지의 `python -m app.storage_setup`이 같은 코드로 버킷과 CORS를 준비한다. 허용 Origin은 `STORAGE_ALLOWED_ORIGINS`로 정한다.
 3. 완료(`PATCH /files/{id}`, `status: "ready"`): 소유자만 한다. HEAD로 크기를 확인하고, 다르면 객체를 지우고 `file.upload_incomplete`다.
 4. 내려받기: ready 파일의 `meta.downloadUrl`은 presigned GET(10분)이다. 포함 리소스(아바타, 커버 이미지)에도 채운다. presign은 네트워크 호출 없이 계산만 한다.
 5. 정리: 24시간이 넘도록 pending인 파일은 잡 `files.purge_pending`(매시간 정각, UTC)이 지운다. 탈퇴하면 다른 리소스가 가리키지 않는 본인 파일을 지운다. 관계에서 풀린 파일(바꾸거나 뺀 아바타·커버, 지운 글의 커버)도 다른 리소스가 가리키지 않으면 지운다(`files.release`, 소유자가 탈퇴했어도 같다). 행은 같은 트랜잭션에서, 객체는 commit한 뒤에 지운다.
@@ -112,6 +112,8 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 - 다른 리소스에 거는 파일(아바타, 커버)은 `files.attachable_file`로 검사한다. 요청한 사람 소유의 ready 이미지여야 한다.
 - 허용 타입(`FILE_ALLOWED_TYPES`)에 `image/svg+xml`이나 HTML 타입을 넣지 않는다. 스크립트를 담을 수 있는 문서라 presigned URL을 열면 스토리지 출처에서 실행되고, SVG는 이미지로 통과해 공개 아바타나 커버가 될 수도 있다. 꼭 받아야 하면 그 타입의 presigned GET에 `ResponseContentDisposition=attachment`를 줘 내려받게만 한다.
 - 객체 키는 `files/<id>`다. 테스트는 테스트마다 다른 키 prefix(`tests/<uuid>/`)를 쓴다(`storage` fixture).
+- `STORAGE_ALLOWED_ORIGINS`는 쉼표로 구분하며 `REALTIME_ALLOWED_ORIGINS`와 같은 Origin 정규화·검증을 쓴다. 생략하면 `http://localhost:3000`, `http://localhost:3001`이다. `*`는 거절한다. 운영·E2E에는 실제 web Origin을 명시하고, 스토리지가 준비된 뒤 `python -m app.storage_setup`을 한 번 실행한다.
+- 초기화는 버킷이 없을 때만 만들고 매번 CORS를 설정한 Origin으로 덮어쓴다. 기존 객체는 건드리지 않는다. GET·PUT·HEAD, 모든 요청 헤더, 응답 ETag, preflight 캐시 3000초를 허용한다. 권한·접속 오류는 실패로 끝나므로 배포에서 초기화 성공 뒤 앱을 시작한다. 초기화 명령은 `tools/`나 DB·Valkey에 의존하지 않는다.
 
 ### 공개 파일 전달로 바꾸는 방법
 

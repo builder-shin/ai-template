@@ -71,6 +71,7 @@ def setup() -> None:
     → 마이그레이션 → 시드 → FastAPI skill 사본
     """
     # boto3 등 무거운 라이브러리는 이 명령에서만 import한다(check와 fix가 느려지지 않게).
+    from app.storage_setup import ensure_bucket
     from tools import githooks, infra
     from tools.binaries import BETTERLEAKS, ensure_tool
 
@@ -81,7 +82,7 @@ def setup() -> None:
     sys.stdout.flush()
     infra.up()
     settings = load_settings()
-    created = infra.ensure_bucket(settings)
+    created = ensure_bucket(settings)
     state = "만들었다" if created else "이미 있다"
     print(f"버킷 {settings.s3_bucket}: {state}. CORS를 맞췄다.")
     names = ", ".join(infra.database_names(settings))
