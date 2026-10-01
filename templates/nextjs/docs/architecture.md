@@ -17,6 +17,10 @@ W3까지 비밀번호·소셜 인증, 공개·내 글, 내 정보·비밀번호 
 ko/en 페이지를 갱신한다. 공개 조회는 발행 글만, 내 글 조회는 현재 사용자의 글만 읽는다.
 Markdown 상세·미리보기는 react-markdown과 remark-gfm으로 raw HTML 없이 렌더링한다.
 제목·본문·상태·삭제 확인 폼은 JS 없이 제출되며 업로드와 미리보기 탭은 JS가 필요하다.
+작성·미리보기 탭은 설치된 shadcn CLI의 Tabs를 쓰며 미리보기 중에도 textarea를 폼에 남긴다.
+
+공개·내 글과 세션 목록의 page는 1~2,147,483,647의 정수만 받으며 잘못되거나 int32 범위를 벗어나면 1로 바꾼다. size는 1~100을 유지하며 세션 화면은 10으로 고정한다.
+백엔드 404는 not-found 화면으로 옮긴다. `posts/[id]`처럼 로딩 스켈레톤으로 스트리밍하는 상세의 not-found는 HTTP 200에 안내와 `noindex`를 담을 수 있다.
 
 `pnpm gen:feature <복수형 이름> [--singular <끝 단어의 단수형>]`은 골든 기능과 두 화면 트리·HTTP
 테스트를 복사해 이름을 바꾼다. ko/en namespace와 `/my-<이름>` 로그인 보호도 등록한다. 계약 타입·API
@@ -83,10 +87,12 @@ start는 같은 Origin 이동인지 확인하고 시도마다 무작위 PKCE ver
 쿠키와 직접 비교한다. 값이 없으면 서로 다른 제공자 시도의 코드·쿠키 교차 사용을 백엔드의
 PKCE 검사가 거절한다. 계약의 oauthCode grant에는 provider 필드가 없어 이를 새로 보내지 않는다.
 
-성공은 서버 간 `POST /sessions`와 `GET /me` 뒤 세션 쿠키를 만들고 계정 언어로
+성공은 서버 간 `POST /sessions`와 `GET /me`가 모두 성공한 뒤에만 새 세션 쿠키를 만들고 계정 언어로
 `NEXT_LOCALE`과 목적지 URL을 맞춘다. 성공·실패 모두 verifier 쿠키를 지우고 no-store·no-referrer로
 응답한다. 거부·실패는 검증한 목적지를 보존한 로그인 화면에 기존 오류 번역을 표시한다.
-기존 로그인 세션은 OAuth 실패로 지우지 않는다. 토큰과 verifier는 URL·클라이언트 코드·API 로그에 넣지 않는다.
+코드 교환·`GET /me` 실패와 예상하지 못한 응답 등 콜백 처리 실패는 새 세션 쿠키 없이 시도 쿠키를 지우고 `auth.oauth_failed` 안내가 있는 로그인 화면으로 보낸다.
+실패해도 기존 세션은 그대로 두며 예상하지 못한 오류는 비밀 없는 오류 클래스 이름만 로그에 남긴다.
+토큰과 verifier는 URL·클라이언트 코드·API 로그에 넣지 않는다.
 
 백엔드의 `OAUTH_REDIRECT_URIS`에 정확한 `APP_URL` 콜백을 등록해야 한다. 기본 개발 주소는
 `http://localhost:3000/oauth/callback`이다. HTTP 검사는 예약한 자유 포트의 콜백을,
@@ -156,6 +162,9 @@ E2E 기동기는 `http://localhost:3100/oauth/callback`을 목의 허용 목록�
 
 개별 폐기는 `DELETE /sessions/{id}`, 다른 기기와 전체 로그아웃은 `POST /session-revocations`의 `others`·`all`을 쓴다. 개별 폐기 뒤 현재 토큰의 `/me`가 401이면 현재 세션도 끝난 것이므로 쿠키를 지우고 로그인으로 이동한다. 전체 로그아웃도 쿠키를 지운다. 다른 기기 로그아웃은 현재 토큰을 유지하며 백엔드의 실제 폐기 개수를 표시한다. 전체 로그아웃은 확인 체크를 서버에서도 검사한다. 모든 폼은 로케일별 permalink와 `useActionState`로 JavaScript 없이 제출한다.
 
+개별 폐기 결과는 목록 공통 상태 하나에 표시해 해당 행이 사라져도 남긴다.
+DELETE 성공 뒤 목록을 갱신하며, 후속 `GET /me`의 4xx는 번역한 폼 안내로 표시한다. 429는 `Retry-After`의 초를 안내하며 401은 위의 세션 정리를 따른다.
+
 폐기된 다른 세션이 다음 요청을 보내면 기존 401 처리와 `/session/clear`가 쿠키를 지우고 로그인으로 보낸다. 열린 화면은 아래 실시간 세션 확인으로 로그인 화면에 간다. 404와 요청 한도는 번역한 폼 안내, 연결·5xx는 오류 경계로 보낸다.
 
 ## 실시간
@@ -163,9 +172,14 @@ E2E 기동기는 `http://localhost:3100/oauth/callback`을 목의 허용 목록�
 로케일 루트의 `lib/realtime/RealtimeProvider`가 Socket.IO 연결 하나를 관리한다. WebSocket만 쓰며,
 로그인한 연결의 `auth` 콜백은 연결·재연결마다 Server Action으로 `POST /realtime-tickets`를 부른다.
 브라우저에는 30초짜리 1회용 티켓만 전달하며 access·refresh token은 서버에 남긴다. 익명 연결은
-티켓 없이 붙는다. 로그인 상태가 바뀌면 다시 인증하고 `io server disconnect`에도 직접 연결한다.
+티켓 없이 붙는다. 세션 식별 키가 바뀌면 연결을 끊고 새 티켓으로 다시 인증하며 `io server disconnect`에도 직접 연결한다.
 티켓 발급 실패나 연결 인증 거부는 1초 뒤 새 티켓으로 재시도한다. 네트워크 재연결은 Socket.IO가 맡는다.
-해제 때 처리기·연결·재시도 타이머를 정리하고 늦게 온 티켓은 버린다.
+해제 때 처리기·연결·재시도 타이머를 정리한다.
+
+세션 식별 키는 계약 세션 리소스의 id이며 비밀번호·OAuth 로그인과 refresh 응답에서 암호화한 쿠키에 보관한다.
+새 로그인에는 키가 바뀌며 같은 사용자의 재로그인도 다시 인증한다. 같은 세션의 refresh는 키와 연결을 유지한다.
+기존 쿠키에 id가 없으면 로그인 상태의 임시 키를 쓰며 첫 refresh로 id를 얻을 때 다시 인증한다. 익명 키는 null이다.
+인증 시도마다 generation을 두고 이전 시도의 늦은 티켓·세션 확인·실패 결과는 버린다. 연결 해제나 세션 키 변경 뒤 대기한 결과도 적용하지 않는다.
 
 `useChannel`은 계약의 채널·이벤트 타입을 쓰고 같은 채널의 소비자를 묶는다. 연결 때 ack를 받아
 구독하며 거부는 채널과 에러 코드만 로그에 남긴다. 재연결 때 다시 구독하고 마지막 소비자가
@@ -184,7 +198,8 @@ E2E 기동기는 `http://localhost:3100/oauth/callback`을 목의 허용 목록�
 
 공개 글 화면은 `posts` 채널을 구독한다. 목록의 `post.*`를 100ms 동안 모아 갱신하고 상세는 같은
 id만 갱신한다. 삭제·발행 취소는 번역한 안내를 표시하고 본문을 숨긴다. 상세의 클라이언트 layout과
-전용 not-found 경계가 새 서버 응답의 404 뒤에도 안내·구독을 유지하며, 다시 발행하면 상세를 복원한다.
+전용 not-found 경계는 서버가 not-found 화면을 렌더링한 뒤에도 안내·구독을 유지한다.
+같은 글의 draft 수정에도 발행 취소 안내를 유지하며 다시 발행하면 상세를 복원한다.
 
 백엔드의 `REALTIME_ALLOWED_ORIGINS`에는 web Origin을 넣는다. HTTP 통합은 자유 포트의 실제 목에
 직접 연결하고 `/me` 오류 주입용 HTTP 중계를 거치지 않는다. E2E는 web 3100 Origin을 허용한다.
@@ -205,6 +220,7 @@ FastAPI Origin과 운영 연결 검증은 W4에서 같은 규칙을 확인한다
 Tailwind 4와 shadcn의 Base UI 부품을 사용한다. `pnpm exec shadcn add <부품>`으로 필요한 기본 부품만 `src/components/ui/`에 추가한다. 공식 스킬의 원본 텍스트는 `.claude/skills/shadcn/`에 두며 latest 명령 대신 설치된 CLI를 쓴다. CSS의 `prefers-color-scheme`으로 색상 토큰과 dark 변형을 적용한다. 테마 저장소·스위치·외부 폰트는 필요 없다.
 
 레이아웃은 헤더, 본문, 푸터다. `getHeaderUser`가 세션이 있을 때만 `/me`를 읽고 요청 안에서 중복 호출을 묶는다. 클라이언트에는 이름만 넘긴다. 헤더의 사용자 메뉴는 로그아웃 Action을 제출하며 제출 중에는 메뉴를 막고 스피너만 표시한다. 로케일 링크는 현재 경로와 반복 쿼리를 보존하며 next-intl이 언어 쿠키를 갱신한다. ko로 바꾸는 링크의 `/ko`는 proxy에서 제거된다.
+내 정보(`/me`) 링크는 사용자 메뉴 항목에 둔다.
 
 `Spinner`는 Loader2와 aria-label만 렌더링하고 `loading.tsx`는 문구 없는 스켈레톤이다. 하네스는 src의 TSX 문자열·JSX 문구와 ko/en 카탈로그에서 Loading·로딩 중·불러오는 중을 막는다. aria-label과 카탈로그의 `accessibility.spinner`만 예외다. import 경로·주석·테스트·계약 사본은 검사하지 않는다.
 
@@ -235,6 +251,10 @@ web 자체 생성물은 첫 줄에 직접 수정 금지 헤더를 둔다. 계약
 `pnpm dev`는 Next 환경 로더로 설정을 준비한다. API 주소가 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 같은 loopback에 목과 web을 함께 시작하며, 외부 백엔드 주소라면 web만 시작한다. 어느 자식이 종료하거나 Ctrl+C를 받으면 자신이 시작한 프로세스 트리를 함께 내린다. dev·HTTP 통합·E2E는 공통 `scripts/process-tree.mjs`를 쓴다. 목은 `node --import tsx`로 직접 실행하고, POSIX에서는 런처 종료 뒤에도 그룹을 정리한다. Windows는 직접 node가 자식을 소유하며 taskkill로 트리를 끝낸다. 종료 확인을 기다리고 한도를 넘으면 강제 종료한다.
 
 ## HTTP 통합과 E2E
+
+공통 테스트 계정 지원은 `src/lib/testing/account.ts`에 두며 가입·메일 인증·로그인 준비를 공유한다. 기능 fixture는 자기 자원의 생성·정리를 맡는다.
+공통 목 실행기는 `scripts/test/mock-server.ts`에 두며 테스트 설정을 받아 자유 포트·준비 확인·실패와 종료 정리를 맡는다. global setup이 서버 기동 순서와 역순 정리를 맡는다.
+제품 코드는 `lib/testing`과 `scripts/test`를 import하거나 재수출하지 않는다. 경계 린트가 동적 import도 막으며 제품 공개 인터페이스에 테스트 지원을 내보내지 않는다.
 
 Vitest global setup이 자유 포트의 실제 복사 목 두 개(기본·재인증용)와 Next dev를 시작한다. 헤더 오류 검사는 별도 자유 포트의 HTTP 중계에서 `/me` 500만 주입하고, 나머지 요청은 기본 목에 전달한다. `pnpm check`·`pnpm test`는 이 오류 화면을 브라우저에서 확인하므로 `pnpm setup`이 설치한 Chromium이 필요하다. 없으면 서버를 시작하기 전에 설치 안내 한 줄로 실패한다. `scripts/http/`의 i18n·세션 갱신·로그인·가입·비밀번호 재설정 파일은 같은 `helpers.ts`에서 서버 주소·API·폼 제출을 가져온다. 브라우저는 검사 finally에서, Next → 중계 → 목은 global setup의 finally에서 내린다. 개발 포트 3000·4010을 사용하지 않는다.
 

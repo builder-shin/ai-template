@@ -37,14 +37,15 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 작업 전에 설치 버전 문서를 읽는다. Next.js는 `node_modules/next/dist/docs`, 나머지는 [stack](docs/stack.md)에서 찾는다. 관리 지침 자동 삽입은 `agentRules: false`로 끈다.
 - 브라우저가 백엔드 API를 직접 부르지 않는다. 읽기는 Server Component, 쓰기는 Server Action이다. 토큰을 클라이언트·URL·로그에 내보내지 않는다.
 - `app`은 기능의 공개 `index.ts`, `lib`, `components`를 쓴다. 다른 기능의 내부 import는 금지한다.
+- 제품 코드는 `src/lib/testing`·`scripts/test`를 import·재수출하지 않는다. 공통 테스트 계정·목 실행기는 [HTTP 통합과 E2E](docs/architecture.md#http-통합과-e2e)를 따른다.
 - `lib/api`, `lib/session`, 기능의 `actions.ts`·`queries.ts`에는 `import "server-only"`를 둔다.
 - 갱신은 proxy에서만 한다. 화면·Action은 `createSessionApiClient`로 요청의 토큰을 읽고, 401은 `redirectOnUnauthorized`로 쿠키 정리 route에 보낸다. `/me`·`/my-posts`는 로그인 경로다.
 - `/session/clear`는 `APP_URL`과 같은 Origin을 요구하며 이동 GET에 Origin이 없으면 `Sec-Fetch-Site: same-origin`을 확인한다. cross-site·확인할 수 없는 요청은 403이며 쿠키를 쓰지 않는다.
 - 폼은 `<form action>`과 `useActionState`로 만든다. 백엔드가 검증의 원본이다. 제출 버튼은 `useFormStatus`로 막는다. 인증 폼은 로케일별 permalink로 JS 없이도 제출한다.
 - 공개 글은 `/posts`·`/posts/[id]`, 내 글은 `/my-posts`·`/my-posts/new`·수정·삭제 확인 화면이다. Markdown은 raw HTML 없이 렌더링한다. 일반 입력·상태 변경·확인 폼은 JS 없이 제출되며 파일 업로드·미리보기 탭은 JS가 필요하다.
-- 내 정보·아바타·비밀번호는 `/me`, 세션은 `/me/sessions`, 탈퇴는 `/me/delete`다. 비밀번호 변경은 현재 세션을 유지한다. 탈퇴 재인증은 다시 로그인한 뒤 확인 화면으로 돌아오며 자동 탈퇴하지 않는다.
-- 소셜 로그인은 `/oauth/[provider]/start`와 `/oauth/callback`을 쓴다. 콜백은 암호화한 10분 시도 쿠키와 PKCE로 검증한다. 요청에 provider가 있으면 쿠키와 비교하며 계정 언어로 쿠키·URL을 맞춘다.
-- 브라우저의 직접 연결은 Socket.IO와 presigned PUT이다. 실시간 `session.revoked`는 Server Action의 `GET /me`가 401일 때만 로그아웃하며 성공·연결 오류·5xx에는 현재 세션을 유지한다. `post.*`와 `me.updated`는 서버 화면을 갱신한다.
+- 내 정보 링크는 사용자 메뉴 항목에 둔다. 내 정보·아바타·비밀번호는 `/me`, 세션은 `/me/sessions`, 탈퇴는 `/me/delete`다. 비밀번호 변경은 현재 세션을 유지한다. 탈퇴 재인증은 다시 로그인한 뒤 확인 화면으로 돌아오며 자동 탈퇴하지 않는다.
+- 소셜 로그인은 `/oauth/[provider]/start`와 `/oauth/callback`을 쓴다. 콜백은 암호화한 10분 시도 쿠키와 PKCE로 검증한다. 요청에 provider가 있으면 쿠키와 비교하며 계정 언어로 쿠키·URL을 맞춘다. 세션 발급·실패 정리는 [소셜 로그인](docs/architecture.md#소셜-로그인)을 따른다.
+- 브라우저의 직접 연결은 Socket.IO와 presigned PUT이다. 실시간 `session.revoked`는 Server Action의 `GET /me`가 401일 때만 로그아웃하며 성공·연결 오류·5xx에는 현재 세션을 유지한다. `post.*`와 `me.updated`는 서버 화면을 갱신한다. 세션 식별·인증 시도는 [실시간](docs/architecture.md#실시간)을 따른다.
 - `pnpm gen:feature <복수형 이름> [--singular <끝 단어의 단수형>]`은 화면·ko/en·테스트·로그인 보호를 등록한다. posts 계약을 보존한 초안이며 출력한 고칠 곳에 맞춰 계약·권한·문구·진입 링크를 채운다. [기능 추가](docs/recipes/add-feature.md)를 따른다.
 - 가입은 `/signup`에서 메일 안내·재발송 화면으로 전환한다. 메일 링크 `/verify-email?token=…`는 쿠키·언어 헤더로 로케일을 고르고 확인 버튼의 Action만 토큰을 소비한다.
 - `/forgot-password`는 계정 존재 여부와 관계없이 같은 메일 안내를 보여 준다. 메일 링크 `/reset-password?token=…`에서 새 비밀번호를 제출하면 성공·로그인 링크를 표시하고 폐기된 세션 쿠키를 지운다.
