@@ -7,7 +7,12 @@ import { EXAMPLE_SESSION_SECRET } from "../../lib/env";
 import { readSession } from "../../lib/session/request";
 import { sessionsFixture } from "./test-fixture";
 import { getSessions } from "./queries";
-import { revokeSessionAction, revokeOthersAction, revokeAllAction } from "./actions";
+import {
+  revokeSessionAction,
+  revokeListedSessionAction,
+  revokeOthersAction,
+  revokeAllAction,
+} from "./actions";
 
 const request = vi.hoisted(() => ({ locale: "ko", setCookie: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -20,8 +25,13 @@ vi.mock("next/navigation", async (original) => ({
 }));
 vi.mock("next-intl/server", () => ({
   getLocale: async () => request.locale,
-  getTranslations: async ({ locale }: { locale: "ko" | "en" }) =>
-    createTranslator({ locale, messages: locale === "ko" ? ko : en, namespace: "sessions" }),
+  getTranslations: async ({
+    locale,
+    namespace,
+  }: {
+    locale: "ko" | "en";
+    namespace: "sessions" | "errors";
+  }) => createTranslator({ locale, messages: locale === "ko" ? ko : en, namespace }),
 }));
 vi.mock("../../lib/session/request", async (original) => ({
   ...(await original<typeof import("../../lib/session/request")>()),
@@ -51,6 +61,35 @@ afterEach(async () => {
   await owner?.stop();
 });
 
+it("선택 순번은 서버에 바인딩한 세션 id로 해석하고 폼의 다른 id는 사용하지 않는다", async () => {
+  const second = await owner.login();
+  const data = new FormData();
+  data.set("sessionIndex", "0");
+  data.set("id", owner.id);
+  expect(await revokeListedSessionAction([second.id], initial, data)).toEqual({
+    ok: true,
+    revokedCount: 1,
+  });
+  await expect(second.client.GET("/me")).rejects.toMatchObject({ status: 401 });
+  expect((await owner.client.GET("/me")).response.status).toBe(200);
+});
+it.each([undefined, "", "-1", "999", "1.5", "abc"])(
+  "잘못된 선택 순번 %j는 세션을 폐기하지 않고 번역 안내를 반환한다",
+  async (index) => {
+    request.locale = "en";
+    const second = await owner.login();
+    const data = new FormData();
+    if (index !== undefined) data.set("sessionIndex", index);
+    expect(await revokeListedSessionAction([second.id], initial, data)).toEqual({
+      ok: false,
+      formError: "The requested resource was not found.",
+      fieldErrors: {},
+    });
+    expect((await second.client.GET("/me")).response.status).toBe(200);
+    expect((await owner.client.GET("/me")).response.status).toBe(200);
+    expect(revalidatePath).not.toHaveBeenCalled();
+  },
+);
 it("두 실제 활성 세션과 현재 표시를 읽고 토큰·사용자 관계를 화면 데이터에서 제외한다", async () => {
   const second = await owner.login("Other device");
   const page = await getSessions("ko");
@@ -99,6 +138,54 @@ it("다른 세션 하나를 폐기하면 그 access·refresh는 401이고 현재
   expect(revalidatePath).toHaveBeenCalledWith("/[locale]/me/sessions", "page");
   expect(request.setCookie).not.toHaveBeenCalled();
 });
+it.each(["ko", "en"] as const)(
+  "%s 폐기 뒤 본인 조회의 요청 한도는 번역·재시도 안내와 목록 갱신으로 처리한다",
+  async (locale) => {
+    request.locale = locale;
+    const second = await owner.login();
+    const actual = globalThis.fetch;
+    let deleted = false;
+    // DELETE는 실제 목에 보내고 후속 GET /me에만 HTTP 429를 주입한다.
+    const failing = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (
+        input instanceof Request &&
+        input.method === "GET" &&
+        new URL(input.url).pathname === "/api/v1/me" &&
+        deleted
+      ) {
+        deleted = false;
+        return new Response(
+          JSON.stringify({ errors: [{ status: "429", code: "rate_limit.exceeded" }] }),
+          {
+            status: 429,
+            headers: { "Content-Type": "application/vnd.api+json", "Retry-After": "9" },
+          },
+        );
+      }
+      const response = await actual(input, init);
+      if (input instanceof Request && input.method === "DELETE" && response.ok) deleted = true;
+      return response;
+    });
+    try {
+      expect(await revokeSessionAction(second.id, initial, new FormData())).toEqual({
+        ok: false,
+        formError:
+          locale === "ko"
+            ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요."
+            : "Too many requests. Try again later.",
+        fieldErrors: {},
+        retryAfter: 9,
+      });
+      expect(revalidatePath).toHaveBeenCalledWith("/[locale]/me/sessions", "page");
+      expect(request.setCookie).not.toHaveBeenCalled();
+    } finally {
+      failing.mockRestore();
+    }
+    await expect(second.client.GET("/me")).rejects.toMatchObject({ status: 401 });
+    expect((await owner.client.GET("/me")).response.status).toBe(200);
+    expect((await getSessions(locale)).items.map((item) => item.id)).toEqual([owner.id]);
+  },
+);
 it("다른 기기 로그아웃은 실제 폐기 개수를 표시하고 현재 세션·refresh를 보존한다", async () => {
   const second = await owner.login();
   const third = await owner.login();

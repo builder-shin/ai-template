@@ -5,7 +5,7 @@ import { routing } from "../../../../lib/i18n/routing";
 import { getPathname, Link } from "../../../../lib/i18n/navigation";
 import {
   getSessions,
-  revokeSessionAction,
+  revokeListedSessionAction,
   revokeOthersAction,
   revokeAllAction,
   SessionsList,
@@ -35,7 +35,10 @@ export default async function SessionsPage({
       </Link>
       <SessionsList
         items={sessions.items}
-        revokeAction={revokeSessionAction}
+        revokeAction={revokeListedSessionAction.bind(
+          null,
+          sessions.items.map((item) => item.id),
+        )}
         othersAction={revokeOthersAction}
         allAction={revokeAllAction}
         permalink={permalink}

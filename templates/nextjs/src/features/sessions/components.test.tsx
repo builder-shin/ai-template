@@ -28,11 +28,10 @@ const items = [
 ];
 function show(
   locale: "ko" | "en",
-  revoke: (
-    id: string,
-    state: SessionsResult,
-    data: FormData,
-  ) => Promise<SessionsResult> = async () => ({ ok: true, revokedCount: 1 }),
+  revoke: (state: SessionsResult, data: FormData) => Promise<SessionsResult> = async () => ({
+    ok: true,
+    revokedCount: 1,
+  }),
   others: (state: SessionsResult, data: FormData) => Promise<SessionsResult> = async () => ({
     ok: true,
     revokedCount: 0,
@@ -58,8 +57,8 @@ it.each(["ko", "en"] as const)(
   "%s 현재 세션·알 수 없는 기기·시간과 개별 폐기를 표시한다",
   async (locale) => {
     const revoked: string[] = [];
-    show(locale, async (id) => {
-      revoked.push(id);
+    show(locale, async (_state, data) => {
+      revoked.push(String(data.get("sessionIndex")));
       return { ok: true, revokedCount: 1 };
     });
     const rows = screen.getAllByRole("listitem");
@@ -79,7 +78,7 @@ it.each(["ko", "en"] as const)(
         name: locale === "ko" ? "세션 폐기" : "Revoke session",
       }),
     );
-    expect(revoked).toEqual(["other-id"]);
+    expect(revoked).toEqual(["1"]);
     const message = locale === "ko" ? "세션 1개를 폐기했습니다." : "Revoked 1 session(s).";
     expect((await screen.findByText(message)).getAttribute("role")).toBe("status");
     expect(
@@ -92,6 +91,38 @@ it.each(["ko", "en"] as const)(
         name: locale === "ko" ? "전체 로그아웃" : "Sign out everywhere",
       }),
     ).toBeTruthy();
+  },
+);
+it.each(["ko", "en"] as const)(
+  "%s 폐기한 행이 목록에서 사라져도 성공 안내를 유지한다",
+  async (locale) => {
+    const revoke = async () => ({ ok: true, revokedCount: 1 }) as const;
+    const tree = (currentItems: typeof items) => (
+      <NextIntlClientProvider
+        locale={locale}
+        messages={locale === "ko" ? ko : en}
+        timeZone="Asia/Seoul"
+      >
+        <SessionsList
+          items={currentItems}
+          revokeAction={revoke}
+          othersAction={async () => ({ ok: true })}
+          allAction={async () => ({ ok: true })}
+          permalink={locale === "ko" ? "/me/sessions" : "/en/me/sessions"}
+        />
+      </NextIntlClientProvider>
+    );
+    const view = render(tree(items));
+    await userEvent.setup().click(
+      within(screen.getAllByRole("listitem")[1]!).getByRole("button", {
+        name: locale === "ko" ? "세션 폐기" : "Revoke session",
+      }),
+    );
+    const message = locale === "ko" ? "세션 1개를 폐기했습니다." : "Revoked 1 session(s).";
+    await screen.findByText(message);
+    view.rerender(tree(items.slice(0, 1)));
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByText(message).getAttribute("role")).toBe("status");
   },
 );
 it("전체 로그아웃은 확인 체크 전 제출을 막고 JS 없이도 확인 값을 보낸다", async () => {

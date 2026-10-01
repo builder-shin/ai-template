@@ -30,6 +30,7 @@ export async function revokeSessionAction(
   } catch (error) {
     return failure(error, locale);
   }
+  revalidatePath("/[locale]/me/sessions", "page");
   // 클라이언트의 current 값을 믿지 않고 폐기 뒤 현재 토큰으로 본인을 확인한다.
   try {
     await client.GET("/me");
@@ -37,10 +38,26 @@ export async function revokeSessionAction(
     if (error instanceof ApiError && error.status === 401) {
       await clearSessionAndRedirect(getPathname({ locale, href: "/me/sessions" }));
     }
-    throw error;
+    return failure(error, locale);
   }
-  revalidatePath("/[locale]/me/sessions", "page");
   return { ok: true, revokedCount: 1 };
+}
+
+export async function revokeListedSessionAction(
+  sessionIds: string[],
+  state: SessionsResult,
+  data: FormData,
+): Promise<SessionsResult> {
+  // id는 서버에서 바인딩하고 폼은 그 목록의 순번만 선택한다.
+  const index = data.get("sessionIndex");
+  const id =
+    typeof index === "string" && /^\d+$/.test(index) ? sessionIds[Number(index)] : undefined;
+  if (!id) {
+    const locale = await getLocale();
+    const t = await getTranslations({ locale, namespace: "errors" });
+    return { ok: false, formError: t("resource.not_found"), fieldErrors: {} };
+  }
+  return revokeSessionAction(id, state, data);
 }
 
 export async function revokeOthersAction(

@@ -1,4 +1,9 @@
 export { getSessions } from "./queries";
-export { revokeSessionAction, revokeOthersAction, revokeAllAction } from "./actions";
+export {
+  revokeSessionAction,
+  revokeListedSessionAction,
+  revokeOthersAction,
+  revokeAllAction,
+} from "./actions";
 export { SessionsList, SessionsSkeleton } from "./components";
 export { parseSessionsPage } from "./state";

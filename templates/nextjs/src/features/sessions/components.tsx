@@ -4,7 +4,28 @@ import { useActionState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { SubmitButton } from "../../components/submit-button";
 import { Skeleton } from "../../components/ui/skeleton";
-import type { RevokeSessionAction, SessionItem, SessionsAction, SessionsResult } from "./state";
+import type { SessionItem, SessionsAction, SessionsResult } from "./state";
+
+function ActionNotice({ state }: { state: SessionsResult }) {
+  const t = useTranslations("sessions");
+  return (
+    <>
+      {!state.ok && state.formError && (
+        <p role="alert" className="whitespace-pre-line text-sm text-destructive">
+          {state.formError}
+        </p>
+      )}
+      {state.retryAfter != null && (
+        <p className="text-sm">{t("retryAfter", { seconds: state.retryAfter })}</p>
+      )}
+      {state.ok && state.revokedCount != null && (
+        <p role="status" className="text-sm">
+          {t("revoked", { count: state.revokedCount })}
+        </p>
+      )}
+    </>
+  );
+}
 
 function RevokeForm({
   id,
@@ -29,19 +50,7 @@ function RevokeForm({
           {t("allConfirmation")}
         </label>
       )}
-      {!state.ok && state.formError && (
-        <p role="alert" className="whitespace-pre-line text-sm text-destructive">
-          {state.formError}
-        </p>
-      )}
-      {state.retryAfter != null && (
-        <p className="text-sm">{t("retryAfter", { seconds: state.retryAfter })}</p>
-      )}
-      {state.ok && state.revokedCount != null && (
-        <p role="status" className="text-sm">
-          {t("revoked", { count: state.revokedCount })}
-        </p>
-      )}
+      <ActionNotice state={state} />
       <SubmitButton>{label}</SubmitButton>
     </form>
   );
@@ -55,21 +64,27 @@ export function SessionsList({
   permalink,
 }: {
   items: SessionItem[];
-  revokeAction: RevokeSessionAction;
+  revokeAction: SessionsAction;
   othersAction: SessionsAction;
   allAction: SessionsAction;
   permalink: string;
 }) {
   const t = useTranslations("sessions");
   const format = useFormatter();
+  const [state, submit, pending] = useActionState(
+    revokeAction,
+    { ok: true } as SessionsResult,
+    permalink,
+  );
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">{t("guidance")}</p>
+      <ActionNotice state={state} />
       {items.length === 0 ? (
         <p>{t("empty")}</p>
       ) : (
         <ul className="space-y-4">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <li key={item.id} className="space-y-3 rounded-lg border p-4">
               <p className="break-all font-medium">{item.userAgent || t("unknownDevice")}</p>
               {item.current && <p className="text-sm font-semibold">{t("current")}</p>}
@@ -97,12 +112,10 @@ export function SessionsList({
                   </dd>
                 </div>
               </dl>
-              <RevokeForm
-                id={`revoke-session-${item.id}`}
-                action={revokeAction.bind(null, item.id)}
-                permalink={permalink}
-                label={t("revoke")}
-              />
+              <form id={`revoke-session-${item.id}`} action={submit}>
+                <input type="hidden" name="sessionIndex" value={index} />
+                <SubmitButton disabled={pending}>{t("revoke")}</SubmitButton>
+              </form>
             </li>
           ))}
         </ul>

@@ -58,6 +58,10 @@ it.each(["ko", "en"] as const)(
     const updated = document(await revoke.text());
     expect(updated.getElementById(`revoke-session-${second.id}`)).toBeNull();
     expect(updated.getElementById(`revoke-session-${owner.id}`)).toBeTruthy();
+    const message = locale === "ko" ? "세션 1개를 폐기했습니다." : "Revoked 1 session(s).";
+    expect(
+      [...updated.querySelectorAll('[role="status"]')].map((node) => node.textContent),
+    ).toContain(message);
     await expect(second.client.GET("/me")).rejects.toMatchObject({ status: 401 });
     const revokedHeaders = {
       ...headers,
@@ -147,6 +151,42 @@ it.each(["ko", "en"] as const)(
       ).toBe(true);
       await expect(owner.client.GET("/me")).rejects.toMatchObject({ status: 401 });
       expect((await second.client.GET("/me")).response.status).toBe(200);
+    } finally {
+      await owner.stop();
+    }
+  },
+);
+it.each(["ko", "en"] as const)(
+  "%s 마지막 페이지의 유일한 행을 폐기한 JS 없는 응답에도 성공 안내를 유지한다",
+  async (locale) => {
+    const owner = await sessionsFixture(locale);
+    try {
+      for (let index = 0; index < 9; index++) await owner.login();
+      const current = await owner.login("Current browser");
+      const path = `${locale === "ko" ? "/me/sessions" : "/en/me/sessions"}?page=2`;
+      const headers = {
+        Cookie: `session=${await sealSession(current.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
+        "Accept-Language": locale,
+        Origin: base,
+      };
+      const html = await (await fetch(`${base}${path}`, { headers })).text();
+      const rows = document(html).querySelectorAll('form[id^="revoke-session-"]');
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.id).not.toBe(`revoke-session-${current.id}`);
+      const input = form(html, rows[0]!.id);
+      const response = await fetch(new URL(input.action || path, base), {
+        method: "POST",
+        body: input.body,
+        headers,
+        redirect: "manual",
+      });
+      expect(response.status).toBe(200);
+      const updated = document(await response.text());
+      expect(updated.querySelectorAll('form[id^="revoke-session-"]')).toHaveLength(0);
+      const message = locale === "ko" ? "세션 1개를 폐기했습니다." : "Revoked 1 session(s).";
+      expect(
+        [...updated.querySelectorAll('[role="status"]')].map((node) => node.textContent),
+      ).toContain(message);
     } finally {
       await owner.stop();
     }
