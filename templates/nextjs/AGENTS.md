@@ -48,6 +48,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 기본 UI 부품은 `pnpm exec shadcn add <부품>`으로만 추가한다. 공식 `.claude/skills/shadcn/`의 latest 명령은 설치된 고정 CLI로 바꿔 실행한다. 다크 모드는 시스템만 따른다.
 - 문구는 ko/en 카탈로그에 둔다. ko는 `/`, en은 `/en`이며 선택은 `NEXT_LOCALE`, 첫 방문은 `Accept-Language`를 따른다. 메시지 타입은 ko에서 파생한다.
 - 에러 번역은 `errors` namespace에 코드와 `meta.params`를 전달한다. 서버·클라이언트의 `getFormatter`/`useFormatter`는 요청 설정과 provider의 같은 `TIME_ZONE`을 쓴다.
+- 루트 레이아웃의 `/me` 실패도 `global-error.tsx`가 번역한 복구 화면과 trace를 보여 준다. 전역 오류 화면은 자체 html·body·스타일·번역 provider를 갖춘다.
 - `.env`를 읽거나 출력하지 않는다. 키는 `.env.example`과 `src/lib/env.ts`에서 확인한다. 운영에는 예시 `SESSION_SECRET`을 쓸 수 없다.
 - 환경 검증은 `next.config.ts`의 개발·운영 서버 phase에서 한다. 빌드에는 서버 비밀이 필요 없다. 잘못된 설정은 서버 시작 때 변수마다 한 줄을 알리고 종료한다.
 - 의존성 버전은 정확히 고정한다. pnpm의 `minimumReleaseAge: 1440`을 유지한다.

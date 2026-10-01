@@ -6,6 +6,7 @@ import { setTimeout } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import type { TestProject } from "vitest/node";
 import { startHttpServer } from "../http/server";
+import { startHeaderFailureBackend } from "./header-failure-backend";
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -94,13 +95,24 @@ export default async function setup(project: TestProject) {
     }
     if (!isReady) throw new Error(`목 테스트 서버 시작 실패:\n${output}`);
     project.provide("mockBaseUrl", base);
-    const http = await startHttpServer(base);
+    const backend = await startHeaderFailureBackend(base);
+    let http;
+    try {
+      http = await startHttpServer(backend.base);
+    } catch (error) {
+      await backend.stop();
+      throw error;
+    }
     project.provide("httpBaseUrl", http.base);
     return async () => {
       try {
         await http.stop();
       } finally {
-        await stop(child);
+        try {
+          await backend.stop();
+        } finally {
+          await stop(child);
+        }
       }
     };
   } catch (error) {

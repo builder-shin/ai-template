@@ -86,7 +86,7 @@ Tailwind 4와 shadcn의 Base UI 부품을 사용한다. `pnpm exec shadcn add <�
 
 `Spinner`는 Loader2와 aria-label만 렌더링하고 `loading.tsx`는 문구 없는 스켈레톤이다. 하네스는 src의 TSX 문자열·JSX 문구와 ko/en 카탈로그에서 Loading·로딩 중·불러오는 중을 막는다. aria-label과 카탈로그의 `accessibility.spinner`만 예외다. import 경로·주석·테스트·계약 사본은 검사하지 않는다.
 
-경로 오류 경계는 번역된 안내·복구 버튼과 Next의 `digest`를 표시하며 원본 오류 문구를 출력하지 않는다. `ApiError.digest`에 traceId를 보존하므로 운영의 Server Component 오류에서도 서버 로그와 연결된다. 일반 Next 오류의 digest는 Next가 만든 진단 식별자다. catch-all 경로가 알 수 없는 URL을 로케일별 not-found 화면으로 연결한다. UI 테스트는 실제 Base UI와 next-intl을 사용하며 Next 요청 훅만 대체한다. E2E용 test id는 추가하지 않는다.
+경로 오류 경계는 번역된 안내·복구 버튼과 Next의 `digest`를 표시하며 원본 오류 문구를 출력하지 않는다. 루트 레이아웃의 헤더 `/me` 실패는 `global-error.tsx`가 처리한다. 이 화면은 기존 레이아웃을 대체하므로 자체 html·body·스타일·번역 provider를 두고 URL의 로케일로 같은 복구 UI를 렌더링한다. `ApiError.digest`에 traceId를 보존하므로 운영의 Server Component 오류에서도 서버 로그와 연결된다. 일반 Next 오류의 digest는 Next가 만든 진단 식별자다. catch-all 경로가 알 수 없는 URL을 로케일별 not-found 화면으로 연결한다. UI 테스트는 실제 Base UI와 next-intl을 사용하며 Next 요청 훅만 대체한다. 헤더 오류 통합 검사는 실제 HTTP `/me` 500을 두 로케일의 브라우저 복구 화면에서 확인한다. E2E용 test id는 추가하지 않는다.
 
 ## 하네스
 
