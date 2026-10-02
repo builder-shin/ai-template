@@ -91,6 +91,21 @@ export function installedSkill(
   };
 }
 
+/** 프로젝트 파일에서 제외한 설치 버전과 skill 원문도 캐시 입력으로 쓴다. */
+export function installedSkillState(root: string): Record<string, string> {
+  const state: Record<string, string> = {};
+  for (const source of officialSkills) {
+    const installed = installedSkill(root, source);
+    state["node_modules/" + source.package + "/package.json"] = JSON.stringify(installed.version);
+    if (source.installedDirectory) {
+      const prefix = "node_modules/" + source.package + "/" + source.installedDirectory + "/";
+      for (const [name, text] of Object.entries(installed.files))
+        state[prefix + name] = skillDigest(text);
+    }
+  }
+  return state;
+}
+
 export function checkOfficialSkills(root: string, files: Record<string, string>): string[] {
   return [
     ...checkSkillCopies(files),

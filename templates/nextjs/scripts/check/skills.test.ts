@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, it } from "vitest";
+import { afterEach, expect, it } from "vitest";
+import * as skillChecks from "./skills";
 import {
   checkInstalledSkill,
   checkOfficialSkills,
@@ -10,6 +13,48 @@ import {
   type SkillSource,
 } from "./skills";
 import { readProjectFiles } from "./files";
+import { assembleSteps } from "./steps";
+
+const templateRoot = fileURLToPath(new URL("../../", import.meta.url));
+const temporary: { files: Set<string>; directories: Set<string> }[] = [];
+
+function skillProject() {
+  mkdirSync(join(templateRoot, ".cache"), { recursive: true });
+  const root = mkdtempSync(join(templateRoot, ".cache/official-skills-"));
+  const created = { files: new Set<string>(), directories: new Set([root]) };
+  temporary.push(created);
+  const write = (relative: string, text: string) => {
+    const path = join(root, relative);
+    for (let dir = dirname(path); dir.startsWith(root); dir = dirname(dir)) {
+      created.directories.add(dir);
+      if (dir === root) break;
+    }
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, text);
+    created.files.add(path);
+  };
+  for (const entry of officialSkills) {
+    write(
+      "node_modules/" + entry.package + "/package.json",
+      JSON.stringify({ version: entry.version }),
+    );
+    for (const name of Object.keys(entry.files)) {
+      const path = ".claude/skills/" + entry.name + "/" + name;
+      const text = readFileSync(join(templateRoot, path), "utf8");
+      write(path, text);
+      if (entry.installedDirectory)
+        write("node_modules/" + entry.package + "/" + entry.installedDirectory + "/" + name, text);
+    }
+  }
+  return { root, write, created };
+}
+
+afterEach(() => {
+  for (const created of temporary.splice(0)) {
+    for (const path of created.files) rmSync(path, { force: true });
+    for (const dir of [...created.directories].sort((a, b) => b.length - a.length)) rmdirSync(dir);
+  }
+});
 
 const content = "---\nname: sample\n---\n# 공식 skill\n";
 const source: SkillSource = {
@@ -84,3 +129,24 @@ it("package.json을 export하지 않는 shadcn도 프로젝트 안에서 찾는�
   expect(installedSkill(root, shadcn).version).toBe("4.21.0");
   expect(checkOfficialSkills(root, readProjectFiles(root))).toEqual([]);
 });
+
+it.each(["버전 변경", "패키지 삭제", "원문 변경"])(
+  "실제 설치 상태만 바뀌면 harness 키와 검사 결과가 바뀐다: %s",
+  (change) => {
+    const project = skillProject();
+    const files = readProjectFiles(project.root);
+    const key = () =>
+      assembleSteps(files, false, [], {}, skillChecks.installedSkillState(project.root)).find(
+        (step) => step.name === "harness",
+      )!.key;
+    const previous = key();
+    expect(checkOfficialSkills(project.root, files)).toEqual([]);
+    if (change === "버전 변경")
+      project.write("node_modules/next/package.json", JSON.stringify({ version: "16.3.9" }));
+    else if (change === "패키지 삭제") rmSync(join(project.root, "node_modules/next/package.json"));
+    else project.write("node_modules/@playwright/cli/skills/playwright-cli/SKILL.md", "변경");
+    expect(readProjectFiles(project.root)).toEqual(files);
+    expect(key()).not.toBe(previous);
+    expect(checkOfficialSkills(project.root, files).length).toBeGreaterThan(0);
+  },
+);

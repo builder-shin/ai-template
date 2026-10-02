@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { assembleSteps } from "./steps";
+import { runChecks } from "./runner";
 
 it.each([false, true])("hook과 권한 변경은 테스트 캐시를 무효화한다 (fast=%s)", (fast) => {
   const related = fast ? ["src/lib/env.ts"] : [];
@@ -21,5 +22,47 @@ it.each([false, true])(
       expect(key({ [path]: "before" })).not.toBe(key({ [path]: "after" }));
     }
     expect(key({}, { "validator.ts": "before" })).not.toBe(key({}, { "validator.ts": "after" }));
+  },
+);
+
+const installedChanges: [string, Record<string, string>][] = [
+  ["패키지 삭제", {}],
+  ["설치 버전 변경", { "node_modules/next/package.json": "16.3.9" }],
+  [
+    "설치 skill 변경",
+    {
+      "node_modules/next/package.json": "16.3.8",
+      "node_modules/@playwright/cli/skills/playwright-cli/SKILL.md": "changed-digest",
+    },
+  ],
+];
+
+it.each(installedChanges)(
+  "설치 상태만 바뀌면 harness 성공 캐시를 쓰지 않는다: %s",
+  async (_name, changed) => {
+    const files = { "AGENTS.md": "# 지침\n" };
+    const initial = { "node_modules/next/package.json": "16.3.8" };
+    const calls: string[] = [];
+    const execute = async (step: { name: string }) => {
+      calls.push(step.name);
+      return { ok: true, output: "" };
+    };
+    const first = await runChecks(assembleSteps(files, false, [], {}, initial), {}, execute);
+    calls.length = 0;
+    const cached = await runChecks(
+      assembleSteps(files, false, [], {}, initial),
+      first.cache,
+      execute,
+    );
+    expect(cached.output).toContain("9 캐시");
+    expect(calls).toEqual([]);
+    const updated = await runChecks(
+      assembleSteps(files, false, [], {}, changed),
+      first.cache,
+      execute,
+    );
+    expect(updated.ok).toBe(true);
+    expect(calls).toEqual(["harness"]);
+    expect(updated.output).toContain("8 캐시");
   },
 );

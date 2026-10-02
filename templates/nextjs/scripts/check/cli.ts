@@ -8,7 +8,7 @@ import en from "../../messages/en.json";
 import { errorCodes } from "../../src/lib/generated/error-codes";
 import { checkI18n } from "./i18n";
 import { checkHarness } from "./harness";
-import { checkOfficialSkills } from "./skills";
+import { checkOfficialSkills, installedSkillState } from "./skills";
 import { runChecks, parseCheckArgs } from "./runner";
 import { assembleSteps } from "./steps";
 
@@ -23,7 +23,8 @@ try {
 } catch {
   /* 캐시는 없어도 된다. */
 }
-const steps = assembleSteps(files, fast, related, readRouteTypes(root));
+const installedSkills = fast ? {} : installedSkillState(root);
+const steps = assembleSteps(files, fast, related, readRouteTypes(root), installedSkills);
 const result = await runChecks(steps, previous, async (step) => {
   if (step.name === "i18n") {
     const problems = checkI18n({ ko, en }, errorCodes);
@@ -53,6 +54,7 @@ if (result.cache.types) {
     fast,
     related,
     readRouteTypes(root),
+    installedSkills,
   ).find((step) => step.name === "types")!.key;
 }
 writeFileSync(cachePath, JSON.stringify(result.cache));

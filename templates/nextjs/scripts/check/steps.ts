@@ -5,6 +5,7 @@ export function assembleSteps(
   fast: boolean,
   related: string[],
   routeTypes: Record<string, string> = {},
+  installedSkills: Record<string, string> = {},
 ): Step[] {
   const select = (pattern: RegExp) =>
     Object.fromEntries(
@@ -53,7 +54,11 @@ export function assembleSteps(
         key: key(/^contract\/|^docs\/conventions\/|tsconfig.base|pnpm-workspace/),
       });
     }
-    steps.push({ name: "harness", args: [], key: fingerprint(files) });
+    steps.push({
+      name: "harness",
+      args: [],
+      key: fingerprint(files) + fingerprint(installedSkills),
+    });
   }
   return steps;
 }
