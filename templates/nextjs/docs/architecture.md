@@ -88,7 +88,7 @@ S3의 브라우저 주소도 접근 가능해야 한다(위 예시의 S3는 `htt
 
 ### Docker 이미지
 
-`Dockerfile`은 이 프로젝트만 문맥으로 쓰는 다단계 빌드다. Node `24.19.0-bookworm-slim`과 pnpm `12.6.0`으로 frozen 설치하고 Next `output: "standalone"`을 만든다.
+`Dockerfile`은 이 프로젝트만 문맥으로 쓰는 다단계 빌드다. Node `24.19.0-bookworm-slim`과 pnpm `12.6.0`으로 frozen 설치하고 빌드 단계의 `NEXT_OUTPUT=standalone`으로 Next `output: "standalone"`을 만든다. 일반 `pnpm build`·`pnpm start`와 E2E는 이 변수 없이 일반 빌드·`next start`를 쓴다.
 실행 이미지에는 `server.js`·추적 의존성·서버 산출물·`.next/static`·`public`을 복사한다. UID/GID `10001:10001`로 실행하며 `.next/cache`는 해당 사용자가 쓸 수 있다.
 기본 명령은 `node server.js`, `HOSTNAME=0.0.0.0`, `PORT=3000`이다. 헬스체크는 실제 PORT의 `/`가 HTTP 200인지 확인한다.
 `.dockerignore`는 `.env*`·의존성·빌드·캐시·git·테스트 출력 등 로컬 파일을 제외한다.

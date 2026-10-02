@@ -11,7 +11,7 @@ export default function nextConfig(phase: string): NextConfig {
   }
   return withNextIntl({
     agentRules: false,
-    output: "standalone",
+    ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" } : {}),
     turbopack: { root: import.meta.dirname },
   });
 }

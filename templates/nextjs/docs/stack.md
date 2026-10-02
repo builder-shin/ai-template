@@ -98,7 +98,7 @@ TypeScript 6.0.3과 typescript-eslint 8.71.0도 유지한다. `pnpm view typescr
 
 ### W4 실행·검증 기록 (2026-10-02)
 
-Node 이미지도 `24.19.0-bookworm-slim`으로 고정한다. [Dockerfile](../Dockerfile)은 pnpm 12.6.0 frozen 설치와 standalone 산출물을 쓰며 UID/GID 10001로 실행한다.
+Node 이미지도 `24.19.0-bookworm-slim`으로 고정한다. [Dockerfile](../Dockerfile)은 pnpm 12.6.0 frozen 설치 뒤 빌드 단계에서 `NEXT_OUTPUT=standalone`을 설정하고 standalone 산출물을 `node server.js`로 실행한다. UID/GID는 10001이다. 일반 `pnpm build`·`pnpm start`와 E2E는 이 변수 없이 일반 빌드·`next start`를 쓴다.
 `src/instrumentation.ts`가 `src/lib/env.ts`의 같은 스키마를 실행 때 검사해 비밀 누락·짧은 비밀·운영 예시 비밀과 잘못된 설정을 요청 처리 전에 거절한다.
 실제 이미지에서 HTTP 200·정적 자산·비루트 사용자·시작 실패·빌드와 다른 API·실시간 URL의 실행 적용을 확인했다. 자세한 실행 설정은 [Docker 이미지](architecture.md#docker-이미지)를 따른다.
 

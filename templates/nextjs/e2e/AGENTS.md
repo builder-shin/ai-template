@@ -25,5 +25,5 @@
 - Mailpit은 수신자·인증/재설정 목적·새 메일을 골라 실제 web 링크를 읽으며 메일함을 비우지 않는다. 모의 OAuth는 제공자별 claims 폼과 실제 redirect·state를 쓰고 BFF의 PKCE를 유지한다. `expireRecentLogin`은 설정한 창과 여유 시간을 기다린다.
 - web 3100, 목 4110은 비워 둔다. 운영 비밀은 실행마다 생성하며 파일에 저장하지 않는다. 각 테스트는 새 계정과 브라우저 컨텍스트를 쓴다.
 - 재현 가능한 headless Chromium 검사를 쓴다. 영상·스크린샷·trace는 저장하지 않는다.
-- 이미지의 standalone 시작 검증은 [Docker 이미지](../docs/architecture.md#docker-이미지), 일반 설정은 [환경 행렬](../docs/architecture.md#환경-행렬)을 따른다. E2E는 운영 빌드의 next start 경로를 쓴다.
+- 이미지 빌드만 `NEXT_OUTPUT=standalone`을 설정하고 `node server.js`로 시작한다. standalone 시작 검증은 [Docker 이미지](../docs/architecture.md#docker-이미지), 일반 설정은 [환경 행렬](../docs/architecture.md#환경-행렬)을 따른다. 일반 빌드와 E2E는 이 변수 없이 일반 운영 빌드의 `next start` 경로를 쓴다.
 - 테스트 흐름을 확장할 때 [레시피](../AGENTS.md#완료-기준과-문서)를 먼저 읽는다. 공식 Playwright CLI skill은 고정 `pnpm exec playwright-cli`를 쓰며 테스트·Chromium 설치용 `pnpm exec playwright`와 구분한다. 세션의 브라우저 도구 규칙이 우선한다.

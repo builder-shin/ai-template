@@ -59,7 +59,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - `.env`를 읽거나 출력하지 않는다. 키는 `.env.example`과 `src/lib/env.ts`에서 확인한다. 운영에는 예시 `SESSION_SECRET`을 쓸 수 없다.
 - `pnpm setup`은 의존성 → 환경 키 보충 → 독립 저장소 hook → Chromium 순서다. 브라우저 설치가 실패해도 앞의 준비를 보존하고 실패 코드로 끝난다. 다시 실행하면 기존 환경 값을 유지한다.
 - 환경 검증은 `next.config.ts`의 개발·운영 서버 phase와 `src/instrumentation.ts`의 Node 서버 시작에서 같은 `src/lib/env.ts` 스키마로 한다. 빌드에는 서버 비밀이 필요 없다. 잘못된 설정·운영 예시 비밀은 요청 처리 전에 값·스택 없이 변수별 안내를 쓰고 종료 코드 1로 멈춘다.
-- [Docker 이미지](docs/architecture.md#docker-이미지)는 Node 24.19.0 slim·pnpm 12.6.0의 standalone 빌드다. UID/GID 10001로 실행하며 API·실시간 URL과 비밀은 실행 때 전달한다. standalone도 instrumentation으로 시작 설정을 검사한다.
+- [Docker 이미지](docs/architecture.md#docker-이미지)는 Node 24.19.0 slim·pnpm 12.6.0으로 `NEXT_OUTPUT=standalone`을 설정해 빌드하고 `node server.js`로 시작한다. 일반 `pnpm build`·`pnpm start`와 E2E는 이 변수 없이 일반 빌드·`next start`를 쓴다. UID/GID 10001로 실행하며 API·실시간 URL과 비밀은 실행 때 전달한다. standalone도 instrumentation으로 시작 설정을 검사한다.
 - 의존성 버전은 정확히 고정한다. pnpm의 `minimumReleaseAge: 1440`을 유지한다.
 - `.claude/skills/add-*/`는 아래 레시피의 얇은 포장이다. 절차가 다르면 레시피를 따른다.
 - 공식 `next-dev-loop`·shadcn·Playwright CLI skill의 [고정 출처](docs/stack.md#공식-skill)는 check의 harness가 검사한다. 사본은 직접 고치지 않고 `pnpm skills:sync`으로 복원한다. shadcn의 latest 예시는 `pnpm exec shadcn`, Playwright CLI는 `pnpm exec playwright-cli`로 실행한다. 세션의 브라우저 도구 규칙이 우선한다.

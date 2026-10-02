@@ -15,7 +15,7 @@ const example = {
   NEXT_PUBLIC_REALTIME_URL: "http://localhost:4010",
 };
 
-function loadConfig(phase: string, env: Record<string, string>) {
+function loadConfig(phase: string, env: Record<string, string | undefined>) {
   // 별도 프로세스로 실제 설정 모듈의 import 시점과 종료·출력을 검사한다.
   const script = `import config from "./next.config.ts";
     const value = typeof config === "function" ? config(${JSON.stringify(phase)}) : config;
@@ -76,5 +76,27 @@ describe("Next 설정의 환경 검증 시점", () => {
     expect(result.stderr).toBe(
       "API_BASE_URL: http(s) API 주소를 설정한다.\nSESSION_SECRET: 32바이트 이상의 비밀을 설정한다.\n",
     );
+  });
+});
+
+describe("운영 빌드 출력", () => {
+  it("일반 빌드는 next start용 출력을 만든다", () => {
+    const result = loadConfig(PHASE_PRODUCTION_BUILD, {
+      NODE_ENV: "production",
+      NEXT_OUTPUT: undefined,
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout).output).toBeUndefined();
+    expect(result.stderr).toBe("");
+  });
+
+  it("이미지 빌드가 요청하면 standalone 출력을 만든다", () => {
+    const result = loadConfig(PHASE_PRODUCTION_BUILD, {
+      NODE_ENV: "production",
+      NEXT_OUTPUT: "standalone",
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout).output).toBe("standalone");
+    expect(result.stderr).toBe("");
   });
 });

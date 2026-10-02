@@ -14,7 +14,7 @@ COPY . .
 # 빌드에 URL을 전달해도 실행 단계의 환경에는 물려주지 않는다.
 ARG API_BASE_URL
 ARG NEXT_PUBLIC_REALTIME_URL
-RUN pnpm build
+RUN NEXT_OUTPUT=standalone pnpm build
 
 FROM base AS runtime
 ENV NODE_ENV=production \
