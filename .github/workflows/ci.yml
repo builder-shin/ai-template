@@ -52,7 +52,7 @@ jobs:
 
   nextjs:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: templates/nextjs
@@ -72,6 +72,38 @@ jobs:
       - run: pnpm test:e2e
         env:
           E2E_TARGET: mock
+      - name: Build the web image
+        run: docker build --tag ai-template-nextjs:ci .
+
+  nextjs-e2e-fastapi:
+    runs-on: ubuntu-latest
+    # 2 CPU·8 GB에서 FastAPI 이미지·web 빌드와 E2E, 실패 뒤 정리 시간을 둔다.
+    timeout-minutes: 60
+    env:
+      WEB_E2E_RUN_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: "12.6.0"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            templates/nextjs/pnpm-lock.yaml
+      - id: install-root
+        run: pnpm install --frozen-lockfile
+      - run: pnpm --dir templates/nextjs install --frozen-lockfile
+      - run: pnpm --dir templates/nextjs exec playwright install --with-deps chromium
+      - name: Run the shared web E2E against FastAPI
+        timeout-minutes: 45
+        run: pnpm web-e2e fastapi --run-id "$WEB_E2E_RUN_ID"
+      - name: Clean up the dedicated FastAPI stack
+        if: ${{ always() && steps.install-root.outcome == 'success' }}
+        timeout-minutes: 5
+        run: pnpm web-e2e fastapi --run-id "$WEB_E2E_RUN_ID" --down
 
   conformance-fastapi:
     runs-on: ubuntu-latest
