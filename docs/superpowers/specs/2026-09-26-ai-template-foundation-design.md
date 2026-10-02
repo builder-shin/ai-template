@@ -1,9 +1,9 @@
 # AI 바이브코딩 템플릿: 기반 설계
 
 - 작성일: 2026-09-26
-- 상태: 승인됨. 하위 프로젝트 0(기반)과 1(FastAPI) 구현 완료
+- 상태: 승인됨. 하위 프로젝트 0(기반), 1(FastAPI), 2(Next.js web) 구현 완료
 - 범위: 하위 프로젝트 0(기반)의 설계와 네 템플릿 전체 로드맵
-- 다음 단계: 하위 프로젝트 2(Next.js web)를 구현한다. 설계는 [Next.js web 템플릿 설계](2026-09-30-nextjs-web-design.md)다. 하위 프로젝트 1의 설계는 [FastAPI 템플릿 설계](2026-09-26-fastapi-template-design.md)다
+- 다음 단계: 하위 프로젝트 3(create CLI)를 설계하고 구현한다. 앞선 설계는 [FastAPI 템플릿 설계](2026-09-26-fastapi-template-design.md), [Next.js web 템플릿 설계](2026-09-30-nextjs-web-design.md)를 참고한다.
 
 ## 1. 목표
 

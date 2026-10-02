@@ -1,13 +1,13 @@
 # Next.js web 템플릿 설계 (하위 프로젝트 2)
 
 - 작성일: 2026-09-30
-- 상태: 승인됨(2026-09-30). W1~W3 구현·리뷰 보정 완료, W4 프로토타입과 SDD 13개 태스크 구현·리뷰 보정 완료(2026-10-02). W4 최종 head의 CI는 병합 전에 확인한다. W1의 FastAPI·계약 보정은 §12.1, 프로토타입 증거는 §13.2, 최종 SDD 기록은 §13.3이다.
+- 상태: 승인됨(2026-09-30). W1~W4 구현·리뷰·병합 완료(2026-10-02). W1의 FastAPI·계약 보정은 §12.1, 프로토타입 증거는 §13.2, 최종 SDD 기록은 §13.3이다.
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 2로 미룬 결정을 내리고, `templates/nextjs`, 목 서버(`contract/mock`), 이번 사이클의 저장소 변경을 설계한다.
   - 기반 설계의 규칙은 그대로 따른다: 플랫폼 기능(§4), API 규약(§5), 하네스(§6), 인프라와 품질(§7).
   - 백엔드의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md)와 [보강 설계](2026-09-29-fastapi-hardening-design.md)다. 목 서버는 그 동작을 따른다.
-- 구현 계획: [W1](../plans/2026-09-30-nextjs-w1.md)
-- 다음 단계: W4 최종 head의 CI를 확인한 뒤 병합한다. 프로토타입 로컬 검증은 §1.2·§13.2, SDD 기록은 §13.3이다.
+- 구현 계획: [W1](../plans/2026-09-30-nextjs-w1.md) · [W2](../plans/2026-10-01-nextjs-w2.md) · [W3](../plans/2026-10-01-nextjs-w3.md) · [W4](../plans/2026-10-02-nextjs-w4.md)
+- 다음 단계: 기반 설계 §3.4의 하위 프로젝트 2 완료 조건을 충족했다. 다음은 [기반 설계](2026-09-26-ai-template-foundation-design.md) D12 순서의 하위 프로젝트 3(create CLI)다.
 
 ## 1. 목표와 범위
 
@@ -638,7 +638,11 @@ W3 구현·리뷰 보정과 W4 프로토타입(2026-10-02)의 실제 목 통합�
 
 로컬 검증은 각 태스크의 루트·web check 각각 9단계와 mock E2E 20개, Task 6부터 전용 스택의 FastAPI E2E 20개를 확인했다. 이미지 smoke는 Task 10과 최종 보정 B에서 확인했다. 이번 문서 보정 C는 양쪽 check만 다시 실행하며 빌드·E2E·이미지 smoke는 재실행하지 않는다.
 
-최종 보정 전 `cf2bc05`의 [CI run 36974728079](https://github.com/builder-shin/ai-template/actions/runs/36974728079)는 `check`·`fastapi`·`conformance-fastapi`·`conformance-mock`·`nextjs-e2e-fastapi`·`nextjs` 여섯 작업이 모두 통과했다. 최종 head의 CI는 병합 전에 확인한다.
+최종 보정 전 `cf2bc05`의 [CI run 36974728079](https://github.com/builder-shin/ai-template/actions/runs/36974728079)는 `check`·`fastapi`·`conformance-fastapi`·`conformance-mock`·`nextjs-e2e-fastapi`·`nextjs` 여섯 작업이 모두 통과했다. 최종 head `346f5ab`의 [CI run 36978260597](https://github.com/builder-shin/ai-template/actions/runs/36978260597)와 병합 뒤 main의 [CI run 36979816699](https://github.com/builder-shin/ai-template/actions/runs/36979816699)도 같은 여섯 작업이 모두 통과했다.
+
+W4는 2026-10-02에 main(`346f5ab`)으로 fast-forward 병합했다. PR #2는 병합했고 프로토타입 PR #1은 병합 없이 닫았다.
+
+병합 뒤 main에서 루트·web `pnpm check` 각각 9단계, web 빌드, mock E2E 20개, `pnpm web-e2e fastapi` 20개, `pnpm conformance mock` 94개 통과를 확인했다.
 
 ## 14. 확인한 사실과 출처 (2026-09-29)
 
