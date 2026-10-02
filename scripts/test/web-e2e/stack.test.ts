@@ -44,6 +44,15 @@ describe("전용 스택의 명령과 주소", () => {
   it("모든 compose 명령에 같은 전용 프로젝트와 파일을 명시한다", () => {
     expect(plan.commands).toEqual({
       config: [...base, "config", "--quiet"],
+      containers: [...base, "ps", "-a", "-q"],
+      volumes: [
+        "docker",
+        "volume",
+        "ls",
+        "-q",
+        "--filter",
+        "label=com.docker.compose.project=ai-template-web-e2e-offline-04",
+      ],
       up: [...base, "up", "-d", "--build", "--wait", "--wait-timeout", "180"],
       worker: [...base, "ps", "--status", "running", "--services", "worker"],
       ps: [...base, "ps", "--all"],
@@ -213,8 +222,8 @@ function harness(failure?: string, code = 7) {
       return Promise.resolve();
     }),
     execute: vi.fn((argv: readonly string[]) => {
-      const action = argv[base.length] ?? "unknown";
-      const step = argv === plan.commands.worker ? "worker" : action;
+      const step =
+        Object.entries(plan.commands).find(([, command]) => command === argv)?.[0] ?? "unknown";
       events.push(step);
       return Promise.resolve({
         code: step === failure ? code : 0,
@@ -242,6 +251,8 @@ describe("스택 수명과 실패 정리", () => {
       "validate",
       "probe",
       "config",
+      "containers",
+      "volumes",
       "up",
       "ready",
       "worker",
@@ -251,6 +262,27 @@ describe("스택 수명과 실패 정리", () => {
       "down",
     ]);
   });
+
+  it.each(["containers", "volumes"] as const)(
+    "기존 %s가 있으면 기동·정리 없이 다른 실행 ID를 요구한다",
+    async (resource) => {
+      const { deps, events } = harness();
+      const execute = deps.execute;
+      deps.execute = vi.fn<Dependencies["execute"]>((argv, options) =>
+        argv === plan.commands[resource]
+          ? Promise.resolve({ code: 0, stdout: "existing-resource\n" })
+          : execute(argv, options),
+      );
+      expect(await runStack(plan, {}, deps)).toEqual({ code: 1, cleanupCode: 0 });
+      expect(events).not.toContain("up");
+      expect(events).not.toContain("down");
+      expect(events).not.toContain("ps");
+      expect(events).not.toContain("logs");
+      expect(deps.log).toHaveBeenCalledWith(expect.stringContaining("이미 존재"));
+      expect(deps.log).toHaveBeenCalledWith(expect.stringContaining("--run-id"));
+      expect(deps.log).toHaveBeenCalledWith(expect.stringContaining("--down"));
+    },
+  );
 
   it.each(["up", "worker", "command"])(
     "%s 실패의 코드를 보존하고 부분 스택도 내린다",
@@ -269,7 +301,7 @@ describe("스택 수명과 실패 정리", () => {
     expect(events.slice(-3)).toEqual(["ps", "logs", "down"]);
   });
 
-  it.each(["validate", "probe", "config"])(
+  it.each(["validate", "probe", "config", "containers", "volumes"])(
     "%s 사전 확인 실패는 다른 프로젝트를 정리하지 않는다",
     async (step) => {
       const { deps, events } = harness(step);
@@ -292,7 +324,7 @@ describe("스택 수명과 실패 정리", () => {
         events.push("down");
         return Promise.resolve({ code: 9, stdout: "" });
       }
-      return Promise.resolve({ code: 0, stdout: "worker\n" });
+      return Promise.resolve({ code: 0, stdout: argv === plan.commands.worker ? "worker\n" : "" });
     });
     expect(await runStack(plan, {}, deps)).toEqual({ code: 23, cleanupCode: 9 });
     expect(events).toContain("down");
@@ -307,6 +339,25 @@ describe("스택 수명과 실패 정리", () => {
       expect.stringContaining(JSON.stringify(plan.commands.down)),
     );
   });
+
+  it.each([130, 143])(
+    "정리 중 중단 신호 %s를 받으면 정리를 마치고 신호 코드를 반환한다",
+    async (code) => {
+      const controller = new AbortController();
+      const { deps, events } = harness();
+      const execute = deps.execute;
+      deps.execute = vi.fn<Dependencies["execute"]>((argv, options) => {
+        if (argv === plan.commands.down) controller.abort(code);
+        return execute(argv, options);
+      });
+      expect(await runStack(plan, { signal: controller.signal }, deps)).toEqual({
+        code,
+        cleanupCode: 0,
+      });
+      expect(events).toContain("down");
+      expect(deps.execute).toHaveBeenCalledWith(plan.commands.down, { capture: false });
+    },
+  );
 
   it("--keep이어도 실패하거나 신호를 받으면 자기 스택을 내린다", async () => {
     const controller = new AbortController();

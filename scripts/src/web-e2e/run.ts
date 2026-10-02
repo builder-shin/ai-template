@@ -1,6 +1,12 @@
 import { type Plan, projectName } from "./plan.ts";
 import type { CommandOptions, CommandResult } from "./process.ts";
 
+function signalExitCode(code: number, signal?: AbortSignal): number {
+  if (signal?.aborted !== true) return code;
+  const reason: unknown = signal.reason;
+  return typeof reason === "number" ? reason : 130;
+}
+
 export interface Dependencies {
   validate: () => void;
   probe: () => Promise<void>;
@@ -25,6 +31,18 @@ export async function runStack(
     options.signal?.throwIfAborted();
     code = (await deps.execute(plan.commands.config, commandOptions)).code;
     if (code === 0) {
+      for (const argv of [plan.commands.containers, plan.commands.volumes]) {
+        const existing = await deps.execute(argv, { ...commandOptions, capture: true });
+        code = existing.code;
+        if (code !== 0) break;
+        if (existing.stdout.trim()) {
+          throw new Error(
+            `프로젝트 ${plan.project}가 이미 존재한다. 다른 --run-id를 쓰거나 --down으로 정리한다.`,
+          );
+        }
+      }
+    }
+    if (code === 0) {
       options.signal?.throwIfAborted();
       attempted = true;
       code = (await deps.execute(plan.commands.up, commandOptions)).code;
@@ -44,10 +62,7 @@ export async function runStack(
     code = 1;
     deps.log(error instanceof Error ? error.message : String(error));
   } finally {
-    if (options.signal?.aborted === true) {
-      const reason: unknown = options.signal.reason;
-      code = typeof reason === "number" ? reason : 130;
-    }
+    code = signalExitCode(code, options.signal);
     if (attempted) {
       if (options.keep === true && code === 0) {
         deps.log(
@@ -74,5 +89,5 @@ export async function runStack(
       }
     }
   }
-  return { code, cleanupCode };
+  return { code: signalExitCode(code, options.signal), cleanupCode };
 }

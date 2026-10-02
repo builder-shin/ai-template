@@ -44,6 +44,15 @@ export function createPlan(runId: string, root = ROOT) {
     ],
     commands: {
       config: [...base, "config", "--quiet"],
+      containers: [...base, "ps", "-a", "-q"],
+      volumes: [
+        "docker",
+        "volume",
+        "ls",
+        "-q",
+        "--filter",
+        `label=com.docker.compose.project=${project}`,
+      ],
       up: [...base, "up", "-d", "--build", "--wait", "--wait-timeout", "180"],
       worker: [...base, "ps", "--status", "running", "--services", "worker"],
       ps: [...base, "ps", "--all"],
