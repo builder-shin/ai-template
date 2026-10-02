@@ -2,6 +2,7 @@
 
 import io
 import json
+import logging
 import re
 
 import httpx
@@ -17,6 +18,67 @@ pytestmark = pytest.mark.anyio
 PRODUCTION = Settings.model_construct(app_env="production", log_level="info")
 DEVELOPMENT = Settings.model_construct(app_env="development", log_level="info")
 TRACE_ID = re.compile(r"[0-9a-f]{32}")
+
+
+@pytest.mark.parametrize("settings", [DEVELOPMENT, PRODUCTION])
+@pytest.mark.parametrize(
+    ("target", "path"),
+    [
+        (
+            "/oauth/google/callback?code=FAKE-CODE&state=FAKE-STATE",
+            "/oauth/google/callback",
+        ),  # betterleaks:allow 로그 검사용 가짜 값
+        ("/posts?search=FAKE-CODE&cursor=FAKE-STATE", "/posts"),
+        ("/posts", "/posts"),
+    ],
+)
+def test_access_logs_drop_query_strings(
+    monkeypatch: pytest.MonkeyPatch, settings: Settings, target: str, path: str
+) -> None:
+    stream = io.StringIO()
+    logger = logging.getLogger("uvicorn.access")
+    monkeypatch.setattr(logger, "filters", [])
+    monkeypatch.setattr(logger, "handlers", [logging.StreamHandler(io.StringIO())])
+    monkeypatch.setattr(logging.getLogger(), "handlers", [])
+    configure_logging(settings, stream=stream)
+    record = logging.LogRecord(
+        "uvicorn.access",
+        logging.INFO,
+        __file__,
+        0,
+        '%s - "%s %s HTTP/%s" %d',
+        ("127.0.0.1:12345", "GET", target, "1.1", 302),
+        None,
+    )
+    logger.handle(record)
+    output = stream.getvalue()
+    assert "FAKE-CODE" not in output
+    assert "FAKE-STATE" not in output
+    assert "?" not in output
+    assert f'127.0.0.1:12345 - "GET {path} HTTP/1.1" 302' in (
+        json.loads(output)["event"] if settings.app_env != "development" else output
+    )
+
+
+def test_access_log_filter_survives_reconfiguration(monkeypatch: pytest.MonkeyPatch) -> None:
+    logger = logging.getLogger("uvicorn.access")
+    monkeypatch.setattr(logger, "filters", [])
+    monkeypatch.setattr(logger, "handlers", [])
+    monkeypatch.setattr(logging.getLogger(), "handlers", [])
+    for _ in range(2):
+        configure_logging(PRODUCTION, stream=io.StringIO())
+        assert (
+            len(
+                [
+                    item
+                    for item in logger.filters
+                    if isinstance(item, logging.Filter) and item.name == "uvicorn_access_path"
+                ]
+            )
+            == 1
+        )
+        assert logger.handlers == []
+        assert logger.propagate is True
 
 
 async def test_error_log_and_error_document_share_the_trace_id() -> None:

@@ -13,7 +13,7 @@
 import logging
 import secrets
 import sys
-from typing import Any, TextIO
+from typing import Any, TextIO, override
 
 import structlog
 from opentelemetry import trace
@@ -26,6 +26,22 @@ PLAIN_TRACEBACK = structlog.dev.plain_traceback  # 콘솔 출력의 예외 형�
 HANDLER_NAME = "app"
 # 표준 logging으로 로그를 내는 라이브러리 중 자기 핸들러를 다는 것. 핸들러를 떼고 루트로 보낸다.
 _OWN_HANDLER_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access")
+
+
+class _AccessLogFilter(logging.Filter):
+    """Uvicorn의 요청 경로에서 쿼리를 빼 인증 코드와 state가 로그에 남지 않게 한다."""
+
+    @override
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) == 5:
+            client, method, path, version, status = args
+            if isinstance(path, str):
+                record.args = (client, method, path.split("?", 1)[0], version, status)
+        return True
+
+
+_ACCESS_LOG_FILTER = _AccessLogFilter("uvicorn_access_path")
 
 
 def configure_logging(settings: Settings, *, stream: TextIO | None = None) -> None:
@@ -64,6 +80,8 @@ def configure_logging(settings: Settings, *, stream: TextIO | None = None) -> No
         logger = logging.getLogger(name)
         logger.handlers.clear()
         logger.propagate = True
+    # 핸들러를 다시 만들어도 모든 환경에서 적용한다. 같은 필터는 중복 등록되지 않는다.
+    logging.getLogger("uvicorn.access").addFilter(_ACCESS_LOG_FILTER)
 
 
 def trace_id_of(scope: Scope) -> str:
