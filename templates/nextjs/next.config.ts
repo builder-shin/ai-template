@@ -19,6 +19,7 @@ export default function nextConfig(phase: string): NextConfig {
   }
   return withNextIntl({
     agentRules: false,
+    output: "standalone",
     turbopack: { root: import.meta.dirname },
   });
 }
