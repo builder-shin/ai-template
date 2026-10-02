@@ -1,7 +1,7 @@
 # 버전과 공식 문서
 
 먼저 설치된 버전의 문서를 읽는다. Next.js는 `node_modules/next/dist/docs`가 기준이다.
-의존성은 `package.json`에 정확히 고정하고, lockfile을 커밋한다. pnpm의 `minimumReleaseAge: 1440`으로 공개 후 하루가 지난 버전만 설치한다. 아래는 W3 pin에 W4 Task 1의 Next 보안 패치를 반영한 버전이다.
+의존성은 `package.json`에 정확히 고정하고, lockfile을 커밋한다. pnpm의 `minimumReleaseAge: 1440`으로 공개 후 하루가 지난 버전만 설치한다. 아래는 W3 pin에 W4의 Next 보안 패치와 Playwright CLI를 반영한 버전이다.
 
 | 도구                                                                         | 버전                     | 문서                                                                                                                                                                                           |
 | ---------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -49,9 +49,33 @@ W3에서 react-markdown은 공개 상세·편집기 미리보기의 HTML 제외 
 
 lockfile은 openapi-fetch의 `openapi-typescript-helpers` 0.1.0, Next 린트의 `eslint-plugin-import` 2.32.0·`eslint-plugin-jsx-a11y` 6.10.2·`eslint-plugin-react` 7.37.5도 고정한다. next-intl의 네이티브 전이 의존성 `@parcel/watcher` 2.6.0·`@swc/core` 1.16.12는 빌드 허용 목록에 추가했다. 공개 후 1440분 규칙은 유지한다.
 
-CI는 위 @playwright/test의 CLI로 `pnpm exec playwright install --with-deps chromium`을 실행해 Chromium과 Linux 시스템 의존성을 설치한다. `pnpm setup`은 로컬 Chromium을 설치한다. 별도 에이전트 도구 `@playwright/cli` 0.1.22와 공식 skill은 W4 범위로 아직 설치하지 않았다.
+CI는 위 @playwright/test의 CLI로 `pnpm exec playwright install --with-deps chromium`을 실행해 Chromium과 Linux 시스템 의존성을 설치한다. `pnpm setup`은 로컬 Chromium을 설치한다. 별도 에이전트 도구 `@playwright/cli`는 0.1.22로 고정하며 실행 파일은 `playwright-cli`다. 버전은 `NO_UPDATE_NOTIFIER=1`을 설정한 뒤 `pnpm exec playwright-cli --version`으로 확인한다.
 
 공식 shadcn 스킬은 `shadcn@4.21.0` 태그(commit `7c9eaba1c0a6404c990c144a654792e3313c650d`)의 `skills/shadcn/` Markdown 파일을 그대로 담는다. 바이너리 아이콘과 도구별 에이전트 메타데이터는 제외한다. [원본](https://github.com/shadcn-ui/ui/tree/shadcn%404.21.0/skills/shadcn), [프로젝트 스킬](../.claude/skills/shadcn/SKILL.md).
+
+### 공식 skill
+
+2026-10-02에 아래 원본을 확인했다. 원문은 `.claude/skills/`에 보존하며 고정 출처·파일별 SHA-256은 `scripts/skills/sources.json`에 둔다.
+
+| skill          | 고정 원본                                                                                                                                                                                           | 사본                                                  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| next-dev-loop  | [Next.js v16.3.8](https://github.com/vercel/next.js/tree/b0fad0d45eb4c4430fda5eeeb442e8a5af08a5f6/skills/next-dev-loop), commit `b0fad0d45eb4c4430fda5eeeb442e8a5af08a5f6`                          | [SKILL.md](../.claude/skills/next-dev-loop/SKILL.md)  |
+| shadcn         | [shadcn@4.21.0](https://github.com/shadcn-ui/ui/tree/7c9eaba1c0a6404c990c144a654792e3313c650d/skills/shadcn), commit `7c9eaba1c0a6404c990c144a654792e3313c650d`의 Markdown과 같은 커밋의 LICENSE.md | [SKILL.md](../.claude/skills/shadcn/SKILL.md)         |
+| playwright-cli | [@playwright/cli 0.1.22](https://registry.npmjs.org/@playwright%2fcli/0.1.22)의 `skills/playwright-cli/` 전체                                                                                       | [SKILL.md](../.claude/skills/playwright-cli/SKILL.md) |
+
+설치된 Next 문서 `01-app/02-guides/ai-agents.md`도 공식 `vercel/next.js`의 `skills/`를 가리킨다. next-dev-loop는 Next 16.3+·Turbopack과 agent-browser 0.31.1+를 요구한다. skill 사본을 넣는 작업은 별도 브라우저 도구의 설치·사용 권한을 부여하지 않는다. 사용자의 세션 도구 규칙을 먼저 따르며 필요한 런타임 도구가 없으면 그 제약을 알린다. `.mcp.json`은 next-devtools-mcp 0.4.0만 유지한다.
+
+shadcn 원문의 latest 명령은 프로젝트 pin인 `pnpm exec shadcn`으로 바꾼다. Playwright CLI는 `pnpm exec playwright-cli`를 쓰며 E2E의 `pnpm exec playwright`와 구분한다. CLI 0.1.22의 전이 의존성 `playwright`·`playwright-core`는 정확히 `1.64.0-alpha-1790635538000`이며 각각 2026-09-28 22:50:35.411 UTC·22:52:15.870 UTC에 공개됐다. 세 패키지 모두 1440분 정책을 만족한다. 기존 테스트 러너와 Chromium 설치는 1.63.0을 유지한다.
+
+check의 harness는 네트워크 없이 공식 사본의 누락·변경·추가 파일과 설치 패키지의 버전을 검사한다. Playwright는 설치 패키지의 skill 폴더도 고정 해시와 비교한다. 줄 끝 CRLF·LF만 같은 것으로 본다. 복원은 아래 명령으로 한다. Next·shadcn은 고정 커밋에서, Playwright는 설치된 패키지에서 읽으며 해시가 다르면 쓰기 전에 실패한다. 추가 파일은 직접 지운다.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm skills:sync
+pnpm check
+```
+
+기능·페이지·Action·실시간·번역·API 확장·UI의 일곱 `add-*` skill은 `docs/recipes/`를 원본으로 삼는다. 파일 순서와 검사만 안내하며 자세한 절차는 각 레시피를 읽는다.
 
 ### W4 호환성 확인 (2026-10-02)
 
@@ -70,7 +94,7 @@ Node 24 LTS를 유지한다. Node 26의 compiled JWT 호환성을 고치는 [Nex
 
 TypeScript 6.0.3과 typescript-eslint 8.71.0도 유지한다. `pnpm view typescript-eslint@8.71.0 peerDependencies --json`과 [버전별 npm 메타데이터](https://registry.npmjs.org/typescript-eslint/8.71.0)의 TypeScript 범위는 `>=4.8.4 <6.1.0`으로 TS7을 포함하지 않는다. strict 설정도 유지한다.
 
-`pnpm view @playwright/cli dist-tags --json`의 `latest`는 0.1.22다. [공식 릴리스](https://github.com/microsoft/playwright-cli/releases/tag/v0.1.22)와 공개 시각을 확인했으며, 이 안정판과 공식 skill은 W4 Task 9에서 추가한다. 기존 @playwright/test 1.63.0은 유지한다.
+`pnpm view @playwright/cli dist-tags --json`의 `latest`는 0.1.22다. [공식 릴리스](https://github.com/microsoft/playwright-cli/releases/tag/v0.1.22)와 공개 시각을 확인했으며, 이 안정판과 공식 skill은 W4 Task 9에서 추가했다. 기존 @playwright/test 1.63.0은 유지한다.
 
 ### 알려진 peer 경고
 

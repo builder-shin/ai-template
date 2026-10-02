@@ -8,6 +8,7 @@ import en from "../../messages/en.json";
 import { errorCodes } from "../../src/lib/generated/error-codes";
 import { checkI18n } from "./i18n";
 import { checkHarness } from "./harness";
+import { checkOfficialSkills } from "./skills";
 import { runChecks, parseCheckArgs } from "./runner";
 import { assembleSteps } from "./steps";
 
@@ -29,7 +30,10 @@ const result = await runChecks(steps, previous, async (step) => {
     return { ok: !problems.length, output: problems.join("\n") };
   }
   if (step.name === "harness") {
-    const problems = checkHarness(files, Object.keys(envSchema.shape));
+    const problems = [
+      ...checkHarness(files, Object.keys(envSchema.shape)),
+      ...checkOfficialSkills(root, files),
+    ];
     return { ok: !problems.length, output: problems.join("\n") };
   }
   const [command, ...args] = step.args;

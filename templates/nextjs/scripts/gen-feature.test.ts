@@ -30,7 +30,7 @@ async function copyProject() {
   mkdirSync(project);
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (
-      ["src", "scripts", "messages", "docs", "contract", "e2e"].includes(entry.name) ||
+      ["src", "scripts", "messages", "docs", "contract", "e2e", ".claude"].includes(entry.name) ||
       (!entry.isDirectory() &&
         /^(package\.json|.*config\.(ts|mjs|json)|tsconfig.*\.json|next-env\.d\.ts|\.prettierignore)$/.test(
           entry.name,
@@ -72,6 +72,14 @@ afterAll(() => {
   if (temporary?.startsWith(join(root, ".cache/gen-feature-")))
     rmSync(temporary, { recursive: true, force: true });
 }, 120000);
+
+it("git 없는 독립 사본의 공식 skill과 설치 패키지를 검사한다", async () => {
+  const copiedSkills = await import(pathToFileURL(join(project, "scripts/check/skills.ts")).href);
+  const copiedFiles = await import(pathToFileURL(join(project, "scripts/check/files.ts")).href);
+  expect(copiedSkills.checkOfficialSkills(project, copiedFiles.readProjectFiles(project))).toEqual(
+    [],
+  );
+}, 60000);
 
 describe("골든 기능 생성", () => {
   it("복합 이름으로 기능·공개/보호 화면·번역·HTTP 테스트를 등록하고 고칠 곳을 알린다", () => {

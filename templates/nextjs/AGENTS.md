@@ -60,6 +60,8 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - `pnpm setup`은 의존성 → 환경 키 보충 → 독립 저장소 hook → Chromium 순서다. 브라우저 설치가 실패해도 앞의 준비를 보존하고 실패 코드로 끝난다. 다시 실행하면 기존 환경 값을 유지한다.
 - 환경 검증은 `next.config.ts`의 개발·운영 서버 phase에서 한다. 빌드에는 서버 비밀이 필요 없다. 잘못된 설정은 서버 시작 때 변수마다 한 줄을 알리고 종료한다.
 - 의존성 버전은 정확히 고정한다. pnpm의 `minimumReleaseAge: 1440`을 유지한다.
+- `.claude/skills/add-*/`는 아래 레시피의 얇은 포장이다. 절차가 다르면 레시피를 따른다.
+- 공식 `next-dev-loop`·shadcn·Playwright CLI skill의 [고정 출처](docs/stack.md#공식-skill)는 check의 harness가 검사한다. 사본은 직접 고치지 않고 `pnpm skills:sync`으로 복원한다. shadcn의 latest 예시는 `pnpm exec shadcn`, Playwright CLI는 `pnpm exec playwright-cli`로 실행한다. 세션의 브라우저 도구 규칙이 우선한다.
 - 생성물은 직접 고치지 않는다. 생성 원본을 고치고 `pnpm gen`한다.
 - 첫 줄의 직접 수정 금지 헤더는 web 생성물에 적용한다. `contract/` 사본은 원본 헤더를 보존하고 패키지 검사로 최신 여부를 확인한다.
 - 계약 변경은 [계약 확장](docs/recipes/change-contract.md)의 순서로 TypeSpec·목 수기 소스를 고치고 `pnpm gen`한다.
