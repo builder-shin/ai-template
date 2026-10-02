@@ -13,14 +13,19 @@ const excluded = new Set([
 ]);
 
 /** git 없는 복사본도 검사한다. 환경 파일과 링크는 절대 열지 않는다. */
-export function readProjectFiles(root: string): Record<string, string> {
+export function readProjectFiles(
+  root: string,
+  excludedPaths: readonly string[] = [],
+): Record<string, string> {
   const files: Record<string, string> = {};
+  const ignored = new Set(excludedPaths);
   function visit(dir: string, prefix: string) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const relative = prefix + entry.name;
+      if (ignored.has(relative)) continue;
       if (excluded.has(entry.name) || entry.isSymbolicLink()) continue;
       if (entry.name.startsWith(".env") && entry.name !== ".env.example") continue;
       if (/\.(tsbuildinfo|log)$/.test(entry.name)) continue;
-      const relative = prefix + entry.name;
       if (entry.isDirectory()) visit(join(dir, entry.name), `${relative}/`);
       else if (entry.isFile()) files[relative] = readFileSync(join(dir, entry.name), "utf8");
     }

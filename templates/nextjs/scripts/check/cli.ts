@@ -8,14 +8,27 @@ import en from "../../messages/en.json";
 import { errorCodes } from "../../src/lib/generated/error-codes";
 import { checkI18n } from "./i18n";
 import { checkHarness } from "./harness";
-import { checkOfficialSkills, installedSkillState } from "./skills";
+import {
+  checkOfficialSkills,
+  installedSkillState,
+  officialSkills,
+  readOfficialSkillCopies,
+} from "./skills";
 import { runChecks, parseCheckArgs } from "./runner";
 import { assembleSteps } from "./steps";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 process.chdir(root);
 const { fast, related } = parseCheckArgs(process.argv.slice(2));
-const files = readProjectFiles(root);
+// 공식 폴더는 manifest 밖의 본문을 읽지 않는 전용 열거기로만 연다.
+const readFiles = () => ({
+  ...readProjectFiles(
+    root,
+    officialSkills.map((source) => ".claude/skills/" + source.name),
+  ),
+  ...readOfficialSkillCopies(root),
+});
+const files = readFiles();
 const cachePath = ".cache/check.json";
 let previous: Record<string, string> = {};
 try {
@@ -50,7 +63,7 @@ if (!existsSync(".cache")) mkdirSync(".cache");
 // typegen이 갱신한 next-env와 route 타입을 성공 캐시에 반영한다.
 if (result.cache.types) {
   result.cache.types = assembleSteps(
-    readProjectFiles(root),
+    readFiles(),
     fast,
     related,
     readRouteTypes(root),

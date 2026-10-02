@@ -1,8 +1,16 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  rmdirSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import * as skillChecks from "./skills";
 import {
   checkInstalledSkill,
@@ -14,6 +22,11 @@ import {
 } from "./skills";
 import { readProjectFiles } from "./files";
 import { assembleSteps } from "./steps";
+
+vi.mock("node:fs", async (importOriginal) => {
+  const fs = await importOriginal<typeof import("node:fs")>();
+  return { ...fs, readFileSync: vi.fn(fs.readFileSync) };
+});
 
 const templateRoot = fileURLToPath(new URL("../../", import.meta.url));
 const temporary: { files: Set<string>; directories: Set<string> }[] = [];
@@ -148,5 +161,100 @@ it.each(["버전 변경", "패키지 삭제", "원문 변경"])(
     expect(readProjectFiles(project.root)).toEqual(files);
     expect(key()).not.toBe(previous);
     expect(checkOfficialSkills(project.root, files).length).toBeGreaterThan(0);
+  },
+);
+
+const skillFolders = [
+  ".claude/skills/next-dev-loop",
+  ".claude/skills/playwright-cli",
+  "node_modules/@playwright/cli/skills/playwright-cli",
+];
+const unexpectedFiles = skillFolders.flatMap((folder) =>
+  ["extra.log", ".cache/extra.md", ".env", "toString", "__proto__"].map(
+    (name) => folder + "/" + name,
+  ),
+);
+
+it.each(unexpectedFiles)("공식 폴더의 추가 파일을 읽지 않고 경로로 거절한다: %s", (path) => {
+  const project = skillProject();
+  expect(checkOfficialSkills(project.root, readProjectFiles(project.root))).toEqual([]);
+  const previous = skillChecks.installedSkillState(project.root);
+  project.write(path, "읽지 않을 본문");
+  const files = readProjectFiles(project.root);
+  vi.mocked(readFileSync).mockClear();
+  const problems = checkOfficialSkills(project.root, files);
+  expect(problems.join("\n")).toContain(path + ":1 skill-copy");
+  expect(
+    vi.mocked(readFileSync).mock.calls.some(([file]) => file === join(project.root, path)),
+  ).toBe(false);
+  if (path.startsWith("node_modules/"))
+    expect(skillChecks.installedSkillState(project.root)).not.toEqual(previous);
+});
+
+it("원본에 없는 빈 디렉터리도 거절한다", () => {
+  const project = skillProject();
+  const path = ".claude/skills/next-dev-loop/empty";
+  const directory = join(project.root, path);
+  mkdirSync(directory);
+  project.created.directories.add(directory);
+  expect(checkOfficialSkills(project.root, readProjectFiles(project.root)).join("\n")).toContain(
+    path + "/:1 skill-copy",
+  );
+});
+
+it.each([
+  ".claude/skills/next-dev-loop/SKILL.md",
+  "node_modules/@playwright/cli/skills/playwright-cli/SKILL.md",
+])(
+  "manifest 경로의 링크를 읽지 않고 거절한다 (Windows는 권한 오류 때 제외): %s",
+  (path, context) => {
+    const project = skillProject();
+    project.write("target.md", "읽지 않을 링크 대상");
+    const link = join(project.root, path);
+    rmSync(link);
+    try {
+      symlinkSync(join(project.root, "target.md"), link, "file");
+    } catch (error) {
+      if (
+        process.platform === "win32" &&
+        ["EPERM", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")
+      ) {
+        context.skip("Windows에서 symlink 생성 권한이 필요하다.");
+        return;
+      }
+      throw error;
+    }
+    const files = readProjectFiles(project.root);
+    vi.mocked(readFileSync).mockClear();
+    expect(checkOfficialSkills(project.root, files).join("\n")).toContain(
+      path + ":1 skill-copy — 허용하지 않는 항목",
+    );
+    expect(vi.mocked(readFileSync).mock.calls.some(([file]) => file === link)).toBe(false);
+  },
+);
+
+it.each(["extra.log", ".cache/extra.md", ".env", "extra.md", "toString", "__proto__"])(
+  "공식 사본의 추가 항목은 캐시 입력에 포함하고 본문을 읽지 않는다: %s",
+  (name) => {
+    const project = skillProject();
+    const readFiles = () => ({
+      ...readProjectFiles(
+        project.root,
+        officialSkills.map((entry) => ".claude/skills/" + entry.name),
+      ),
+      ...skillChecks.readOfficialSkillCopies(project.root),
+    });
+    const key = (files: Record<string, string>) =>
+      assembleSteps(files, false, []).find((step) => step.name === "harness")!.key;
+    const previous = key(readFiles());
+    const path = ".claude/skills/next-dev-loop/" + name;
+    project.write(path, "읽지 않을 본문");
+    vi.mocked(readFileSync).mockClear();
+    const files = readFiles();
+    expect(
+      vi.mocked(readFileSync).mock.calls.some(([file]) => file === join(project.root, path)),
+    ).toBe(false);
+    expect(checkSkillCopies(files).join("\n")).toContain(path + ":1 skill-copy");
+    expect(key(files)).not.toBe(previous);
   },
 );
