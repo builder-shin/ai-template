@@ -65,9 +65,9 @@
 | 항목                                        | 버전                          | 비고                                                                     |
 | ------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------ |
 | Node / pnpm                                 | 24 LTS / 12.6.0               | N13. W2·W3 검증 환경은 Node 24.19.0                                     |
-| Next.js / React                             | 16.3.7 / 19.3.0               | 16.3.6이 2026-09 보안 릴리스(next/og RCE)다                              |
+| Next.js / React                             | 16.3.8 / 19.3.0               | W4 Task 1: 2026-09-30 보안 릴리스, 2026-10-01부터 설치 가능              |
 | react-dom / @types/react / @types/react-dom | 19.3.0 / 19.3.0 / 19.3.0      | React와 같은 버전                                                        |
-| @next/env                                   | 16.3.7                        | Next와 같은 버전의 개발 환경 로더                                        |
+| @next/env                                   | 16.3.8                        | Next와 같은 버전의 개발 환경 로더                                        |
 | TypeScript                                  | 6.0.3                         | N12                                                                      |
 | @types/node                                 | 24.13.6                       | Node 24, 저장소 pin 재사용                                                |
 | Tailwind CSS / shadcn CLI                   | 4.3.3 / 4.21.0                | Base UI 기반(`-b base`)                                                  |
@@ -84,7 +84,7 @@
 | react-markdown / remark-gfm                  | 10.1.0 / 4.0.1                | 공개 상세·편집기 미리보기의 Markdown과 GFM. raw HTML은 제외한다          |
 | @types/jsdom                                | 30.0.0                        | 실제 SSR HTML을 읽는 HTTP 통합 검사의 타입                              |
 | Hono / @hono/node-server                    | 4.13.11 / 2.1.3               | 목 서버                                                                  |
-| ESLint / typescript-eslint / eslint-config-next | 10.11.0 / 8.71.0 / 16.3.7 | flat config만(Next 16에서 `next lint` 제거)                              |
+| ESLint / typescript-eslint / eslint-config-next | 10.11.0 / 8.71.0 / 16.3.8 | flat config만(Next 16에서 `next lint` 제거)                              |
 | eslint-plugin-boundaries / @eslint/compat   | 7.2.0 / 2.1.1                 | ESLint 10의 경계 검사, Next React 플러그인의 context API 호환             |
 | eslint-plugin-import / eslint-plugin-jsx-a11y / eslint-plugin-react | 2.32.0 / 6.10.2 / 7.37.5 | Next의 전이 플러그인, lock에 고정                   |
 | Prettier / tsx                              | 3.9.9 / 4.23.15               | 저장소 pin 재사용                                                        |
@@ -97,6 +97,10 @@
 | next-devtools-mcp                           | 0.4.0                         |                                                                          |
 
 typescript-eslint는 저장소 루트의 8.70.1 대신 설계의 8.71.0을 썼고 전체 린트·타입 검사를 통과했다. W3는 선택 당시 최신 안정판 react-markdown 10.1.0·remark-gfm 4.0.1과 @types/jsdom 30.0.0을 HTML 제외 렌더링·GFM과 기존 jsdom의 타입에 쓴다. 모두 공개 후 하루가 지났음을 확인했다. Socket.IO 클라이언트는 설계 pin인 4.8.4다. 정확한 pin과 pnpm의 `minimumReleaseAge: 1440`을 유지한다.
+
+W4 Task 1에서 다시 확인했다(2026-10-02). [Next 16.3.8](https://github.com/vercel/next.js/releases/tag/v16.3.8)은 이미지 최적화·메타데이터·캐시·개발 MCP의 보안 패치다. next·@next/env·eslint-config-next만 16.3.8로 올리고 다른 직접 의존성은 유지한다. `pnpm view <패키지>@<버전> time --json`의 공개 시각은 각각 2026-09-30 16:07:21.198·15:56:43.745·15:59:39.390 UTC이며, 모두 2026-10-01 같은 시각부터 1440분 정책을 만족한다.
+
+Node 26의 compiled JWT 수정 [PR #97492](https://github.com/vercel/next.js/pull/97492)는 아직 open·draft·미병합이므로 Node 24 LTS를 유지한다. typescript-eslint 8.71.0의 [TypeScript peer 범위](https://registry.npmjs.org/typescript-eslint/8.71.0)는 `>=4.8.4 <6.1.0`이므로 TS 6.0.3과 strict 설정을 유지한다. [@playwright/cli npm 메타데이터](https://registry.npmjs.org/@playwright%2fcli)의 `latest`는 0.1.22이고 공개 시각은 2026-09-28 23:24:31.286 UTC다. 2026-09-29 23:24:31.286 UTC부터 설치 가능하며 CLI·공식 skill은 W4 Task 9에서 추가한다.
 
 ## 4. 템플릿 구조
 
@@ -562,7 +566,7 @@ W1에서 목을 FastAPI와 맞추면서 찾았다. W2를 시작하기 전에 모
 | 7   | 브라우저에서 SeaweedFS presigned PUT이 되는가(CORS)                                                                         | FastAPI compose에 S3 CORS 설정을 더한다                            |
 | 8   | Server Action과 `useActionState`가 로케일 경로에서 JS 없이도 제출·리다이렉트되는가                                            | JS가 필요한 폼으로 명시한다                                        |
 | 9   | `output: 'standalone'` 이미지를 비루트 사용자와 헬스체크로 만들 수 있는가                                                     | 일반 `next start` 이미지                                           |
-| 10  | W4 시점에 Next.js가 Node 26을 지원하는가(PR #97492), typescript-eslint가 TS7을 지원하는가                                     | Node 24와 TS 6을 유지한다                                          |
+| 10  | 2026-10-02 확인: Node 26 수정 PR #97492는 open·draft·미병합, typescript-eslint 8.71.0의 TS peer는 `>=4.8.4 <6.1.0`(§3)        | Node 24 LTS와 TS 6.0.3·typescript-eslint 8.71.0을 유지한다          |
 
 ### 13.1 W2 확인 결과
 
@@ -594,6 +598,7 @@ W3 구현과 리뷰 보정(2026-10-02)의 실제 목 통합·HTTP 검사와 운�
 - 목의 `RECENT_LOGIN_SECONDS`로 재인증 뒤 탈퇴를 검증한다. W4는 FastAPI에서 짧은 창을 준비하고 `expireRecentLogin`을 연결해야 한다. `E2E_TARGET=fastapi`는 현재 명시적인 미구현 오류로 실패하며 목으로 대체하지 않는다.
 - `gen:feature`는 독립 임시 사본에 기능을 생성한 뒤 타입·경계 린트·단위·실제 목·HTTP 검사를 통과했다. 이름 충돌·예약어 거절과 정리도 검사한다. 새 계약·권한·문구는 출력한 고칠 곳을 따라 구현한다.
 - 현재 draft·published 두 상태는 양방향 변경과 같은 상태 PATCH를 허용해 실제 목에서 `post.invalid_transition`을 만들 수 없다. 해당 안내만 HTTP 경계에 계약 모양의 422를 주입해 검사하며 다른 CRUD·발행·취소·권한 검사는 실제 목을 쓴다.
+- W4 Task 1(2026-10-02): Next·@next/env·eslint-config-next를 공개 후 하루가 지난 보안 패치 16.3.8로 맞췄다. §13 #10의 재확인 결과 Node 24·TS 6.0.3·typescript-eslint 8.71.0은 유지한다. @playwright/cli 0.1.22는 현재 안정판이며 1440분 정책을 만족하고, 설치와 공식 skill은 Task 9에 남긴다(§3).
 
 ## 14. 확인한 사실과 출처 (2026-09-29)
 
