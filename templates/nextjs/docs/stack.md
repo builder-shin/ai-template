@@ -45,7 +45,7 @@ Next 설정이 가져오는 React 플러그인은 아직 ESLint 10의 context AP
 
 계약과 목의 의존성은 사본 package.json의 정확한 pin을 유지한다. 목의 `@ai-template/contract: workspace:*`는 이 프로젝트 안의 TypeSpec 사본만 가리킨다. Socket.IO 클라이언트 4.8.4는 web의 실시간 런타임 의존성이다. 2026-09-25 08:35 UTC에 공개되어 `minimumReleaseAge: 1440`을 만족한다.
 
-W3에서 react-markdown은 공개 상세·편집기 미리보기의 HTML 제외 렌더링과 기본 URL 검사를, remark-gfm은 표 등 GFM을 맡는다. raw HTML 플러그인은 넣지 않는다. @types/jsdom은 기존 jsdom 30.1.1로 실제 SSR HTML을 읽는 통합 검사에 쓴다. 선택 당시 최신 안정판이며 공개 시각은 각각 2025-03-07 10:32 UTC, 2025-02-10 12:43 UTC, 2026-08-07 17:47 UTC여서 하루 규칙을 만족했다. Socket.IO는 실제 목 브라우저 연결·티켓·ack·이벤트를 검사했으며 FastAPI 대상은 W4에서 확인한다.
+W3에서 react-markdown은 공개 상세·편집기 미리보기의 HTML 제외 렌더링과 기본 URL 검사를, remark-gfm은 표 등 GFM을 맡는다. raw HTML 플러그인은 넣지 않는다. @types/jsdom은 기존 jsdom 30.1.1로 실제 SSR HTML을 읽는 통합 검사에 쓴다. 선택 당시 최신 안정판이며 공개 시각은 각각 2025-03-07 10:32 UTC, 2025-02-10 12:43 UTC, 2026-08-07 17:47 UTC여서 하루 규칙을 만족했다. Socket.IO는 실제 목과 FastAPI 브라우저 연결·티켓·ack·세션 폐기·목록 반영을 같은 E2E에서 확인했다(2026-10-02).
 
 lockfile은 openapi-fetch의 `openapi-typescript-helpers` 0.1.0, Next 린트의 `eslint-plugin-import` 2.32.0·`eslint-plugin-jsx-a11y` 6.10.2·`eslint-plugin-react` 7.37.5도 고정한다. next-intl의 네이티브 전이 의존성 `@parcel/watcher` 2.6.0·`@swc/core` 1.16.12는 빌드 허용 목록에 추가했다. 공개 후 1440분 규칙은 유지한다.
 
@@ -95,6 +95,16 @@ Node 24 LTS를 유지한다. Node 26의 compiled JWT 호환성을 고치는 [Nex
 TypeScript 6.0.3과 typescript-eslint 8.71.0도 유지한다. `pnpm view typescript-eslint@8.71.0 peerDependencies --json`과 [버전별 npm 메타데이터](https://registry.npmjs.org/typescript-eslint/8.71.0)의 TypeScript 범위는 `>=4.8.4 <6.1.0`으로 TS7을 포함하지 않는다. strict 설정도 유지한다.
 
 `pnpm view @playwright/cli dist-tags --json`의 `latest`는 0.1.22다. [공식 릴리스](https://github.com/microsoft/playwright-cli/releases/tag/v0.1.22)와 공개 시각을 확인했으며, 이 안정판과 공식 skill은 W4 Task 9에서 추가했다. 기존 @playwright/test 1.63.0은 유지한다.
+
+### W4 실행·검증 기록 (2026-10-02)
+
+Node 이미지도 `24.19.0-bookworm-slim`으로 고정한다. [Dockerfile](../Dockerfile)은 pnpm 12.6.0 frozen 설치와 standalone 산출물을 쓰며 UID/GID 10001로 실행한다.
+`src/instrumentation.ts`가 `src/lib/env.ts`의 같은 스키마를 실행 때 검사해 비밀 누락·짧은 비밀·운영 예시 비밀과 잘못된 설정을 요청 처리 전에 거절한다.
+실제 이미지에서 HTTP 200·정적 자산·비루트 사용자·시작 실패·빌드와 다른 API·실시간 URL의 실행 적용을 확인했다. 자세한 실행 설정은 [Docker 이미지](architecture.md#docker-이미지)를 따른다.
+
+같은 Playwright 1.63.0 Chromium E2E 20개가 mock·외부 FastAPI에서 각각 통과했다. FastAPI는 Mailpit·모의 OAuth·SeaweedFS와 실제 Socket.IO를 쓴다.
+web은 [환경 행렬](architecture.md#환경-행렬)의 주소와 창만 받으며 스택을 기동하지 않는다. root·web check는 각각 9단계, web build도 통과했다.
+일곱 레시피와 `add-*` skill, 위 공식 skill의 출처·오프라인 무결성 검사는 완료했다. CI의 FastAPI 대상·web 이미지 실행 결과는 PR CI에서 확인한다.
 
 ### 알려진 peer 경고
 

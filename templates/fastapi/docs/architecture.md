@@ -173,6 +173,18 @@ auth 모듈의 `service/oauth.py`와 `providers/`다. 제공자는 파일 하나
 
 - 설정은 `app.core.config.Settings` 하나다. 비밀(키, 비밀번호, 계정이 든 `DATABASE_URL`, `REDIS_URL`, `SMTP_URL`)은 `SecretStr`로 받아 repr과 로그에 값이 드러나지 않는다. 쓰는 곳에서만 `get_secret_value()`로 꺼낸다.
 - `RECENT_LOGIN_SECONDS`는 탈퇴에 필요한 최근 로그인 창이다(초, 1 이상의 정수, 기본 600). 재인증 E2E에서만 줄인다. 창의 경계까지 허용하고, 지나면 401 `auth.reauthentication_required`와 같은 초를 담은 `WWW-Authenticate`의 `max_age`를 돌려준다. 세션의 최초 로그인 시각으로 검사하므로 refresh로는 풀리지 않으며, 다시 로그인해야 한다.
+
+web의 재인증·브라우저 업로드를 맞출 때는 다음 두 설정을 명시한다. 이름·공개 기본값은 `.env.example`, 검증은 `app.core.config.Settings`를 따른다.
+
+| 변수 | 생략할 때 | web E2E 예시 | 적용 |
+| --- | --- | --- | --- |
+| `RECENT_LOGIN_SECONDS` | `600`초 | `10` | 탈퇴 검사와 `WWW-Authenticate`의 `max_age`. web 어댑터의 `E2E_RECENT_LOGIN_SECONDS`도 같은 초로 둔다 |
+| `STORAGE_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:3001` | `http://localhost:3100` | 스토리지 준비 뒤 `python -m app.storage_setup`으로 버킷 CORS를 적용한다 |
+
+최근 로그인 창은 1 이상의 정수만 받으며 refresh로 늘어나지 않는다. 스토리지 Origin은 쉼표 목록을 정규화하고 빈 목록·wildcard·잘못된 주소를 거절한다.
+Origin을 바꾸면 초기화 명령을 다시 실행해 CORS를 맞춘다. 반복해도 기존 객체는 보존하며 버킷 생성·CORS 오류는 실패로 끝난다.
+메일의 `FRONTEND_URL`, `REALTIME_ALLOWED_ORIGINS`, `OAUTH_REDIRECT_URIS`도 같은 web Origin과 `/oauth/callback`에 맞춘다. S3 public endpoint는 브라우저가 접근할 주소로 둔다.
+
 - 운영(`APP_ENV=production`)에서는 앱이 스스로 정하는 비밀(`JWT_SECRET`, `IDENTIFIER_HASH_SECRET`, `SEED_ADMIN_PASSWORD`)이 `.env.example`의 값이면 설정 검증이 실패해 시작하지 않는다. `.env.example`을 그대로 옮긴 실수를 막는다. DB, S3, SMTP, OAuth의 자격 증명은 그 서비스가 예시 값을 거절하므로 보지 않는다. compose의 app 프로필도 운영 모드라 이 셋에 따로 값을 둔다.
 - 이메일처럼 추측할 수 있는 식별자는 원문 대신 `IDENTIFIER_HASH_SECRET` 키의 HMAC-SHA256(`app.core.security.identifier_hash`)으로 남긴다. 로그인의 식별자별 레이트 리밋 키, 메일 요청의 이메일별 레이트 리밋 키, 로그인 실패 감사 로그의 `identifierHash`가 이 값이다. 키 없는 해시는 흔한 주소 목록으로 되돌릴 수 있다.
 - 이 키를 바꾸면 이전 감사 로그의 `identifierHash`와 새 값이 이어지지 않고, 식별자별 레이트 리밋 창이 새로 시작한다.

@@ -58,7 +58,8 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 루트 레이아웃의 `/me` 실패도 `global-error.tsx`가 번역한 복구 화면과 trace를 보여 준다. 전역 오류 화면은 자체 html·body·스타일·번역 provider를 갖춘다.
 - `.env`를 읽거나 출력하지 않는다. 키는 `.env.example`과 `src/lib/env.ts`에서 확인한다. 운영에는 예시 `SESSION_SECRET`을 쓸 수 없다.
 - `pnpm setup`은 의존성 → 환경 키 보충 → 독립 저장소 hook → Chromium 순서다. 브라우저 설치가 실패해도 앞의 준비를 보존하고 실패 코드로 끝난다. 다시 실행하면 기존 환경 값을 유지한다.
-- 환경 검증은 `next.config.ts`의 개발·운영 서버 phase에서 한다. 빌드에는 서버 비밀이 필요 없다. 잘못된 설정은 서버 시작 때 변수마다 한 줄을 알리고 종료한다.
+- 환경 검증은 `next.config.ts`의 개발·운영 서버 phase와 `src/instrumentation.ts`의 Node 서버 시작에서 같은 `src/lib/env.ts` 스키마로 한다. 빌드에는 서버 비밀이 필요 없다. 잘못된 설정·운영 예시 비밀은 요청 처리 전에 값·스택 없이 변수별 안내를 쓰고 종료 코드 1로 멈춘다.
+- [Docker 이미지](docs/architecture.md#docker-이미지)는 Node 24.19.0 slim·pnpm 12.6.0의 standalone 빌드다. UID/GID 10001로 실행하며 API·실시간 URL과 비밀은 실행 때 전달한다. standalone도 instrumentation으로 시작 설정을 검사한다.
 - 의존성 버전은 정확히 고정한다. pnpm의 `minimumReleaseAge: 1440`을 유지한다.
 - `.claude/skills/add-*/`는 아래 레시피의 얇은 포장이다. 절차가 다르면 레시피를 따른다.
 - 공식 `next-dev-loop`·shadcn·Playwright CLI skill의 [고정 출처](docs/stack.md#공식-skill)는 check의 harness가 검사한다. 사본은 직접 고치지 않고 `pnpm skills:sync`으로 복원한다. shadcn의 latest 예시는 `pnpm exec shadcn`, Playwright CLI는 `pnpm exec playwright-cli`로 실행한다. 세션의 브라우저 도구 규칙이 우선한다.
@@ -68,8 +69,8 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - Claude Edit·Write 차단은 생성물 경로에만 적용한다. TypeSpec·목 수기 소스는 편집할 수 있다.
 - `pnpm dev`는 Next 환경 로더 뒤 `API_BASE_URL`이 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 같은 loopback에 목도 시작한다. 그 밖의 주소는 web만 시작한다. Ctrl+C로 두 서버를 함께 내린다.
 - dev·HTTP 통합·E2E는 `scripts/process-tree.mjs`로 직접 node를 시작하고 종료한다. 런처 종료 뒤에도 POSIX 그룹을 정리하며, 종료를 기다린 뒤 한도를 넘으면 강제 종료한다. tsx는 CLI 대신 `node --import` 로더로 쓴다.
-- E2E는 기본 `E2E_TARGET=mock`이다. webServer가 목 → 운영 빌드 → start를 실행하고 매번 새 세션 비밀을 전달한다. 3100·4110은 비워 두며 기존 서버를 재사용하지 않는다. `E2E_TARGET=fastapi`는 [E2E 설정](e2e/AGENTS.md)의 외부 API를 기다린 뒤 web만 기동한다.
-- 목의 `RECENT_LOGIN_SECONDS` 기본값은 600초다. 탈퇴 통합 검사는 별도 목의 2초, E2E는 10초 창을 쓰며 FastAPI 대상에도 같은 조건이 필요하다.
+- E2E는 기본 `E2E_TARGET=mock`이다. webServer가 목 → 운영 빌드 → start를 실행하고 매번 새 세션 비밀을 전달한다. 3100·4110은 비워 두며 기존 서버를 재사용하지 않는다. `E2E_TARGET=fastapi`는 [E2E 설정](e2e/AGENTS.md)의 외부 API를 기다린 뒤 web만 기동한다. API·Socket.IO·Mailpit·OAuth URL과 최근 로그인 창을 명시하며 외부 스택은 호출자가 준비·정리한다. [환경 행렬](docs/architecture.md#환경-행렬)을 따른다.
+- 목과 FastAPI의 `RECENT_LOGIN_SECONDS` 기본값은 600초다. 탈퇴 통합 검사는 별도 목의 2초, 양쪽 E2E는 10초 창을 쓴다. FastAPI 어댑터의 `E2E_RECENT_LOGIN_SECONDS`는 백엔드 설정과 같아야 한다.
 - 소스 400줄, 테스트 600줄을 넘기지 않는다. 타입·린트 억제(`@ts-nocheck` 포함)는 같은 억제 주석의 같은 줄에 `사유: 설명`을 적는다. `any`의 사유는 같은 줄의 뒤따르는 주석에 적는다. 파서가 구분한 실제 주석만 인정하며 문자열·템플릿 본문·연산자는 사유로 인정하지 않는다.
 - 템플릿 밖의 파일에 의존하지 않는다. 비밀 스캔 허용 목록은 계약 사본과 생성물로 제한한다.
 - 테스트·개발 예시의 가짜 비밀에는 같은 줄의 주석에 `betterleaks:allow 사유: 설명`을 적는다.
