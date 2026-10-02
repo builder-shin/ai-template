@@ -99,6 +99,14 @@ describe("FastAPI 대상 설정", () => {
     ["E2E_MAILPIT_URL", "http://localhost:28125/path"],
     ["E2E_OAUTH_URL", "ftp://localhost"],
     ["E2E_OAUTH_URL", "http://localhost:28180/#private-value"],
+    ["APP_URL", "http://localhost:3100?"],
+    ["APP_URL", "http://localhost:3100#"],
+    ["API_BASE_URL", "http://127.0.0.1:18100/api/v1?"],
+    ["API_BASE_URL", "http://127.0.0.1:18100/api/v1#"],
+    ["E2E_MAILPIT_URL", "http://127.0.0.1:28125?"],
+    ["E2E_MAILPIT_URL", "http://127.0.0.1:28125#"],
+    ["E2E_OAUTH_URL", "http://127.0.0.1:28180?"],
+    ["E2E_OAUTH_URL", "http://127.0.0.1:28180#"],
   ])("%s의 잘못된 주소를 값 없이 알린다", (key, value) => {
     const parse = () => parseFastapiTargetEnv(env({ [key!]: value! }));
     expect(parse).toThrow(key);

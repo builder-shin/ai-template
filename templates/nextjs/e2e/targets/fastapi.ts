@@ -6,7 +6,11 @@ const httpAddress = z.url({ protocol: /^https?$/ }).pipe(
   z.string().refine((value) => {
     const url = new URL(value);
     return (
-      !url.hostname.includes("*") && !url.username && !url.password && !url.search && !url.hash
+      !url.hostname.includes("*") &&
+      !url.username &&
+      !url.password &&
+      !value.includes("?") &&
+      !value.includes("#")
     );
   }),
 );
