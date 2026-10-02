@@ -140,9 +140,9 @@ EXAMPLE_SECRETS = {
 
 
 class Settings(BaseSettings):
-    """설정 스키마. 환경 변수 이름은 필드 이름의 대문자(예: DATABASE_URL)이고, 모든 값이 필수다.
+    """설정 스키마. 환경 변수 이름은 필드 이름의 대문자(예: DATABASE_URL)다.
 
-    필드를 더하거나 빼면 .env.example도 같이 고친다.
+    기본값이 없는 필드는 필수다. 필드를 더하거나 빼면 .env.example도 같이 고친다.
     """
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -168,6 +168,8 @@ class Settings(BaseSettings):
     # 이메일 같은 식별자의 해시(HMAC-SHA256) 키. 32자 이상.
     # 바꾸면 이전 감사 로그의 해시와 이어지지 않는다
     identifier_hash_secret: Annotated[SecretStr, Field(min_length=32)]
+    # 탈퇴에 필요한 최근 로그인 창(초). refresh는 로그인 시각을 바꾸지 않는다
+    recent_login_seconds: Annotated[int, Field(ge=1)] = 600
     # 메일 서버. smtp://(평문), smtp+starttls://(STARTTLS), smtps://(TLS). 계정은 주소에 넣는다
     smtp_url: Annotated[SecretStr, _scheme("smtp://", "smtp+starttls://", "smtps://")]
     mail_from: NonEmpty
