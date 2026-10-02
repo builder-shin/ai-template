@@ -1,7 +1,45 @@
 import { describe, expect, it } from "vitest";
+import { JSDOM } from "jsdom";
 import { base } from "./helpers";
 
 describe("실제 Next 서버의 로케일 렌더링", () => {
+  it.each([
+    ["en", "/en/posts", "ko", "/ko/posts", 307],
+    ["ko", "/posts", "en", "/en/posts", 200],
+  ] as const)(
+    "%s HTML의 %s 전환 링크는 JS 없이 쿼리와 선택 쿠키를 유지한다",
+    async (locale, path, target, targetPath, status) => {
+      const query = "?q=locale-e2e&sort=title";
+      const headers = {
+        Cookie: `NEXT_LOCALE=${locale}`,
+        "Accept-Language": "ko",
+        "Sec-Fetch-Dest": "document",
+      };
+      const source = await fetch(`${base}${path}${query}`, { headers });
+      expect(source.status).toBe(200);
+      const dom = new JSDOM(await source.text());
+      const href = dom.window.document
+        .querySelector(`nav a[lang="${target}"]`)
+        ?.getAttribute("href");
+      dom.window.close();
+      expect(href).toBe(`${targetPath}${query}`);
+      const switched = await fetch(new URL(href!, base), { headers, redirect: "manual" });
+      expect(switched.status).toBe(status);
+      expect(switched.headers.get("set-cookie")).toContain(`NEXT_LOCALE=${target}`);
+      if (target === "ko") {
+        expect(new URL(switched.headers.get("location")!, base).href).toBe(`${base}/posts${query}`);
+        const destination = await fetch(new URL(switched.headers.get("location")!, base), {
+          headers: { ...headers, Cookie: "NEXT_LOCALE=ko" },
+          redirect: "manual",
+        });
+        expect(destination.status).toBe(200);
+        expect(await destination.text()).toContain('<html lang="ko">');
+      } else {
+        expect(await switched.text()).toContain('<html lang="en">');
+      }
+    },
+  );
+
   it.each([
     ["/", "ko", "Web 템플릿"],
     ["/en", "en", "Web template"],

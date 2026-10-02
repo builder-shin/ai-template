@@ -87,4 +87,8 @@ test("헤더 언어 전환은 공개 목록의 검색 조건과 선택 쿠키를
     .click();
   await expect(page).toHaveURL("/posts?q=locale-e2e&sort=title");
   await expect(page.locator("html")).toHaveAttribute("lang", "ko");
+  await expect(page.getByLabel(ko.posts.search, { exact: true })).toHaveValue("locale-e2e");
+  expect((await context.cookies()).find((cookie) => cookie.name === "NEXT_LOCALE")?.value).toBe(
+    "ko",
+  );
 });
