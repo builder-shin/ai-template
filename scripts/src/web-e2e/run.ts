@@ -15,6 +15,35 @@ export interface Dependencies {
   command: (signal?: AbortSignal) => Promise<number>;
   log: (message: string) => void;
 }
+
+/** 명시한 프로젝트를 내린 뒤 해당 실행의 이미지 태그만 정리한다. */
+export async function downStack(
+  plan: Plan,
+  deps: Pick<Dependencies, "execute" | "log">,
+): Promise<number> {
+  let argv = plan.commands.down;
+  try {
+    let code = (await deps.execute(argv, { capture: false })).code;
+    if (code === 0) {
+      argv = plan.commands.image;
+      const image = await deps.execute(argv, { capture: true });
+      code = image.code;
+      if (code === 0 && image.stdout.trim()) {
+        argv = plan.commands.removeImage;
+        code = (await deps.execute(argv, { capture: false })).code;
+      }
+    }
+    if (code !== 0)
+      deps.log(
+        `정리 실패: ${plan.project}, 종료 코드 ${String(code)}. 정리 인자: ${JSON.stringify(argv)}`,
+      );
+    return code;
+  } catch (error) {
+    deps.log(`정리 실패: ${plan.project}, ${String(error)}. 정리 인자: ${JSON.stringify(argv)}`);
+    return 1;
+  }
+}
+
 export async function runStack(
   plan: Plan,
   options: { keep?: boolean; signal?: AbortSignal },
@@ -69,23 +98,16 @@ export async function runStack(
           `스택 유지: ${plan.project}. 정리 인자: ${JSON.stringify(plan.commands.down)} (COMPOSE_DISABLE_ENV_FILE=1, WEB_E2E_RUN_ID=${plan.runId}).`,
         );
       } else {
-        for (const argv of [plan.commands.ps, plan.commands.logs]) {
-          try {
-            await deps.execute(argv, { capture: false });
-          } catch (error) {
-            deps.log(`진단 실패: ${String(error)}`);
+        if (code !== 0) {
+          for (const argv of [plan.commands.ps, plan.commands.logs]) {
+            try {
+              await deps.execute(argv, { capture: false });
+            } catch (error) {
+              deps.log(`진단 실패: ${String(error)}`);
+            }
           }
         }
-        try {
-          cleanupCode = (await deps.execute(plan.commands.down, { capture: false })).code;
-        } catch (error) {
-          cleanupCode = 1;
-          deps.log(String(error));
-        }
-        if (cleanupCode !== 0)
-          deps.log(
-            `정리 실패: ${plan.project}, 종료 코드 ${String(cleanupCode)}. 정리 인자: ${JSON.stringify(plan.commands.down)}`,
-          );
+        cleanupCode = await downStack(plan, deps);
       }
     }
   }

@@ -6,7 +6,7 @@ import { parse } from "yaml";
 import { record, validateCompose } from "../../src/web-e2e/config.ts";
 import { createPlan, projectName, webCommand } from "../../src/web-e2e/plan.ts";
 import { commandEnv, probePorts, execute } from "../../src/web-e2e/process.ts";
-import { runStack, type Dependencies } from "../../src/web-e2e/run.ts";
+import { downStack, runStack, type Dependencies } from "../../src/web-e2e/run.ts";
 
 const root = resolve(import.meta.dirname, "../../..");
 const plan = createPlan("offline-04", root);
@@ -58,6 +58,8 @@ describe("전용 스택의 명령과 주소", () => {
       ps: [...base, "ps", "--all"],
       logs: [...base, "logs", "--no-color", "--tail", "100"],
       down: [...base, "down", "--volumes", "--remove-orphans"],
+      image: ["docker", "image", "ls", "-q", "ai-template-web-e2e-fastapi:offline-04"],
+      removeImage: ["docker", "image", "rm", "ai-template-web-e2e-fastapi:offline-04"],
     });
     expect(plan.env).toEqual({ WEB_E2E_RUN_ID: "offline-04", COMPOSE_DISABLE_ENV_FILE: "1" });
   });
@@ -227,7 +229,7 @@ function harness(failure?: string, code = 7) {
       events.push(step);
       return Promise.resolve({
         code: step === failure ? code : 0,
-        stdout: step === "worker" ? "worker\n" : "",
+        stdout: step === "worker" ? "worker\n" : step === "image" ? "owned-image\n" : "",
       });
     }),
     ready: vi.fn(() => {
@@ -244,7 +246,7 @@ function harness(failure?: string, code = 7) {
 }
 
 describe("스택 수명과 실패 정리", () => {
-  it("설정과 포트를 확인한 뒤 시작하고 같은 프로젝트만 진단·정리한다", async () => {
+  it("설정과 포트를 확인한 뒤 시작하고 성공하면 진단 없이 정리한다", async () => {
     const { deps, events } = harness();
     expect(await runStack(plan, {}, deps)).toEqual({ code: 0, cleanupCode: 0 });
     expect(events).toEqual([
@@ -257,10 +259,33 @@ describe("스택 수명과 실패 정리", () => {
       "ready",
       "worker",
       "command",
-      "ps",
-      "logs",
       "down",
+      "image",
+      "removeImage",
     ]);
+  });
+
+  it("성공한 실행은 ps와 logs를 호출하지 않는다", async () => {
+    const { deps, events } = harness();
+    expect(await runStack(plan, {}, deps)).toEqual({ code: 0, cleanupCode: 0 });
+    expect(events).not.toContain("ps");
+    expect(events).not.toContain("logs");
+    expect(events.slice(-3)).toEqual(["down", "image", "removeImage"]);
+  });
+
+  it("실패 진단 중 신호를 받아도 logs와 정리를 마친 뒤 신호 코드를 반환한다", async () => {
+    const controller = new AbortController();
+    const { deps, events } = harness("command");
+    const execute = deps.execute;
+    deps.execute = vi.fn<Dependencies["execute"]>((argv, options) => {
+      if (argv === plan.commands.ps) controller.abort(143);
+      return execute(argv, options);
+    });
+    expect(await runStack(plan, { signal: controller.signal }, deps)).toEqual({
+      code: 143,
+      cleanupCode: 0,
+    });
+    expect(events.slice(-5)).toEqual(["ps", "logs", "down", "image", "removeImage"]);
   });
 
   it.each(["containers", "volumes"] as const)(
@@ -278,6 +303,8 @@ describe("스택 수명과 실패 정리", () => {
       expect(events).not.toContain("down");
       expect(events).not.toContain("ps");
       expect(events).not.toContain("logs");
+      expect(events).not.toContain("image");
+      expect(events).not.toContain("removeImage");
       expect(deps.log).toHaveBeenCalledWith(expect.stringContaining("이미 존재"));
       expect(deps.log).toHaveBeenCalledWith(expect.stringContaining("--run-id"));
       expect(deps.log).toHaveBeenCalledWith(expect.stringContaining("--down"));
@@ -289,8 +316,8 @@ describe("스택 수명과 실패 정리", () => {
     async (step) => {
       const { deps, events } = harness(step);
       expect(await runStack(plan, {}, deps)).toEqual({ code: 7, cleanupCode: 0 });
-      expect(events.slice(-3)).toEqual(["ps", "logs", "down"]);
-      expect(deps.execute).toHaveBeenLastCalledWith(plan.commands.down, { capture: false });
+      expect(events.slice(-5)).toEqual(["ps", "logs", "down", "image", "removeImage"]);
+      expect(deps.execute).toHaveBeenLastCalledWith(plan.commands.removeImage, { capture: false });
     },
   );
 
@@ -298,7 +325,7 @@ describe("스택 수명과 실패 정리", () => {
     const { deps, events } = harness();
     deps.ready = vi.fn().mockRejectedValue(new Error("not ready"));
     expect(await runStack(plan, {}, deps)).toEqual({ code: 1, cleanupCode: 0 });
-    expect(events.slice(-3)).toEqual(["ps", "logs", "down"]);
+    expect(events.slice(-5)).toEqual(["ps", "logs", "down", "image", "removeImage"]);
   });
 
   it.each(["validate", "probe", "config", "containers", "volumes"])(
@@ -335,6 +362,8 @@ describe("스택 수명과 실패 정리", () => {
     const { deps, events } = harness();
     expect(await runStack(plan, { keep: true }, deps)).toEqual({ code: 0, cleanupCode: 0 });
     expect(events).not.toContain("down");
+    expect(events).not.toContain("image");
+    expect(events).not.toContain("removeImage");
     expect(deps.log).toHaveBeenCalledWith(
       expect.stringContaining(JSON.stringify(plan.commands.down)),
     );
@@ -370,9 +399,54 @@ describe("스택 수명과 실패 정리", () => {
       code: 143,
       cleanupCode: 0,
     });
-    expect(events.slice(-3)).toEqual(["ps", "logs", "down"]);
+    expect(events.slice(-5)).toEqual(["ps", "logs", "down", "image", "removeImage"]);
     const failed = harness("up");
     expect((await runStack(plan, { keep: true }, failed.deps)).code).toBe(7);
     expect(failed.events).toContain("down");
+  });
+
+  it("down이 실패하면 이미지를 조회하거나 제거하지 않는다", async () => {
+    const { deps, events } = harness("down", 9);
+    expect(await runStack(plan, {}, deps)).toEqual({ code: 0, cleanupCode: 9 });
+    expect(events).not.toContain("image");
+    expect(events).not.toContain("removeImage");
+  });
+
+  it("명시한 --down의 정리는 기동 검사 없이 스택과 해당 이미지 태그만 제거한다", async () => {
+    const { deps, events } = harness("containers");
+    expect(await downStack(plan, deps)).toBe(0);
+    expect(events).toEqual(["down", "image", "removeImage"]);
+  });
+
+  it("이미지가 없으면 제거 명령 없이 정리에 성공한다", async () => {
+    const { deps, events } = harness();
+    const execute = deps.execute;
+    deps.execute = vi.fn<Dependencies["execute"]>((argv, options) =>
+      argv === plan.commands.image
+        ? Promise.resolve({ code: 0, stdout: "" })
+        : execute(argv, options),
+    );
+    expect(await runStack(plan, {}, deps)).toEqual({ code: 0, cleanupCode: 0 });
+    expect(events).toContain("down");
+    expect(events).not.toContain("removeImage");
+  });
+
+  it.each(["image", "removeImage"])("%s 실패를 정리 코드에 반영하고 알린다", async (step) => {
+    const { deps, events } = harness(step, 9);
+    expect(await runStack(plan, {}, deps)).toEqual({ code: 0, cleanupCode: 9 });
+    expect(events).toContain("down");
+    expect(deps.log).toHaveBeenCalledWith(expect.stringContaining("정리 실패"));
+    if (step === "image") expect(events).not.toContain("removeImage");
+  });
+
+  it("이미지 제거 중 예외도 정리 실패로 알린다", async () => {
+    const { deps } = harness();
+    const execute = deps.execute;
+    deps.execute = vi.fn<Dependencies["execute"]>((argv, options) => {
+      if (argv === plan.commands.removeImage) throw new Error("image removal unavailable");
+      return execute(argv, options);
+    });
+    expect(await runStack(plan, {}, deps)).toEqual({ code: 0, cleanupCode: 1 });
+    expect(deps.log).toHaveBeenCalledWith(expect.stringContaining("정리 실패"));
   });
 });

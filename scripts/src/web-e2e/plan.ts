@@ -58,6 +58,8 @@ export function createPlan(runId: string, root = ROOT) {
       ps: [...base, "ps", "--all"],
       logs: [...base, "logs", "--no-color", "--tail", "100"],
       down: [...base, "down", "--volumes", "--remove-orphans"],
+      image: ["docker", "image", "ls", "-q", `ai-template-web-e2e-fastapi:${runId}`],
+      removeImage: ["docker", "image", "rm", `ai-template-web-e2e-fastapi:${runId}`],
     },
   };
 }

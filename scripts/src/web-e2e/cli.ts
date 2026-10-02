@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { validateCompose } from "./config.ts";
 import { createPlan, webCommand } from "./plan.ts";
 import { execute, probePorts } from "./process.ts";
-import { runStack } from "./run.ts";
+import { downStack, runStack } from "./run.ts";
 import { smoke, waitForServices } from "./smoke.ts";
 
 /** 루트에서만 스택을 소유한다. web 템플릿은 주소와 설정만 받는다. */
@@ -42,7 +42,11 @@ async function main(): Promise<number> {
   if (values.smoke !== true) console.log(`web: ${JSON.stringify(webCommand(plan))}`);
   console.log(`정리: pnpm web-e2e fastapi --run-id ${runId} --down`);
   if (values.print === true) return 0;
-  if (values.down === true) return (await execute(plan.commands.down, plan.env)).code;
+  if (values.down === true)
+    return downStack(plan, {
+      execute: (argv, options) => execute(argv, plan.env, options),
+      log: console.error,
+    });
   const controller = new AbortController();
   const interrupt = () => {
     controller.abort(130);
