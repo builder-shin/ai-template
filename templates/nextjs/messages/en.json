@@ -154,7 +154,8 @@
   "uploads": {
     "jsRequired": "File uploads require JavaScript.",
     "clear": "Clear image",
-    "failed": "Could not upload the file. Try again."
+    "failed": "Could not upload the file. Try again.",
+    "retryAfter": "Try again in {seconds} seconds."
   },
   "errors": {
     "jsonapi": {

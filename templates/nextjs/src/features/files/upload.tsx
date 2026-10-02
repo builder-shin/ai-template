@@ -9,10 +9,6 @@ import { Label } from "../../components/ui/label";
 import { createFileAction, readyFileAction } from "./actions";
 import type { FileValue, UploadFailure } from "./state";
 
-function messages(result: UploadFailure) {
-  return [result.formError, ...Object.values(result.fieldErrors).flat()].filter(Boolean).join("\n");
-}
-
 /** JS가 필요한 업로드만 처리한다. 관계 저장은 부모 폼의 Action이 한다. */
 export function FileUpload({
   name,
@@ -33,6 +29,15 @@ export function FileUpload({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const id = `upload-${name}`;
+  function messages(result: UploadFailure) {
+    return [
+      result.formError,
+      ...Object.values(result.fieldErrors).flat(),
+      result.retryAfter != null ? t("retryAfter", { seconds: result.retryAfter }) : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
   async function upload(file: File) {
     setError("");
     try {

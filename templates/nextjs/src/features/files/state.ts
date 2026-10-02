@@ -6,6 +6,8 @@ export type FileValue = { id: string; url: string };
 export type FileUploadRequest = Omit<components["schemas"]["FileUpload"], "headers"> & {
   headers: Record<string, string>;
 };
-export type UploadFailure = Extract<FormResult, { ok: false }>;
+export type UploadFailure = Extract<FormResult, { ok: false }> & {
+  retryAfter?: number | null;
+};
 export type CreateFileResult = UploadFailure | { ok: true; id: string; upload: FileUploadRequest };
 export type ReadyFileResult = UploadFailure | { ok: true; file: FileValue };

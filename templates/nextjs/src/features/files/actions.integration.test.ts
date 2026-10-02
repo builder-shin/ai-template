@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, beforeEach, expect, inject, it, vi } from "vitest";
 import { EXAMPLE_SESSION_SECRET } from "../../lib/env";
 import { readSession } from "../../lib/session/request";
+import { loginSeedAccount } from "../../lib/testing/account";
+import { startMock } from "../../../scripts/test/mock-server";
 import { fileOwnerFixture } from "./test-fixture";
 import { createFileAction, readyFileAction } from "./actions";
 
@@ -91,4 +93,65 @@ it("폐기된 세션은 업로드 화면으로 돌아오는 로그인 경로로 
   await expect(createFileAction(fields(), "/en/my-posts/new")).rejects.toThrow(
     /redirect:\/session\/clear\?returnTo=%2Fen%2Fmy-posts%2Fnew/,
   );
+});
+it.each([
+  ["create", "1"],
+  ["ready", "2"],
+] as const)("%s의 실제 저한도 429는 Retry-After를 보존한다", async (stage, limit) => {
+  const mock = await startMock({ env: { RATE_LIMIT_GLOBAL: limit } });
+  try {
+    const limited = await loginSeedAccount({
+      origin: mock.base,
+      locale: "en",
+      account: {
+        email: "admin@example.com",
+        password: "admin-password", // betterleaks:allow 사유: 테스트 시드
+      },
+    });
+    vi.stubEnv("API_BASE_URL", `${mock.base}/api/v1`);
+    vi.mocked(readSession).mockResolvedValue(limited.session);
+    let id = "";
+    if (stage === "ready") {
+      const created = await createFileAction(fields(), "/en/my-posts/new");
+      if (!created.ok) throw new Error("한도 내 파일 생성 실패");
+      id = created.id;
+      const put = await fetch(created.upload.url, {
+        method: created.upload.method,
+        headers: created.upload.headers,
+        body: Buffer.from([137, 80, 78, 71]),
+      });
+      expect(put.status).toBe(200);
+    }
+    const actual = globalThis.fetch;
+    let response: Response | undefined;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const result = await actual(input, init);
+      if (
+        input instanceof Request &&
+        input.method === (stage === "create" ? "POST" : "PATCH") &&
+        new URL(input.url).pathname === `/api/v1/files${id ? `/${id}` : ""}`
+      )
+        response = result.clone();
+      return result;
+    });
+    const result =
+      stage === "create"
+        ? await createFileAction(fields(), "/en/my-posts/new")
+        : await readyFileAction(id, "/en/my-posts/new");
+    expect(response?.status).toBe(429);
+    if (!response) throw new Error("실제 업로드 응답이 없다.");
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    expect(retryAfter).toBeGreaterThan(0);
+    expect(retryAfter).toBeLessThanOrEqual(60);
+    expect(result).toEqual({
+      ok: false,
+      formError: "Too many requests. Try again later.",
+      fieldErrors: {},
+      retryAfter,
+    });
+  } finally {
+    vi.restoreAllMocks();
+    vi.stubEnv("API_BASE_URL", `${inject("mockBaseUrl")}/api/v1`);
+    await mock.stop();
+  }
 });
