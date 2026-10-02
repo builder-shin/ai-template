@@ -62,8 +62,8 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - 의존성 버전은 정확히 고정한다. pnpm의 `minimumReleaseAge: 1440`을 유지한다.
 - 생성물은 직접 고치지 않는다. 생성 원본을 고치고 `pnpm gen`한다.
 - 첫 줄의 직접 수정 금지 헤더는 web 생성물에 적용한다. `contract/` 사본은 원본 헤더를 보존하고 패키지 검사로 최신 여부를 확인한다.
-- 이 저장소의 `contract/`와 `docs/conventions/`는 sync 사본이다. 원본 수정 뒤 저장소 루트에서 `pnpm sync`한다. 독립 복사본에서는 TypeSpec을 확장하고 `pnpm gen`한다.
-- Claude Edit·Write 차단은 생성물 경로에만 적용한다. 독립 복사본의 TypeSpec·목 수기 소스는 편집할 수 있다. 저장소 사본은 루트 `verify-templates`가 원본과 비교한다.
+- 계약 변경은 [계약 확장](docs/recipes/change-contract.md)의 순서로 TypeSpec·목 수기 소스를 고치고 `pnpm gen`한다.
+- Claude Edit·Write 차단은 생성물 경로에만 적용한다. TypeSpec·목 수기 소스는 편집할 수 있다.
 - `pnpm dev`는 Next 환경 로더 뒤 `API_BASE_URL`이 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 같은 loopback에 목도 시작한다. 그 밖의 주소는 web만 시작한다. Ctrl+C로 두 서버를 함께 내린다.
 - dev·HTTP 통합·E2E는 `scripts/process-tree.mjs`로 직접 node를 시작하고 종료한다. 런처 종료 뒤에도 POSIX 그룹을 정리하며, 종료를 기다린 뒤 한도를 넘으면 강제 종료한다. tsx는 CLI 대신 `node --import` 로더로 쓴다.
 - E2E는 기본 `E2E_TARGET=mock`이다. webServer가 목 → 운영 빌드 → start를 실행하고 매번 새 세션 비밀을 전달한다. 3100·4110은 비워 두며 기존 서버를 재사용하지 않는다. `E2E_TARGET=fastapi`는 [E2E 설정](e2e/AGENTS.md)의 외부 API를 기다린 뒤 web만 기동한다.
@@ -83,3 +83,8 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 - [버전과 공식 문서](docs/stack.md)
 - [페이지 추가](docs/recipes/add-page.md)
 - [기능 추가](docs/recipes/add-feature.md)
+- [Server Action 추가](docs/recipes/add-action.md)
+- [실시간 구독 추가](docs/recipes/add-realtime.md)
+- [번역 추가](docs/recipes/add-translation.md)
+- [계약 확장](docs/recipes/change-contract.md)
+- [UI 부품 추가](docs/recipes/add-ui.md)
