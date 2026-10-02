@@ -202,7 +202,7 @@ it("원본에 없는 빈 디렉터리도 거절한다", () => {
   );
 });
 
-it.each([
+it.for([
   ".claude/skills/next-dev-loop/SKILL.md",
   "node_modules/@playwright/cli/skills/playwright-cli/SKILL.md",
 ])(
