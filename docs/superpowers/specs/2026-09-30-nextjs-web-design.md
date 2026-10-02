@@ -1,13 +1,13 @@
 # Next.js web 템플릿 설계 (하위 프로젝트 2)
 
 - 작성일: 2026-09-30
-- 상태: 승인됨(2026-09-30). W1~W3 구현·리뷰 보정 완료, W4 프로토타입 구현·로컬 검증 완료(2026-10-02). W4의 CI 결과는 PR CI에서 확인한다. W1의 FastAPI·계약 보정은 §12.1, W3·W4 증거는 §13.2다.
+- 상태: 승인됨(2026-09-30). W1~W3 구현·리뷰 보정 완료, W4 프로토타입과 SDD 13개 태스크 구현·리뷰 보정 완료(2026-10-02). W4 최종 head의 CI는 병합 전에 확인한다. W1의 FastAPI·계약 보정은 §12.1, 프로토타입 증거는 §13.2, 최종 SDD 기록은 §13.3이다.
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 2로 미룬 결정을 내리고, `templates/nextjs`, 목 서버(`contract/mock`), 이번 사이클의 저장소 변경을 설계한다.
   - 기반 설계의 규칙은 그대로 따른다: 플랫폼 기능(§4), API 규약(§5), 하네스(§6), 인프라와 품질(§7).
   - 백엔드의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md)와 [보강 설계](2026-09-29-fastapi-hardening-design.md)다. 목 서버는 그 동작을 따른다.
 - 구현 계획: [W1](../plans/2026-09-30-nextjs-w1.md)
-- 다음 단계: W4 프로토타입 커밋에서 계획을 조립하고 PR CI에서 확인한다. 로컬 검증 결과는 §1.2·§13.2다.
+- 다음 단계: W4 최종 head의 CI를 확인한 뒤 병합한다. 프로토타입 로컬 검증은 §1.2·§13.2, SDD 기록은 §13.3이다.
 
 ## 1. 목표와 범위
 
@@ -232,7 +232,7 @@ templates/nextjs/
 
 ### 5.8 설정
 
-- 설정은 `src/lib/env.ts`의 Zod 스키마로 시작할 때 검증한다. 빠지거나 틀리면 어떤 변수인지 알려 주고 멈춘다.
+- 설정은 공통 `src/lib/env/startup.ts`의 `exitOnInvalidEnv`가 `src/lib/env.ts`의 Zod 스키마로 검증한다. `next.config.ts`의 개발·운영 서버 phase와 `src/instrumentation.ts`의 Node 런타임이 호출하며 운영 빌드에서는 호출하지 않는다. 빠지거나 틀리면 변수별 안내만 쓰고 종료 코드 1로 멈춘다. Next의 Ready 배너가 먼저 나와도 요청은 처리하지 않는다.
 - 서버 전용: `API_BASE_URL`, `APP_URL`(web의 바깥 주소, 콜백에 쓴다), `SESSION_SECRET`(32바이트 이상), `TIME_ZONE`(기본 `Asia/Seoul`)
 - 브라우저: `NEXT_PUBLIC_REALTIME_URL`(Socket.IO 주소)
 - 운영(`NODE_ENV=production`)에서 `SESSION_SECRET`이 `.env.example`의 예시 값이면 시작하지 않는다(보강 설계 H6와 같은 규칙).
@@ -481,6 +481,7 @@ DB가 없으므로 `db:*`는 두지 않는다(기반 설계 §6.2).
 - 계약 타입·API 경로·JSON:API type·에러 코드·실시간 채널은 보존한 초안이다. `gen:feature: 빼기`·`그대로`·`고칠 곳` 표시와 출력한 검토 목록을 보고 새 계약·권한·문구·헤더·홈 링크를 채운다. 생성된 기능은 편집할 소스이며 `pnpm gen`의 직접 수정 금지 생성물과 구분한다.
 - 레시피(`docs/recipes/`): 기능 추가, 페이지 추가, Server Action 추가, 실시간 구독, 번역 추가, API 넓히기(TypeSpec + 목 핸들러), UI 부품 추가
 - skill: 일곱 레시피마다 얇은 `add-*` 포장을 두었다. 공식 Next.js `next-dev-loop`는 v16.3.8 commit `b0fad0d45eb4c4430fda5eeeb442e8a5af08a5f6`, shadcn은 4.21.0 commit `7c9eaba1c0a6404c990c144a654792e3313c650d`, Playwright CLI는 설치 패키지 0.1.22의 skill을 복사했다. `scripts/skills/sources.json`의 해시·버전을 check의 harness가 오프라인 검사하며 `pnpm skills:sync`으로 복원한다. 레시피가 절차의 원본이며 세션의 브라우저 도구 규칙이 우선한다.
+- 공식 skill의 harness 캐시 키에는 설치 패키지 버전·설치 skill 해시도 포함한다. 전용 열거기가 공식 사본·설치 원본 skill 폴더의 예상 밖 항목(숨김 파일·빈 폴더·링크 포함)을 모두 거절한다. 전체 check는 기존 9단계이며 공식 skill 검사는 오프라인이다.
 - `.mcp.json`에는 next-devtools-mcp(0.4.0)만 넣는다(N5).
 
 ### 9.8 지침 파일과 문서
@@ -515,6 +516,7 @@ E2E 흐름
 부수 채널: 목 대상은 목의 테스트 통로(§8.7)를 쓴다. `e2e/targets`의 `mailLink`·`expireRecentLogin`·`completeSocialLogin`·`denySocialLogin`이 메일·재인증 창·가짜 제공자 폼을 처리한다. FastAPI는 Mailpit의 수신자·목적·새 메일 선택과 실제 web 링크, 모의 OAuth의 제공자별 claims·redirect·state, 10초 재인증 창을 쓴다. 메일함을 비우지 않고 BFF의 PKCE를 유지한다. 같은 headless Chromium 20개가 두 대상에서 skip·필터 없이 통과했다.
 
 템플릿은 fastapi 선택 때 `APP_URL=http://localhost:3100`, `API_BASE_URL=http://127.0.0.1:18100/api/v1`, `NEXT_PUBLIC_REALTIME_URL=http://127.0.0.1:18100`, `E2E_MAILPIT_URL=http://127.0.0.1:28125`, `E2E_OAUTH_URL=http://127.0.0.1:28180`, `E2E_RECENT_LOGIN_SECONDS=10`을 받는다. 누락·오류는 기동 전에 실패하고 API readiness 뒤 web만 빌드·기동한다. Docker·스택 관리는 루트 실행기가 맡는다. 독립 프로젝트의 환경 행렬은 `templates/nextjs/docs/architecture.md`와 `e2e/AGENTS.md`에 있다.
+FastAPI 대상 URL은 값이 없는 구분 문자를 포함해 `?`·`#`를 하나도 허용하지 않는다. mock만 목 4110을 검사·기동하고 FastAPI는 외부 `/health/ready`를 기다린다. 두 대상 모두 web 3100을 검사하고 일반 `next build`·`next start`를 쓴다. `NEXT_OUTPUT=standalone`은 Docker 이미지 빌드 단계에서만 설정한다.
 
 ## 11. 템플릿 저장소 변경
 
@@ -528,7 +530,8 @@ E2E 흐름
   - `conformance-mock`: `pnpm conformance mock`
   - `nextjs`: 기존 고정 Action SHA·Node 24·pnpm 12.6.0과 템플릿 lockfile을 쓴다. frozen 설치 → Chromium과 Linux 의존성 설치 → check → mock test:e2e → `ai-template-nextjs:ci` 이미지 빌드 순서이며 registry push는 없다. 작업 한도는 45분이다. 실행 결과는 PR CI에서 확인한다.
   - `nextjs-e2e-fastapi`: Ubuntu에서 루트·템플릿 frozen 설치와 Chromium 의존성 뒤 루트 `pnpm web-e2e fastapi`를 실행한다. `WEB_E2E_RUN_ID=ci-${{ github.run_id }}-${{ github.run_attempt }}`를 실행과 `always()` 후속 정리에 같이 쓴다. 루트 설치 성공 때 같은 ID의 `--down`을 실행한다. 작업 60분·E2E 45분·정리 5분 한도이며 2 CPU·8 GB의 실제 결과는 PR CI에서 확인한다.
-- 루트 실행기 `scripts/src/web-e2e/`는 독립 `scripts/compose/nextjs-e2e-fastapi.yaml`과 명시적인 `-p ai-template-web-e2e-<ID>`를 사용한다. 포트·설정을 먼저 검사하고 API 18100·S3 28433·Mailpit 28125·OAuth 28180만 loopback에 공개한다. 개발 `.env`·compose·볼륨을 사용하지 않으며 실패·신호·성공 뒤 소유한 스택만 정리한다.
+- 루트 실행기 `scripts/src/web-e2e/`는 독립 `scripts/compose/nextjs-e2e-fastapi.yaml`과 명시적인 `-p ai-template-web-e2e-<ID>`를 사용한다. 포트·설정을 먼저 검사하고 같은 ID의 컨테이너나 볼륨이 있으면 기동·정리를 거부한다. API 18100·S3 28433·Mailpit 28125·OAuth 28180만 loopback에 공개한다. 개발 `.env`·compose·볼륨을 사용하지 않는다. 시작을 시도한 실행은 실패·신호·성공 뒤 전용 스택·볼륨과 정확한 실행 이미지 `ai-template-web-e2e-fastapi:<ID>`를 정리한다(`--keep` 성공은 유지). 명시한 `--down`도 스택·이미지를 정리하며 없는 프로젝트·이미지는 성공이다.
+- `ps`·로그는 실패·중단 때만 출력한다. FastAPI access log는 모든 환경에서 쿼리 문자열을 빼 OAuth 코드·state가 남지 않게 한다. POSIX 중단은 소유한 프로세스 그룹에 SIGINT를 보내고 30초 뒤에도 남으면 SIGKILL로 끝낸다. SIGINT는 130, SIGTERM은 143이며 정리 중 신호도 종료 코드에 반영한다. 실행·정리 종료 코드는 따로 알린다.
 
 ### 11.2 FastAPI 템플릿
 
@@ -549,6 +552,7 @@ W4에서 실제 web을 전용 FastAPI 스택에 붙여 다음을 확인했다.
 | W4 | E2E의 FastAPI 대상, FastAPI 설정 보강(§11.2), CI, 레시피·skill·문서, Docker 이미지 | 프로토타입 구현·로컬 검증 완료(2026-10-02). §1.2의 CI 조건은 PR CI에서 확인 |
 
 각 마일스톤은 main의 사본에서 프로토타입을 먼저 만들어 태스크별 커밋으로 검증하고, 그 커밋에서 계획을 조립한 뒤 SDD로 실행한다(FastAPI 사이클과 같다).
+W4는 [SDD 계획](../plans/2026-10-02-nextjs-w4.md)의 13개 태스크와 리뷰 보정을 마쳤다. 위 프로토타입 기록은 유지하며 최종 SDD 검증·CI 기록은 §13.3에서 구분한다.
 
 ### 12.1 W1에서 찾은 FastAPI·계약 문제
 
@@ -617,6 +621,24 @@ W3 구현·리뷰 보정과 W4 프로토타입(2026-10-02)의 실제 목 통합�
 - 업로드 create·ready Action은 429의 `retryAfter`를 보존하고 ko/en 대기 안내를 표시한다. Task 7 `3a74ef8`에서 실제 저한도 목의 두 429와 `features/files`의 UI·기존 업로드 검사를 통과했다.
 - Task 8 `cf9b411`의 일곱 레시피는 독립 프로젝트의 파일 순서·경계·server-only·폼·로딩·i18n·검증을 담는다. Task 9의 얇은 recipe skill·공식 skill 출처·복원·오프라인 검사를 갖췄다. `.mcp.json`은 next-devtools-mcp 0.4.0만 유지한다.
 - Task 11 `5ea985e`의 workflow YAML과 실행기 오프라인 42개 검사는 통과했다. FastAPI E2E·web 이미지 작업의 Ubuntu 시간·디스크·실패 뒤 정리는 PR CI에서 확인한다. 개발 데이터 보호를 위해 DB·Valkey 기반 Python 전체 검사·FastAPI conformance는 로컬에서 실행하지 않았다.
+
+### 13.3 W4 SDD 최종 기록 (2026-10-02)
+
+[W4 계획](../plans/2026-10-02-nextjs-w4.md)의 13개 태스크를 `feature/nextjs-w4`에서 구현하고 리뷰를 보정했다. Task 13은 기본 언어 전환 링크의 prefetch 경합을 고쳤다. §1.2·§13.2의 프로토타입 근거와 별도 기록이다.
+
+- 실행기: 기존 프로젝트의 컨테이너·볼륨 거부, 정리 중 신호 코드 보존, 정확한 실행 이미지 제거, 실패·중단 때만 진단 출력.
+- 대상 URL: FastAPI URL의 `?`·`#` 구분 문자까지 거절.
+- POSIX 중단: 소유 그룹에 SIGINT, 30초 유예 뒤 SIGKILL.
+- 레시피: 로그인 보호 경로는 `requiresLogin`에 등록하고 폼 제출·fieldset 설명을 보정.
+- 공식 skill: 설치 패키지 버전·설치 skill 해시를 캐시 키에 포함하고 전용 열거기로 예상 밖 항목 거절. 오프라인·9단계 유지.
+- 시작 검증: config·Node instrumentation이 공통 `exitOnInvalidEnv` 호출. Ready 배너가 먼저 나와도 잘못된 설정은 요청 없이 종료 1.
+- access log: FastAPI는 모든 환경에서 쿼리 문자열을 제거.
+- FastAPI 테스트: 인프라 없는 설정 격리를 공통 opt-in fixture `isolated_settings_env`로 공유.
+- 빌드: Docker 빌드 단계의 `NEXT_OUTPUT=standalone`만 standalone. 일반 빌드·start·E2E는 `next start`, 이미지는 `node server.js`.
+
+로컬 검증은 각 태스크의 루트·web check 각각 9단계와 mock E2E 20개, Task 6부터 전용 스택의 FastAPI E2E 20개를 확인했다. 이미지 smoke는 Task 10과 최종 보정 B에서 확인했다. 이번 문서 보정 C는 양쪽 check만 다시 실행하며 빌드·E2E·이미지 smoke는 재실행하지 않는다.
+
+최종 보정 전 `cf2bc05`의 [CI run 36974728079](https://github.com/builder-shin/ai-template/actions/runs/36974728079)는 `check`·`fastapi`·`conformance-fastapi`·`conformance-mock`·`nextjs-e2e-fastapi`·`nextjs` 여섯 작업이 모두 통과했다. 최종 head의 CI는 병합 전에 확인한다.
 
 ## 14. 확인한 사실과 출처 (2026-09-29)
 

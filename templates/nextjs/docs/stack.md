@@ -67,7 +67,7 @@ CI는 위 @playwright/test의 CLI로 `pnpm exec playwright install --with-deps c
 
 shadcn 원문의 latest 명령은 프로젝트 pin인 `pnpm exec shadcn`으로 바꾼다. Playwright CLI는 `pnpm exec playwright-cli`를 쓰며 E2E의 `pnpm exec playwright`와 구분한다. CLI 0.1.22의 전이 의존성 `playwright`·`playwright-core`는 정확히 `1.64.0-alpha-1790635538000`이며 각각 2026-09-28 22:50:35.411 UTC·22:52:15.870 UTC에 공개됐다. 세 패키지 모두 1440분 정책을 만족한다. 기존 테스트 러너와 Chromium 설치는 1.63.0을 유지한다.
 
-check의 harness는 네트워크 없이 공식 사본의 누락·변경·추가 파일과 설치 패키지의 버전을 검사한다. Playwright는 설치 패키지의 skill 폴더도 고정 해시와 비교한다. 줄 끝 CRLF·LF만 같은 것으로 본다. 복원은 아래 명령으로 한다. Next·shadcn은 고정 커밋에서, Playwright는 설치된 패키지에서 읽으며 해시가 다르면 쓰기 전에 실패한다. 추가 파일은 직접 지운다.
+check의 harness는 네트워크 없이 공식 사본의 누락·변경과 설치 패키지의 버전을 검사한다. Playwright는 설치 패키지의 skill 폴더도 고정 해시와 비교한다. 캐시 키에 설치 패키지 버전·설치 skill 해시를 포함한다. 전용 열거기가 공식 사본·설치 원본 skill 폴더의 예상 밖 항목(숨김 파일·빈 폴더·링크 포함)을 모두 거절한다. 전체 check는 기존 9단계다. 줄 끝 CRLF·LF만 같은 것으로 본다. 복원은 아래 명령으로 한다. Next·shadcn은 고정 커밋에서, Playwright는 설치된 패키지에서 읽으며 해시가 다르면 쓰기 전에 실패한다. 예상 밖 항목은 직접 지운다.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -99,7 +99,7 @@ TypeScript 6.0.3과 typescript-eslint 8.71.0도 유지한다. `pnpm view typescr
 ### W4 실행·검증 기록 (2026-10-02)
 
 Node 이미지도 `24.19.0-bookworm-slim`으로 고정한다. [Dockerfile](../Dockerfile)은 pnpm 12.6.0 frozen 설치 뒤 빌드 단계에서 `NEXT_OUTPUT=standalone`을 설정하고 standalone 산출물을 `node server.js`로 실행한다. UID/GID는 10001이다. 일반 `pnpm build`·`pnpm start`와 E2E는 이 변수 없이 일반 빌드·`next start`를 쓴다.
-`src/instrumentation.ts`가 `src/lib/env.ts`의 같은 스키마를 실행 때 검사해 비밀 누락·짧은 비밀·운영 예시 비밀과 잘못된 설정을 요청 처리 전에 거절한다.
+`next.config.ts`의 개발·운영 서버 phase와 `src/instrumentation.ts`의 Node 런타임이 공통 `src/lib/env/startup.ts`의 `exitOnInvalidEnv`를 호출한다. 같은 `src/lib/env.ts` 스키마로 비밀 누락·짧은 비밀·운영 예시 비밀과 잘못된 설정을 요청 처리 전에 거절하며 운영 빌드에서는 호출하지 않는다. Next의 Ready 배너가 먼저 나올 수 있지만 요청은 처리하지 않고 종료 코드 1로 멈춘다.
 실제 이미지에서 HTTP 200·정적 자산·비루트 사용자·시작 실패·빌드와 다른 API·실시간 URL의 실행 적용을 확인했다. 자세한 실행 설정은 [Docker 이미지](architecture.md#docker-이미지)를 따른다.
 
 같은 Playwright 1.63.0 Chromium E2E 20개가 mock·외부 FastAPI에서 각각 통과했다. FastAPI는 Mailpit·모의 OAuth·SeaweedFS와 실제 Socket.IO를 쓴다.

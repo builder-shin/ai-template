@@ -33,6 +33,7 @@ Markdown 상세·미리보기는 react-markdown과 remark-gfm으로 raw HTML 없
 `.claude/skills/add-*/`는 파일 순서와 검사만 안내하며 레시피가 원본이다.
 Next `next-dev-loop`·shadcn·Playwright CLI는 [고정 출처](stack.md#공식-skill)의 사본이다.
 check의 harness가 원문·버전·파일 해시를 네트워크 없이 검사하며 `pnpm skills:sync`으로 복원한다.
+캐시 키에는 설치 패키지 버전·설치 skill 해시도 포함한다. 전용 열거기가 공식 사본과 설치 원본의 skill 폴더에서 예상 밖 항목(숨김 파일·빈 폴더·링크 포함)을 모두 거절한다.
 
 ## 파일 업로드
 
@@ -58,9 +59,11 @@ API·세션과 기능 actions/queries는 `server-only` 표식이 없으면 린�
 
 ## 설정과 실행
 
-`next.config.ts`의 개발·운영 서버 phase와 `src/instrumentation.ts`의 Node 서버 시작이 같은 `src/lib/env.ts`의 Zod 스키마를 검증한다.
+`src/lib/env/startup.ts`의 `exitOnInvalidEnv`가 `src/lib/env.ts`의 Zod 스키마를 검증한다.
+`next.config.ts`의 개발·운영 서버 phase와 `src/instrumentation.ts`의 Node 런타임이 이 helper를 호출한다. instrumentation은 운영 빌드에서는 호출하지 않는다.
 빌드·타입 생성에서는 검증하지 않으므로 서버 비밀 없이 빌드할 수 있다.
 서버 시작 때 틀린 변수는 변수마다 한 줄을 표준 오류에 쓰고 값·스택 없이 종료 코드 1로 멈춘다.
+Next의 Ready 배너가 먼저 나올 수 있지만 잘못된 설정으로 요청을 처리하지 않는다.
 운영 서버는 예시 `SESSION_SECRET`을 거절한다. 빌드의 `NODE_ENV=production`만으로 서버 검증을 실행하지 않는다.
 `setup`이 의존성과 환경 파일을 준비한다. 기존 값은 보존하고 예시에서 새 키만 더한다.
 API 기본 주소는 `http://localhost:4010/api/v1`, Socket.IO는 `http://localhost:4010`이다.
@@ -81,6 +84,7 @@ web은 3000에서 뜬다. `dev`는 단독 모드에서 목도 함께 띄운다.
 | `TIME_ZONE`                | 기본 `Asia/Seoul`              | `Asia/Seoul`                   | `Asia/Seoul`                    |
 
 mock E2E는 실행기가 주소를 정한다. fastapi는 APP·API·실시간·Mailpit·OAuth URL과 창을 명시해야 하며 누락·오류는 기동 전에 실패한다.
+fastapi의 대상 URL은 `?`·`#` 문자가 하나라도 있으면 거절한다. 값이 없는 구분 문자도 허용하지 않는다.
 외부 스택의 기동·정리는 호출자가 맡는다. 템플릿은 API의 `/health/ready`를 기다리고 web만 빌드·기동하며 Docker를 실행하지 않는다.
 백엔드의 `FRONTEND_URL`·실시간·스토리지 허용 Origin은 `APP_URL`, OAuth 허용 콜백은 `APP_URL`의 `/oauth/callback`으로 맞춘다.
 S3의 브라우저 주소도 접근 가능해야 한다(위 예시의 S3는 `http://127.0.0.1:28433`).
@@ -95,7 +99,7 @@ S3의 브라우저 주소도 접근 가능해야 한다(위 예시의 S3는 `htt
 
 빌드에는 서버 비밀이 필요 없다. API·실시간 URL의 빌드 ARG는 실행 단계에 전달하지 않는다.
 실행할 때 `API_BASE_URL`, `APP_URL`, `NEXT_PUBLIC_REALTIME_URL`, `SESSION_SECRET`을 주고 `TIME_ZONE`은 필요하면 바꾼다.
-standalone은 next.config의 서버 phase를 다시 실행하지 않으므로 instrumentation이 같은 스키마로 요청 처리 전에 검사한다.
+standalone은 next.config의 서버 phase를 다시 실행하지 않으므로 instrumentation이 공통 `exitOnInvalidEnv`로 요청 처리 전에 검사한다.
 누락·잘못된 URL·시간대·32바이트 미만 비밀·운영 예시 비밀은 값·스택 없이 종료 코드 1로 멈춘다.
 실시간 주소는 Server Component가 실행 환경에서 읽어 클라이언트 prop으로 전달하며 API 주소도 실행 환경을 쓴다.
 컨테이너 안의 API 주소는 서버에서, 실시간·S3 주소는 브라우저에서 접근 가능해야 한다. 컨테이너의 localhost는 호스트가 아니다.
@@ -276,7 +280,7 @@ Tailwind 4와 shadcn의 Base UI 부품을 사용한다. `pnpm exec shadcn add <�
 
 ## 하네스
 
-check는 단계별 입력 해시를 캐시한다. 삭제도 변경으로 본다. 실패한 단계는 캐시하지 않는다. 전체·관련 테스트의 입력에는 `.claude/hooks/*.mjs`와 `.claude/settings.json`도 포함한다.
+전체 check는 기존 9단계를 유지하며 공식 skill 검사는 오프라인이다. check는 단계별 입력 해시를 캐시한다. 삭제도 변경으로 본다. 실패한 단계는 캐시하지 않는다. harness 캐시 키에는 설치 패키지 버전·설치 skill 해시도 포함한다. 전체·관련 테스트의 입력에는 `.claude/hooks/*.mjs`와 `.claude/settings.json`도 포함한다.
 타입·린트 억제 사유는 파서가 구분한 토큰 앞의 실제 주석 범위에서만 읽는다. 템플릿 본문 안의 `//`·`/* */`는 주석으로 인정하지 않는다. 같은 줄의 실제 주석은 템플릿 뒤나 `${…}` 표현식 안에서도 인정한다.
 Stop은 세션 시작 또는 마지막 통과 때의 스냅샷과 비교하므로 셸 편집도 감지한다.
 세션별 상태는 `.cache/hooks/`에만 두며 환경 파일·의존성·빌드 산출물은 읽지 않는다.
@@ -306,7 +310,9 @@ web 자체 생성물은 첫 줄에 직접 수정 금지 헤더를 둔다. 계약
 
 Vitest global setup이 자유 포트의 실제 복사 목 두 개(기본·재인증용)와 Next dev를 시작한다. 헤더 오류 검사는 별도 자유 포트의 HTTP 중계에서 `/me` 500만 주입하고, 나머지 요청은 기본 목에 전달한다. `pnpm check`·`pnpm test`는 이 오류 화면을 브라우저에서 확인하므로 `pnpm setup`이 설치한 Chromium이 필요하다. 없으면 서버를 시작하기 전에 설치 안내 한 줄로 실패한다. `scripts/http/`의 i18n·세션 갱신·로그인·가입·비밀번호 재설정 파일은 같은 `helpers.ts`에서 서버 주소·API·폼 제출을 가져온다. 브라우저는 검사 finally에서, Next → 중계 → 목은 global setup의 finally에서 내린다. 개발 포트 3000·4010을 사용하지 않는다.
 
-`pnpm setup`은 의존성 설치 → 환경 키 보충 → 독립 저장소 hook 설치 → 고정 Playwright 1.63.0의 Chromium 설치 순서다. 브라우저 설치가 실패해도 환경과 hook 준비는 남고 실패 코드로 끝난다. 재실행은 기존 환경 값을 유지한다. `pnpm test:e2e`는 headless Chromium에서 운영 코드를 검사한다. Playwright `webServer`가 `scripts/e2e-server.ts`를 실행해 복사 목 readiness → `next build` → `next start` 순서를 보장한다. web은 localhost:3100, 목은 127.0.0.1:4110이다. 두 포트가 사용 중이면 실패하며 기존 서버를 재사용하거나 종료하지 않는다. 개발 서버와 동시에 실행할 수 있는 포트지만 Next 빌드 산출물을 함께 쓰므로 이 프로젝트의 dev·build·check와 E2E는 동시에 실행하지 않는다.
+`pnpm setup`은 의존성 설치 → 환경 키 보충 → 독립 저장소 hook 설치 → 고정 Playwright 1.63.0의 Chromium 설치 순서다. 브라우저 설치가 실패해도 환경과 hook 준비는 남고 실패 코드로 끝난다. 재실행은 기존 환경 값을 유지한다. `pnpm test:e2e`는 headless Chromium에서 운영 코드를 검사한다.
+
+Playwright `webServer`가 `scripts/e2e-server.ts`를 실행한다. mock 대상만 목 127.0.0.1:4110을 검사·기동하고 `/health/ready`를 기다린다. FastAPI 대상은 외부 API의 `/health/ready`를 기다리며 목을 시작하거나 4110을 검사하지 않는다. 두 대상 모두 web localhost:3100을 검사하고 `next build` → `next start`를 실행한다. 검사할 포트가 사용 중이면 실패하며 기존 서버를 재사용하거나 종료하지 않는다. 개발 서버와 동시에 실행할 수 있는 포트지만 Next 빌드 산출물을 함께 쓰므로 이 프로젝트의 dev·build·check와 E2E는 동시에 실행하지 않는다.
 
 운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. Playwright 설정은 상속한 `NO_COLOR`를 지우고 서버와 테스트 프로세스에 `FORCE_COLOR=1`을 사용해 색상 경고를 막는다. 운영의 Secure·`__Host-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
 
