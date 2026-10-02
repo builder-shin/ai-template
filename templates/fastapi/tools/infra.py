@@ -17,13 +17,12 @@ import redis
 from alembic import command
 from alembic.config import Config
 from alembic.util import CommandError
-from botocore.exceptions import ClientError
 from psycopg import sql
 from pydantic import SecretStr
 from sqlalchemy import URL, make_url
 
 from app.core.config import Settings
-from app.core.storage import create_client
+from app.storage_setup import ensure_bucket as ensure_bucket
 
 ROOT = Path(__file__).resolve().parent.parent
 INFRA_DOWN = "인프라가 꺼져 있다. `uv run poe setup`을 실행하라."
@@ -39,9 +38,6 @@ TARGETS: dict[Target, tuple[str, int]] = {"test": ("_test", 15), "e2e": ("_e2e",
 # 테스트와 E2E는 레이트 리밋에 걸리지 않게 한도를 크게 둔다. 한도 자체를 보는 테스트만 낮춘다.
 TEST_RATE_LIMIT = 1_000_000
 RATE_LIMIT_FIELDS = tuple(name for name in Settings.model_fields if name.startswith("rate_limit_"))
-
-# 브라우저가 presigned URL로 스토리지에 직접 올릴 때의 개발용 프론트 출처(웹과 관리자).
-CORS_ORIGINS = ("http://localhost:3000", "http://localhost:3001")
 
 
 def up() -> None:
@@ -155,34 +151,6 @@ def migrate_disposable(settings: Settings) -> bool:
         connection.execute("CREATE SCHEMA public")
     command.upgrade(config, "head")
     return True
-
-
-def ensure_bucket(settings: Settings) -> bool:
-    """버킷이 없으면 만들고, 브라우저 업로드용 CORS를 건다. 새로 만들었으면 True다."""
-    client = create_client(settings)
-    try:
-        client.head_bucket(Bucket=settings.s3_bucket)
-        created = False
-    except ClientError as error:
-        if error.response.get("Error", {}).get("Code") not in {"404", "NoSuchBucket"}:
-            raise
-        client.create_bucket(Bucket=settings.s3_bucket)
-        created = True
-    client.put_bucket_cors(
-        Bucket=settings.s3_bucket,
-        CORSConfiguration={
-            "CORSRules": [
-                {
-                    "AllowedOrigins": list(CORS_ORIGINS),
-                    "AllowedMethods": ["GET", "PUT", "HEAD"],
-                    "AllowedHeaders": ["*"],
-                    "ExposeHeaders": ["ETag"],
-                    "MaxAgeSeconds": 3000,
-                }
-            ]
-        },
-    )
-    return created
 
 
 def _first_line(error: Exception) -> str:
