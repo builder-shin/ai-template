@@ -18,6 +18,7 @@
     "test:e2e": "playwright test",
     "gen": "tsx scripts/gen.ts",
     "gen:feature": "tsx scripts/gen-feature.ts",
+    "skills:sync": "tsx scripts/skills/sync.ts",
     "tool": "tsx scripts/tools/cli.ts"
   },
   "dependencies": {
@@ -41,6 +42,7 @@
   "devDependencies": {
     "@eslint/compat": "2.1.1",
     "@next/env": "16.3.8",
+    "@playwright/cli": "0.1.22",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/react": "16.3.3",
