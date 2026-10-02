@@ -2,37 +2,29 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 import httpx
 import pytest
-from dotenv import dotenv_values
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.modules.users.service.profile as profile
 from app.core.access import Principal, install_access
-from app.core.config import Settings, load_settings
+from app.core.config import load_settings
 from app.core.jsonapi.install import install_jsonapi
 from app.core.jsonapi.openapi import JsonApiApp
 from app.core.permissions import PermissionRegistry
 from app.core.storage import Storage
 from app.modules.users.router import me
 
-EXAMPLE = Path(__file__).resolve().parents[5] / ".env.example"
 NOW = datetime(2026, 10, 2, tzinfo=UTC)
 
 
 @pytest.mark.anyio
+@pytest.mark.usefixtures("isolated_settings_env")
 async def test_deletion_uses_the_request_recent_login_window(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setitem(Settings.model_config, "env_file", None)
-    for name in Settings.model_fields:
-        monkeypatch.delenv(name.upper(), raising=False)
-    for name, value in dotenv_values(EXAMPLE).items():
-        if value is not None:
-            monkeypatch.setenv(name, value)
     monkeypatch.setenv("RECENT_LOGIN_SECONDS", "10")
     settings = load_settings()
     monkeypatch.setattr(profile, "utc_now", lambda: NOW)

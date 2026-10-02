@@ -1,6 +1,7 @@
 """테스트 공용 fixture. 자기 인프라(DB, Valkey)는 모킹하지 않고 테스트 전용 DB와 번호를 쓴다.
 
 - settings: .env를 읽어 DB를 app_test로, Valkey를 DB 15로 바꾼 설정. 연결하지 않는다.
+- isolated_settings_env: 명시한 테스트만 설정 변수를 격리하고 .env.example을 쓴다.
 - infra: 인프라에 접속해 보고(꺼져 있으면 세션을 바로 멈춘다) app_test를 head까지 마이그레이션한다.
   app_test가 지금 없는 리비전에 있으면 스키마를 비우고 다시 한다(tools.infra.migrate_disposable).
 - publisher: 세션이 commit한 뒤 보낸 실시간 이벤트를 모으는 발행기(RecordingPublisher).
@@ -21,11 +22,13 @@
 import asyncio
 import uuid
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
 import pytest
 import structlog
+from dotenv import dotenv_values
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
@@ -58,6 +61,18 @@ structlog.configure(
 def anyio_backend() -> tuple[str, dict[str, object]]:
     """asyncio와 셀렉터 루프. psycopg 비동기 모드는 Windows 기본 루프(Proactor)에서 못 돈다."""
     return "asyncio", {"loop_factory": asyncio.SelectorEventLoop}
+
+
+@pytest.fixture
+def isolated_settings_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """개발 .env를 읽지 않고 공개 예시만 쓴다. 인프라에 연결하지 않는다."""
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+    for name in Settings.model_fields:
+        monkeypatch.delenv(name.upper(), raising=False)
+    example = Path(__file__).resolve().parent / ".env.example"
+    for name, value in dotenv_values(example).items():
+        if value is not None:
+            monkeypatch.setenv(name, value)
 
 
 @pytest.fixture(scope="session")

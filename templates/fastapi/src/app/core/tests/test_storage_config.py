@@ -1,27 +1,14 @@
 """스토리지 Origin의 기본값과 검증. 환경 파일이나 인프라를 쓰지 않는다."""
 
-from pathlib import Path
-
 import pytest
-from dotenv import dotenv_values
 
-from app.core.config import Settings, load_settings
+from app.core.config import load_settings
 
-EXAMPLE = Path(__file__).resolve().parents[4] / ".env.example"
+pytestmark = pytest.mark.usefixtures("isolated_settings_env")
 
 
-@pytest.fixture(autouse=True)
-def isolated(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(Settings.model_config, "env_file", None)
-    for name in Settings.model_fields:
-        monkeypatch.delenv(name.upper(), raising=False)
-    for name, value in dotenv_values(EXAMPLE).items():
-        if value is not None:
-            monkeypatch.setenv(name, value)
+def test_storage_defaults_to_development_frontends(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("STORAGE_ALLOWED_ORIGINS", raising=False)
-
-
-def test_storage_defaults_to_development_frontends() -> None:
     assert load_settings().storage_allowed_origins == {
         "http://localhost:3000",
         "http://localhost:3001",
