@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from tools.git_environment import git_environment
 from tools.hooks.pre_edit import problem
 from tools.tests.hooks import ROOT, fixture, run_hook
 
@@ -19,8 +20,8 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     for path in (INIT, DRAFT):
         (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / path).write_text("", encoding="utf-8")
-    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
-    subprocess.run(["git", "add", INIT], cwd=tmp_path, check=True)
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, env=git_environment(), check=True)
+    subprocess.run(["git", "add", INIT], cwd=tmp_path, env=git_environment(), check=True)
     return tmp_path
 
 

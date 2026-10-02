@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
+import { gitEnvironment } from "./git-environment.ts";
 
 /** git 저장소가 아닐 때 직접 걸으며 건너뛰는 폴더. */
 const SKIPPED_DIRS = new Set(["node_modules", ".git", ".cache", ".venv", "__pycache__"]);
@@ -11,7 +12,7 @@ function gitFiles(root: string): string[] | undefined {
     const output = execFileSync(
       "git",
       ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      { cwd: root, env: gitEnvironment(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     );
     return output.split("\0").filter((path) => path !== "" && existsSync(join(root, path)));
   } catch {

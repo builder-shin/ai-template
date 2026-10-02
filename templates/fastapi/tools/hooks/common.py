@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.jsonvalue import is_object
+from tools.git_environment import git_environment
 
 ROOT = Path(__file__).resolve().parents[2]
 MAX_LINES = 60  # Claude에게 돌려주는 출력의 최대 줄 수
@@ -101,7 +102,9 @@ def tracked(root: Path, *pathspecs: str) -> set[str]:
     """
     command = ["git", "ls-files", "-z", "--", *pathspecs]
     try:
-        result = subprocess.run(command, cwd=root, capture_output=True, check=True)
+        result = subprocess.run(
+            command, cwd=root, env=git_environment(), capture_output=True, check=True
+        )
     except OSError, subprocess.CalledProcessError:
         return set()
     return {path for path in result.stdout.decode("utf-8").split("\0") if path}

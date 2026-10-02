@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from tools.git_environment import git_environment
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -16,7 +18,9 @@ def top_level(folder: Path) -> Path | None:
     """folder가 든 git 저장소의 최상위 폴더. git 저장소가 아니면 None이다."""
     command = ["git", "rev-parse", "--show-toplevel"]
     try:
-        result = subprocess.run(command, cwd=folder, capture_output=True, check=True)
+        result = subprocess.run(
+            command, cwd=folder, env=git_environment(), capture_output=True, check=True
+        )
     except OSError, subprocess.CalledProcessError:
         return None
     return Path(result.stdout.decode("utf-8").strip()).resolve()
@@ -36,7 +40,13 @@ def install(root: Path = ROOT) -> str:
             "(그 저장소의 git hook을 덮어쓰지 않는다)."
         )
     command = [sys.executable, "-m", "lefthook", "install"]
-    result = subprocess.run(command, cwd=root, capture_output=True, check=False)
+    result = subprocess.run(
+        command,
+        cwd=root,
+        env={**git_environment(), "PYTHONUTF8": "1"},
+        capture_output=True,
+        check=False,
+    )
     if result.returncode != 0:
         output = (result.stdout + result.stderr).decode("utf-8", errors="replace")
         raise SystemExit(f"lefthook install이 실패했다.\n{output}")

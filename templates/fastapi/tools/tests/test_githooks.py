@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from tools.git_environment import git_environment
 from tools.githooks import install, top_level
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,7 +21,7 @@ def outside_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def git_init(folder: Path) -> None:
     folder.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "init", "-q"], cwd=folder, check=True)
+    subprocess.run(["git", "init", "-q"], cwd=folder, env=git_environment(), check=True)
 
 
 def test_not_a_git_repository(outside_git: Path) -> None:

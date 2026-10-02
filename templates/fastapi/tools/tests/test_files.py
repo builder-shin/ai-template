@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from tools.files import project_files
+from tools.git_environment import git_environment
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ def tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_follows_gitignore_in_a_git_repository(tree: Path) -> None:
-    subprocess.run(["git", "init", "-q"], cwd=tree, check=True)
+    subprocess.run(["git", "init", "-q"], cwd=tree, env=git_environment(), check=True)
     (tree / ".gitignore").write_text(".venv/\n__pycache__/\n", encoding="utf-8")
     assert project_files(tree) == [".gitignore", "README.md", "src/app.py"]
 

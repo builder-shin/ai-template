@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { mergeEnv } from "./envfile.mjs";
 import { pnpm } from "./process.mjs";
+import { gitEnvironment } from "./git-environment.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 process.chdir(root);
@@ -13,9 +14,12 @@ const current = existsSync(".env") ? readFileSync(".env", "utf8") : undefined;
 const merged = mergeEnv(current, readFileSync(".env.example", "utf8"));
 if (merged !== current) writeFileSync(".env", merged, { mode: 0o600 });
 // 템플릿 저장소의 상위 git hook을 덮어쓰지 않는다.
-const git = spawnSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" });
+const git = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+  env: gitEnvironment(),
+  encoding: "utf8",
+});
 if (git.status === 0 && resolve(git.stdout.trim()) === resolve(root)) {
-  const hook = pnpm(["exec", "lefthook", "install"], { stdio: "inherit" });
+  const hook = pnpm(["exec", "lefthook", "install"], { env: gitEnvironment(), stdio: "inherit" });
   if (hook.status !== 0) process.exit(hook.status ?? 1);
 }
 const browser = pnpm(["exec", "playwright", "install", "chromium"], { stdio: "inherit" });

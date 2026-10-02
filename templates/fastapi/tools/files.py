@@ -3,6 +3,8 @@
 import subprocess
 from pathlib import Path
 
+from tools.git_environment import git_environment
+
 # git 저장소가 아닐 때 직접 걸으며 건너뛰는 폴더.
 SKIPPED_DIRS = frozenset(
     {".git", ".venv", ".cache", ".pytest_cache", ".ruff_cache", "__pycache__", "node_modules"}
@@ -13,7 +15,9 @@ def _git_files(root: Path) -> list[str] | None:
     """git이 알려 주는 파일(추적하지 않은 파일 포함). git 저장소가 아니거나 git이 없으면 None."""
     command = ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"]
     try:
-        result = subprocess.run(command, cwd=root, capture_output=True, check=True)
+        result = subprocess.run(
+            command, cwd=root, env=git_environment(), capture_output=True, check=True
+        )
     except OSError, subprocess.CalledProcessError:
         return None
     paths = result.stdout.decode("utf-8").split("\0")

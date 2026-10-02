@@ -3,6 +3,7 @@
 import subprocess
 
 from tools.checks.agents_md import check
+from tools.git_environment import git_environment
 from tools.tests.checks import Tree
 
 PAIR = 'AGENTS.md 옆에 "@AGENTS.md" 한 줄짜리 CLAUDE.md를 만든다.'
@@ -50,7 +51,7 @@ def test_reports_broken_pairs_and_contents(tree: Tree) -> None:
 
 
 def test_git_ignored_folders_are_not_checked(tree: Tree) -> None:
-    subprocess.run(["git", "init", "-q"], cwd=tree.root, check=True)
+    subprocess.run(["git", "init", "-q"], cwd=tree.root, env=git_environment(), check=True)
     tree.write(".gitignore", "build/\n")
     tree.write("AGENTS.md", "# 규칙\n")
     tree.write("CLAUDE.md", "@AGENTS.md\n")
