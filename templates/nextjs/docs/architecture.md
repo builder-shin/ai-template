@@ -234,7 +234,7 @@ Stop은 세션 시작 또는 마지막 통과 때의 스냅샷과 비교하므�
 세션별 상태는 `.cache/hooks/`에만 두며 환경 파일·의존성·빌드 산출물은 읽지 않는다.
 빠른 검사는 변경 관련 테스트를 쓰고, 전체 검사는 pre-push와 CI에서 쓴다.
 두 검사의 타입 단계는 `.next/types`를 비우고 `next typegen`으로 현재 route 타입을 만든 뒤 `tsconfig.check.json`으로 검사한다. 실행 중인 dev가 소유한 `.next/dev/types`는 보존하고 검사에서 제외한다. 타입 캐시에는 소스·설정과 현재 `.next/types` 내용을 포함한다.
-App Router 템플릿은 Pages 전용 `no-html-link-for-pages` 규칙만 끈다. 저장소 루트의 pre-commit과 프로젝트 안의 린트가 같은 설정을 쓴다.
+App Router 템플릿은 Pages 전용 `no-html-link-for-pages` 규칙만 끈다. 이 프로젝트의 pre-commit과 린트가 같은 설정을 쓴다.
 생성물 검사는 TypeSpec 계약과 web·목 타입을 재생성해 비교한다. E2E는 별도 `pnpm test:e2e`로 실행한다.
 
 PreToolUse의 셸 검사는 단어 기반의 최선 검사다. `git push -fv`처럼 짧은 옵션 그룹의 어느 위치에든 `f`가 있으면 래퍼 안에서도 강제 push를 막는다. 권한 deny 글롭은 명시적인 `-f`·`--force`·`--force-with-lease`만 막고 결합 옵션은 hook이 검사한다. `--follow-tags`·`--no-follow-tags` 같은 일반 긴 옵션은 허용한다. 별도 프로그램 안에서 파일을 여는 동작까지 해석하지 않는다.
@@ -246,7 +246,7 @@ Hook JSON 형식의 기준은 [Claude Code 공식 문서](https://code.claude.co
 `contract/*`는 pnpm workspace다. 목의 `@ai-template/contract`는 TypeSpec 사본으로 연결되고 두 패키지는 루트 `tsconfig.base.json`과 고정된 개발 도구를 사용한다. API 규약도 `docs/conventions/`에 함께 복사해 계약 테스트와 AI가 같은 문서를 읽는다.
 
 `pnpm gen`은 TypeSpec을 컴파일하고 API 선언, 실시간 이벤트 이름·payload 매핑, 에러 코드 목록과 목 타입을 다시 만든다. `pnpm check`는 임시 디렉터리의 생성 결과를 비교하고 계약 두 패키지의 자체 검사도 돌린다. 사본은 원본 포맷을 보존하므로 web 포맷·린트에서 제외한다.
-web 자체 생성물은 첫 줄에 직접 수정 금지 헤더를 둔다. 계약 사본은 원본 헤더를 보존하고 자체 freshness 검사와 저장소 사본 비교로 확인한다. 이 저장소 안의 사본은 원본 수정 뒤 sync하고, 독립 복사본에서는 그 프로젝트의 TypeSpec과 목을 확장한다.
+web 자체 생성물은 첫 줄에 직접 수정 금지 헤더를 둔다. 계약 생성물은 자체 freshness 검사로 확인한다. [계약 확장](recipes/change-contract.md)의 순서로 이 프로젝트의 TypeSpec과 목 수기 소스를 고치고 `pnpm gen`한다.
 
 `pnpm dev`는 Next 환경 로더로 설정을 준비한다. API 주소가 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 같은 loopback에 목과 web을 함께 시작하며, 외부 백엔드 주소라면 web만 시작한다. 어느 자식이 종료하거나 Ctrl+C를 받으면 자신이 시작한 프로세스 트리를 함께 내린다. dev·HTTP 통합·E2E는 공통 `scripts/process-tree.mjs`를 쓴다. 목은 `node --import tsx`로 직접 실행하고, POSIX에서는 런처 종료 뒤에도 그룹을 정리한다. Windows는 직접 node가 자식을 소유하며 taskkill로 트리를 끝낸다. 종료 확인을 기다리고 한도를 넘으면 강제 종료한다.
 
