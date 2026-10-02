@@ -18,6 +18,9 @@ export function LocaleSwitcher() {
           key={target}
           href={href}
           locale={target}
+          // 현재 언어의 /ko 링크도 쿠키 변경 중 redirect가 다른 언어로 캐시될 수 있다.
+          // 언어 링크는 클릭할 때만 요청한다.
+          prefetch={false}
           lang={target}
           aria-current={target === locale ? "page" : undefined}
           className="rounded-md px-2 py-2 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring aria-[current=page]:font-semibold"
