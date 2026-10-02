@@ -46,7 +46,7 @@ pnpm --dir contract/mock exec vitest run test/post-excerpt.test.ts
 excerpt: Array.from(post.body).slice(0, 120).join(""),
 ```
 
-7. 목의 계약 기반 쿼리는 응답 스키마에서 속성을 읽으므로 `fields[posts]=excerpt`도 생성 계약을 따른다. 별도 필드 허용 목록이나 JSON 응답 복사본을 만들지 않는다. GREEN을 같은 명령으로 확인하고 기존 목록·쓰기·이벤트 검사도 확인한다.
+7. 계약은 타입별 `fields[<type>]` 매개변수를 선언한다. 파서는 요청한 멤버 이름을 집합으로 받고 renderer는 조립된 리소스의 속성·관계를 그 집합으로 거른다. `fields[posts]=excerpt`도 같은 방식으로 처리한다. 별도 필드 허용 목록이나 JSON 응답 복사본을 만들지 않는다. GREEN을 같은 명령으로 확인하고 기존 목록·쓰기·이벤트 검사도 확인한다.
 8. UI에서 쓰려면 `src/features/posts/model.ts`의 `Post`와 응답 변환 → `queries.ts` → ko/en 카탈로그 → 컴포넌트 → `index.ts` → 페이지 순서로 연결한다. 선택 필드가 없는 응답도 처리한다. 외부 백엔드를 쓰는 프로젝트는 그 구현을 같은 계약에 맞춘 뒤 연결한다. 새 채널은 [실시간 구독](add-realtime.md)의 공통 listener 타입도 맞춘다.
 
 ## 규칙
