@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { record, validateCompose } from "../../src/web-e2e/config.ts";
-import { createPlan, projectName } from "../../src/web-e2e/plan.ts";
+import { createPlan, projectName, webCommand } from "../../src/web-e2e/plan.ts";
 import { commandEnv, probePorts, execute } from "../../src/web-e2e/process.ts";
 import { runStack, type Dependencies } from "../../src/web-e2e/run.ts";
 
@@ -21,6 +21,23 @@ const base = [
 const compose = () => readFileSync(resolve(root, plan.composeFile), "utf8");
 
 describe("전용 스택의 명령과 주소", () => {
+  it("pnpm 12 native 실행 파일은 Node 스크립트로 취급하지 않는다", () => {
+    expect(webCommand(plan, "C:/tools/pnpm-native.exe")).toEqual([
+      "C:/tools/pnpm-native.exe",
+      "--dir",
+      resolve(root, "templates/nextjs"),
+      "test:e2e",
+    ]);
+  });
+  it("web의 같은 pnpm test:e2e를 셸 없이 실행하며 필터를 넣지 않는다", () => {
+    expect(webCommand(plan, "C:/tools/pnpm.cjs")).toEqual([
+      process.execPath,
+      "C:/tools/pnpm.cjs",
+      "--dir",
+      resolve(root, "templates/nextjs"),
+      "test:e2e",
+    ]);
+  });
   it("기본 작업 폴더는 현재 저장소 루트다", () => {
     expect(createPlan("offline-04").root).toBe(root);
   });

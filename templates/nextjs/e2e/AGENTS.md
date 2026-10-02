@@ -6,7 +6,8 @@
 - 가입·메일 인증, 로그인·로그아웃, 비밀번호 재설정, returnTo를 두 언어에서 검사한다.
 - W3는 이름·아바타, 프로필·헤더의 언어 전환, 내 글·커버·발행·취소·삭제, 비밀번호 변경, 소셜 로그인·거부, 탈퇴 재인증을 검사한다.
 - 세션 폐기·비밀번호 변경은 두 컨텍스트의 실제 session.revoked를 확인하고 현재 세션은 유지되는지 본다. 공개 목록은 posts 구독 ack 뒤 변경하며 문서 이동 없이 반영되는지 본다.
-- `targets`가 메일·재인증 창·가짜 제공자의 username/claims 폼을 처리한다. 일반 흐름에는 목 전용 URL을 넣지 않는다. W4는 같은 인터페이스에 Mailpit·모의 OAuth 서버를 연결한다.
-- 대상은 `E2E_TARGET`으로 고른다(기본 mock). `targets/index.ts`의 FastAPI 기동·메일 어댑터는 W4에서 구현한다. 지금 fastapi를 고르면 명시적으로 실패한다.
+- `targets`가 메일·재인증 창·가짜 제공자의 username/claims 폼을 처리한다. 일반 흐름에는 대상별 분기나 목 전용 URL을 넣지 않는다. FastAPI는 같은 인터페이스에 Mailpit·모의 OAuth 서버를 연결한다.
+- 대상은 `E2E_TARGET`으로 고른다(기본 mock). fastapi는 미리 준비한 외부 API를 기다린 뒤 web만 빌드·기동한다. Docker와 목은 실행하지 않는다.
+- fastapi에는 `APP_URL=http://localhost:3100`, `API_BASE_URL`, `NEXT_PUBLIC_REALTIME_URL`, `E2E_MAILPIT_URL`, `E2E_OAUTH_URL`, `E2E_RECENT_LOGIN_SECONDS`를 명시한다. 빠진 설정은 기동 전에 실패한다. 외부 스택의 기동·정리는 호출자가 맡는다.
 - web 3100, 목 4110은 비워 둔다. 운영 비밀은 실행마다 생성하며 파일에 저장하지 않는다. 각 테스트는 새 계정과 브라우저 컨텍스트를 쓴다.
 - 재현 가능한 headless Chromium 검사를 쓴다. 영상·스크린샷·trace는 저장하지 않는다.

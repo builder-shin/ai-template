@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { validateCompose } from "./config.ts";
-import { createPlan } from "./plan.ts";
+import { createPlan, webCommand } from "./plan.ts";
 import { execute, probePorts } from "./process.ts";
 import { runStack } from "./run.ts";
 import { smoke, waitForServices } from "./smoke.ts";
@@ -39,6 +39,7 @@ async function main(): Promise<number> {
   console.log(`compose 환경: ${JSON.stringify(plan.env)}`);
   for (const [name, argv] of Object.entries(plan.commands))
     console.log(`${name}: ${JSON.stringify(argv)}`);
+  if (values.smoke !== true) console.log(`web: ${JSON.stringify(webCommand(plan))}`);
   console.log(`정리: pnpm web-e2e fastapi --run-id ${runId} --down`);
   if (values.print === true) return 0;
   if (values.down === true) return (await execute(plan.commands.down, plan.env)).code;
@@ -60,7 +61,15 @@ async function main(): Promise<number> {
         probe: () => probePorts(plan.ports),
         execute: (argv, options) => execute(argv, plan.env, options),
         ready: waitForServices,
-        command: (signal) => smoke(plan, signal),
+        command: async (signal) =>
+          values.smoke === true
+            ? smoke(plan, signal)
+            : (
+                await execute(webCommand(plan), plan.webEnv, {
+                  ...(signal ? { signal } : {}),
+                  tree: true,
+                })
+              ).code,
         log: console.error,
       },
     );

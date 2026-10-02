@@ -1,0 +1,86 @@
+import { ChildProcess } from "node:child_process";
+import { describe, expect, it, vi } from "vitest";
+import { targetEnvironment } from "../e2e/targets";
+import { startE2eServers, type ServerDependencies } from "./e2e-runtime";
+
+const env = {
+  E2E_TARGET: "fastapi",
+  APP_URL: "http://localhost:3100",
+  API_BASE_URL: "http://127.0.0.1:18100/api/v1",
+  NEXT_PUBLIC_REALTIME_URL: "http://127.0.0.1:18100",
+  E2E_MAILPIT_URL: "http://127.0.0.1:28125",
+  E2E_OAUTH_URL: "http://127.0.0.1:28180",
+  E2E_RECENT_LOGIN_SECONDS: "10",
+};
+
+function harness() {
+  const events: string[] = [];
+  const deps: ServerDependencies = {
+    assertFree: vi.fn(async (url) => {
+      events.push(`free:${url}`);
+    }),
+    ready: vi.fn(async (url) => {
+      events.push(`ready:${url}`);
+    }),
+    start: vi.fn((args) => {
+      const step = args.includes("build") ? "build" : args.includes("start") ? "web" : "mock";
+      events.push(step);
+      const child = new ChildProcess();
+      if (step === "build") queueMicrotask(() => child.emit("exit", 0));
+      return child;
+    }),
+    stopped: () => false,
+  };
+  return { deps, events };
+}
+
+describe("E2E 대상 선택과 기동", () => {
+  it("외부 FastAPI 설정을 그대로 전달한다", () => {
+    expect(targetEnvironment("fastapi", env)).toMatchObject(env);
+  });
+  it.each(Object.keys(env).filter((key) => key !== "E2E_TARGET"))(
+    "%s 누락은 기동 전에 실패한다",
+    async (key) => {
+      const { deps, events } = harness();
+      await expect(startE2eServers({ ...env, [key]: undefined }, deps)).rejects.toThrow(key);
+      expect(events).toEqual([]);
+    },
+  );
+  it("FastAPI가 준비된 뒤 web만 빌드·기동한다", async () => {
+    const { deps, events } = harness();
+    await startE2eServers(env, deps);
+    expect(events).toEqual([
+      "free:http://localhost:3100",
+      "ready:http://127.0.0.1:18100/health/ready",
+      "build",
+      "web",
+      "ready:http://localhost:3100",
+    ]);
+    expect(deps.start).toHaveBeenCalledTimes(2);
+    expect(deps.start).toHaveBeenNthCalledWith(
+      1,
+      expect.arrayContaining(["build"]),
+      expect.objectContaining(env),
+      false,
+    );
+  });
+  it("외부 API 준비 실패는 web·목을 시작하지 않는다", async () => {
+    const { deps, events } = harness();
+    deps.ready = vi.fn().mockRejectedValue(new Error("API not ready"));
+    await expect(startE2eServers(env, deps)).rejects.toThrow("API not ready");
+    expect(events).toEqual(["free:http://localhost:3100"]);
+  });
+  it("기본 mock은 목을 준비한 뒤 web을 시작한다", async () => {
+    const { deps, events } = harness();
+    await startE2eServers({ E2E_TARGET: "mock" }, deps);
+    expect(events).toEqual([
+      "free:http://localhost:3100",
+      "free:http://127.0.0.1:4110",
+      "mock",
+      "ready:http://127.0.0.1:4110/health/ready",
+      "build",
+      "web",
+      "ready:http://localhost:3100",
+    ]);
+  });
+});
