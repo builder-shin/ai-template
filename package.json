@@ -19,6 +19,7 @@
     "tool": "tsx scripts/src/tools/cli.ts",
     "spec-compare": "tsx scripts/src/spec-compare/cli.ts",
     "conformance": "tsx scripts/src/conformance/cli.ts",
+    "web-e2e": "tsx scripts/src/web-e2e/cli.ts",
     "sync": "tsx scripts/src/sync/cli.ts"
   },
   "devDependencies": {
