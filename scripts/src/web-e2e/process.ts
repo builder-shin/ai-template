@@ -1,7 +1,11 @@
 import { spawn, spawnSync } from "node:child_process";
 import { lookup } from "node:dns/promises";
 import { createServer } from "node:net";
+import { setTimeout } from "node:timers/promises";
 import { ROOT } from "./plan.ts";
+
+const TREE_SHUTDOWN_GRACE_MS = 30_000;
+const FORCE_KILL_WAIT_MS = 2000;
 
 export interface CommandResult {
   code: number;
@@ -11,6 +15,34 @@ export interface CommandOptions {
   capture?: boolean;
   signal?: AbortSignal;
   tree?: boolean;
+  shutdownGraceMs?: number;
+}
+
+/** SIGINT로 Playwright의 별도 webServer 그룹 정리를 기다린 뒤 소유한 그룹만 강제 종료한다. */
+async function stopOwnedGroup(pid: number, graceMs: number): Promise<void> {
+  const target = -pid;
+  function signal(name: NodeJS.Signals | 0) {
+    try {
+      process.kill(target, name);
+      return true;
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) throw error;
+      return false;
+    }
+  }
+  async function wait(ms: number) {
+    const deadline = Date.now() + ms;
+    while (signal(0)) {
+      if (Date.now() >= deadline) return false;
+      await setTimeout(25);
+    }
+    return true;
+  }
+  if (!signal("SIGINT") || (await wait(graceMs))) return;
+  if (!signal("SIGKILL")) return;
+  console.error(`종료 한도를 넘어 프로세스 그룹 ${String(pid)}을 SIGKILL로 강제 종료했다.`);
+  if (!(await wait(FORCE_KILL_WAIT_MS)))
+    throw new Error(`시작한 프로세스 그룹 ${String(pid)}이 강제 종료 한도를 넘겼다.`);
 }
 /** compose의 자동 .env 로드와 셸의 COMPOSE_* 덮어쓰기를 막는다. */
 export function commandEnv(env: Record<string, string>): NodeJS.ProcessEnv {
@@ -44,7 +76,8 @@ export function execute(
     child.stdout?.on("data", (chunk: string) => {
       stdout += chunk;
     });
-    const abort = () => {
+    let stopping: Promise<void> | undefined;
+    const stop = async () => {
       if (options.tree === true && child.pid) {
         if (process.platform === "win32")
           spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
@@ -52,21 +85,21 @@ export function execute(
             stdio: "ignore",
             timeout: 10000,
           });
-        else {
-          try {
-            process.kill(-child.pid, "SIGTERM");
-          } catch (error) {
-            if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) throw error;
-          }
-        }
+        else await stopOwnedGroup(child.pid, options.shutdownGraceMs ?? TREE_SHUTDOWN_GRACE_MS);
       } else child.kill("SIGTERM");
+    };
+    const abort = () => {
+      stopping ??= stop();
+      void stopping.catch(reject);
     };
     options.signal?.addEventListener("abort", abort, { once: true });
     if (options.signal?.aborted === true) abort();
     child.once("error", reject);
     child.once("close", (code) => {
       options.signal?.removeEventListener("abort", abort);
-      done({ code: code ?? 1, stdout });
+      void Promise.resolve(stopping).then(() => {
+        done({ code: code ?? 1, stdout });
+      }, reject);
     });
   });
 }
