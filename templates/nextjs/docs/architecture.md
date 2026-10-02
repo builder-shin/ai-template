@@ -4,7 +4,7 @@ Next.js App Router의 BFF다. Server Component가 데이터를 읽고 Server Act
 브라우저는 백엔드 API를 직접 부르지 않는다. W3의 실시간 Socket.IO와 presigned URL 업로드는 직접 연결한다.
 API 계약·목 사본은 이 프로젝트의 `contract/` 안에 두고 자체 workspace로 실행한다.
 W3까지 비밀번호·소셜 인증, 공개·내 글, 내 정보·비밀번호 변경·탈퇴, 세션 관리, 업로드와 실시간을 구현했다.
-`features/posts`는 `pnpm gen:feature`가 복사하는 골든 기능이다. 다음 W4는 FastAPI 대상 E2E와 배포·레시피·skill 보강이다.
+`features/posts`는 `pnpm gen:feature`가 복사하는 골든 기능이다. 같은 E2E 20개가 목과 외부 FastAPI에서 통과하며 standalone 이미지·일곱 레시피·고정 skill을 갖춘다. CI 실행 결과는 PR CI에서 확인한다.
 
 ## 기능과 생성기
 
@@ -29,6 +29,11 @@ Markdown 상세·미리보기는 react-markdown과 remark-gfm으로 raw HTML 없
 기존 경로·namespace는 덮어쓰지 않는다. 출력한 검토 목록과 [기능 추가](recipes/add-feature.md)를 따라
 헤더·홈 링크까지 고친다. 생성된 기능은 편집할 소스이며 `pnpm gen`의 계약 타입 생성물과 구분한다.
 
+기능·페이지·Server Action·실시간 구독·번역·API 확장·UI 부품 추가는 [일곱 레시피](../AGENTS.md#완료-기준과-문서)를 따른다.
+`.claude/skills/add-*/`는 파일 순서와 검사만 안내하며 레시피가 원본이다.
+Next `next-dev-loop`·shadcn·Playwright CLI는 [고정 출처](stack.md#공식-skill)의 사본이다.
+check의 harness가 원문·버전·파일 해시를 네트워크 없이 검사하며 `pnpm skills:sync`으로 복원한다.
+
 ## 파일 업로드
 
 `features/files`의 재사용 `FileUpload`는 JavaScript가 필요하며 화면에도 이를 안내한다.
@@ -36,12 +41,14 @@ Markdown 상세·미리보기는 react-markdown과 remark-gfm으로 raw HTML 없
 브라우저가 반환된 presigned URL에 PUT한 뒤 Action이 `PATCH /files/{id}`로 ready를 확인한다.
 PUT은 응답의 헤더를 그대로 쓰며 Content-Length는 브라우저가 본문에서 정한다.
 목의 `/_storage`는 web Origin의 CORS를 허용한다. 실제 스토리지도 해당 Origin의 PUT을 허용해야 한다.
+FastAPI의 `STORAGE_ALLOWED_ORIGINS`와 버킷 초기화로 SeaweedFS의 실제 presigned PUT·ready·이미지 표시를 같은 E2E에서 확인했다.
 
 ready 확인이 끝난 id만 부모 폼의 hidden 값에 넣는다. 업로드 중 저장을 막고 스피너만 표시한다.
 오류가 나면 기존 커버를 유지하며 다시 같은 파일을 고를 수 있다. 글 작성·수정 Action은
 `relationships.coverImage`로 id를 저장하고, 빈 값은 null로 해제하며 필드 생략은 기존 관계를 보존한다.
 제목·본문·현재 커버 id의 저장은 JS 없이도 된다. 관계 해제·교체는 다음 저장 때 반영된다.
 저장하지 않은 파일은 연결되지 않으며 pending 파일 정리는 백엔드가 맡는다.
+create·ready의 429는 `retryAfter`를 보존하며 ko/en의 대기 안내를 표시한다.
 
 ## 경계
 
@@ -51,13 +58,54 @@ API·세션과 기능 actions/queries는 `server-only` 표식이 없으면 린�
 
 ## 설정과 실행
 
-`next.config.ts` 설정 함수가 개발·운영 서버 phase에서만 Zod 스키마를 검증한다.
+`next.config.ts`의 개발·운영 서버 phase와 `src/instrumentation.ts`의 Node 서버 시작이 같은 `src/lib/env.ts`의 Zod 스키마를 검증한다.
 빌드·타입 생성에서는 검증하지 않으므로 서버 비밀 없이 빌드할 수 있다.
 서버 시작 때 틀린 변수는 변수마다 한 줄을 표준 오류에 쓰고 값·스택 없이 종료 코드 1로 멈춘다.
 운영 서버는 예시 `SESSION_SECRET`을 거절한다. 빌드의 `NODE_ENV=production`만으로 서버 검증을 실행하지 않는다.
 `setup`이 의존성과 환경 파일을 준비한다. 기존 값은 보존하고 예시에서 새 키만 더한다.
 API 기본 주소는 `http://localhost:4010/api/v1`, Socket.IO는 `http://localhost:4010`이다.
 web은 3000에서 뜬다. `dev`는 단독 모드에서 목도 함께 띄운다.
+
+### 환경 행렬
+
+| 변수                       | 단독 개발                      | mock E2E                       | 외부 FastAPI E2E 예시           |
+| -------------------------- | ------------------------------ | ------------------------------ | ------------------------------- |
+| `E2E_TARGET`               | 사용하지 않음                  | 기본 `mock`                    | `fastapi`                       |
+| `APP_URL`                  | `http://localhost:3000`        | `http://localhost:3100`        | `http://localhost:3100`         |
+| `API_BASE_URL`             | `http://localhost:4010/api/v1` | `http://127.0.0.1:4110/api/v1` | `http://127.0.0.1:18100/api/v1` |
+| `NEXT_PUBLIC_REALTIME_URL` | `http://localhost:4010`        | `http://127.0.0.1:4110`        | `http://127.0.0.1:18100`        |
+| `E2E_MAILPIT_URL`          | 사용하지 않음                  | 사용하지 않음                  | `http://127.0.0.1:28125`        |
+| `E2E_OAUTH_URL`            | 사용하지 않음                  | 사용하지 않음                  | `http://127.0.0.1:28180`        |
+| `E2E_RECENT_LOGIN_SECONDS` | 사용하지 않음                  | 어댑터의 10초                  | `10`                            |
+| `SESSION_SECRET`           | 로컬 개발 비밀                 | 실행마다 생성                  | 실행마다 생성                   |
+| `TIME_ZONE`                | 기본 `Asia/Seoul`              | `Asia/Seoul`                   | `Asia/Seoul`                    |
+
+mock E2E는 실행기가 주소를 정한다. fastapi는 APP·API·실시간·Mailpit·OAuth URL과 창을 명시해야 하며 누락·오류는 기동 전에 실패한다.
+외부 스택의 기동·정리는 호출자가 맡는다. 템플릿은 API의 `/health/ready`를 기다리고 web만 빌드·기동하며 Docker를 실행하지 않는다.
+백엔드의 `FRONTEND_URL`·실시간·스토리지 허용 Origin은 `APP_URL`, OAuth 허용 콜백은 `APP_URL`의 `/oauth/callback`으로 맞춘다.
+S3의 브라우저 주소도 접근 가능해야 한다(위 예시의 S3는 `http://127.0.0.1:28433`).
+백엔드 `RECENT_LOGIN_SECONDS`와 E2E 창은 같은 10초로 맞춘다. 자세한 검증은 [E2E 지침](../e2e/AGENTS.md)을 따른다.
+
+### Docker 이미지
+
+`Dockerfile`은 이 프로젝트만 문맥으로 쓰는 다단계 빌드다. Node `24.19.0-bookworm-slim`과 pnpm `12.6.0`으로 frozen 설치하고 Next `output: "standalone"`을 만든다.
+실행 이미지에는 `server.js`·추적 의존성·서버 산출물·`.next/static`·`public`을 복사한다. UID/GID `10001:10001`로 실행하며 `.next/cache`는 해당 사용자가 쓸 수 있다.
+기본 명령은 `node server.js`, `HOSTNAME=0.0.0.0`, `PORT=3000`이다. 헬스체크는 실제 PORT의 `/`가 HTTP 200인지 확인한다.
+`.dockerignore`는 `.env*`·의존성·빌드·캐시·git·테스트 출력 등 로컬 파일을 제외한다.
+
+빌드에는 서버 비밀이 필요 없다. API·실시간 URL의 빌드 ARG는 실행 단계에 전달하지 않는다.
+실행할 때 `API_BASE_URL`, `APP_URL`, `NEXT_PUBLIC_REALTIME_URL`, `SESSION_SECRET`을 주고 `TIME_ZONE`은 필요하면 바꾼다.
+standalone은 next.config의 서버 phase를 다시 실행하지 않으므로 instrumentation이 같은 스키마로 요청 처리 전에 검사한다.
+누락·잘못된 URL·시간대·32바이트 미만 비밀·운영 예시 비밀은 값·스택 없이 종료 코드 1로 멈춘다.
+실시간 주소는 Server Component가 실행 환경에서 읽어 클라이언트 prop으로 전달하며 API 주소도 실행 환경을 쓴다.
+컨테이너 안의 API 주소는 서버에서, 실시간·S3 주소는 브라우저에서 접근 가능해야 한다. 컨테이너의 localhost는 호스트가 아니다.
+
+호스트 환경에 위 설정과 새 비밀을 준비하고 3000이 비었는지 확인한 뒤 실행한다.
+
+```sh
+docker build --tag ai-template-nextjs:local .
+docker run --rm --name ai-template-nextjs-local --publish 127.0.0.1:3000:3000 --env API_BASE_URL --env APP_URL --env NEXT_PUBLIC_REALTIME_URL --env SESSION_SECRET --env TIME_ZONE ai-template-nextjs:local
+```
 
 ## 세션 설계
 
@@ -96,7 +144,7 @@ PKCE 검사가 거절한다. 계약의 oauthCode grant에는 provider 필드가 
 
 백엔드의 `OAUTH_REDIRECT_URIS`에 정확한 `APP_URL` 콜백을 등록해야 한다. 기본 개발 주소는
 `http://localhost:3000/oauth/callback`이다. HTTP 검사는 예약한 자유 포트의 콜백을,
-E2E 기동기는 `http://localhost:3100/oauth/callback`을 목의 허용 목록에 넣는다.
+mock E2E 기동기는 `http://localhost:3100/oauth/callback`을 허용 목록에 넣는다. 외부 FastAPI도 같은 콜백을 준비해야 한다.
 실제 목 제공자의 username·claims 폼을 POST해 세 제공자의 로그인과 거부·실패·PKCE 불일치를 검사한다.
 
 ## 회원 탈퇴
@@ -110,9 +158,9 @@ E2E 기동기는 `http://localhost:3100/oauth/callback`을 목의 허용 목록�
 번역을 안내하고 `returnTo`로 확인 화면에 돌아온다. 로그인 뒤에도 확인을 다시 받으며 자동 탈퇴하지 않는다.
 다른 401은 기존 쿠키 정리 route를 쓴다. refresh로는 최근 로그인 조건을 충족할 수 없다.
 
-목의 `RECENT_LOGIN_SECONDS` 기본값은 600초다. Vitest는 기존 목과 별도로 자유 포트에 2초 창의 목을
-띄우며, Playwright 대상 어댑터의 `expireRecentLogin`은 10초 창을 기다린다. W4는 FastAPI에서 같은
-재인증 조건을 준비해야 한다. 두 검사 모두 실제 목의 오류를 쓰고 종료 때 시작한 프로세스를 내린다.
+목과 FastAPI의 `RECENT_LOGIN_SECONDS` 기본값은 600초다. Vitest는 별도 자유 포트의 목에서 2초 창을 쓴다.
+양쪽 E2E는 10초 창을 쓰며 FastAPI의 `RECENT_LOGIN_SECONDS`와 어댑터의 `E2E_RECENT_LOGIN_SECONDS`를 맞춘다.
+`expireRecentLogin`은 창과 여유 시간을 기다리고 실제 재인증 오류를 확인한다. 검사는 자신이 시작한 프로세스만 내린다.
 
 ## 로케일과 시간대
 
@@ -203,7 +251,7 @@ id만 갱신한다. 삭제·발행 취소는 번역한 안내를 표시하고 �
 
 백엔드의 `REALTIME_ALLOWED_ORIGINS`에는 web Origin을 넣는다. HTTP 통합은 자유 포트의 실제 목에
 직접 연결하고 `/me` 오류 주입용 HTTP 중계를 거치지 않는다. E2E는 web 3100 Origin을 허용한다.
-FastAPI Origin과 운영 연결 검증은 W4에서 같은 규칙을 확인한다.
+FastAPI의 web Origin 허용, 실제 Socket.IO 연결·세션 폐기·공개 목록 반영도 같은 운영 E2E로 확인했다.
 
 ## API 호출과 에러
 
@@ -262,10 +310,10 @@ Vitest global setup이 자유 포트의 실제 복사 목 두 개(기본·재인
 
 운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. Playwright 설정은 상속한 `NO_COLOR`를 지우고 서버와 테스트 프로세스에 `FORCE_COLOR=1`을 사용해 색상 경고를 막는다. 운영의 Secure·`__Host-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
 
-`e2e/targets/`는 `E2E_TARGET`의 부수 채널 어댑터다. `mailLink`는 기본 mock의 실제 `/_test/mail?to=…`에서 메일 링크를 읽는다. `expireRecentLogin`은 10초 창을 기다리고 `completeSocialLogin`·`denySocialLogin`은 세 제공자의 username·claims 폼을 브라우저로 제출한다. 일반 E2E에는 목 전용 URL을 넣지 않는다. W4는 같은 인터페이스에 Mailpit·모의 OAuth 서버·짧은 재인증 창과 FastAPI 기동을 연결한다. 현재 fastapi 선택은 W4 안내와 함께 실패하며 목으로 바뀌지 않는다.
+`e2e/targets/`는 `E2E_TARGET`의 부수 채널 어댑터다. mock은 실제 `/_test/mail?to=…`를, fastapi는 Mailpit의 수신자·목적·새 메일을 골라 실제 web 링크를 읽는다. 메일함은 비우지 않는다. `expireRecentLogin`은 설정한 창과 여유 시간을 기다린다. 세 제공자의 성공은 username·제공자별 claims 폼과 실제 redirect를, 거부는 현재 state·redirect_uri를 쓴다. BFF의 PKCE를 유지하며 일반 E2E에 대상별 분기·전용 URL을 넣지 않는다. fastapi는 외부 API 준비 뒤 web만 기동하고 목으로 대체하지 않는다.
 
 운영 Chromium E2E 20개는 기존 가입·메일 인증·로그인·로그아웃·재설정·returnTo와 W3 프로필·아바타·언어 전환·내 글·커버·발행·취소·삭제·소셜 로그인·거부·탈퇴 재인증·비밀번호 변경을 검사한다. 두 컨텍스트의 세션 폐기·비밀번호 변경은 실제 Socket.IO 연결과 session.revoked를 확인하며 현재 세션을 유지한다. 공개 목록은 posts 구독 ack 뒤 글을 바꿔 문서 reload 없이 반영되는지 확인한다. 커버·아바타 PNG는 텍스트에서 실행 때 만들고 실제 이미지 로드까지 확인한다.
 
 `pnpm check`의 생성기 검사는 독립 임시 사본에 새 기능을 만들고 그 사본의 타입·경계 린트·단위·실제 목·HTTP 검사를 실행한다. 생성기 project는 기존 web 검사 뒤에 실행해 Next 빌드 산출물이 겹치지 않게 한다. 환경 파일은 임시 사본에 복사하지 않는다.
 
-저장소 CI의 `nextjs` 작업은 Node 24·pnpm 12.6.0을 준비하고 이 템플릿의 lockfile로 frozen 설치한다. 고정 Playwright의 Chromium과 Linux 시스템 의존성을 먼저 설치한 뒤 `pnpm check`, `E2E_TARGET=mock`의 `pnpm test:e2e`를 순서대로 실행한다. 브라우저를 다시 설치하지 않는다. 검사의 자유 포트 서버와 E2E의 운영 서버는 각 실행이 준비하므로 별도의 환경 파일 준비가 필요 없다. Docker 이미지와 FastAPI 대상 E2E는 W4에서 추가한다.
+CI의 web 작업은 Node 24·pnpm 12.6.0과 frozen 설치·Chromium의 Linux 의존성을 준비하고 check → mock E2E → 이미지 빌드를 실행한다. 외부 FastAPI 작업은 호출자가 전용 스택과 같은 E2E·동일 실행 ID의 후속 정리를 맡는다. 로컬에서 두 대상의 20개를 확인했으며 CI 결과는 PR CI에서 확인한다.
