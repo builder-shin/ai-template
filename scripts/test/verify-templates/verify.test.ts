@@ -137,7 +137,9 @@ describe("verifyTemplate", () => {
         rmSync(join(repo, WEB, file));
         expect(verify(repo)).toEqual([`${file}이 없다 — 템플릿 루트에 파일을 만든다.`]);
         mkdirSync(join(repo, WEB, file));
-        expect(verify(repo)).toEqual([`${file}이 없다 — 템플릿 루트에 파일을 만든다.`]);
+        expect(verify(repo)).toEqual([
+          `${file}이 일반 파일이 아니다 — 폴더를 지우고 파일을 만든다.`,
+        ]);
         rmSync(join(repo, WEB, file), { recursive: true });
         write(repo, `${WEB}/${file}`, "# fixture\n");
         expect(verify(repo)).toEqual([]);
