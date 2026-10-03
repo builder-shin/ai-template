@@ -134,6 +134,9 @@ it("모든 경로를 정리한 뒤 문제와 실제 남은 경로만 한 번 알
     expect(message.match(/ — /g)).toHaveLength(1);
     expect(message).toContain("이동 실패");
     expect(message).not.toContain("원래 해결 방법");
+    expect(message).toContain(
+      `남은 경로를 사용하는 프로그램을 닫고 정리한다: ${leftovers.filter(actual.existsSync).join(", ")}`,
+    );
     for (const path of leftovers) expect(message).toContain(path);
     for (const path of removed) expect(message).not.toContain(path);
   } finally {

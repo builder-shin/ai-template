@@ -51,6 +51,23 @@ describe("CLI 입력", () => {
     expect(parseArguments(["--help"], {})).toBe("help");
   });
 
+  it("중복 옵션 이름 뒤에 조사를 붙이지 않고 오류 2로 안내한다", () => {
+    for (const [option, name] of [
+      ["--api=fastapi", "--api"],
+      ["--help", "--help"],
+      ["--template=nextjs", "--template"],
+    ] as const) {
+      expect
+        .soft(() => parseArguments([option, option], {}))
+        .toThrow(
+          expect.objectContaining({
+            exitCode: 2,
+            message: `pnpm new: 옵션을 여러 번 지정했다: ${name} — 각 옵션은 한 번만 지정한다.`,
+          }),
+        );
+    }
+  });
+
   it.each(
     [
       [],

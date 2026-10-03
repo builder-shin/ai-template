@@ -50,7 +50,11 @@ export function parseArguments(
   for (const token of parsed.tokens) {
     if (token.kind !== "option") continue;
     if (seen.has(token.name)) {
-      throw new CreateError(`--${token.name}을 여러 번 지정했다`, "각 옵션은 한 번만 지정한다.", 2);
+      throw new CreateError(
+        `옵션을 여러 번 지정했다: --${token.name}`,
+        "각 옵션은 한 번만 지정한다.",
+        2,
+      );
     }
     seen.add(token.name);
   }

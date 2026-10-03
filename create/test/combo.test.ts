@@ -235,7 +235,7 @@ it.each(["create/assets/combo/README.md", ".editorconfig", ".gitattributes"])(
 );
 
 it.each(["API_BASE_URL", "NEXT_PUBLIC_REALTIME_URL"])(
-  "web 환경 예제에 %s가 없으면 거절한다",
+  "web 환경 예제에 필요한 키가 없으면 거절한다: %s",
   (key) => {
     const root = comboFixture();
     const path = "templates/nextjs/.env.example";
@@ -258,7 +258,7 @@ it.each(["API_BASE_URL", "NEXT_PUBLIC_REALTIME_URL"])(
   },
 );
 
-it.each(["engines", "devDependencies"])("web package.json의 %s가 없으면 안내한다", (key) => {
+it.each(["engines", "devDependencies"])("web package.json 항목 누락을 안내한다: %s", (key) => {
   const root = comboFixture();
   const file = "templates/nextjs/package.json";
   const pkg = JSON.parse(readFileSync(join(root, file), "utf8")) as Record<string, unknown>;

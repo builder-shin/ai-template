@@ -22,7 +22,7 @@ function request(target: string, template: "nextjs" | "fastapi" = "nextjs", init
 }
 
 describe("단독 프로젝트", () => {
-  it.each(["null", "true", "false"])("compose 이름 %s를 YAML 문자열로 보존한다", (name) => {
+  it.each(["null", "true", "false"])("compose 이름을 YAML 문자열로 보존한다: %s", (name) => {
     const root = fixtureRepository();
     const target = join(temporaryFolder(), "aitpl-app");
     createProject({ ...request(target, "fastapi", false), name }, root);
@@ -235,6 +235,19 @@ describe("단독 프로젝트", () => {
     const root = fixtureRepository();
     write(root, "templates/fastapi/README.md", "# changed\n");
     expect(templateFiles(root, "nextjs").map((file) => file.path)).toContain("docs/공백 문서.md");
+  });
+
+  it("일반 파일이 아닌 추적 항목의 경로 뒤에 조사를 붙이지 않는다", () => {
+    const root = fixtureRepository();
+    const path = "templates/nextjs/readme-link";
+    write(root, path, "README.md");
+    git(root, "config", "core.symlinks", "false");
+    const blob = git(root, "hash-object", "-w", path).trim();
+    git(root, "update-index", "--add", "--cacheinfo", `120000,${blob},${path}`);
+    git(root, "-c", "commit.gpgsign=false", "commit", "-m", "chore: symlink fixture");
+    expect(() => templateFiles(root, "nextjs")).toThrow(
+      "pnpm new: 일반 파일이 아니다: templates/nextjs/readme-link — 템플릿에는 일반 파일만 커밋한다.",
+    );
   });
 
   it("비어 있지 않은 대상과 파일을 보존하며 거절한다", () => {

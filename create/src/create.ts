@@ -206,7 +206,7 @@ export function createProject(
       const problem = error instanceof CreateError ? error.problem : errorReason(error);
       console.error(
         `pnpm new: 생성 실패(${problem}) 뒤 정리하지 못했다(${causes.join(", ")}) — ` +
-          `남은 경로 ${leftovers.filter(existsSync).join(", ")}를 사용하는 프로그램을 닫고 정리한다.`,
+          `남은 경로를 사용하는 프로그램을 닫고 정리한다: ${leftovers.filter(existsSync).join(", ")}`,
       );
     }
     throw error;

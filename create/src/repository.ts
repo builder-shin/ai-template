@@ -75,7 +75,7 @@ export function templateFiles(repository: string, template: Template): TemplateF
   return files.map((file) => {
     const mode = modes.get(file);
     if (mode !== "100644" && mode !== "100755") {
-      throw new CreateError(`${file}은 일반 파일이 아니다`, "템플릿에는 일반 파일만 커밋한다.");
+      throw new CreateError(`일반 파일이 아니다: ${file}`, "템플릿에는 일반 파일만 커밋한다.");
     }
     return { path: file.slice(prefix.length), executable: mode === "100755" };
   });
