@@ -2,6 +2,16 @@ import { expect, it } from "vitest";
 import { assembleSteps } from "./steps";
 import { runChecks } from "./runner";
 
+it("설정 오류는 캐시와 관계없이 generated 단계의 실패로 출력한다", async () => {
+  const problem = new Error("gen.config.json 설정이 잘못됐다 — 상대 경로를 넣는다.");
+  const steps = assembleSteps({}, true, [], {}, {}, problem);
+  const previous = Object.fromEntries(steps.map((step) => [step.name, step.key]));
+  const result = await runChecks(steps, previous, async () => ({ ok: true, output: "" }));
+  expect(result.ok).toBe(false);
+  expect(result.output).toBe(`✗ generated\n${problem.message}`);
+  expect(result.cache.generated).toBeUndefined();
+});
+
 it.each([false, true])(
   "백엔드 스펙과 입력 설정 변경은 생성물 캐시를 무효화한다 (fast=%s)",
   (fast) => {

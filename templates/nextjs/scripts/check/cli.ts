@@ -30,14 +30,11 @@ const readFiles = () => ({
   ...readOfficialSkillCopies(root),
 });
 const files = readFiles();
-let webOpenapi: string;
+let webOpenapi: string | Error;
 try {
   webOpenapi = readWebOpenapi(root, files["contract/openapi.yaml"] ?? "");
 } catch (error) {
-  console.error(
-    `check 실패: generated — ${error instanceof Error ? error.message : String(error)}`,
-  );
-  process.exit(1);
+  webOpenapi = error instanceof Error ? error : new Error(String(error));
 }
 const cachePath = ".cache/check.json";
 let previous: Record<string, string> = {};

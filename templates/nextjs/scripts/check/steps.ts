@@ -6,7 +6,7 @@ export function assembleSteps(
   related: string[],
   routeTypes: Record<string, string> = {},
   installedSkills: Record<string, string> = {},
-  webOpenapi = "",
+  webOpenapi: string | Error = "",
 ): Step[] {
   const select = (pattern: RegExp) =>
     Object.fromEntries(
@@ -39,7 +39,8 @@ export function assembleSteps(
     {
       name: "generated",
       args: ["tsx", "scripts/gen.ts", "--check"],
-      key: key(/^(src|contract)\//) + fingerprint({ webOpenapi }),
+      key: key(/^(src|contract)\//) + fingerprint({ webOpenapi: String(webOpenapi) }),
+      inputError: webOpenapi instanceof Error ? webOpenapi.message : undefined,
     },
   ];
   if (!fast) {

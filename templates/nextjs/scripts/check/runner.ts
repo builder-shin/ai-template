@@ -4,6 +4,7 @@ export interface Step {
   name: string;
   args: string[];
   key: string;
+  inputError?: string;
 }
 export interface Result {
   ok: boolean;
@@ -34,12 +35,14 @@ export async function runChecks(
   const failures: string[] = [];
   let skipped = 0;
   for (const step of steps) {
-    if (cache[step.name] === step.key) {
+    if (!step.inputError && cache[step.name] === step.key) {
       skipped++;
       continue;
     }
     delete cache[step.name];
-    const result = await execute(step);
+    const result = step.inputError
+      ? { ok: false, output: step.inputError }
+      : await execute(step);
     if (result.ok) cache[step.name] = step.key;
     else failures.push(`✗ ${step.name}\n${result.output.trimEnd()}`);
   }
