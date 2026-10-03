@@ -162,8 +162,18 @@ jobs:
         working-directory: ${{ runner.temp }}/aitpl-combo
       - run: pnpm check
         working-directory: ${{ runner.temp }}/aitpl-combo
+        env:
+          AI_AGENT: "1"
       - run: pnpm test:e2e
         working-directory: ${{ runner.temp }}/aitpl-combo
+      - name: 생성 프로젝트의 작업 트리 확인
+        working-directory: ${{ runner.temp }}/aitpl-combo
+        run: |
+          status=$(git status --porcelain)
+          if [ -n "$status" ]; then
+            printf '%s\n' "$status"
+            exit 1
+          fi
       - run: docker build apps/api
         working-directory: ${{ runner.temp }}/aitpl-combo
       - run: docker build --tag ci-combo-web:ci -f apps/web/Dockerfile .

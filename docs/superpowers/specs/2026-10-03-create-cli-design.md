@@ -199,6 +199,7 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
 
 - `check`의 출력 원칙은 템플릿과 같다. 성공하면 한 줄, 실패하면 실패한 단계의 출력만 보여 준다.
 - Turborepo 설정
+  - `agentGuidance: false`로 에이전트 환경에서도 루트 `AGENTS.md`를 바꾸지 않는다. 생성 CI는 `AI_AGENT=1`로 검사하고 E2E 뒤 작업 트리가 깨끗한지 확인한다.
   - `dev`는 `persistent`이고 캐시하지 않는다.
   - `check`·`test`는 캐시한다. `gen`과 `web#gen`은 `cache: false`다. api 내보내기와 web의 TypeSpec·목 생성까지 산출물 전체의 복원 범위를 검증하지 않았으므로 캐시 hit로 생성을 건너뛰지 않는다. 정확한 outputs와 복원 검증을 갖춘 뒤 캐시를 켤 수 있다.
   - web의 `check`·`gen` 입력에는 `$TURBO_ROOT$/apps/api/openapi.json`을 더한다.
@@ -435,6 +436,8 @@ DB·Valkey·스토리지 기반 테스트와 실제 `e2e:serve`, Docker 이미�
 | 나중     | 생성한 프로젝트 갱신, npm 배포, 포트 오프셋                                                                        |
 
 ## 10. 확인한 사실과 출처 (2026-10-03)
+
+- Turborepo 2.11.6의 `agentGuidance` 기본값은 `true`이며 에이전트 환경에서 `AGENTS.md`를 갱신한다. 조합은 이를 끈다(설치 패키지의 `docs/reference/configuration.mdx`, `docs/guides/ai.mdx`와 로컬 dry run 확인).
 
 | 사실                                                                                                                                    | 출처                                                         |
 | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |

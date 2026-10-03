@@ -180,10 +180,12 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
     overrides: { typescript: "6.0.3" },
   });
   const turbo = JSON.parse(readFileSync(join(target, "turbo.json"), "utf8")) as {
+    agentGuidance: boolean;
     envMode: string;
     tasks: Record<string, { dependsOn?: string[]; inputs?: string[]; cache?: boolean }>;
   };
   expect(turbo.envMode).toBe("loose");
+  expect(turbo.agentGuidance).toBe(false);
   expect(turbo.tasks["web#gen"]?.dependsOn).toContain("api#gen");
   expect(turbo.tasks["web#check"]?.inputs).toContain("$TURBO_ROOT$/apps/api/openapi.json");
   expect(turbo.tasks.gen?.cache).toBe(false);

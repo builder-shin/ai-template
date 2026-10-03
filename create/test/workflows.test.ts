@@ -7,10 +7,19 @@ import { parse } from "yaml";
 import { temporaryFolder } from "./helpers.ts";
 
 interface Workflow {
-  jobs: Record<string, { steps: { name?: string; run?: string }[] }>;
+  jobs: Record<string, { steps: { name?: string; run?: string; env?: Record<string, string> }[] }>;
 }
 const root = resolve(import.meta.dirname, "../..");
 const workflow = (file: string) => parse(readFileSync(resolve(root, file), "utf8")) as Workflow;
+
+it("조합 CI는 에이전트 환경 검사와 E2E 뒤 작업 트리 오염을 확인한다", () => {
+  const steps = workflow(".github/workflows/ci.yml").jobs["create-combo"]?.steps ?? [];
+  expect(steps.find((step) => step.run === "pnpm check")?.env).toEqual({ AI_AGENT: "1" });
+  const e2e = steps.findIndex((step) => step.run === "pnpm test:e2e");
+  const clean = steps.findIndex((step) => step.run?.includes("git status --porcelain"));
+  expect(clean).toBeGreaterThan(e2e);
+  expect(steps[clean]?.run).toContain("exit 1");
+});
 
 it("조합 workflow의 run 명령은 create-combo가 같은 순서로 검증한다", () => {
   const commands = (job: Workflow["jobs"][string] | undefined) =>
