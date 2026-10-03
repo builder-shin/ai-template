@@ -76,6 +76,7 @@ function comboFixture() {
     "# 주소\nAPI_BASE_URL=http://localhost:4010/api/v1 # API\nNEXT_PUBLIC_REALTIME_URL=http://localhost:4010\n",
   );
   write(root, "templates/nextjs/.prettierrc.json", "{}\n");
+  write(root, "templates/nextjs/Dockerfile", "# 단독 web 이미지\nCOPY pnpm-lock.yaml ./\n");
   write(root, "templates/nextjs/.github/workflows/ci.yml", "name: web\n");
   write(root, "templates/fastapi/.github/workflows/ci.yml", "name: api\n");
   write(root, "templates/fastapi/openapi.json", "{}\n");
@@ -116,6 +117,15 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
     mcpServers: { "next-devtools": { command: "npx" } },
   });
   expect(existsSync(join(target, ".claude/hooks/stop-check.mjs"))).toBe(true);
+  expect(existsSync(join(target, ".github/workflows/ci.yml"))).toBe(true);
+  for (const file of ["Dockerfile", "Dockerfile.dockerignore"]) {
+    expect(readFileSync(join(target, "apps/web", file))).toEqual(
+      readFileSync(resolve(import.meta.dirname, "../assets/combo/apps/web", file)),
+    );
+  }
+  expect(readFileSync(join(target, ".github/workflows/ci.yml"))).toEqual(
+    readFileSync(resolve(import.meta.dirname, "../assets/combo/.github/workflows/ci.yml")),
+  );
   expect(commands).toEqual([
     ["--version"],
     ["install", "--lockfile-only"],

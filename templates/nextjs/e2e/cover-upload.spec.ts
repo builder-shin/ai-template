@@ -27,7 +27,13 @@ test("실제 브라우저 PUT·ready 확인 후 글 커버를 저장하고 해�
     )
     .toBe(1);
   await page.getByRole("button", { name: "Clear image", exact: true }).click();
+  const updateResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.request().headers()["next-action"] !== undefined,
+  );
   await page.getByRole("button", { name: "Save", exact: true }).click();
+  await updateResponse;
   await expect(page.locator('input[name="coverImage"]')).toHaveValue("");
   await page.reload();
   await expect(page.getByRole("img", { name: "Cover image", exact: true })).toHaveCount(0);
