@@ -55,7 +55,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - `Dockerfile`: 운영 이미지. 명령만 바꿔 api(기본), worker, scheduler, migrate로 띄운다.
 - `.claude/settings.json`: Claude Code의 hook과 권한. `.claude/skills/fastapi/`, `.agents/skills/fastapi/`: FastAPI 공식 skill 사본. `.claude/skills/add-*/`: 레시피를 부르는 skill.
 - `lefthook.yml`, `.betterleaks.toml`: git hook과 비밀 스캔 설정.
-- `openapi.json`: 앱이 내보낸 OpenAPI 문서. `api-style/lint.mjs`: 저장소가 넣는 API 스타일 룰셋 번들의 사본.
+- `openapi.json`: 앱이 내보낸 OpenAPI 문서. `api-style/lint.mjs`: 템플릿에 포함된 룰셋 사본.
 - `docs/`: [architecture.md](docs/architecture.md)(계층, 요청 흐름, 프로세스, JSON:API 쓰는 법), [stack.md](docs/stack.md)(버전과 문서), `recipes/`(작업 절차: [모듈](docs/recipes/module.md), [엔드포인트](docs/recipes/endpoint.md), [마이그레이션](docs/recipes/migration.md), [잡](docs/recipes/job.md), [권한](docs/recipes/permission.md), [메일 템플릿](docs/recipes/mail-template.md), [실시간 이벤트](docs/recipes/realtime-event.md)).
 
 ## 규칙
