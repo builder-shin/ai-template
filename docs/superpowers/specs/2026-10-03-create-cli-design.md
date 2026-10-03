@@ -14,7 +14,7 @@
 
 1. `create/`: 단독 프로젝트와 조합 모노레포를 만드는 Node CLI. 저장소 루트에서 `pnpm new`로 실행한다.
 2. 조합 루트 자산: 루트 명령 실행기, Claude Code hook 디스패처, 지침 파일, CI 워크플로의 원본(`create/assets/combo/`).
-3. 템플릿 변경: FastAPI의 `e2e:serve` 명령, web `gen`의 백엔드 스펙 입력, 두 템플릿의 CI 워크플로와 줄바꿈 설정.
+3. 템플릿 변경: FastAPI의 `e2e:serve` 명령, web `gen`의 백엔드 스펙 입력과 글·커버 저장 E2E의 Server Action POST 응답 대기, 두 템플릿의 CI 워크플로와 줄바꿈 설정.
 4. 저장소 변경: `pnpm new`, actionlint 도구, `verify-templates` 규칙, 하네스 표준, CI 작업.
 
 ### 1.2 완료 조건
@@ -48,7 +48,7 @@
 | C8  | workspace   | 루트 pnpm workspace 하나. 루트 잠금 파일은 web 잠금 파일에서 만든다                                                                   | 템플릿에서 검증한 의존성 버전을 그대로 쓴다                                                              |
 | C9  | Turborepo   | `dev`만 앱을 함께 띄우고 나머지는 앱을 차례로 돈다. `check`·`test`를 캐시하고 `gen`은 캐시하지 않는다                                  | 동시 실행 부하를 줄이고, 아직 복원 범위를 검증하지 않은 생성물을 캐시 hit로 누락하지 않는다(§5.4)       |
 | C10 | 계약        | code-first. web `gen`이 api의 `openapi.json`으로 web 타입을 만든다. 목과 TypeSpec 사본은 대역으로 남는다                               | 기반 설계 §3.3, web 설계 §5.4·§8.8                                                                       |
-| C11 | 조합 E2E    | 백엔드 명령 `e2e:serve`가 E2E 설정의 api를 띄우고, 루트 실행기가 그 위에서 web E2E(fastapi 대상)를 돈다                                | web과 api의 실제 연결을 자동으로 확인한다. web 템플릿은 바꾸지 않는다                                    |
+| C11 | 조합 E2E    | 백엔드 명령 `e2e:serve`가 E2E 설정의 api를 띄우고, 루트 실행기가 그 위에서 web E2E(fastapi 대상)를 돈다                                | web과 api의 실제 연결을 자동으로 확인한다. web E2E 실행기와 fastapi 대상은 바꾸지 않는다. 실제 api에서 드러난 저장 직후 경쟁 때문에 글·커버 저장 시나리오만 Server Action POST 응답을 기다린다 |
 | C12 | Claude 설정 | 루트 설정은 두 앱 설정의 합집합과 hook 디스패처다. skill은 앱에 둔다                                                                   | Claude Code는 시작 폴더의 설정만 읽고, 하위 폴더의 skill은 그 폴더의 파일을 읽을 때 불러온다(§10)       |
 | C13 | git hook    | 루트 lefthook 하나. 앱 작업은 lefthook `root`로 그 앱 폴더에서 돌고, 비밀 스캔은 합친 설정으로 한 번 한다                              | 앱의 hook 설치기는 git 최상위가 아니면 hook을 걸지 않는다                                                |
 | C14 | 생성 CI     | 단독은 템플릿 폴더에 워크플로를 두고, 조합은 CLI가 루트에 만든다. Action은 SHA로 고정하고 actionlint로 검사한다                         | 기반 설계 §7.5·§6.8의 최종 안전망                                                                        |
@@ -257,7 +257,8 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
   2. api `e2e:serve`로 루트의 `scripts/web-e2e.mjs`를 실행한다.
 - `scripts/web-e2e.mjs`는 위 값을 web의 fastapi 대상 변수로 바꿔 web `test:e2e`를 실행한다.
   - 바꾸는 변수: `E2E_TARGET=fastapi`, `APP_URL`, `API_BASE_URL`, `NEXT_PUBLIC_REALTIME_URL`, `E2E_MAILPIT_URL`, `E2E_OAUTH_URL`, `E2E_RECENT_LOGIN_SECONDS`
-  - web 템플릿은 바꾸지 않는다. fastapi 대상은 이미 외부 주소를 받고, API readiness를 기다린 뒤 web만 빌드해 3100에 띄운다.
+  - web E2E 실행기와 fastapi 대상은 바꾸지 않는다. fastapi 대상은 이미 외부 주소를 받고, API readiness를 기다린 뒤 web만 빌드해 3100에 띄운다.
+  - 실제 api에서 드러난 저장 직후 경쟁 때문에 글·커버 저장 시나리오만 Server Action POST 응답을 기다린다. 저장 직후의 reload·다음 동작이 응답보다 앞서지 않게 한다.
 - 개발 DB와 Valkey DB 0은 건드리지 않는다.
 - Mailpit은 개발 인프라의 것을 함께 쓰고 비우지 않는다. web의 FastAPI 어댑터가 수신자와 새 메일로 고른다.
 - 스토리지는 개발 버킷을 쓰고 E2E Origin의 CORS만 더한다.
