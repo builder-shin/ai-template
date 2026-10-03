@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { stringify } from "yaml";
-import { generateFiles, readWebOpenapi, staleFiles } from "./generate";
+import { generateFiles, staleFiles } from "./generate";
+import { readWebOpenapi } from "./gen-input";
 
 let root: string;
 beforeEach(() => {

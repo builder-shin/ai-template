@@ -39,7 +39,7 @@ export function assembleSteps(
     {
       name: "generated",
       args: ["tsx", "scripts/gen.ts", "--check"],
-      key: key(/^(src|contract)\/|^gen\.config\.json$/) + fingerprint({ webOpenapi }),
+      key: key(/^(src|contract)\//) + fingerprint({ webOpenapi }),
     },
   ];
   if (!fast) {

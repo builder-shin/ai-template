@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { generateMetadata, generateWeb, readWebOpenapi, staleFiles } from "./generate";
+import { generateMetadata, generateWeb, staleFiles } from "./generate";
+import { readWebOpenapi } from "./gen-input";
 
 const spec = {
   components: {

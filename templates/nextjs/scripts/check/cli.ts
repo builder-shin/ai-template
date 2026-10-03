@@ -16,7 +16,7 @@ import {
 } from "./skills";
 import { runChecks, parseCheckArgs } from "./runner";
 import { assembleSteps } from "./steps";
-import { readWebOpenapi } from "../generate";
+import { readWebOpenapi } from "../gen-input";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 process.chdir(root);
