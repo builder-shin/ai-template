@@ -43,10 +43,8 @@ function inside(path: string, repository: string): boolean {
 
 function validateTarget(target: string, repositories: readonly string[]): void {
   if (
-    repositories.some(
-      (repository) =>
-        inside(resolve(target), repository) || inside(canonicalPath(target), repository),
-    )
+    repositories.some((repository) => inside(resolve(target), repository)) ||
+    repositories.some((repository) => inside(canonicalPath(target), repository))
   ) {
     throw new CreateError("대상 폴더가 템플릿 저장소 안에 있다", "저장소 밖의 폴더를 지정한다.");
   }
@@ -78,9 +76,18 @@ export function createProject(
 ): CreateResult {
   const root = realpathSync.native(repository);
   const worktrees = runGit(root, ["worktree", "list", "--porcelain"])
-    .split(/\r?\n/)
-    .filter((line) => line.startsWith("worktree "))
-    .map((line) => canonicalPath(line.slice("worktree ".length)));
+    .split(/\r?\n\r?\n/)
+    .filter((entry) => !/^prunable(?: |$)/m.test(entry))
+    .flatMap((entry) => entry.split(/\r?\n/).filter((line) => line.startsWith("worktree ")))
+    .map((line) => {
+      const path = line.slice("worktree ".length);
+      try {
+        return canonicalPath(path);
+      } catch {
+        // 잠긴 worktree는 경로가 사라져도 prunable로 표시되지 않는다.
+        return resolve(path);
+      }
+    });
   validateTarget(options.target, worktrees);
   const templates =
     options.template === "combo" ? (["fastapi", "nextjs"] as const) : [options.template];
