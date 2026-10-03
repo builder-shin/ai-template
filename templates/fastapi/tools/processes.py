@@ -22,6 +22,7 @@ from typing import IO, Self, TextIO
 
 POLL_INTERVAL = 0.1  # 초
 STOP_TIMEOUT = 5.0  # 초. 내리라고 한 뒤 이 시간 안에 끝나지 않으면 강제로 끈다
+INTERRUPT_TIMEOUT = 0.8  # POSIX poe가 약 1.6초 뒤 강제 종료하기 전에 모든 그룹을 내린다.
 WINDOWS = os.name == "nt"
 # Windows에서만 있는 값이다. 다른 곳에서는 0(플래그 없음)이다.
 NEW_PROCESS_GROUP: int = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
@@ -140,6 +141,11 @@ class ProcessGroup:
             time.sleep(POLL_INTERVAL)
         return exited
 
+    def signal(self, *, force: bool) -> None:
+        """기다리지 않고 모든 프로세스 그룹에 종료 신호를 보낸다."""
+        for _, process in self._running:
+            _signal_tree(process, force=force)
+
     def stop(self) -> None:
         """모두 내리고, 남은 출력을 다 옮길 때까지 기다린다. 신호 처리기를 되돌린다."""
         for number in self._handlers:
@@ -199,7 +205,9 @@ def run_all(
     return code
 
 
-def run_command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> int:
+def run_command(
+    args: Sequence[str], *, cwd: Path, env: Mapping[str, str], group: ProcessGroup | None = None
+) -> int:
     """명령의 입출력을 유지하고 종료 코드로 끝난다. 중단 때 자손까지 내린다.
 
     바깥 ProcessGroup이 신호를 KeyboardInterrupt로 바꾼다. 명령은 새 그룹으로 띄워
@@ -217,19 +225,33 @@ def run_command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> in
         raise CommandStartError(
             "E2E 명령을 실행하지 못했다 — 명령 이름과 설치·실행 권한을 확인한다."
         ) from error
+    interrupted = False
     try:
         while True:
             try:
                 return process.wait(timeout=POLL_INTERVAL)
             except subprocess.TimeoutExpired:
                 pass  # Windows의 무기한 wait는 Python 신호 처리를 늦춘다.
+    except KeyboardInterrupt:
+        interrupted = True
+        raise
     finally:
         handlers = {number: signal.signal(number, signal.SIG_IGN) for number in STOP_SIGNALS}
         try:
+            stopping_group = group if interrupted and not WINDOWS else None
+            if stopping_group is not None:
+                stopping_group.signal(force=False)
             _signal_tree(process, force=False)
+            timed_out = False
             try:
-                process.wait(timeout=STOP_TIMEOUT)
+                timeout = INTERRUPT_TIMEOUT if interrupted and not WINDOWS else STOP_TIMEOUT
+                process.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
+                timed_out = True
+            finally:
+                if stopping_group is not None:
+                    stopping_group.signal(force=True)
+            if timed_out:
                 _signal_tree(process, force=True)
                 process.wait()
         finally:

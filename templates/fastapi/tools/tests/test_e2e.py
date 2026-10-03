@@ -47,15 +47,16 @@ def test_e2e_commands_guard_development_database_before_isolation(
     monkeypatch.setattr(e2e, "load_settings", lambda: BASE)
     monkeypatch.setattr(e2e, "require_project_database", guard, raising=False)
     monkeypatch.setattr(e2e, "run_with_server", run)
+
+    def invoke() -> int:
+        return e2e.serve_main(["--", "node"]) if serve else e2e.main()
+
     if owned:
-        assert (e2e.serve_main(["--", "node"]) if serve else e2e.main()) == 7
+        assert invoke() == 7
         assert events == ["guard", "run"]
     else:
         with pytest.raises(SystemExit, match="다른 프로젝트의 DB"):
-            if serve:
-                e2e.serve_main(["--", "node"])
-            else:
-                e2e.main()
+            invoke()
         assert events == ["guard"]
 
 
@@ -193,6 +194,9 @@ def lifecycle(
         assert settings.database_url.get_secret_value().endswith("/app_e2e")
         events.append("preflight")
 
+    def guard(settings: Settings) -> None:
+        assert settings is BASE
+
     def prepare(settings: Settings) -> None:
         events.append("prepare")
 
@@ -206,7 +210,7 @@ def lifecycle(
 
     monkeypatch.setattr(e2e, "load_settings", lambda: BASE)
     monkeypatch.setattr(e2e, "preflight", preflight)
-    monkeypatch.setattr(e2e, "require_project_database", lambda settings: None)
+    monkeypatch.setattr(e2e, "require_project_database", guard)
     monkeypatch.setattr(e2e, "prepare", prepare)
     monkeypatch.setattr(e2e, "ensure_bucket", cors)
     monkeypatch.setattr(e2e, "ProcessGroup", FakeGroup)
@@ -226,7 +230,9 @@ def test_serve_propagates_command_exit_and_uses_poe_pwd(
 ) -> None:
     monkeypatch.setenv("POE_PWD", str(tmp_path))
 
-    def command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> int:
+    def command(
+        args: Sequence[str], *, cwd: Path, env: Mapping[str, str], group: processes.ProcessGroup
+    ) -> int:
         assert args == ["node", "runner.mjs", "--flag"]
         assert cwd == tmp_path
         assert env["E2E_WEB_URL"] == "http://localhost:3100"
@@ -265,7 +271,9 @@ def test_interruption_stops_backend_and_returns_130(
     monkeypatch: pytest.MonkeyPatch,
     lifecycle: list[str],
 ) -> None:
-    def command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> int:
+    def command(
+        args: Sequence[str], *, cwd: Path, env: Mapping[str, str], group: processes.ProcessGroup
+    ) -> int:
         raise KeyboardInterrupt
 
     monkeypatch.setattr(e2e, "run_command", command)
@@ -333,7 +341,9 @@ def test_cleanup_error_keeps_its_message_and_points_to_log(
 def test_server_that_dies_during_successful_command_is_reported(
     monkeypatch: pytest.MonkeyPatch, lifecycle: list[str], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    def command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> int:
+    def command(
+        args: Sequence[str], *, cwd: Path, env: Mapping[str, str], group: processes.ProcessGroup
+    ) -> int:
         return 0
 
     def exited(group: processes.ProcessGroup) -> tuple[str, int]:
@@ -400,7 +410,9 @@ def test_command_falls_back_to_current_directory_without_poe_pwd(
     monkeypatch.delenv("POE_PWD", raising=False)
     monkeypatch.chdir(tmp_path)
 
-    def command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> int:
+    def command(
+        args: Sequence[str], *, cwd: Path, env: Mapping[str, str], group: processes.ProcessGroup
+    ) -> int:
         assert cwd == tmp_path
         return 0
 

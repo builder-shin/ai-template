@@ -6,6 +6,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from types import FrameType
 
@@ -155,3 +156,51 @@ def test_command_cleanup_ignores_repeated_signals_and_forces_after_timeout(
 
 def test_real_command_preserves_exit_status_on_normal_completion(tmp_path: Path) -> None:
     assert run_command(python("raise SystemExit(7)"), cwd=tmp_path, env={"PYTHONUTF8": "1"}) == 7
+
+
+def test_posix_interruption_signals_servers_before_waiting_for_command(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    events: list[str] = []
+
+    class FakeProcess:
+        stdout = None
+
+        def __init__(self, args: Sequence[str], **kwargs: object) -> None:
+            self.name = args[0]
+            self.stopped = False
+
+        def wait(self, timeout: float | None = None) -> int:
+            events.append(f"wait-{self.name}")
+            if events == ["wait-command"]:
+                raise KeyboardInterrupt
+            if self.stopped or self.name == "server":
+                return 0
+            assert timeout is not None
+            assert timeout <= 1.0
+            raise subprocess.TimeoutExpired(self.name, timeout)
+
+    def stop(process: FakeProcess, *, force: bool) -> None:
+        events.append(f"{'force' if force else 'stop'}-{process.name}")
+        if force:
+            process.stopped = True
+
+    monkeypatch.setattr(processes, "WINDOWS", False)
+    monkeypatch.setattr(subprocess, "Popen", FakeProcess)
+    monkeypatch.setattr(processes, "_signal_tree", stop)
+    group = ProcessGroup([Command("server", ("server",))], cwd=tmp_path, out=io.StringIO())
+    try:
+        group.start()
+        with pytest.raises(KeyboardInterrupt):
+            run_command(["command"], cwd=tmp_path, env={}, group=group)
+        assert events == [
+            "wait-command",
+            "stop-server",
+            "stop-command",
+            "wait-command",
+            "force-server",
+            "force-command",
+            "wait-command",
+        ]
+    finally:
+        group.stop()

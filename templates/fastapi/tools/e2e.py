@@ -274,6 +274,7 @@ def serve_main(args: Sequence[str] | None = None) -> int:
             options.command,
             cwd=cwd,
             env=child_environment(options.web_url, os.environ),
+            group=group,
         )
         exited = group.exited()
         if exited is not None:
