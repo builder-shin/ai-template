@@ -297,7 +297,7 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
     - 루트 `.betterleaks.toml`을 쓴다. 두 앱 설정의 허용 경로에 `apps/<앱>/`을 붙여 합친 파일이며 원래의 `(^|/)` 경계를 유지해 파일 이름 중간에는 예외가 적용되지 않게 한다.
     - 실행 파일은 web의 고정 Betterleaks를 쓴다. web 작업 폴더에서 루트 저장소와 설정을 모두 지정한다: `pnpm --filter web run -s tool betterleaks git ../.. --pre-commit --staged --no-banner --redact --config ../../.betterleaks.toml`. 루트 파일도 스캔하며 앱의 생성물 예외는 해당 앱 경로 안으로 제한한다.
   - pre-push: 루트 `pnpm check`.
-  - 루트와 앱의 hook 설치기는 자기 폴더가 git 최상위일 때만 hook을 건다. 상위 저장소 안이나 git 밖에서는 안내 후 설치만 건너뛴다.
+  - 루트와 앱의 hook 설치기는 자기 폴더가 git 최상위일 때만 hook을 건다. 상위 저장소 안이나 git 밖에서는 설치만 건너뛰며, 루트와 FastAPI 설치기는 안내도 출력한다.
 - 루트 `scripts/`의 실행기와 `.claude/hooks/`의 디스패처는 Node 내장 모듈만 쓰는 ESM이다. `node --test` 테스트를 함께 두고 루트 `check`가 돈다.
 
 ### 5.9 CI 워크플로
@@ -346,6 +346,7 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
   - AGENTS.md 명령 표와 E2E 문서
 - web
   - `gen.config.json` 입력과 두 모드의 테스트(픽스처 OpenAPI)
+  - 글·커버 저장 E2E는 공통 `waitForServerAction` 도우미로 Server Action POST 응답을 기다린다(§5.7)
   - `next.config.ts`의 Turbopack·standalone 추적 루트를 가장 가까운 pnpm workspace 루트로(§5.1)와 그 테스트
   - `.github/workflows/ci.yml`
   - AGENTS.md와 `docs/architecture.md`의 계약 설명(조합에서의 입력)
