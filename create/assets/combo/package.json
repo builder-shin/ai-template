@@ -1,0 +1,25 @@
+{
+  "name": "{{NAME}}",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": "{{NODE}}"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "turbo run dev --filter=api --filter=web",
+    "check": "node scripts/check.mjs",
+    "fix": "turbo run fix --filter=api --filter=web --concurrency=1 && node scripts/format.mjs --write",
+    "test": "turbo run test --filter=api --filter=web --concurrency=1",
+    "test:e2e": "node scripts/test-e2e.mjs",
+    "gen": "turbo run gen --filter=api --filter=web --concurrency=1",
+    "db:migrate": "pnpm --filter api run db:migrate",
+    "db:reset": "pnpm --filter api run db:reset"
+  },
+  "devDependencies": {
+    "turbo": "2.11.6",
+    "lefthook": "{{LEFTHOOK}}",
+    "prettier": "{{PRETTIER}}"
+  }
+}

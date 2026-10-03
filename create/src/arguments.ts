@@ -7,12 +7,13 @@ export type Template = "fastapi" | "nextjs";
 export interface CreateOptions {
   readonly target: string;
   readonly name: string;
-  readonly template: Template;
+  readonly template: Template | "combo";
   readonly git: boolean;
 }
 
 export const usage = `사용법:
   pnpm new <대상 폴더> --template <fastapi|nextjs> [--name <이름>] [--no-git]
+  pnpm new <대상 폴더> --api fastapi --web [--name <이름>] [--no-git]
   pnpm new --help
 
 이름은 소문자로 시작하는 kebab-case이며 50자 이하다.
@@ -66,11 +67,6 @@ export function parseArguments(
         2,
       );
     }
-    throw new CreateError(
-      "조합 생성은 아직 준비되지 않았다",
-      "단독 생성에는 --template을 지정한다.",
-      2,
-    );
   }
   if (positionals.length !== 1 || !positionals[0]) {
     throw new CreateError(
@@ -79,7 +75,7 @@ export function parseArguments(
       2,
     );
   }
-  if (values.template !== "fastapi" && values.template !== "nextjs") {
+  if (values.api === undefined && values.template !== "fastapi" && values.template !== "nextjs") {
     throw new CreateError(
       "템플릿이 올바르지 않다",
       "--template fastapi 또는 --template nextjs를 지정한다.",
@@ -95,5 +91,10 @@ export function parseArguments(
       2,
     );
   }
-  return { target, name, template: values.template, git: !values["no-git"] };
+  return {
+    target,
+    name,
+    template: values.api ? "combo" : (values.template as Template),
+    git: !values["no-git"],
+  };
 }

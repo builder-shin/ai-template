@@ -10,6 +10,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { parseAllDocuments, parseDocument } from "yaml";
+import { findWorkspaceRoot } from "./workspace-root";
 import { pnpm } from "./process.mjs";
 import { pathToFileURL } from "node:url";
 
@@ -46,10 +48,44 @@ async function copyProject() {
       });
     }
   }
-  // 잠금 파일의 설치된 버전만 오프라인 재사용한다. 프로젝트 밖 의존성 링크는 만들지 않는다.
-  const installed = pnpm(["install", "--offline", "--frozen-lockfile", "--ignore-scripts"], {
-    cwd: project,
-  });
+  // 조합에서도 이 사본은 web의 독립 workspace다. 위치와 정리 방식은 그대로 둔다.
+  const workspaceRoot = findWorkspaceRoot(root);
+  const prefix = relative(workspaceRoot, root).replaceAll("\\", "/");
+  if (prefix) {
+    const workspace = parseDocument(
+      readFileSync(join(workspaceRoot, "pnpm-workspace.yaml"), "utf8"),
+    );
+    workspace.set("packages", ["contract/*"]);
+    writeFileSync(join(project, "pnpm-workspace.yaml"), workspace.toString());
+    const docs = parseAllDocuments(readFileSync(join(workspaceRoot, "pnpm-lock.yaml"), "utf8"));
+    const dependencies = docs.at(-1)!;
+    const { importers } = dependencies.toJS() as { importers: Record<string, unknown> };
+    dependencies.set(
+      "importers",
+      Object.fromEntries(
+        Object.entries(importers)
+          .filter(([path]) => path === prefix || path.startsWith(`${prefix}/`))
+          .map(([path, value]) => [path === prefix ? "." : path.slice(prefix.length + 1), value]),
+      ),
+    );
+    writeFileSync(
+      join(project, "pnpm-lock.yaml"),
+      docs
+        .map((doc) => {
+          doc.directives.docStart = true;
+          return doc.toString({ lineWidth: 0 });
+        })
+        .join("\n"),
+    );
+  }
+  // 단독 잠금은 오프라인 재사용한다. 조합에서 추출한 잠금은 새 정책 검증에 레지스트리가 필요하다.
+  // 버전은 frozen으로 고정하며 프로젝트 밖 의존성 링크는 만들지 않는다.
+  const installed = pnpm(
+    ["install", ...(prefix ? [] : ["--offline"]), "--frozen-lockfile", "--ignore-scripts"],
+    {
+      cwd: project,
+    },
+  );
   expect(installed.status, installed.stdout + installed.stderr).toBe(0);
   copiedTools = await import(pathToFileURL(join(project, "scripts/process.mjs")).href);
   // 이 사본의 CLI가 실행됐는지 결과로 확인한다.

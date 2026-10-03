@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_SERVER } from "next/constants";
 import { exitOnInvalidEnv } from "./src/lib/env/startup";
+import { findWorkspaceRoot } from "./scripts/workspace-root";
 
 const withNextIntl = createNextIntlPlugin("./src/lib/i18n/request.ts");
 
@@ -12,6 +13,7 @@ export default function nextConfig(phase: string): NextConfig {
   return withNextIntl({
     agentRules: false,
     ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" } : {}),
-    turbopack: { root: import.meta.dirname },
+    turbopack: { root: findWorkspaceRoot(import.meta.dirname) },
+    outputFileTracingRoot: findWorkspaceRoot(import.meta.dirname),
   });
 }

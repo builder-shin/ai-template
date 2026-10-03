@@ -17,6 +17,8 @@ import { CreateError } from "./errors.ts";
 import { initializeGit, runGit } from "./git.ts";
 import { templateFiles } from "./repository.ts";
 import { renameStandalone } from "./standalone.ts";
+import { writeCombo, type ComboTools } from "./combo.ts";
+import { runPnpm } from "./pnpm.ts";
 
 function canonicalPath(path: string): string {
   if (existsSync(path)) return realpathSync(path);
@@ -57,23 +59,44 @@ export interface CreateResult {
   readonly committed: boolean;
 }
 
-export function createProject(options: CreateOptions, repository: string): CreateResult {
+export function createProject(
+  options: CreateOptions,
+  repository: string,
+  tools: ComboTools = {},
+): CreateResult {
   const root = realpathSync(repository);
   validateTarget(options.target, root);
-  const files = templateFiles(root, options.template);
+  const templates =
+    options.template === "combo" ? (["fastapi", "nextjs"] as const) : [options.template];
+  const plans = templates.map((template) => ({ template, files: templateFiles(root, template) }));
+  const pnpm = tools.pnpm ?? runPnpm;
+  if (options.template === "combo") pnpm(root, ["--version"]);
   const sha = runGit(root, ["rev-parse", "--short", "HEAD"]).trim();
   const parent = dirname(options.target);
   mkdirSync(parent, { recursive: true });
   const staging = mkdtempSync(join(parent, `aitpl-${options.name}-`));
   let moved = false;
   try {
-    for (const file of files) {
-      const destination = join(staging, file.path);
-      mkdirSync(dirname(destination), { recursive: true });
-      copyFileSync(join(root, "templates", options.template, file.path), destination);
-      if (process.platform !== "win32") chmodSync(destination, file.executable ? 0o755 : 0o644);
-    }
-    renameStandalone(staging, options.template, options.name);
+    for (const { template, files } of plans)
+      for (const file of files) {
+        const destination = join(
+          staging,
+          options.template === "combo" ? `apps/${template === "fastapi" ? "api" : "web"}` : "",
+          file.path,
+        );
+        mkdirSync(dirname(destination), { recursive: true });
+        copyFileSync(join(root, "templates", template, file.path), destination);
+        if (process.platform !== "win32") chmodSync(destination, file.executable ? 0o755 : 0o644);
+      }
+    if (options.template === "combo")
+      writeCombo(
+        staging,
+        root,
+        options.name,
+        tools.assets ?? join(import.meta.dirname, "../assets/combo"),
+        pnpm,
+      );
+    else renameStandalone(staging, options.template, options.name);
     // 생성 중 다른 프로세스가 대상을 채웠다면 덮어쓰지 않는다.
     validateTarget(options.target, root);
     if (existsSync(options.target)) rmdirSync(options.target);

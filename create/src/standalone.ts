@@ -4,7 +4,12 @@ import { isMap, isScalar, parseDocument } from "yaml";
 import type { Template } from "./arguments.ts";
 import { CreateError } from "./errors.ts";
 
-export function renameStandalone(root: string, template: Template, name: string): void {
+export function renameStandalone(
+  root: string,
+  template: Template,
+  name: string,
+  imageName = `${name}-app`,
+): void {
   const readme = join(root, "README.md");
   const content = readFileSync(readme, "utf8");
   writeFileSync(readme, content.replace(/^[^\r\n]*/, `# ${name}`));
@@ -31,7 +36,7 @@ export function renameStandalone(root: string, template: Template, name: string)
     // 노드 값의 범위만 바꿔 주석, 앵커와 나머지 바이트를 보존한다.
     const edits = [
       { range: project.range, value: name },
-      { range: image.range, value: `${name}-app` },
+      { range: image.range, value: imageName },
     ].sort((a, b) => b.range[0] - a.range[0]);
     let output = source;
     for (const edit of edits)
