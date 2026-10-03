@@ -77,8 +77,25 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
+  cleanupFolders();
 });
+
+export function cleanupFolders(): void {
+  const leftovers: string[] = [];
+  for (const folder of folders.splice(0)) {
+    try {
+      rmSync(folder, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch {
+      leftovers.push(folder);
+    }
+  }
+  if (leftovers.length) {
+    folders.push(...leftovers);
+    throw new Error(
+      `테스트 폴더를 정리하지 못했다 — 남은 경로를 확인한다: ${leftovers.join(", ")}`,
+    );
+  }
+}
 
 export function fixtureRepository(): string {
   const root = temporaryFolder();
