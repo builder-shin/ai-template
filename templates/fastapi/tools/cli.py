@@ -127,6 +127,13 @@ def test_e2e() -> None:
     raise SystemExit(run_e2e())
 
 
+def e2e_serve() -> None:
+    """E2E api가 준비되면 호출한 폴더(POE_PWD)에서 받은 명령을 실행한다."""
+    from tools.e2e import serve_main
+
+    raise SystemExit(serve_main())
+
+
 def gen() -> None:
     """앱을 띄우지 않고 openapi.json을 다시 쓴다."""
     raise SystemExit(_python("tools.openapi_export"))

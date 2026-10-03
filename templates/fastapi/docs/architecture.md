@@ -29,15 +29,15 @@ JSON:API 규약을 따르는 FastAPI 백엔드의 구조다. 규칙 대부분은
 
 ## 플랫폼 모듈
 
-| 모듈         | 하는 일                                                                                    | 쓰는 모듈    |
-| ------------ | ------------------------------------------------------------------------------------------ | ------------ |
-| `roles`      | 역할과 권한 API, 실제 권한 계산, 권한 상승 판정(`within`)                                  | 없음         |
-| `users`      | 내 정보, 탈퇴, 사용자 관리, 다른 리소스에 넣을 공개 사용자(`public_users`)                 | roles, files |
+| 모듈         | 하는 일                                                                                            | 쓰는 모듈    |
+| ------------ | -------------------------------------------------------------------------------------------------- | ------------ |
+| `roles`      | 역할과 권한 API, 실제 권한 계산, 권한 상승 판정(`within`)                                          | 없음         |
+| `users`      | 내 정보, 탈퇴, 사용자 관리, 다른 리소스에 넣을 공개 사용자(`public_users`)                         | roles, files |
 | `auth`       | 가입, 이메일 인증, 세션, 비밀번호, 소셜 로그인(제공자는 `auth/providers/`), 인증기(`authenticate`) | users, roles |
-| `audit_logs` | 감사 로그 읽기. 기록은 각 모듈이 `app.core.audit.record_audit`로 한다                      | users        |
-| `files`      | 업로드(presigned PUT), 완료 확인, 다운로드 URL, 읽기 규칙과 참조 확인의 등록 지점, 정리 잡 | 없음         |
-| `realtime`   | 실시간 티켓, Socket.IO 연결(티켓 → 사용자 룸)과 구독(채널 권한)                            | auth         |
-| `posts`      | 골든 모듈. 글 목록·조회·쓰기, 전이 표, 공개 목록 캐시, 커버 이미지, 실시간 이벤트          | users, files |
+| `audit_logs` | 감사 로그 읽기. 기록은 각 모듈이 `app.core.audit.record_audit`로 한다                              | users        |
+| `files`      | 업로드(presigned PUT), 완료 확인, 다운로드 URL, 읽기 규칙과 참조 확인의 등록 지점, 정리 잡         | 없음         |
+| `realtime`   | 실시간 티켓, Socket.IO 연결(티켓 → 사용자 룸)과 구독(채널 권한)                                    | auth         |
+| `posts`      | 골든 모듈. 글 목록·조회·쓰기, 전이 표, 공개 목록 캐시, 커버 이미지, 실시간 이벤트                  | users, files |
 
 - 의존은 한쪽으로만 흐른다. 반대 방향이 필요하면 등록으로 뒤집는다. 계정을 닫을 때(비활성화, 탈퇴) users가 부를 처리를 auth가 `users.on_account_closed`로, 역할의 권한이 바뀌거나 역할이 지워질 때 그 멤버에게 알릴 처리를 users가 `roles.on_members_changed`로 등록한다(등록은 `registry.py`).
 - files는 다른 모듈을 모른다. 소유자가 아닌 사람이 파일을 읽게 할 규칙(`files.add_read_rule`)과, 탈퇴 때 남길 파일을 가리는 참조 확인(`files.add_reference_check`)을 users와 posts가 등록한다.
@@ -148,6 +148,36 @@ Socket.IO 서버(`app.core.realtime`)가 api 프로세스의 `/socket.io/`에서
 - 인스턴스 사이: api의 발행기는 이 인스턴스의 연결에 보내고 Valkey pub/sub으로 다른 인스턴스에 알린다. python-socketio 매니저는 발행이 실패하거나 수신을 다시 시작할 때마다 Valkey 클라이언트를 새로 만든다. `TrackedRedisManager`는 클라이언트를 하나만 만들어 다시 쓰고(redis-py가 다시 연결한다) 닫을 때 닫는다. worker와 scheduler는 소켓 서버가 아니라 쓰기 전용 발행기(`JobContext.realtime`)로 보낸다. pub/sub 채널 이름에는 Valkey DB 번호를 넣어 개발, 테스트, E2E를 나눈다.
 - 계약: 채널, 이벤트, 메시지는 계약의 `x-realtime-channels`, `x-realtime-events`, `x-realtime-messages`와 같다. 앱이 `openapi.json`에 이 확장과 페이로드 스키마를 내고(`realtime_openapi`), 저장소의 구조 비교(`pnpm spec-compare`)가 계약과 같은지 본다.
 
+## E2E
+
+`uv run poe test:e2e`는 api, worker, scheduler를 E2E 설정으로 띄우고 `tests/e2e`를 돌린다.
+외부 web E2E 등은 같은 서버 준비 경로를 쓰는 다음 명령으로 실행한다.
+
+```text
+uv run poe e2e:serve [--web-url <주소>] -- <명령> [인자...]
+```
+
+- 인프라가 꺼져 있으면 `uv run poe setup`을 안내하고 실패한다. 인프라를 직접 띄우지 않는다.
+- DB `app_e2e`를 마이그레이션·시드하고 Valkey DB 14만 비운다. 개발 DB와 Valkey DB 0, Mailpit 메일은 보존한다.
+- api는 `http://127.0.0.1:18000`, 레이트 리밋은 테스트 한도, 최근 로그인 창은 10초다.
+- web 기본 주소는 `http://localhost:3100`이다. `--web-url`은 경로·쿼리·조각·계정 없는 http(s) Origin만 받는다.
+  메일의 `FRONTEND_URL`, 실시간 Origin, OAuth의 `<web 주소>/oauth/callback`을 맞춘다.
+  스토리지 Origin은 기존 개발 Origin과 web Origin의 합집합이며, `app.storage_setup.ensure_bucket`으로 버킷 CORS를 적용한 뒤 readiness를 기다린다. 기존 객체는 보존한다.
+- `/health/ready`가 200이면 명령을 실행한다. 명령의 작업 폴더는 poe의 `POE_PWD`(명령을 호출한 폴더)다.
+  호출자의 환경에 아래 값만 더하며, web 전용 변수로 바꾸는 일은 호출자가 맡는다.
+
+| 변수                       | 값                                       |
+| -------------------------- | ---------------------------------------- |
+| `E2E_API_URL`              | `http://127.0.0.1:18000`                 |
+| `E2E_WEB_URL`              | web Origin(기본 `http://localhost:3100`) |
+| `E2E_MAILPIT_URL`          | `http://127.0.0.1:28025`(Mailpit API)    |
+| `E2E_OAUTH_URL`            | `http://127.0.0.1:28080`(모의 OAuth)     |
+| `E2E_RECENT_LOGIN_SECONDS` | `10`                                     |
+
+명령의 입출력을 그대로 연결하고 종료 코드로 끝난다. Ctrl+C·종료 신호도 명령과 세 서버의 자손까지 내린다.
+준비가 60초 안에 끝나지 않으면 로그(`.cache/e2e/processes.log`)의 끝부분을 보여 주고 종료 코드 1로 끝난다.
+`test:e2e`와 `e2e:serve`는 같은 포트·격리 DB를 쓰므로 차례로 실행한다.
+
 ## 소셜 로그인
 
 auth 모듈의 `service/oauth.py`와 `providers/`다. 제공자는 파일 하나씩이고(`google.py`, `kakao.py`, `naver.py`) 인가 주소와 코드 교환은 httpx-oauth가, 신원 조회는 설정의 프로필 주소를 GET으로 읽는다. 로그인은 BFF가 쥔 PKCE 쌍에 묶어 로그인 CSRF를 막는다.
@@ -177,10 +207,10 @@ auth 모듈의 `service/oauth.py`와 `providers/`다. 제공자는 파일 하나
 
 web의 재인증·브라우저 업로드를 맞출 때는 다음 두 설정을 명시한다. 이름·공개 기본값은 `.env.example`, 검증은 `app.core.config.Settings`를 따른다.
 
-| 변수 | 생략할 때 | web E2E 예시 | 적용 |
-| --- | --- | --- | --- |
-| `RECENT_LOGIN_SECONDS` | `600`초 | `10` | 탈퇴 검사와 `WWW-Authenticate`의 `max_age`. web 어댑터의 `E2E_RECENT_LOGIN_SECONDS`도 같은 초로 둔다 |
-| `STORAGE_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:3001` | `http://localhost:3100` | 스토리지 준비 뒤 `python -m app.storage_setup`으로 버킷 CORS를 적용한다 |
+| 변수                      | 생략할 때                                     | web E2E 예시            | 적용                                                                                                 |
+| ------------------------- | --------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `RECENT_LOGIN_SECONDS`    | `600`초                                       | `10`                    | 탈퇴 검사와 `WWW-Authenticate`의 `max_age`. web 어댑터의 `E2E_RECENT_LOGIN_SECONDS`도 같은 초로 둔다 |
+| `STORAGE_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:3001` | `http://localhost:3100` | 스토리지 준비 뒤 `python -m app.storage_setup`으로 버킷 CORS를 적용한다                              |
 
 최근 로그인 창은 1 이상의 정수만 받으며 refresh로 늘어나지 않는다. 스토리지 Origin은 쉼표 목록을 정규화하고 빈 목록·wildcard·잘못된 주소를 거절한다.
 Origin을 바꾸면 초기화 명령을 다시 실행해 CORS를 맞춘다. 반복해도 기존 객체는 보존하며 버킷 생성·CORS 오류는 실패로 끝난다.

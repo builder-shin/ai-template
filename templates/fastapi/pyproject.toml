@@ -67,6 +67,7 @@ dev = { script = "tools.cli:dev", help = "api, worker, scheduler를 함께 띄�
 fix = { script = "tools.cli:fix", help = "린트 자동 수정과 포맷" }
 test = { script = "tools.cli:test", help = "테스트(E2E 제외)" }
 "test:e2e" = { script = "tools.cli:test_e2e", help = "E2E 테스트" }
+"e2e:serve" = { script = "tools.cli:e2e_serve", help = "E2E api 준비 뒤 호출한 폴더에서 명령 실행: [--web-url <Origin>] -- <명령> [인자...]" }
 gen = { script = "tools.cli:gen", help = "openapi.json을 내보낸다" }
 "db:migrate" = { script = "tools.cli:db_migrate", help = "마이그레이션을 적용한다" }
 "db:reset" = { script = "tools.cli:db_reset", help = "로컬 DB를 지우고 마이그레이션과 시드를 다시 한다" }
