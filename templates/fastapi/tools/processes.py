@@ -193,3 +193,31 @@ def run_all(
         group.stop()
     group.say(summary)
     return code
+
+
+def run_command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> int:
+    """명령의 입출력을 유지하고 종료 코드로 끝난다. 중단 때 자손까지 내린다.
+
+    바깥 ProcessGroup이 신호를 KeyboardInterrupt로 바꾼다. 명령은 새 그룹으로 띄워
+    백엔드와 같은 방식으로 정리한다.
+    """
+    process = subprocess.Popen(
+        args,
+        cwd=cwd,
+        env=env,
+        creationflags=NEW_PROCESS_GROUP,
+        start_new_session=not WINDOWS,
+    )
+    try:
+        while True:
+            try:
+                return process.wait(timeout=POLL_INTERVAL)
+            except subprocess.TimeoutExpired:
+                pass  # Windows의 무기한 wait는 Python 신호 처리를 늦춘다.
+    finally:
+        _signal_tree(process, force=False)
+        try:
+            process.wait(timeout=STOP_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            _signal_tree(process, force=True)
+            process.wait()

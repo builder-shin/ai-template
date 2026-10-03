@@ -7,7 +7,7 @@
 - `checks/`: 하네스 검사. check의 architecture, harness, skills 단계가 `python -m tools.checks <그룹>`으로 돌린다.
 - `hooks/`: Claude Code hook(`.claude/settings.json`이 부른다).
 - `infra.py`: compose 기동, DB와 버킷 준비, 테스트 전 사전 확인.
-- `processes.py`, `dev.py`, `e2e.py`: 여러 프로세스를 함께 띄우고 내린다(`dev`, `test:e2e`).
+- `processes.py`, `dev.py`, `e2e.py`: 여러 프로세스를 함께 띄우고 내린다(`dev`, `test:e2e`, `e2e:serve`). `e2e:serve`의 받은 명령만 `POE_PWD`(호출한 폴더)에서 실행한다.
 - `genmodule/`: 모듈 생성기(`gen:module`). 이름 규칙은 `names.py`, 소스 바꾸기와 골든 모듈의 표시는 `transform.py`, 검사·쓰기·등록은 `generate.py`.
 - `binaries.py`: 외부 바이너리(Betterleaks) 설치기. `githooks.py`: lefthook 설치. `openapi_export.py`: `openapi.json` 내보내기.
 

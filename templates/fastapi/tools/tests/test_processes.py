@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.processes import STOP_SIGNALS, Command, run_all
+from tools.processes import STOP_SIGNALS, Command, ProcessGroup, run_all, run_command
 
 # 손자: heartbeat.txt에 계속 점을 찍는다.
 BEAT = """
@@ -91,3 +91,23 @@ def test_extra_environment_reaches_the_processes(tmp_path: Path) -> None:
         "env | 값",
         "끝난 프로세스: env(종료 코드 0). 모두 내렸다.",
     ]
+
+
+@pytest.mark.parametrize("number", STOP_SIGNALS, ids=lambda number: signal.Signals(number).name)
+def test_external_command_is_stopped_with_its_descendants(tmp_path: Path, number: int) -> None:
+    """E2E 서버 그룹이 잡은 신호가 외부 명령과 손자의 정리도 거친다."""
+
+    def send() -> None:
+        when_beating(tmp_path)
+        signal.raise_signal(number)
+
+    out = io.StringIO()
+    started = time.monotonic()
+    with ProcessGroup(
+        [Command("backend", python("import time; time.sleep(60)"))], cwd=tmp_path, out=out
+    ):
+        threading.Thread(target=send, daemon=True).start()
+        with pytest.raises(KeyboardInterrupt):
+            run_command(python(WITH_GRANDCHILD), cwd=tmp_path, env={"PYTHONUTF8": "1"})
+    assert time.monotonic() - started < 20
+    assert_stopped(tmp_path)
