@@ -1,12 +1,12 @@
 # create CLI 설계 (하위 프로젝트 3)
 
 - 작성일: 2026-10-03
-- 상태: 승인됨(2026-10-03). 로컬 검증 완료, Docker 기반 완료 조건은 PR CI 확인 대기(§8.4)
+- 상태: 승인됨(2026-10-03). 구현과 검증 완료(로컬 검사·PR CI, §8.4)
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 3으로 미룬 결정(배포 방식, 조합 루트의 세부 구성, 포트 배정)을 내리고, `create/` CLI와 이번 사이클의 템플릿·저장소 변경을 설계한다.
   - 템플릿의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md), [보강 설계](2026-09-29-fastapi-hardening-design.md), [Next.js web 설계](2026-09-30-nextjs-web-design.md)다.
 - 구현 계획: [create CLI 계획](../plans/2026-10-03-create-cli.md)
-- 다음 단계: 브랜치 PR CI의 Docker 확인(§8.4) → 병합
+- 다음 단계: main 병합 → 기반 설계의 하위 프로젝트 4(admin) 설계
 
 ## 1. 목표와 범위
 
@@ -93,7 +93,7 @@ pnpm new --help
 2. 대상 폴더와 같은 부모 아래 임시 폴더를 만든다.
 3. 파일을 복사하고 이름을 바꾼다(단독 §4, 조합 §5).
 4. 조합이면 루트 잠금 파일을 만들고(§5.3), `pnpm install --frozen-lockfile`을 실행한다. 합치거나 복사한 `.claude/settings.json`, `lefthook.yml`, `.mcp.json`을 고정 Prettier로 포맷한 뒤 web `gen`을 실행해 web 생성물을 api의 `openapi.json` 기준으로 맞춘다(§5.5). 이 단계만 npm 레지스트리에 접속한다.
-5. 새 대상에는 기본 폴더 권한으로 완성한 임시 폴더를 한 번에 옮긴다. 기존 빈 대상은 폴더 자체를 유지하고 임시 폴더의 항목만 넣는다. 어느 단계든 오류를 받으면 생성한 항목을 재시도하며 정리하고 새 부모 사슬은 깊은 쪽부터 빈 폴더만 지운다. 다른 프로세스가 채운 부모는 보존한다. 모든 정리를 시도한 뒤에도 실패한 경로가 있으면 원래 문제와 남은 경로를 한 번 알린다. Windows의 이동 단계에서 폴더가 사용 중이면 해당 프로그램을 닫도록 안내한다. 생성 중 Ctrl+C로 중단하면 대상 옆의 임시 폴더 `aitpl-<이름>-XXXXXX`가 남을 수 있으므로 지운다. 기존 빈 대상에 항목별로 옮기는 도중 중단하면 대상도 일부 채워질 수 있으므로 생성된 항목을 비운다.
+5. 새 대상에는 기본 폴더 권한으로 완성한 임시 폴더를 한 번에 옮긴다. 기존 빈 대상은 폴더 자체를 유지하고 임시 폴더의 항목만 넣는다. 어느 단계든 오류를 받으면 생성한 항목을 재시도하며 정리하고 새 부모 사슬은 깊은 쪽부터 빈 폴더만 지운다. 다른 프로세스가 채운 부모는 보존한다. 모든 정리를 시도한 뒤에도 실패한 경로가 있으면 원래 문제와 남은 경로를 한 번 알린다. Windows의 이동 단계에서 폴더가 사용 중이면 해당 프로그램을 닫도록 안내한다. 생성 중 Ctrl+C로 중단하면 대상 옆의 임시 폴더 `aitpl-<이름>-XXXXXX`가 남을 수 있으므로 지운다. 기존 빈 대상에 항목별로 옮기는 도중 중단하면 대상도 일부 채워질 수 있으므로 생성된 항목을 비운다. 옮긴 뒤 git 단계에서 중단하면 새 대상과 기존 빈 대상 모두 첫 커밋 없이 또는 일부 지워진 채 남을 수 있으므로 대상을 지우고 다시 만든다(`--no-git` 제외).
 6. `git init -b main`과 첫 커밋을 한다(`--no-git`이면 건너뛴다). 복사한 파일은 이름 목록으로 `git add -f`하여 전역 excludes에 빠지지 않게 하고 원본 인덱스의 실행 권한을 보존한다. 조합이 만든 파일은 프로젝트의 ignore 규칙을 적용하며 설치물·캐시는 제외한다. 메시지는 `chore: create <이름> from ai-template <템플릿 저장소 short SHA>`다. 설정된 `user.name` 또는 `user.email`이 없으면 init과 스테이징을 하고 신원 설정·첫 커밋 명령을 안내한다. git이 환경에서 추측한 신원은 쓰지 않으며, 사용자의 서명 설정은 그대로 따른다. git 단계가 실패하면 생성한 항목도 정리한다.
 7. 다음 명령을 안내한다: 단독 fastapi는 `uv run poe setup`, 단독 nextjs와 조합은 `pnpm setup`.
 
@@ -413,16 +413,16 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
 
 ### 8.4 구현 기록 (2026-10-03)
 
-단독·조합 생성, 루트 실행기와 하네스, 생성용 CI를 구현했다. 로컬 확인은 Docker 없이 진행했다.
+단독·조합 생성, 루트 실행기와 하네스, 생성용 CI를 구현했다. 다음은 `e1816ae`까지의 검증 기록이며 로컬 확인은 Docker 없이 진행했다.
 
 | 범위 | 확인 결과 |
 | --- | --- |
-| CLI·실행기·디스패처 | create 타입 검사, Vitest 52개와 Node 테스트 23개 통과. 실제 생성 트리·첫 커밋·깨끗한 git 상태, 네 hook과 루트 pre-commit smoke 확인 |
+| CLI·실행기·디스패처 | create 타입 검사, Vitest 121개 통과(Windows에서 POSIX 전용 권한 테스트 1개 건너뜀, Linux CI에서 실행), Node 테스트 44개 통과. 실제 생성 트리·첫 커밋·깨끗한 git 상태, 네 hook과 루트 pre-commit smoke 확인 |
 | 저장소 | 루트 `pnpm check` 11단계, actionlint 워크플로 4개 통과 |
 | web | FastAPI OpenAPI 입력의 `check`, 템플릿 `check` 9단계·build·mock E2E 20개, 생성 단독·조합의 web `check` 통과. 조합의 gen 재실행은 diff 없음 |
 | 잠금 파일·이미지 입력 | web 버전·peer 해석 보존, turbo gen 순서와 캐시 설정 확인. Docker 없는 filtered 설치와 직접 Next 빌드로 standalone의 workspace 서버·정적 자산, root 도구·mock 미설치 확인 |
-| FastAPI | 템플릿과 생성 앱의 Ruff·basedpyright·architecture·harness, 인프라 없는 테스트 55개 통과 |
-| PR CI | 실행 37106952072에서 `create-combo`의 setup·전체 check·실제 api E2E(api 12개·web 20개)·두 이미지 빌드와 `create-standalone`의 setup·check 통과. 루트 check의 Linux fixture 실행 권한을 고쳤으며 재실행과 추가한 조합 web 컨테이너의 `GET /` 200 확인은 대기 |
+| FastAPI | 템플릿과 생성 앱의 Ruff·basedpyright·architecture·harness, 인프라 없는 테스트 82개(E2E 실행기·프로세스·DB 소유권 검사·`dev`) 통과 |
+| PR CI | draft PR #4의 실행 37131082146(`e1816ae`)에서 8개 작업 모두 통과. `create-combo`: `pnpm new` → `pnpm setup` → `pnpm db:migrate`(조합 자체 postgres의 소유권 검사 통과) → `AI_AGENT=1`의 `pnpm check` 4단계 → 실제 api 위의 `pnpm test:e2e`(api 12개·web 20개) → 생성 트리의 깨끗한 git 상태 → api 이미지·루트 문맥 web 이미지 빌드 → web 컨테이너 `GET /` 200 확인. `create-standalone`: 두 템플릿 모두 setup·check 통과. `check`, `fastapi`, `nextjs`, `nextjs-e2e-fastapi`, `conformance-fastapi`, `conformance-mock`도 통과. 앞선 브랜치 실행 37123853162·37128624322도 모두 통과 |
 
 DB·Valkey·스토리지 기반 테스트와 실제 `e2e:serve`, Docker 이미지 빌드·컨테이너 시작은 로컬에서 실행하지 않았다. 루트 CI의 `create-combo`는 조합 web 이미지에 loopback URL·시간대·매번 만든 32바이트 난수 세션 비밀을 전달하고, loopback 포트의 `GET /`가 200인지 확인한다. 실패하면 로그를 출력하고 성공·실패 모두 같은 단계의 trap으로 컨테이너를 지운다. 생성 프로젝트의 CI는 빌드까지만 한다. Windows·Linux의 Turborepo uv 실행과 캐시 hit도 로컬 dry graph만으로 완료했다고 보지 않는다.
 
