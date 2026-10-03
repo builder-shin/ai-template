@@ -47,6 +47,8 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 
 - 작업을 끝내기 전에 `pnpm check`를 통과시킨다.
 - `pnpm new`는 저장소 밖의 새 폴더 또는 비어 있는 폴더에 만든다. 상대 대상은 명령을 실행한 폴더 기준이다. 이름은 대상 폴더 이름 또는 `--name`이며 소문자로 시작하는 kebab-case, 50자 이하다.
+- FastAPI 단독·조합의 이름 `fastapi`는 템플릿의 개발 compose 이름이라 예약한다. 폴더 이름·`--name` 모두 오류 2로 거절하며 다른 `--name`을 쓴다. 단독 nextjs는 허용한다. 다른 로컬 compose 프로젝트와도 이름이 겹치지 않게 고른다. 같은 이름은 볼륨을 공유한다.
+- FastAPI 템플릿 compose에는 최상위 `name`을 두지 않는다. CLI가 생성할 때 맨 앞에 설명 주석과 `name: <이름>`을 넣고 앱 이미지 값의 바이트 범위만 바꾼다.
 - 생성할 템플릿의 git 추적 변경은 먼저 커밋한다. CLI는 추적 파일만 복사하고 `template.json`, 무추적 환경 파일·설치물·캐시는 제외한다. CLI와 테스트의 git 호출은 `scripts/src/files/git-environment.ts`로 상속된 저장소 지정 변수를 제거한다.
 - 조합 생성은 레지스트리에 접속해 잠금 파일을 합치고 frozen 설치·web gen을 실행한다. TypeScript override와 web 버전 해석을 보존한다. 루트 compose는 없고 인프라는 apps/api가 맡는다. gen은 캐시하지 않는다.
 - 기본 생성은 main 브랜치와 출처를 적은 첫 커밋을 만든다. git 신원이 없으면 init만 하고 안내하며 사용자 서명 설정을 따른다. `--no-git`은 둘 다 생략한다.

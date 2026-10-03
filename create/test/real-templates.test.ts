@@ -1,5 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, symlinkSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  symlinkSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
@@ -74,24 +81,22 @@ it("두 실제 템플릿의 파일 목록·이름·나머지 바이트와 git �
       .sort();
     expect(git(target, "ls-files", "-z").split("\0").filter(Boolean).sort()).toEqual(expected);
     expect(git(target, "status", "--porcelain")).toBe("");
-    expect(readFileSync(join(target, "README.md"), "utf8").split("\n")[0]).toBe(`# ${name}`);
-    const renamed = template === "nextjs" ? "package.json" : "compose.yaml";
-    for (const file of expected.filter((file) => !["README.md", renamed].includes(file))) {
-      expect(
-        readFileSync(join(target, file)).equals(
-          readFileSync(join(source, "templates", template, file)),
-        ),
-        file,
-      ).toBe(true);
-    }
-    if (template === "nextjs") {
-      expect(JSON.parse(readFileSync(join(target, "package.json"), "utf8"))).toMatchObject({
-        name,
-      });
-    } else {
-      const compose = readFileSync(join(target, "compose.yaml"), "utf8");
-      expect(compose).toContain(`name: ${name}\n`);
-      expect(compose).toContain(`image: ${name}-app\n`);
+    for (const file of expected) {
+      let bytes = readFileSync(join(source, "templates", template, file));
+      if (file === "README.md") {
+        bytes = Buffer.from(bytes.toString("utf8").replace(/^[^\r\n]*/, `# ${name}`));
+      } else if (template === "nextjs" && file === "package.json") {
+        bytes = Buffer.from(
+          bytes.toString("utf8").replace('"name": "nextjs-template"', `"name": "${name}"`),
+        );
+      } else if (template === "fastapi" && file === "compose.yaml") {
+        expect(bytes.toString("utf8")).not.toMatch(/^name:/m);
+        bytes = Buffer.from(
+          `# 폴더와 관계없이 compose 프로젝트와 볼륨 이름을 프로젝트 이름으로 고정한다.\nname: ${name}\n` +
+            bytes.toString("utf8").replace("image: fastapi-template-app", `image: ${name}-app`),
+        );
+      }
+      expect(readFileSync(join(target, file)).equals(bytes), file).toBe(true);
     }
   }
 });
@@ -116,6 +121,21 @@ it("실제 CLI의 도움말·사용법 오류·실행 오류는 서로 다른 �
   expect(success.stdout).toContain(join(parent, "aitpl-cli"));
   expect(success.stdout).toContain("pnpm setup");
   expect(readdirSync(join(parent, "aitpl-cli"))).not.toContain(".git");
+});
+
+it.each([
+  ["aitpl-reserved", "--template", "fastapi", "--name", "fastapi"],
+  ["fastapi", "--template", "fastapi"],
+  ["aitpl-reserved", "--api", "fastapi", "--web", "--name", "fastapi"],
+  ["fastapi", "--api", "fastapi", "--web"],
+])("실제 CLI는 FastAPI 예약 이름을 생성 전에 거절한다: %j", (...args) => {
+  const parent = temporaryFolder();
+  const target = join(parent, args[0]);
+  const result = runCli([target, ...args.slice(1)], parent);
+  expect(result.status, result.stderr).toBe(2);
+  expect(result.stderr).toMatch(/pnpm new: .*fastapi.* — .*--name/);
+  expect(existsSync(target)).toBe(false);
+  expect(readdirSync(parent)).toEqual([]);
 });
 
 it("CLI의 일반 시스템 오류는 코드와 경로를 한 줄로 알린다", () => {

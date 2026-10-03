@@ -14,7 +14,7 @@
 
 1. `create/`: 단독 프로젝트와 조합 모노레포를 만드는 Node CLI. 저장소 루트에서 `pnpm new`로 실행한다.
 2. 조합 루트 자산: 루트 명령 실행기, Claude Code hook 디스패처, 지침 파일, CI 워크플로의 원본(`create/assets/combo/`).
-3. 템플릿 변경: FastAPI의 `e2e:serve` 명령과 compose 프로젝트 이름, web `gen`의 백엔드 스펙 입력, 두 템플릿의 CI 워크플로와 줄바꿈 설정.
+3. 템플릿 변경: FastAPI의 `e2e:serve` 명령, web `gen`의 백엔드 스펙 입력, 두 템플릿의 CI 워크플로와 줄바꿈 설정.
 4. 저장소 변경: `pnpm new`, actionlint 도구, `verify-templates` 규칙, 하네스 표준, CI 작업.
 
 ### 1.2 완료 조건
@@ -78,10 +78,13 @@ pnpm new --help
 - 대상 폴더가 있고 비어 있지 않다.
 - 대상 폴더가 템플릿 저장소 안에 있다. 심볼릭 링크를 따라간 실제 경로도 검사한다.
 - 이름이 규칙에 맞지 않는다.
+- FastAPI가 있는 프로젝트(단독 fastapi·조합)의 이름이 `fastapi`다. 템플릿의 개발 compose 프로젝트 이름이라 예약한다. `--name`과 대상 폴더에서 고른 이름 모두 사용법 오류 2로 거절하고 다른 `--name`을 안내한다. 단독 nextjs는 허용한다.
 - 템플릿 폴더에 커밋하지 않은 변경이 있다.
 - 필요한 도구가 없다: 모두 `git`, 조합은 `pnpm`도.
 
 비어 있는 일반 폴더는 허용한다. 템플릿의 변경 검사는 git 추적 파일만 보며, 무추적 파일은 복사하지 않는다.
+
+주의: `fastapi` 외에 이 PC의 다른 compose 프로젝트(다른 로컬 스택 등)와 이름이 겹치지 않도록 사용자가 고른다. 같은 compose 이름은 볼륨을 공유한다.
 
 ### 3.3 생성 순서
 
@@ -119,13 +122,13 @@ create/
 | ------- | -------------- | ---------------------------------------------------------------------------- |
 | 공통    | `README.md`    | 첫 줄 제목을 `# <이름>`으로                                                  |
 | nextjs  | `package.json` | `name`을 `<이름>`으로                                                        |
-| fastapi | `compose.yaml` | 최상위 `name: fastapi`를 `name: <이름>`으로, `image: fastapi-template-app`을 `<이름>-app`으로 |
+| fastapi | `compose.yaml` | 맨 앞에 설명 주석과 최상위 `name: <이름>`을 삽입하고, `image: fastapi-template-app`을 `<이름>-app`으로 |
 
 FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은 그대로 둔다. 바꾸면 `uv.lock`, 잠금 파일, `openapi.json`과 테스트가 함께 바뀐다.
 
 ### 4.2 템플릿 변경
 
-- FastAPI `compose.yaml`에 최상위 `name: fastapi`를 둔다. 지금은 폴더 이름으로 정해지는 같은 값이라, 템플릿 저장소의 개발 데이터(`fastapi_*` 볼륨)와 `pnpm conformance fastapi`의 동작은 그대로다. 생성한 프로젝트는 자기 이름의 compose 프로젝트를 쓴다.
+- FastAPI 템플릿 `compose.yaml`은 최상위 `name`을 두지 않고 폴더 이름을 기본 compose 이름으로 쓴다. 템플릿 폴더는 `fastapi`라 개발 데이터(`fastapi_*` 볼륨)와 `pnpm conformance fastapi`의 동작은 그대로다. CLI는 생성할 때 맨 앞에 폴더와 관계없이 프로젝트·볼륨 이름을 고정한다는 주석과 `name: <이름>`을 넣는다. 템플릿에 이미 최상위 `name`이 있으면 손으로 복사한 프로젝트끼리 볼륨을 공유하므로 지우도록 안내하고 실패한다. 앱 이미지는 YAML 값의 바이트 범위만 바꿔 주석·앵커를 보존한다.
 - 두 템플릿에 `.github/workflows/ci.yml`을 둔다(§5.9). 템플릿 저장소에서는 실행되지 않는 파일이고, 폴더째 복사한 프로젝트에서 동작한다.
 - 저장소 루트의 `.gitattributes`와 `.editorconfig`를 `scripts/shared-assets.json`에 더해 두 템플릿에 동기화한다(C16).
 
@@ -150,7 +153,7 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
 - 앱 폴더는 단독 생성(§4)과 같은 파일에서 시작한다. 앱의 `.claude/`, `.mcp.json`, `lefthook.yml`, AGENTS.md는 남긴다. 앱 폴더에서 Claude Code를 열거나 명령을 실행해도 단독 프로젝트처럼 동작한다.
 - 앱의 `.github/`는 지운다. 루트 워크플로가 대신한다.
 - `apps/api`
-  - compose 프로젝트 이름은 `<이름>`, 이미지는 `<이름>-api`, README 제목은 `# <이름> api`다.
+  - compose 맨 앞에 설명 주석과 `name: <이름>`을 넣고, 이미지는 `<이름>-api`, README 제목은 `# <이름> api`로 바꾼다. 이름 `fastapi`는 예약하며 템플릿에 이미 최상위 `name`이 있으면 거절한다(§3.2·§4.2).
   - `package.json` 래퍼: `name`은 `api`이고, 명령 어휘와 `e2e:serve`를 `uv run poe <명령>`으로 넘기는 스크립트만 둔다.
 - `apps/web`
   - package.json `name`은 `web`, README 제목은 `# <이름> web`이다.
@@ -334,7 +337,7 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
 ### 7.1 템플릿
 
 - FastAPI
-  - `compose.yaml`의 `name: fastapi`(§4.2)
+  - `compose.yaml`은 폴더 이름을 기본 compose 이름으로 쓴다. CLI가 생성할 때 `name: <이름>`을 삽입한다(§4.2)
   - `e2e:serve`와 그 단위 테스트(인자, 자식 환경, 설정 덮어쓰기). 실제 실행은 CI `create-combo`가 확인한다
   - `.github/workflows/ci.yml`
   - AGENTS.md 명령 표와 E2E 문서

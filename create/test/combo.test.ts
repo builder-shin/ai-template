@@ -135,21 +135,21 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
   ]);
   expect(git(target, "status", "--porcelain")).toBe("");
   for (const app of ["api", "web"]) {
-    expect(readFileSync(join(target, `apps/${app}/README.md`), "utf8").split("\n")[0]).toBe(
-      `# my-app ${app}`,
+    expect(readFileSync(join(target, `apps/${app}/README.md`), "utf8")).toBe(
+      `# my-app ${app}\n\n내용\n`,
     );
     expect(existsSync(join(target, `apps/${app}/.github`))).toBe(false);
   }
-  expect(readFileSync(join(target, "apps/api/compose.yaml"), "utf8")).toContain(
-    "image: my-app-api # 이미지",
+  expect(readFileSync(join(target, "apps/api/compose.yaml"), "utf8")).toBe(
+    "# 폴더와 관계없이 compose 프로젝트와 볼륨 이름을 프로젝트 이름으로 고정한다.\nname: my-app\n# 개발 인프라\nx-app: &app\n  image: my-app-api # 이미지\nservices:\n  api:\n    <<: *app\n  postgres:\n    image: postgres:18\n",
   );
   expect(JSON.parse(readFileSync(join(target, "apps/api/package.json"), "utf8"))).toMatchObject({
     name: "api",
     scripts: { "e2e:serve": "uv run poe e2e:serve" },
   });
-  expect(JSON.parse(readFileSync(join(target, "apps/web/package.json"), "utf8"))).toMatchObject({
-    name: "web",
-  });
+  expect(readFileSync(join(target, "apps/web/package.json"), "utf8")).toBe(
+    '{\n  "name": "web",\n  "engines": {\n    "node": ">=24 <25"\n  },\n  "devDependencies": {\n    "lefthook": "2.1.14",\n    "prettier": "3.9.9",\n    "typescript": "6.0.3"\n  }\n}\n',
+  );
   expect(readFileSync(join(target, "apps/web/.env.example"), "utf8")).toBe(
     "# 주소\nAPI_BASE_URL=http://127.0.0.1:8000/api/v1 # API\nNEXT_PUBLIC_REALTIME_URL=http://127.0.0.1:8000\n",
   );

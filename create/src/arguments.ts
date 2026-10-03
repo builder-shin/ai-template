@@ -95,6 +95,13 @@ export function parseArguments(
       2,
     );
   }
+  if (name === "fastapi" && (values.api !== undefined || values.template === "fastapi")) {
+    throw new CreateError(
+      "fastapi는 템플릿의 개발 compose 프로젝트 이름이다",
+      "다른 --name을 지정한다.",
+      2,
+    );
+  }
   return {
     target,
     name,

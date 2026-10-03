@@ -24,23 +24,23 @@ export function renameStandalone(
     const doc = parseDocument(source);
     if (doc.errors.length)
       throw new CreateError("compose.yaml이 올바르지 않다", "템플릿의 YAML 문법을 고친다.");
-    const project = doc.get("name", true);
-    const app = doc.get("x-app", true);
-    const image = isMap(app) ? app.get("image", true) : undefined;
-    if (!isScalar(project) || !isScalar(image) || !project.range || !image.range) {
+    if (doc.has("name")) {
       throw new CreateError(
-        "compose.yaml에 프로젝트·앱 이미지 이름이 없다",
-        "최상위 name과 x-app의 image를 지정한다.",
+        "템플릿 compose.yaml에 최상위 name이 있다",
+        "손으로 복사한 프로젝트끼리 볼륨을 공유하지 않도록 템플릿의 name을 지운다.",
       );
     }
+    const app = doc.get("x-app", true);
+    const image = isMap(app) ? app.get("image", true) : undefined;
+    if (!isScalar(image) || !image.range) {
+      throw new CreateError("compose.yaml에 앱 이미지 이름이 없다", "x-app의 image를 지정한다.");
+    }
     // 노드 값의 범위만 바꿔 주석, 앵커와 나머지 바이트를 보존한다.
-    const edits = [
-      { range: project.range, value: name },
-      { range: image.range, value: imageName },
-    ].sort((a, b) => b.range[0] - a.range[0]);
-    let output = source;
-    for (const edit of edits)
-      output = output.slice(0, edit.range[0]) + edit.value + output.slice(edit.range[1]);
+    const output =
+      `# 폴더와 관계없이 compose 프로젝트와 볼륨 이름을 프로젝트 이름으로 고정한다.\nname: ${name}\n` +
+      source.slice(0, image.range[0]) +
+      imageName +
+      source.slice(image.range[1]);
     writeFileSync(path, output);
   }
 }

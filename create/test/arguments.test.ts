@@ -81,4 +81,27 @@ describe("CLI 입력", () => {
       git: true,
     });
   });
+
+  it.each([
+    ["target", "--template", "fastapi", "--name", "fastapi"],
+    ["fastapi", "--template", "fastapi"],
+    ["target", "--api", "fastapi", "--web", "--name", "fastapi"],
+    ["fastapi", "--api", "fastapi", "--web"],
+  ])("FastAPI가 있는 프로젝트의 예약 이름은 오류 2다: %j", (...args) => {
+    try {
+      parseArguments(args, {});
+      expect.fail("예약 이름은 거절해야 한다");
+    } catch (error) {
+      expect(error).toBeInstanceOf(CreateError);
+      expect(error).toMatchObject({ exitCode: 2 });
+      expect((error as Error).message).toMatch(/fastapi.* — .*--name/);
+    }
+  });
+
+  it.each([
+    ["target", "--template", "nextjs", "--name", "fastapi"],
+    ["fastapi", "--template", "nextjs"],
+  ])("web 단독은 fastapi 이름을 받는다: %j", (...args) => {
+    expect(parseArguments(args, {})).toMatchObject({ template: "nextjs", name: "fastapi" });
+  });
 });

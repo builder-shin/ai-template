@@ -70,7 +70,7 @@ export function fixtureRepository(): string {
   write(
     root,
     "templates/fastapi/compose.yaml",
-    "# 프로젝트 이름\nname: fastapi\nx-app: &app\n  image: fastapi-template-app # 이미지\nservices:\n  api:\n    <<: *app\n  postgres:\n    image: postgres:18\n",
+    "# 개발 인프라\nx-app: &app\n  image: fastapi-template-app # 이미지\nservices:\n  api:\n    <<: *app\n  postgres:\n    image: postgres:18\n",
   );
   write(root, "templates/fastapi/pyproject.toml", '[project]\nname = "app"\n');
   write(root, "templates/fastapi/uv.lock", "version = 1\n");

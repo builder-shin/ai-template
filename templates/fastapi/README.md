@@ -17,6 +17,8 @@ uv run poe check   # 완료 기준. 모든 검사를 돈다
 
 `setup`은 여러 번 돌려도 된다. 명령 전체와 규칙은 [AGENTS.md](AGENTS.md)에 있다.
 
+템플릿의 compose 이름은 폴더 이름이 기본값이다. CLI로 만든 프로젝트는 `name`을 프로젝트 이름으로 고정한다. 이름 `fastapi`는 템플릿의 개발 스택 이름이라 예약하며 다른 로컬 compose 프로젝트와도 이름이 겹치지 않게 고른다. 같은 이름은 볼륨을 공유한다.
+
 조합 프로젝트에서도 이 앱이 자기 compose 인프라를 맡는다. 프로젝트 이름별로 compose 볼륨을 나누지만 포트는 고정이므로 여러 프로젝트의 동시 실행은 지원하지 않는다. 외부 web E2E는 `uv run poe e2e:serve [--web-url <주소>] -- <명령> [인자...]`으로 실행한다. 호출한 폴더에서 명령을 실행하고 E2E 서버를 정리한 뒤 명령의 종료 코드로 끝난다([E2E](docs/architecture.md#e2e)).
 
 단독 프로젝트의 `.github/workflows/ci.yml`은 의존성 설치 뒤 setup·check·E2E·이미지 빌드를 실행한다. 조합에서는 루트 CI가 두 앱을 함께 검사한다.

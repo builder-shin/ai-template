@@ -43,10 +43,9 @@ describe("단독 프로젝트", () => {
       expect(existsSync(join(target, "template.json"))).toBe(false);
       expect(existsSync(join(target, "untracked.txt"))).toBe(false);
       if (template === "nextjs") {
-        expect(JSON.parse(readFileSync(join(target, "package.json"), "utf8"))).toEqual({
-          name: "my-project",
-          private: true,
-        });
+        expect(readFileSync(join(target, "package.json"), "utf8")).toBe(
+          '{\n  "name": "my-project",\n  "private": true\n}\n',
+        );
         expect(readFileSync(join(target, "docs/공백 문서.md"))).toEqual(
           readFileSync(join(root, "templates/nextjs/docs/공백 문서.md")),
         );
@@ -57,7 +56,7 @@ describe("단독 프로젝트", () => {
           expect(statSync(join(target, "bin/start.sh")).mode & 0o111).toBe(0o111);
       } else {
         expect(readFileSync(join(target, "compose.yaml"), "utf8")).toBe(
-          "# 프로젝트 이름\nname: my-project\nx-app: &app\n  image: my-project-app # 이미지\nservices:\n  api:\n    <<: *app\n  postgres:\n    image: postgres:18\n",
+          "# 폴더와 관계없이 compose 프로젝트와 볼륨 이름을 프로젝트 이름으로 고정한다.\nname: my-project\n# 개발 인프라\nx-app: &app\n  image: my-project-app # 이미지\nservices:\n  api:\n    <<: *app\n  postgres:\n    image: postgres:18\n",
         );
         expect(readFileSync(join(target, "pyproject.toml"), "utf8")).toBe(
           '[project]\nname = "app"\n',
@@ -75,6 +74,19 @@ describe("단독 프로젝트", () => {
     createProject(request(target, "nextjs", false), root);
     expect(existsSync(join(target, "package.json"))).toBe(true);
     expect(existsSync(join(target, ".git"))).toBe(false);
+  });
+
+  it("compose 이름을 고정한 템플릿은 거절하고 대상·임시 폴더를 남기지 않는다", () => {
+    const root = fixtureRepository();
+    const path = join(root, "templates/fastapi/compose.yaml");
+    writeFileSync(path, "name: fastapi\n" + readFileSync(path, "utf8"));
+    git(root, "add", "templates/fastapi/compose.yaml");
+    git(root, "-c", "commit.gpgsign=false", "commit", "-m", "chore: pinned compose fixture");
+    const parent = temporaryFolder();
+    expect(() => createProject(request(join(parent, "aitpl-app"), "fastapi"), root)).toThrow(
+      /^pnpm new: .*compose.*name.* — .*볼륨.*$/,
+    );
+    expect(readdirSync(parent)).toEqual([]);
   });
 
   it.each(["nextjs", "fastapi"] as const)(
