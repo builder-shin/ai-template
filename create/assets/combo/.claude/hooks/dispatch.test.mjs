@@ -1,96 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, delimiter } from "node:path";
+import { join, delimiter } from "node:path";
 import { dispatch } from "./dispatch.mjs";
+import { fixture } from "./dispatch-fixture.mjs";
 import { gitEnvironment } from "../../scripts/process.mjs";
 import { formatFile } from "../../scripts/staged-format.mjs";
-
-function fixture(t) {
-  const root = mkdtempSync(join(tmpdir(), "aitpl-hooks space-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const write = (path, text) => {
-    mkdirSync(dirname(join(root, path)), { recursive: true });
-    writeFileSync(join(root, path), text);
-  };
-  write(
-    "gitconfig",
-    "[user]\nname = Fixture\nemail = fixture@example.com\n[commit]\ngpgsign = false\n",
-  );
-  const env = {
-    ...gitEnvironment(),
-    GIT_CONFIG_GLOBAL: join(root, "gitconfig"),
-    GIT_CONFIG_NOSYSTEM: "1",
-  };
-  for (const key of Object.keys(env))
-    if (/^GIT_(AUTHOR|COMMITTER)_|^GIT_CONFIG_(COUNT|KEY_\d+|VALUE_\d+|PARAMETERS)$/.test(key))
-      Reflect.deleteProperty(env, key);
-  const git = (...args) =>
-    execFileSync("git", args, {
-      cwd: root,
-      env,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  write(".gitignore", ".cache/\ngitconfig\n");
-  write("README.md", "# 루트\n");
-  for (const app of ["api", "web"]) {
-    write(`apps/${app}/file.ts`, "export const value = 1;\n");
-    const hooks = Object.fromEntries(
-      ["PostToolUse", "Stop", "PreToolUse", "SessionStart"].map((event) => [
-        event,
-        [
-          {
-            matcher: event === "PreToolUse" ? "Bash|PowerShell" : undefined,
-            hooks: [
-              {
-                type: "command",
-                command: process.execPath,
-                args: ["${CLAUDE_PROJECT_DIR}/.claude/fake.mjs"],
-                timeout: 5,
-              },
-            ],
-          },
-        ],
-      ]),
-    );
-    write(`apps/${app}/.claude/settings.json`, JSON.stringify({ hooks }));
-    write(
-      `apps/${app}/.claude/fake.mjs`,
-      `
-import { readFileSync, mkdirSync, appendFileSync } from 'node:fs';
-import { join } from 'node:path';
-const raw = readFileSync(0, 'utf8');
-const input = JSON.parse(raw);
-mkdirSync('.cache', { recursive: true });
-appendFileSync(join('.cache', 'calls'), JSON.stringify({ raw, cwd: process.cwd(), project: process.env.CLAUDE_PROJECT_DIR, npmEntry: process.env.npm_execpath }) + '\\n');
-const result = input.results?.${app} ?? {};
-if (result.json) console.log(JSON.stringify(result.json));
-if (result.text) console.log(result.text);
-if (result.stderr) console.error(result.stderr);
-process.exitCode = result.code ?? 0;
-`,
-    );
-  }
-  git("init", "-b", "main");
-  git("add", ".");
-  git("-c", "commit.gpgsign=false", "commit", "-m", "chore: fixture");
-  const calls = (app) => {
-    try {
-      return readFileSync(join(root, `apps/${app}/.cache/calls`), "utf8")
-        .trim()
-        .split("\n")
-        .map((line) => JSON.parse(line));
-    } catch {
-      return [];
-    }
-  };
-  const invoke = (event, input = {}, options = {}) =>
-    dispatch(event, JSON.stringify({ cwd: root, ...input }), { root, ...options });
-  return { root, write, git, calls, invoke };
-}
 
 test("PostToolUse는 고친 앱만 골라 같은 입력과 앱 cwd·환경을 넘긴다", (t) => {
   const f = fixture(t);
@@ -335,6 +252,23 @@ test("Stop은 바뀐 앱의 이유와 루트 검사 실패만 합친다", (t) =>
   assert.match(result.json.reason, /api 타입 오류/);
   assert.match(result.json.reason, /루트 포맷 오류/);
   assert.equal(f.calls("web").length, 0);
+});
+
+test("Stop은 git 밖이나 상위 저장소 안이면 검사 없이 비차단 안내를 출력한다", (t) => {
+  const parent = fixture(t);
+  const outside = mkdtempSync(join(tmpdir(), "aitpl-stop-no-git-"));
+  t.after(() => rmSync(outside, { recursive: true, force: true }));
+  parent.write("nested/README.md", "# combo\n");
+  const rootCheck = () => {
+    assert.fail("자기 저장소가 아니면 루트 검사를 실행하지 않는다");
+  };
+  for (const root of [outside, join(parent.root, "nested")]) {
+    const result = dispatch("Stop", JSON.stringify({ cwd: root }), { root, rootCheck });
+    assert.equal(result.code, 0);
+    assert.equal(result.json, undefined);
+    assert.match(result.stderr, /git.* — .*git init/);
+  }
+  assert.equal(parent.calls("api").length + parent.calls("web").length, 0);
 });
 
 test("Stop은 rename의 양쪽 앱과 새 파일을 보고 git 환경을 격리한다", (t) => {

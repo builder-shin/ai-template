@@ -14,7 +14,11 @@ test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈
   const calls = [];
   const run = (command, args, options) => {
     calls.push([command, args, options.cwd]);
-    return { status: args.includes("setup") ? 7 : 0, stdout: "", stderr: "" };
+    return {
+      status: args.includes("setup") ? 7 : 0,
+      stdout: command === "git" ? "/combo\n" : "",
+      stderr: "",
+    };
   };
   assert.equal(setup("/combo", { run, nodeVersion: "24.19.0", output: () => undefined }), 7);
   assert.deepEqual(
@@ -24,6 +28,7 @@ test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈
       ["--version"],
       ["--version"],
       ["install", "--frozen-lockfile"],
+      ["rev-parse", "--show-toplevel"],
       ["exec", "lefthook", "install"],
       ["--filter", "api", "run", "setup"],
     ],
@@ -49,14 +54,86 @@ test("setup은 도구별 설치 안내를 쓰고 준비되면 web까지 실행�
   assert.equal(
     setup("/combo", {
       nodeVersion: "24.19.0",
-      run: (_command, values) => {
+      run: (command, values) => {
         args.push(values);
-        return { status: 0 };
+        return { status: 0, stdout: command === "git" ? "/combo\n" : "" };
       },
     }),
     0,
   );
   assert.deepEqual(args.at(-1), ["--filter", "web", "run", "setup"]);
+});
+
+test("setup은 git 밖이나 상위 저장소 안이면 hook 설치만 건너뛰고 두 앱을 준비한다", () => {
+  for (const git of [
+    { status: 128, stderr: "not a git repository" },
+    { status: 0, stdout: "/parent\n" },
+  ]) {
+    const calls = [];
+    const messages = [];
+    assert.equal(
+      setup("/combo", {
+        nodeVersion: "24.19.0",
+        output: (message) => messages.push(message),
+        run: (command, args) => {
+          calls.push([command, args]);
+          return command === "git" ? git : { status: 0 };
+        },
+      }),
+      0,
+    );
+    assert.equal(
+      calls.some(([, args]) => args.includes("lefthook")),
+      false,
+    );
+    assert.deepEqual(calls.slice(-2), [
+      ["pnpm", ["--filter", "api", "run", "setup"]],
+      ["pnpm", ["--filter", "web", "run", "setup"]],
+    ]);
+    assert.match(messages.join("\n"), /설치.*건너.* — .*git init/);
+  }
+});
+
+test("setup은 자기 저장소에만 hook을 설치하고 git 지정 환경을 지운다", () => {
+  const variables = [
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_COMMON_DIR",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_NAMESPACE",
+    "GIT_PREFIX",
+  ];
+  const previous = Object.fromEntries(variables.map((key) => [key, process.env[key]]));
+  for (const key of variables) process.env[key] = "/unrelated";
+  try {
+    const calls = [];
+    assert.equal(
+      setup("/combo", {
+        nodeVersion: "24.19.0",
+        run: (command, args, options) => {
+          calls.push({ command, args, options });
+          return { status: 0, stdout: command === "git" ? "/combo\n" : "" };
+        },
+      }),
+      0,
+    );
+    const guarded = calls.filter(
+      ({ command, args }) => command === "git" || args.includes("lefthook"),
+    );
+    assert.equal(guarded.length, 2);
+    for (const { options } of guarded) {
+      assert.equal(options.cwd, "/combo");
+      for (const key of variables) assert.equal(options.env?.[key], undefined);
+      assert.ok(options.env);
+    }
+  } finally {
+    for (const key of variables) {
+      if (previous[key] === undefined) Reflect.deleteProperty(process.env, key);
+      else process.env[key] = previous[key];
+    }
+  }
 });
 
 test("E2E 실행기는 첫 실패를 전파하고 web 실행기의 절대 경로를 넘긴다", () => {

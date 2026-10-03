@@ -62,7 +62,7 @@ compose 이름이 프로젝트마다 달라 볼륨은 섞이지 않는다.
 - 루트 hook은 앱의 `.claude/settings.json`에서 명령을 매번 읽고 앱 폴더에서 실행한다. 앱 hook 설정만 고친다.
 - 편집 hook은 고친 앱만, Stop은 바뀐 앱과 루트 검사만 돈다. 위험 명령은 두 앱이 검사하고 하나라도 거부하면 막는다. SessionStart는 앱별 상태를 함께 보여 준다.
 - 루트 `lefthook.yml`이 커밋 전 앱 포맷·린트와 루트 포맷을 돌리고, 합친 `.betterleaks.toml`로 비밀을 한 번 스캔한다. 푸시 전에는 `pnpm check`를 돌린다.
-- 앱 setup은 git 최상위가 아니면 hook을 설치하지 않는다. 루트 setup이 설치한 hook과 다투지 않는다. 루트 `.mcp.json`은 web의 고정 MCP 서버를 쓴다.
+- 루트와 앱 setup은 자기 폴더가 git 최상위일 때만 hook을 설치한다. 루트가 git 최상위가 아니면 Stop도 안내만 하고 통과한다. 루트에서 `git init` 후 다시 실행한다. 루트 `.mcp.json`은 web의 고정 MCP 서버를 쓴다.
 
 ## 완료 기준
 

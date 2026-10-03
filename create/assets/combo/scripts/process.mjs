@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 
 export function gitEnvironment(environment = process.env) {
   const env = { ...environment };
@@ -51,6 +51,14 @@ export function run(command, args, options = {}) {
 
 export function exitCode(result) {
   return result.status ?? 1;
+}
+
+export function isGitRoot(root, execute = run) {
+  const result = execute("git", ["rev-parse", "--show-toplevel"], {
+    cwd: root,
+    env: gitEnvironment(),
+  });
+  return exitCode(result) === 0 && resolve(result.stdout.trim()) === resolve(root);
 }
 
 export function isMain(url) {

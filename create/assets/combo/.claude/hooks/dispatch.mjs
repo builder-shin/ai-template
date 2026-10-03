@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { relative, resolve, join, sep } from "node:path";
-import { run, exitCode, gitEnvironment, pnpmEntry } from "../../scripts/process.mjs";
+import { run, exitCode, gitEnvironment, isGitRoot, pnpmEntry } from "../../scripts/process.mjs";
 import { checkRoot } from "../../scripts/check.mjs";
 import { formatFile } from "../../scripts/staged-format.mjs";
 
@@ -176,6 +176,12 @@ export function dispatch(
       selected = apps.filter((app) => path?.startsWith(`apps/${app}/`));
       if (path && !selected.length) results.push({ app: "root", ...rootFormat(root, path) });
     } else if (event === "Stop") {
+      if (!isGitRoot(root, execute))
+        return {
+          code: 0,
+          stderr:
+            "루트가 git 최상위가 아니므로 Stop 검사를 건너뛴다 — 루트에서 git init 후 다시 실행한다.",
+        };
       const files = changedFiles(root, execute);
       selected = apps.filter((app) => files.some((path) => path.startsWith(`apps/${app}/`)));
       if (files.some((path) => !path.startsWith("apps/"))) {

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { exitCode, isMain, run } from "./process.mjs";
+import { exitCode, gitEnvironment, isGitRoot, isMain, run } from "./process.mjs";
 
 export function setup(
   root,
@@ -26,7 +26,19 @@ export function setup(
     ["--filter", "api", "run", "setup"],
     ["--filter", "web", "run", "setup"],
   ]) {
-    const result = execute("pnpm", args, { cwd: root, stdio: "inherit" });
+    const hook = args.includes("lefthook");
+    // --no-git로 만든 프로젝트가 상위 저장소의 hook을 덮어쓰지 않는다.
+    if (hook && !isGitRoot(root, execute)) {
+      output(
+        "루트가 git 최상위가 아니므로 hook 설치를 건너뛴다 — 루트에서 git init 후 pnpm setup을 다시 실행한다.",
+      );
+      continue;
+    }
+    const result = execute("pnpm", args, {
+      cwd: root,
+      stdio: "inherit",
+      ...(hook ? { env: gitEnvironment() } : {}),
+    });
     if (exitCode(result) !== 0) return exitCode(result);
   }
   return 0;
