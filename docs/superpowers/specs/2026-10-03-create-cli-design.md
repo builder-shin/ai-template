@@ -154,6 +154,8 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
   - package.json `name`은 `web`, README 제목은 `# <이름> web`이다.
   - 앱의 `pnpm-workspace.yaml`과 `pnpm-lock.yaml`은 루트로 합친다(§5.3).
   - `gen.config.json`(§5.5)을 더하고 `.env.example`을 백엔드 모드 값으로 바꾼다(§5.6).
+  - `Dockerfile`은 조합 루트를 빌드 문맥으로 쓰는 조합용으로 바꾸고 그 옆에 `Dockerfile.dockerignore`를 둔다. 템플릿의 Dockerfile은 web 폴더 안의 잠금 파일과 workspace 파일을 쓰는데, 조합에서는 둘이 루트에 있기 때문이다(§5.9).
+- web 템플릿의 `next.config.ts`는 Turbopack 루트와 standalone 추적 루트를 가장 가까운 pnpm workspace 루트(`pnpm-workspace.yaml`이 있는 폴더)로 정한다. 단독이면 web 폴더이고 조합이면 조합 루트다. 조합의 의존성은 루트 `node_modules`에 있어서 web 폴더를 루트로 두면 찾지 못한다.
 
 ### 5.2 루트 파일
 
@@ -289,7 +291,7 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | fastapi | `uv sync --locked` → `uv run poe setup` → `check` → `test:e2e` → `docker build`                                                                   |
 | nextjs  | `pnpm install --frozen-lockfile` → Chromium과 Linux 의존성 설치 → `pnpm check` → `pnpm test:e2e` → `docker build`                                 |
-| 조합    | `pnpm setup` → Chromium Linux 의존성 설치 → `pnpm check` → `pnpm test:e2e` → `apps/api`·`apps/web` `docker build`. 인프라를 함께 쓰므로 작업 하나다 |
+| 조합    | `pnpm setup` → Chromium Linux 의존성 설치 → `pnpm check` → `pnpm test:e2e` → `docker build apps/api`와 루트에서 `docker build -f apps/web/Dockerfile .`. 인프라를 함께 쓰므로 작업 하나다 |
 
 - 단독 워크플로는 템플릿 폴더의 `.github/workflows/ci.yml`이다. 조합 워크플로의 원본은 `create/assets/combo/`에 있다.
 - 템플릿 저장소의 `pnpm check`가 셋 모두를 actionlint로 검사한다.
@@ -324,6 +326,7 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
   - AGENTS.md 명령 표와 E2E 문서
 - web
   - `gen.config.json` 입력과 두 모드의 테스트(픽스처 OpenAPI)
+  - `next.config.ts`의 Turbopack·standalone 추적 루트를 가장 가까운 pnpm workspace 루트로(§5.1)와 그 테스트
   - `.github/workflows/ci.yml`
   - AGENTS.md와 `docs/architecture.md`의 계약 설명(조합에서의 입력)
 - 공유 자산: `.gitattributes`, `.editorconfig`(§4.2)
@@ -344,6 +347,7 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
   1. 루트 설치
   2. `pnpm new "$RUNNER_TEMP/combo" --api fastapi --web --name ci-combo`
   3. 생성 폴더에서 `pnpm setup` → Chromium Linux 의존성 → `pnpm check` → `pnpm test:e2e`
+  4. 두 이미지 빌드(§5.9의 조합 단계). 조합용 web Dockerfile을 이 작업이 확인한다
   - git 사용자 정보는 작업에서 정한다.
 - `create-standalone`(한도 60분): fastapi를 만들어 `uv run poe setup` → `uv run poe check`, nextjs를 만들어 `pnpm setup` → `pnpm check`.
 - 생성 프로젝트의 워크플로 파일 자체는 실행하지 않는다. actionlint로 검사하고, 같은 단계를 위 작업이 돈다.
@@ -378,9 +382,10 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
 
 1. FastAPI `openapi.json`에서 만든 web 타입으로 web `check`가 통과한다(§5.5).
 2. 루트 잠금 파일: web 잠금 파일의 경로를 바꾸고 lockfile-only로 풀어도 web 패키지 해석이 그대로다(§5.3).
-3. 조합 안에서 web `check`가 통과한다. workspace를 옮긴 뒤의 경로, tsconfig, 목 통합 테스트를 본다.
+3. 조합 안에서 web `check`와 `build`가 통과한다. workspace를 옮긴 뒤의 경로, tsconfig, Turbopack 루트, 목 통합 테스트를 본다.
 4. 조합 안에서 api `check`가 package.json 래퍼와 `node_modules`가 있어도 통과한다(FastAPI 하네스 검사).
 5. Turborepo가 Windows와 Linux에서 uv 명령을 실행하고 캐시한다.
+6. 조합용 web 이미지가 루트 문맥에서 빌드되고, standalone 출력이 workspace 구조에서 서버를 띄운다(CI).
 
 ## 9. 미룬 결정
 
