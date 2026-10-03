@@ -32,4 +32,3 @@ export function readWebOpenapi(root: string, contractOpenapi: string): string {
     throw new Error(`${config.openapi} 스펙이 일반 파일이 아니다 — OpenAPI 파일을 지정한다.`);
   return readFileSync(specPath, "utf8").replace(/^\uFEFF/, "");
 }
-

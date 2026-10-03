@@ -40,7 +40,7 @@ export function assembleSteps(
       name: "generated",
       args: ["tsx", "scripts/gen.ts", "--check"],
       key: key(/^(src|contract)\//) + fingerprint({ webOpenapi: String(webOpenapi) }),
-      inputError: webOpenapi instanceof Error ? webOpenapi.message : undefined,
+      ...(webOpenapi instanceof Error ? { inputError: webOpenapi.message } : {}),
     },
   ];
   if (!fast) {

@@ -25,7 +25,10 @@ it.each(["linked", "lowercase", "nested", "bare", "git"])(
     const repo = join(fixture, "repo");
     const env = gitEnvironment();
     try {
-      expect(spawnSync("git", ["init", "--quiet", ...(kind === "bare" ? ["--bare"] : []), repo], { env }).status).toBe(0);
+      expect(
+        spawnSync("git", ["init", "--quiet", ...(kind === "bare" ? ["--bare"] : []), repo], { env })
+          .status,
+      ).toBe(0);
       let root = repo;
       if (kind === "linked") {
         root = join(fixture, "linked");
@@ -37,16 +40,25 @@ it.each(["linked", "lowercase", "nested", "bare", "git"])(
       for (const file of ["setup.mjs", "envfile.mjs", "git-environment.mjs"])
         copyFileSync(new URL(file, import.meta.url), join(scripts, file));
       writeFileSync(join(root, ".env.example"), "FIXTURE_KEY=fixture\n");
-      writeFileSync(join(scripts, "process.mjs"), `
+      writeFileSync(
+        join(scripts, "process.mjs"),
+        `
         import { writeFileSync } from "node:fs";
         export function pnpm(args) {
           if (args.includes("lefthook")) writeFileSync("hook-installed.txt", "installed");
           return { status: 0 };
         }
-      `);
-      const result = spawnSync(process.execPath, ["--preserve-symlinks-main", join(scripts, "setup.mjs")], { env, encoding: "utf8" });
+      `,
+      );
+      const result = spawnSync(
+        process.execPath,
+        ["--preserve-symlinks-main", join(scripts, "setup.mjs")],
+        { env, encoding: "utf8" },
+      );
       expect(result.status, result.stderr).toBe(0);
-      expect(existsSync(join(root, "hook-installed.txt"))).toBe(["linked", "lowercase"].includes(kind));
+      expect(existsSync(join(root, "hook-installed.txt"))).toBe(
+        ["linked", "lowercase"].includes(kind),
+      );
     } finally {
       rmSync(fixture, { recursive: true, force: true });
     }

@@ -100,7 +100,6 @@ describe("web 생성 입력", () => {
     expect(() => readWebOpenapi(root, contract)).toThrow(/backend.*파일이 아니다 —.*파일/);
   });
 
-
   it.each(["x-realtime-events", "components.schemas.ErrorCode"])(
     "%s가 없으면 백엔드에서 선언하도록 안내한다",
     async (missing) => {

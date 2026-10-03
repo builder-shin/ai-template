@@ -40,9 +40,7 @@ export async function runChecks(
       continue;
     }
     delete cache[step.name];
-    const result = step.inputError
-      ? { ok: false, output: step.inputError }
-      : await execute(step);
+    const result = step.inputError ? { ok: false, output: step.inputError } : await execute(step);
     if (result.ok) cache[step.name] = step.key;
     else failures.push(`✗ ${step.name}\n${result.output.trimEnd()}`);
   }
