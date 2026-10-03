@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { format } from "./format.mjs";
-import { exitCode, isMain, run } from "./process.mjs";
+import { exitCode, isMain, run, runnerMain } from "./process.mjs";
 
 export function instructionErrors(root) {
   const errors = [];
@@ -82,4 +82,5 @@ export function checkRoot(root) {
   return { status, stdout: messages.join("\n") };
 }
 
-if (isMain(import.meta.url)) process.exitCode = check(resolve(import.meta.dirname, ".."));
+if (isMain(import.meta.url))
+  process.exitCode = runnerMain(() => check(resolve(import.meta.dirname, "..")));

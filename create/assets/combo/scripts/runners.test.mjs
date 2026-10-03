@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -10,6 +11,21 @@ import { webEnvironment, webE2e } from "./web-e2e.mjs";
 import { stagedFormat } from "./staged-format.mjs";
 import { run as runProcess } from "./process.mjs";
 import { fixture, linkedRoot } from "../.claude/hooks/dispatch-fixture.mjs";
+
+for (const file of ["setup.mjs", "check.mjs", "test-e2e.mjs"]) {
+  test(`${file}은 pnpm 밖에서 실행하면 한 줄 안내와 코드 1로 끝난다`, () => {
+    const env = { ...process.env, PATH: "", Path: "" };
+    Reflect.deleteProperty(env, "npm_execpath");
+    const result = spawnSync(process.execPath, [join(import.meta.dirname, file)], {
+      env,
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr.trim(), /^pnpm.* — .*pnpm.*$/);
+    assert.equal(result.stderr.trim().split(/\r?\n/).length, 1);
+    assert.equal(result.stdout, "");
+  });
+}
 
 test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈춘다", () => {
   const calls = [];
@@ -48,7 +64,7 @@ test("setup은 도구별 설치 안내를 쓰고 준비되면 web까지 실행�
       }),
       1,
     );
-    assert.match(messages[0], /설치하고 PATH/);
+    assert.match(messages[0], /설치 후 PATH/);
     assert.match(messages[0], new RegExp(tool, "i"));
   }
   const args = [];

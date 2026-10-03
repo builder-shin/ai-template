@@ -1,5 +1,5 @@
 import { join, resolve } from "node:path";
-import { exitCode, isMain, run } from "./process.mjs";
+import { exitCode, isMain, run, runnerMain } from "./process.mjs";
 
 export function testE2e(root, execute = run) {
   for (const args of [
@@ -12,4 +12,5 @@ export function testE2e(root, execute = run) {
   return 0;
 }
 
-if (isMain(import.meta.url)) process.exitCode = testE2e(resolve(import.meta.dirname, ".."));
+if (isMain(import.meta.url))
+  process.exitCode = runnerMain(() => testE2e(resolve(import.meta.dirname, "..")));

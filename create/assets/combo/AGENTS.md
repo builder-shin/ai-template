@@ -21,7 +21,7 @@ FastAPI와 Next.js BFF를 함께 개발하는 프로젝트다. Node 24, pnpm 12.
 | ---------------------------------- | -------------------------------------------------------------- |
 | `pnpm setup`                       | 도구 확인·frozen 설치 → 루트 hook 설치 → api setup → web setup |
 | `pnpm dev`                         | api·worker·scheduler와 백엔드 모드 web을 함께 실행             |
-| `pnpm check`                       | 루트 포맷·실행기 테스트·지침 → api check → web check           |
+| `pnpm check`                       | 루트 포맷·실행기 테스트·지침 → 두 앱 check를 하나씩(순서 무관) |
 | `pnpm fix`                         | 앱 자동 수정과 루트 파일 포맷                                  |
 | `pnpm test`                        | api와 web 테스트를 차례로 실행                                 |
 | `pnpm test:e2e`                    | api E2E → api e2e:serve 위에서 web FastAPI E2E                 |
@@ -31,6 +31,7 @@ FastAPI와 Next.js BFF를 함께 개발하는 프로젝트다. Node 24, pnpm 12.
 setup·E2E·DB 명령은 캐시하지 않는다. gen도 생성물 누락을 피하도록 캐시하지 않는다.
 turbo는 loose 환경 모드로 Docker·uv·프록시·Playwright 등 개발 환경 변수를 앱에 전달한다. 캐시는 선언한 입력만 해시한다.
 dev 이외 앱 명령은 동시 실행 수 1로 돌린다. check 성공은 한 줄, 실패는 실패한 단계 출력만 보여 준다.
+루트 실행기는 pnpm 명령으로 실행한다. web check는 gen-feature 테스트의 설치 때문에 패키지 레지스트리 접속이 필요하다.
 
 ## 앱 사이 흐름
 
@@ -54,7 +55,13 @@ dev 이외 앱 명령은 동시 실행 수 1로 돌린다. check 성공은 한 �
 | api E2E, web E2E, 목 E2E      | 18000, 3100, 4110          |
 
 프로젝트 여러 개를 동시에 실행하면 고정 포트가 겹친다. 동시 실행은 지원하지 않는다.
-compose 이름이 프로젝트마다 달라 볼륨은 섞이지 않는다.
+다른 프로젝트와 compose 이름도 겹치지 않게 고른다. 같은 이름은 볼륨을 공유한다.
+
+## web 이미지
+
+BuildKit이 필요하다. 프로젝트 루트에서 `DOCKER_BUILDKIT=1 docker build -f apps/web/Dockerfile . --tag {{NAME}}-web`으로 빌드한다.
+실행은 루트에서 `docker run --rm --publish 127.0.0.1:3200:3000 --env API_BASE_URL --env APP_URL --env NEXT_PUBLIC_REALTIME_URL --env TIME_ZONE --env SESSION_SECRET {{NAME}}-web`이다.
+호출 환경에 `API_BASE_URL`(컨테이너에서 닿는 api의 `/api/v1`), `APP_URL`(브라우저 web Origin), `NEXT_PUBLIC_REALTIME_URL`(브라우저에서 닿는 api Origin), `TIME_ZONE`(예: `Asia/Seoul`), `SESSION_SECRET`(32바이트 이상의 난수 비밀)을 설정한다. 비밀은 이미지에 넣지 않는다.
 
 ## 하네스
 

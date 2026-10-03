@@ -65,3 +65,19 @@ export function isGitRoot(root, execute = run) {
 export function isMain(url) {
   return process.argv[1] !== undefined && url === pathToFileURL(process.argv[1]).href;
 }
+
+export function runnerMain(task) {
+  if (!process.env.npm_execpath) {
+    console.error("pnpm 실행 경로가 없다 — pnpm으로 루트 명령을 실행한다.");
+    return 1;
+  }
+  try {
+    return task();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(
+      message.includes(" — ") ? message : `${message} — pnpm setup으로 도구를 준비한다.`,
+    );
+    return 1;
+  }
+}

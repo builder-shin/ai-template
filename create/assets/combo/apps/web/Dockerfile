@@ -1,4 +1,4 @@
-# 조합 루트를 빌드 문맥으로 쓴다. 서버 설정과 비밀은 실행할 때 전달한다.
+# BuildKit이 필요하다. 조합 루트를 빌드 문맥으로 쓰고 서버 설정과 비밀은 실행할 때 전달한다.
 FROM node:24.19.0-bookworm-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { exitCode, gitEnvironment, isGitRoot, isMain, run } from "./process.mjs";
+import { exitCode, gitEnvironment, isGitRoot, isMain, run, runnerMain } from "./process.mjs";
 
 export function setup(
   root,
@@ -16,7 +16,7 @@ export function setup(
   ]) {
     const result = execute(tool, ["--version"], { cwd: root });
     if (exitCode(result) !== 0) {
-      output(`${hint}를 찾을 수 없다 — ${hint}를 설치하고 PATH에 추가한다.`);
+      output(`${hint} 실행 파일이 없다 — ${hint} 설치 후 PATH에 추가한다.`);
       return 1;
     }
   }
@@ -44,4 +44,5 @@ export function setup(
   return 0;
 }
 
-if (isMain(import.meta.url)) process.exitCode = setup(resolve(import.meta.dirname, ".."));
+if (isMain(import.meta.url))
+  process.exitCode = runnerMain(() => setup(resolve(import.meta.dirname, "..")));
