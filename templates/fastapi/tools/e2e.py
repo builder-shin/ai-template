@@ -2,7 +2,7 @@
 
 - 개발 인프라(compose)를 쓰되 DB는 app_e2e, Valkey는 DB 14다(isolated_settings(..., "e2e")).
   개발 데이터를 건드리지 않고, 매번 E2E용 Valkey DB를 비운다.
-- api는 127.0.0.1:18000에 뜬다. /health/ready가 200이 되면 pytest tests/e2e를 돌린다.
+- api는 127.0.0.1:18000에 뜬다. ready 뒤 test:e2e는 pytest, e2e:serve는 받은 명령을 돌린다.
 - 세 프로세스의 출력은 .cache/e2e/processes.log에 모은다. 실패하면 끝부분을 보여 준다.
 """
 
@@ -84,7 +84,7 @@ def parse_serve_args(args: Sequence[str]) -> ServeArgs:
         "--web-url", type=web_origin, default=WEB_URL, help="web Origin(기본: %(default)s)"
     )
     values = list(args)
-    # 도움말은 인프라 확인 없이 읽을 수 있다.
+    # -- 앞은 서버 옵션이며 뒤는 실행할 명령이다.
     options, separator, command = values, -1, []
     if "--" in values:
         separator = values.index("--")
@@ -125,8 +125,8 @@ def child_environment(web_url: str, inherited: Mapping[str, str]) -> dict[str, s
 def overrides(settings: Settings) -> dict[str, str]:
     """E2E 설정을 자식 프로세스에 넘기는 환경 변수. 환경 변수는 .env보다 앞선다.
 
-    isolated_settings가 바꾸는 필드(환경, DB, Valkey 번호, 레이트 리밋)를 넘긴다. 소셜 로그인
-    제공자가 돌아올 주소(API_URL)는 E2E api의 주소다.
+    격리 필드(환경, DB, Valkey 번호, 레이트 리밋)와 최근 로그인 창·web·실시간·OAuth·스토리지
+    Origin을 넘긴다. 소셜 로그인 제공자가 돌아올 주소(API_URL)는 E2E api의 주소다.
     """
     names = (
         "app_env",
@@ -244,6 +244,7 @@ def main() -> int:
 
 
 def serve_main(args: Sequence[str] | None = None) -> int:
+    # 도움말은 설정을 읽거나 인프라를 확인하기 전에 끝낸다.
     options = parse_serve_args(sys.argv[1:] if args is None else args)
     settings = serve_settings(load_settings(), options.web_url)
     cwd = Path(os.environ.get("POE_PWD") or os.getcwd())

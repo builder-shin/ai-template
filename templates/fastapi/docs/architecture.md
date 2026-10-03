@@ -157,6 +157,8 @@ Socket.IO 서버(`app.core.realtime`)가 api 프로세스의 `/socket.io/`에서
 uv run poe e2e:serve [--web-url <주소>] -- <명령> [인자...]
 ```
 
+poe는 인자의 `$VAR`·`${VAR}`를 환경 값으로 치환하므로 문자 그대로의 `$`가 필요한 인자는 피한다. 명령은 셸 없이 실행하므로 Windows에서는 `pnpm` 같은 `.cmd` 진입점 대신 `node <스크립트>` 또는 `.exe` 실행 파일을 쓴다.
+
 - 인프라가 꺼져 있으면 `uv run poe setup`을 안내하고 실패한다. 인프라를 직접 띄우지 않는다.
 - DB `app_e2e`를 마이그레이션·시드하고 Valkey DB 14만 비운다. 개발 DB와 Valkey DB 0, Mailpit 메일은 보존한다.
 - api는 `http://127.0.0.1:18000`, 레이트 리밋은 테스트 한도, 최근 로그인 창은 10초다.
