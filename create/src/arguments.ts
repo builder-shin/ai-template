@@ -102,6 +102,13 @@ export function parseArguments(
       2,
     );
   }
+  if (values.api !== undefined && (name === "api" || name === "web")) {
+    throw new CreateError(
+      `${name}는 조합 앱의 workspace 패키지 이름이다`,
+      "다른 --name을 지정한다.",
+      2,
+    );
+  }
   return {
     target,
     name,

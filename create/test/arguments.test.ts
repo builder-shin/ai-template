@@ -4,6 +4,27 @@ import { parseArguments } from "../src/arguments.ts";
 import { CreateError } from "../src/errors.ts";
 
 describe("CLI 입력", () => {
+  it.each(["api", "web"])("조합 예약 이름 %s는 두 입력 경로 모두 오류 2다", (name) => {
+    for (const args of [[name], ["target", "--name", name]]) {
+      try {
+        parseArguments([...args, "--api", "fastapi", "--web"], {});
+        expect.fail("예약 이름은 거절해야 한다");
+      } catch (error) {
+        expect(error).toBeInstanceOf(CreateError);
+        expect(error).toMatchObject({ exitCode: 2 });
+        expect((error as Error).message).toMatch(/ — .*--name/);
+      }
+    }
+  });
+
+  it.each(["api", "web"])("단독은 %s 이름을 두 입력 경로 모두 받는다", (name) => {
+    for (const template of ["fastapi", "nextjs"]) {
+      for (const args of [[name], ["target", "--name", name]]) {
+        expect(parseArguments([...args, "--template", template], {})).toMatchObject({ name });
+      }
+    }
+  });
+
   it("상대 대상은 INIT_CWD에서 풀고 이름은 폴더에서 고른다", () => {
     expect(parseArguments(["my-web", "--template", "nextjs"], { INIT_CWD: "/caller" })).toEqual({
       target: resolve("/caller", "my-web"),
