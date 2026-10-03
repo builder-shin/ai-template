@@ -80,6 +80,12 @@ function hookProblems(dir: string): string[] {
 
 function requiredFileProblems(dir: string, manifest: TemplateManifest): string[] {
   const problems: string[] = [];
+  for (const file of [".github/workflows/ci.yml", ".gitattributes"]) {
+    const path = join(dir, file);
+    if (!existsSync(path) || !statSync(path).isFile()) {
+      problems.push(`${file}이 없다 — 템플릿 루트에 파일을 만든다.`);
+    }
+  }
   if (!existsSync(join(dir, ".env.example"))) problems.push(".env.example이 없다.");
   const recipes = listFiles(join(dir, "docs", "recipes")).filter((file) => file.endsWith(".md"));
   if (recipes.length === 0) problems.push("docs/recipes/에 레시피(.md)가 하나도 없다.");

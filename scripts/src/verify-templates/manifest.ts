@@ -22,7 +22,7 @@ export interface SharedAssetsManifest {
 }
 
 export const BASE_COMMANDS = ["setup", "dev", "check", "fix", "test", "test:e2e", "gen"];
-export const BACKEND_COMMANDS = ["db:migrate", "db:reset"];
+export const BACKEND_COMMANDS = ["db:migrate", "db:reset", "e2e:serve"];
 
 export function requiredCommands(manifest: TemplateManifest): string[] {
   return manifest.kind === "backend" ? [...BASE_COMMANDS, ...BACKEND_COMMANDS] : BASE_COMMANDS;

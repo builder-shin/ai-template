@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,7 +9,7 @@ import {
   ensureTool,
   type InstallDeps,
 } from "../../src/tools/install.ts";
-import { TOOLS, type ToolSpec } from "../../src/tools/manifest.ts";
+import { isToolName, PLATFORMS, TOOLS, type ToolSpec } from "../../src/tools/manifest.ts";
 
 const payload = new TextEncoder().encode("fake archive");
 const payloadSha = createHash("sha256").update(payload).digest("hex");
@@ -93,6 +93,46 @@ describe("ensureTool", () => {
 });
 
 describe("manifest", () => {
+  it("actionlint을 지원 플랫폼의 릴리스 자산으로 설치한다", async () => {
+    expect(isToolName("actionlint")).toBe(true);
+    const tool: ToolSpec | undefined = Object.values(TOOLS).find(
+      ({ name }) => name === "actionlint",
+    );
+    expect(tool).toBeDefined();
+    if (tool === undefined) return;
+    const cacheDir = mkdtempSync(join(tmpdir(), "actionlint-test-"));
+    try {
+      for (const platform of PLATFORMS) {
+        const asset = tool.assets[platform];
+        expect(asset).toBeDefined();
+        if (asset === undefined) continue;
+        const fixture = { ...tool, assets: { [platform]: { ...asset, sha256: payloadSha } } };
+        const installed = await ensureTool(
+          fixture,
+          cacheDir,
+          {
+            download(url) {
+              expect(url).toBe(
+                `https://github.com/rhysd/actionlint/releases/download/v1.7.12/${asset.file}`,
+              );
+              return Promise.resolve(payload);
+            },
+            extract(_archive, destination) {
+              writeFileSync(
+                join(destination, platform === "win32-x64" ? "actionlint.exe" : "actionlint"),
+                "binary",
+              );
+            },
+          },
+          platform,
+        );
+        expect(existsSync(installed)).toBe(true);
+      }
+    } finally {
+      rmSync(cacheDir, { recursive: true, force: true });
+    }
+  });
+
   it("모든 도구가 지원 플랫폼마다 sha256을 가진다", () => {
     for (const tool of Object.values(TOOLS)) {
       for (const asset of Object.values(tool.assets)) {

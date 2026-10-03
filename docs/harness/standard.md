@@ -42,6 +42,7 @@
 | `fix`        | 포맷과 자동 수정 가능한 린트                                                 | 모두   |
 | `test`       | 테스트(E2E 제외)                                                             | 모두   |
 | `test:e2e`   | E2E                                                                          | 모두   |
+| `e2e:serve`  | E2E 백엔드를 띄우고 받은 명령을 실행한 뒤 내린다. 조합 프로젝트의 web E2E용  | 백엔드 |
 | `gen`        | 코드 생성(OpenAPI 내보내기, 클라이언트·타입, ORM 클라이언트)                 | 모두   |
 | `db:migrate` | 마이그레이션 적용                                                            | 백엔드 |
 | `db:reset`   | 로컬 DB를 마이그레이션과 시드 상태로 되돌린다                                | 백엔드 |
@@ -122,7 +123,7 @@
 ## 최종 안전망
 
 - lefthook: pre-commit에서 스테이징된 파일을 포맷·린트하고 Betterleaks로 비밀을 스캔한다. pre-push에서 `check`를 돌린다.
-- CI: `check`, `test:e2e`, Docker 이미지 빌드.
+- CI: `check`, `test:e2e`, Docker 이미지 빌드. 생성 프로젝트도 자기 CI에서 같은 검사를 돈다.
 
 ## 공유 자산
 
@@ -136,7 +137,7 @@
 
 1. `template.json`이 있고 형식이 맞다.
 2. 지침 파일 짝, CLAUDE.md 내용, 루트 AGENTS.md 길이.
-3. 템플릿 종류에 맞는 명령 어휘가 모두 있다.
+3. 템플릿 종류에 맞는 명령 어휘가 모두 있다. 백엔드는 `e2e:serve`도 요구한다.
 4. `.claude/settings.json`에 `PostToolUse`, `Stop`, `PreToolUse`, `SessionStart` hook이 exec form으로 있다.
-5. `.env.example`, `docs/recipes/*.md`, 골든 모듈 폴더가 있다.
+5. `.env.example`, `.github/workflows/ci.yml`, `.gitattributes`, `docs/recipes/*.md`, 골든 모듈 폴더가 있다.
 6. 공유 자산 사본이 원본과 같다.
