@@ -2,6 +2,8 @@
 
 모든 명령과 경로는 이 프로젝트 루트 기준이다. `contract/typespec/`와 `contract/mock/`는 이 프로젝트의 workspace다. 외부 저장소나 동기화 명령 없이 TypeSpec과 목 수기 소스를 고치고 `pnpm gen`한다.
 
+`gen.config.json`으로 백엔드 OpenAPI를 선택하면 web 타입은 백엔드 선언을 따르므로 백엔드를 고쳐 OpenAPI를 먼저 내보내며, 아래 TypeSpec·목 변경은 대역만 바꾼다.
+
 예시: 글 응답에 읽기 전용 `excerpt`를 더한다. 본문의 처음 120개 Unicode 코드 포인트이며 Markdown 원문 그대로다. 선택 필드로 더해 기존 응답·클라이언트와 호환되게 하고 생성·수정 입력에는 넣지 않는다.
 
 ## 파일 순서
