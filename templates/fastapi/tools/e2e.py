@@ -211,8 +211,10 @@ def run_with_server(
     prepare(settings)
     LOG.parent.mkdir(parents=True, exist_ok=True)
     commands = [api("--port", str(PORT)), WORKER, SCHEDULER]
+    log_opened = False
     try:
         with LOG.open("w", encoding="utf-8") as log:
+            log_opened = True
             group = ProcessGroup(commands, cwd=ROOT, out=log, env=overrides(settings))
             try:
                 group.start()
@@ -226,10 +228,18 @@ def run_with_server(
             finally:
                 group.stop()  # 시작 도중 실패해도 이미 띄운 프로세스를 내린다.
     except KeyboardInterrupt:
-        print(f"E2E를 멈췄다. 띄운 프로세스를 모두 내렸다. 프로세스 출력 {LOG}를 확인한다.")
+        where = f" 프로세스 출력 {LOG}를 확인한다." if log_opened else ""
+        print(f"E2E를 멈췄다. 띄운 프로세스를 모두 내렸다.{where}")
         return 130
+    except CommandStartError as error:
+        print(str(error))
+        return 1
     except E2EError as error:
         return show_failure(str(error), error.code)
+    except Exception, SystemExit:
+        if log_opened:
+            print(f"E2E 실행·정리 실패 — 프로세스 출력 {LOG}를 확인한다.")
+        raise
     return code
 
 
@@ -250,14 +260,11 @@ def serve_main(args: Sequence[str] | None = None) -> int:
     cwd = Path(os.environ.get("POE_PWD") or os.getcwd())
 
     def command(group: ProcessGroup) -> int:
-        try:
-            code = run_command(
-                options.command,
-                cwd=cwd,
-                env=child_environment(options.web_url, os.environ),
-            )
-        except CommandStartError as error:
-            raise E2EError(str(error)) from error
+        code = run_command(
+            options.command,
+            cwd=cwd,
+            env=child_environment(options.web_url, os.environ),
+        )
         exited = group.exited()
         if exited is not None:
             raise E2EError(
@@ -267,8 +274,4 @@ def serve_main(args: Sequence[str] | None = None) -> int:
             raise E2EError(f"E2E 명령이 실패했다(종료 코드 {code})", code)
         return 0
 
-    try:
-        return run_with_server(settings, command, storage=True)
-    except Exception, SystemExit:
-        print(f"E2E 준비·실행·정리 실패 — 프로세스 출력 {LOG}를 확인한다.")
-        raise
+    return run_with_server(settings, command, storage=True)

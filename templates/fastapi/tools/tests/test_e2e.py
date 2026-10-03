@@ -273,7 +273,12 @@ def test_missing_command_executable_stops_backend(
 ) -> None:
     assert e2e.serve_main(["--", "missing-command"]) == 1
     assert lifecycle[-1] == "stop"
-    assert "설치·실행 권한" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "설치·실행 권한" in output
+    assert len(output.splitlines()) == 1
+    assert output.count(" — ") == 1
+    assert "서버 로그" not in output
+    assert "processes.log" not in output
 
 
 def test_cleanup_error_keeps_its_message_and_points_to_log(
@@ -336,17 +341,21 @@ def test_partial_start_failure_stops_started_processes(
     assert lifecycle == ["preflight", "prepare", "stop"]
 
 
-def test_preflight_failure_never_starts_or_prepares(
+@pytest.mark.parametrize("stage", ["preflight", "prepare"])
+def test_preparation_failure_never_points_to_unopened_log(
     monkeypatch: pytest.MonkeyPatch,
     lifecycle: list[str],
+    stage: str,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     def preflight(settings: Settings) -> None:
         raise SystemExit("인프라가 꺼져 있다 — uv run poe setup을 실행한다")
 
-    monkeypatch.setattr(e2e, "preflight", preflight)
+    monkeypatch.setattr(e2e, stage, preflight)
     with pytest.raises(SystemExit, match="setup"):
         e2e.serve_main(["--", "node"])
-    assert lifecycle == []
+    assert lifecycle == ([] if stage == "preflight" else ["preflight"])
+    assert "processes.log" not in capsys.readouterr().out
 
 
 def test_command_falls_back_to_current_directory_without_poe_pwd(
