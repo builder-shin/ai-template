@@ -25,7 +25,7 @@ jobs:
       - name: Cache pinned tools
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: node_modules/.cache/ai-template-tools
+          path: node_modules/.cache/ai-template-tools # scripts/src/tools/cache.ts와 맞춘다.
           key: tools-${{ runner.os }}-${{ hashFiles('scripts/src/tools/manifest.ts') }}
       - run: pnpm check
       - name: Compare the FastAPI spec with the contract (implemented operations)
