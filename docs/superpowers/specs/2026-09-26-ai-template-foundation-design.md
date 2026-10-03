@@ -1,9 +1,9 @@
 # AI 바이브코딩 템플릿: 기반 설계
 
 - 작성일: 2026-09-26
-- 상태: 승인됨. 하위 프로젝트 0(기반), 1(FastAPI), 2(Next.js web) 구현 완료
+- 상태: 승인됨. 하위 프로젝트 0(기반), 1(FastAPI), 2(Next.js web) 구현 완료. 3(create CLI)는 설계와 로컬 검증 완료, Docker 기반 완료 조건은 PR CI 확인 대기
 - 범위: 하위 프로젝트 0(기반)의 설계와 네 템플릿 전체 로드맵
-- 다음 단계: 하위 프로젝트 3(create CLI)를 설계하고 구현한다. 앞선 설계는 [FastAPI 템플릿 설계](2026-09-26-fastapi-template-design.md), [Next.js web 템플릿 설계](2026-09-30-nextjs-web-design.md)를 참고한다.
+- 다음 단계: [create CLI 설계](2026-10-03-create-cli-design.md)의 CI 결과를 확인하고 구현 계획을 작성한다. 앞선 설계는 [FastAPI 템플릿 설계](2026-09-26-fastapi-template-design.md), [Next.js web 템플릿 설계](2026-09-30-nextjs-web-design.md)를 참고한다.
 
 ## 1. 목표
 
@@ -71,21 +71,25 @@ ai-template/
 
 ### 3.3 새 프로젝트 생성 (create CLI)
 
-- 단독: 템플릿 하나를 대상 폴더 루트에 복사하고 프로젝트 이름을 치환한다.
-- 조합: 아래 구조의 모노레포를 만든다.
+- 저장소를 clone한 뒤 `pnpm new`로 실행한다. 입력, 이름 치환, 잠금 파일과 하네스의 세부 규칙은 [create CLI 설계](2026-10-03-create-cli-design.md)를 따른다.
+- 단독: 템플릿 하나의 git 추적 파일을 대상 폴더 루트에 복사하고 프로젝트 이름을 치환한다.
+- 이번 조합은 FastAPI+web이다. admin과 NestJS 조합은 각 템플릿 사이클에서 더한다.
 
 ```
 my-project/
 ├── AGENTS.md, CLAUDE.md          # 조합 구조와 앱 사이의 흐름
-├── package.json, pnpm-workspace.yaml, turbo.json
-├── compose.yaml                  # 통합 로컬 인프라
+├── package.json, pnpm-workspace.yaml, pnpm-lock.yaml, turbo.json
+├── lefthook.yml, .betterleaks.toml, .mcp.json
+├── .claude/                      # 앱 hook 디스패처와 합친 권한
+├── .github/workflows/ci.yml
+├── scripts/                      # 조합 명령 실행기
 └── apps/
-    ├── api/                      # fastapi 또는 nestjs (FastAPI면 얇은 package.json 래퍼를 추가)
-    ├── web/
-    └── admin/
+    ├── api/                      # FastAPI, package.json 래퍼, compose.yaml
+    └── web/                      # Next.js BFF, TypeSpec·목 사본
 ```
 
-- 루트의 명령 어휘는 템플릿과 같다. Turborepo가 앱별 명령을 캐시하며 실행한다.
+- 루트 compose는 없다. 로컬 인프라는 `apps/api/compose.yaml`이 맡고 compose 프로젝트 이름은 생성한 프로젝트 이름이다. 포트는 템플릿의 고정값을 쓰므로 여러 프로젝트의 동시 실행은 지원하지 않는다.
+- 루트의 명령 어휘는 템플릿과 같다. Turborepo는 api·web만 골라 실행하고 `check`·`test`를 캐시한다. `gen`은 생성물 복원 범위를 검증하기 전까지 캐시하지 않는다.
 - 생성한 뒤에는 백엔드 코드가 진실의 원천이다(code-first). 백엔드 `gen`이 `openapi.json`을 내보내 커밋하고, 프론트 `gen`이 그 파일로 타입과 클라이언트를 다시 만든다. 템플릿 저장소의 계약은 템플릿끼리의 호환을 보장하는 용도로만 쓴다.
 
 ### 3.4 하위 프로젝트 로드맵
@@ -388,7 +392,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 
 ### 6.2 명령 어휘
 
-모든 템플릿과 조합 루트가 같은 이름을 쓴다. 단, `db:migrate`와 `db:reset`은 DB가 있는 백엔드 템플릿과 조합 루트에만 둔다. 프론트엔드 템플릿의 `setup`과 `dev`는 단독 모드에서 목 서버를 함께 다룬다.
+모든 템플릿과 조합 루트가 같은 이름을 쓴다. 단, `db:migrate`와 `db:reset`은 DB가 있는 백엔드 템플릿과 조합 루트에만 둔다. `e2e:serve`는 백엔드 명령이며 조합 루트의 web E2E 실행기가 부른다. 프론트엔드 템플릿의 `setup`과 `dev`는 단독 모드에서 목 서버를 함께 다룬다.
 
 | 명령 | 의미 |
 |---|---|
@@ -398,6 +402,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 | `fix` | 포맷과 자동 수정 가능한 린트 오류를 고친다 |
 | `test` | 테스트(E2E 제외) |
 | `test:e2e` | E2E 테스트 |
+| `e2e:serve` | E2E 백엔드를 띄우고 받은 명령을 실행한 뒤 내린다. 조합 프로젝트의 web E2E용 |
 | `gen` | 코드 생성(OpenAPI 내보내기, 클라이언트와 타입, ORM 클라이언트 등) |
 | `db:migrate` | 마이그레이션 적용 |
 | `db:reset` | 로컬 DB를 초기 상태(마이그레이션과 시드)로 되돌린다 |
@@ -463,23 +468,23 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 ### 6.8 최종 안전망
 
 - Git hooks(lefthook): pre-commit에서 스테이징된 파일의 포맷, 린트, 비밀 스캔을 하고, pre-push에서 `check`를 돌린다.
-- CI(§7.5)가 모든 AI 도구의 실수를 마지막으로 잡는다.
+- CI(§7.5)가 모든 AI 도구의 실수를 마지막으로 잡는다. 생성 프로젝트도 자기 CI에서 `check`, E2E와 이미지 빌드를 돈다.
 
 ### 6.9 하네스 표준 검사 (템플릿 저장소)
 
 `scripts/verify-templates`는 템플릿마다 다음을 검사한다.
 
 - AGENTS.md와 CLAUDE.md의 짝, CLAUDE.md의 내용, 루트 AGENTS.md의 길이
-- 템플릿 종류별 필수 명령(§6.2)이 모두 있는지
+- 템플릿 종류별 필수 명령(§6.2)이 모두 있는지. 백엔드는 `e2e:serve`도 요구한다
 - `.claude/settings.json`에 필수 hook 4종이 exec form으로 있는지
-- `.env.example`, `docs/recipes/`, 골든 모듈이 있는지
+- `.env.example`, `.github/workflows/ci.yml`, `.gitattributes`, `docs/recipes/`, 골든 모듈이 있는지
 - 공유 자산 사본이 원본과 같은지
 
 ## 7. 공통 인프라와 품질
 
 ### 7.1 로컬 인프라 (docker compose)
 
-백엔드 템플릿과 조합 루트에 둔다. 프론트엔드 템플릿은 단독 모드에서 목 서버만 쓰므로 compose가 필요 없다.
+백엔드 템플릿에 둔다. 조합에서는 api 앱의 compose를 그대로 쓰며 루트에는 두지 않는다(§3.3). 프론트엔드 템플릿은 단독 모드에서 목 서버만 쓰므로 compose가 필요 없다.
 
 | 서비스 | 용도 |
 |---|---|
@@ -521,6 +526,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 
 - 템플릿마다 `check`, `test:e2e`, Docker 이미지 빌드를 돌린다.
 - 템플릿 저장소는 여기에 계약 컴파일과 차이 검사, 룰셋 테스트, 적합성 테스트(3개 대상), 하네스 표준 검사, 사본 동기화 검사를 더한다.
+- 단독·조합 프로젝트에 CI 워크플로를 넣는다. 저장소의 `create-combo`와 `create-standalone` 작업은 실제 생성 결과의 setup·check와 조합 E2E·이미지 빌드를 확인한다. 워크플로 파일은 actionlint로 검사한다([create CLI 설계](2026-10-03-create-cli-design.md) §5.9·§7.3).
 
 ### 7.6 보안 기본값
 
@@ -587,9 +593,10 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 |---|---|
 | 1. FastAPI | 모두 정했다. 결정은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §2와 §7에 있다 |
 | 2. web | API 클라이언트 생성기(openapi-fetch 또는 orval)와 JSON:API 역직렬화 헬퍼 설계, 데이터 패칭 패턴(RSC와 Server Actions, 클라이언트 쿼리의 역할 분담), 폼 라이브러리(TanStack Form 또는 React Hook Form), shadcn 기반(Base UI 또는 Radix), Next.js 관리 블록 처리(수용 또는 `agentRules: false`), i18n URL 전략, 목 서버 구현 방식, 단독 프론트에서 계약을 확장하는 방법(TypeSpec 원본 동봉 여부), TS 7 병용, Node 26 전환, 템플릿 안 계약 사본(`openapi.yaml`)을 비밀 스캔에서 빼는 방법 |
-| 3. create CLI | 배포 방식(GitHub에서 npx 실행 또는 로컬 clone), 조합 루트의 세부 구성, 포트 배정 |
-| 4. admin | 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위 |
-| 5. NestJS | ORM 최종 확인(Prisma 7), JSON:API DTO와 swagger 스키마 이름을 맞추는 방법, 린터 구성(TS 6 제약 아래 ESLint 또는 oxlint) |
+| 3. create CLI | 모두 정했다. 로컬 clone 뒤 `pnpm new`, apps/api·apps/web 조합과 api 소유 인프라, 고정 포트다. 결정은 [create CLI 설계](2026-10-03-create-cli-design.md) §2·§5·§6에 있다 |
+| 4. admin | 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위, 조합에서 web과 admin이 계약·목 패키지(`@ai-template/*`)를 함께 쓰는 방식(같은 이름의 패키지 충돌), admin 포트 3001 |
+| 5. NestJS | ORM 최종 확인(Prisma 7), JSON:API DTO와 swagger 스키마 이름을 맞추는 방법, 린터 구성(TS 6 제약 아래 ESLint 또는 oxlint), `e2e:serve` 구현, 조합의 `--api nestjs` |
+| 나중 | 생성한 프로젝트 갱신, npm 배포, 포트 오프셋 |
 
 ## 11. 확인한 사실과 출처 (2026-09-26)
 
