@@ -1,6 +1,6 @@
 import { parseArguments, usage } from "./arguments.ts";
 import { createProject } from "./create.ts";
-import { CreateError } from "./errors.ts";
+import { CreateError, errorReason } from "./errors.ts";
 import { findRepository } from "./repository.ts";
 
 try {
@@ -23,7 +23,7 @@ try {
     error instanceof CreateError
       ? error
       : new CreateError(
-          "프로젝트 생성에 실패했다",
+          `프로젝트 생성에 실패했다(${errorReason(error)})`,
           "템플릿 파일 형식과 대상 폴더의 쓰기 권한을 확인한다.",
         );
   console.error(failure.message);

@@ -58,10 +58,14 @@ describe("CLI 입력", () => {
     "사용할 수 없는 이름은 거절한다: %j",
     (name) => {
       expect(() => parseArguments(["target", "--template", "nextjs", "--name", name], {})).toThrow(
-        CreateError,
+        expect.objectContaining({ name: "CreateError", exitCode: 2 }),
       );
     },
   );
+
+  it.each(["--unknown", "--template"])("인자 오류에 문제 옵션을 남긴다: %s", (option) => {
+    expect(() => parseArguments(["my-app", option], {})).toThrow(option);
+  });
 
   it("50자 이름은 사용할 수 있다", () => {
     expect(

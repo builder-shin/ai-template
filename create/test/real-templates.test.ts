@@ -6,11 +6,24 @@ import { pathToFileURL } from "node:url";
 import { beforeEach, expect, it } from "vitest";
 import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
 import { createProject } from "../src/create.ts";
-import { git, temporaryFolder } from "./helpers.ts";
+import { git, temporaryFolder, write } from "./helpers.ts";
 
 const root = resolve(import.meta.dirname, "../..");
 const require = createRequire(import.meta.url);
 let source: string;
+
+function runCli(args: string[], cwd: string, env: NodeJS.ProcessEnv = process.env) {
+  return spawnSync(
+    process.execPath,
+    [
+      "--import",
+      pathToFileURL(require.resolve("tsx")).href,
+      join(source, "create/src/cli.ts"),
+      ...args,
+    ],
+    { cwd, env: gitEnvironment(env), encoding: "utf8" },
+  );
+}
 
 beforeEach(() => {
   // 수정 중인 실제 파일을 독립 git 스냅샷으로 검증한다. CLI의 변경 거절은 유지한다.
@@ -85,17 +98,7 @@ it("두 실제 템플릿의 파일 목록·이름·나머지 바이트와 git �
 
 it("실제 CLI의 도움말·사용법 오류·실행 오류는 서로 다른 종료 코드다", () => {
   const parent = temporaryFolder();
-  const run = (args: string[], env: NodeJS.ProcessEnv = process.env) =>
-    spawnSync(
-      process.execPath,
-      [
-        "--import",
-        pathToFileURL(require.resolve("tsx")).href,
-        join(source, "create/src/cli.ts"),
-        ...args,
-      ],
-      { cwd: parent, env: gitEnvironment(env), encoding: "utf8" },
-    );
+  const run = (args: string[], env: NodeJS.ProcessEnv = process.env) => runCli(args, parent, env);
   const help = run(["--help"], { ...process.env, PATH: "" });
   expect(help.status, help.stderr).toBe(0);
   expect(help.stdout).toContain("사용법");
@@ -113,4 +116,48 @@ it("실제 CLI의 도움말·사용법 오류·실행 오류는 서로 다른 �
   expect(success.stdout).toContain(join(parent, "aitpl-cli"));
   expect(success.stdout).toContain("pnpm setup");
   expect(readdirSync(join(parent, "aitpl-cli"))).not.toContain(".git");
+});
+
+it("CLI의 일반 시스템 오류는 코드와 경로를 한 줄로 알린다", () => {
+  const parent = temporaryFolder();
+  write(parent, "blocked", "keep\n");
+  const target = join(parent, "blocked", "aitpl-app");
+  const result = runCli([target, "--template", "nextjs"], parent);
+  expect(result.status).toBe(1);
+  expect(result.stderr).toMatch(/EEXIST|ENOTDIR/);
+  expect(result.stderr).toContain(join(parent, "blocked"));
+  expect(result.stderr.trim()).toMatch(/^pnpm new: .+ — .+$/);
+  expect(readFileSync(join(parent, "blocked"), "utf8")).toBe("keep\n");
+});
+
+it("CLI의 일반 형식 오류는 실제 오류 이름과 원인을 알린다", () => {
+  write(source, "templates/nextjs/package.json", "invalid json\n");
+  git(source, "add", "templates/nextjs/package.json");
+  git(source, "-c", "commit.gpgsign=false", "commit", "-m", "chore: invalid JSON fixture");
+  const parent = temporaryFolder();
+  const result = runCli([join(parent, "aitpl-app"), "--template", "nextjs"], parent);
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("SyntaxError");
+  expect(result.stderr).toContain("JSON");
+  expect(result.stderr.trim()).toMatch(/^pnpm new: .+ — .+$/);
+  expect(readdirSync(parent)).toEqual([]);
+});
+
+it("CLI는 git 신원이 없으면 init만 남기고 설정과 커밋 방법을 안내한다", () => {
+  const parent = temporaryFolder();
+  const config = join(parent, "empty-gitconfig");
+  write(parent, "empty-gitconfig", "");
+  const target = join(parent, "aitpl-app");
+  const result = runCli([target, "--template", "nextjs"], parent, {
+    ...process.env,
+    GIT_CONFIG_GLOBAL: config,
+    EMAIL: "implicit@example.com",
+  });
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout).toContain("git 사용자 정보가 없다");
+  expect(result.stdout).toContain("git config user.name");
+  expect(result.stdout).toContain("git config user.email");
+  expect(result.stdout).toContain("git add .과 git commit");
+  expect(readdirSync(target)).toContain(".git");
+  expect(git(target, "status", "--porcelain")).toContain("?? README.md");
 });

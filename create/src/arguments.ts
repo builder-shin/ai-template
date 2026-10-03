@@ -1,6 +1,6 @@
 import { basename, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { CreateError } from "./errors.ts";
+import { CreateError, errorReason } from "./errors.ts";
 
 export type Template = "fastapi" | "nextjs";
 
@@ -39,8 +39,12 @@ export function parseArguments(
         web: { type: "boolean" },
       },
     });
-  } catch {
-    throw new CreateError("인자가 올바르지 않다", "pnpm new --help로 사용법을 확인한다.", 2);
+  } catch (error) {
+    throw new CreateError(
+      `인자가 올바르지 않다(${errorReason(error)})`,
+      "pnpm new --help로 사용법을 확인한다.",
+      2,
+    );
   }
   const seen = new Set<string>();
   for (const token of parsed.tokens) {

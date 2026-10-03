@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
-import { CreateError } from "./errors.ts";
+import { CreateError, errorReason } from "./errors.ts";
 
 export function runGit(cwd: string, args: string[]): string {
   const result = spawnSync("git", args, {
@@ -14,8 +14,14 @@ export function runGit(cwd: string, args: string[]): string {
     throw new CreateError("git을 찾을 수 없다", "git을 설치하고 PATH에 추가한다.");
   }
   if (result.error || result.status !== 0) {
+    const firstLine = result.stderr.trim().split(/\r?\n/)[0] ?? "";
+    const reason = result.error
+      ? errorReason(result.error)
+      : firstLine.length > 0
+        ? errorReason(firstLine)
+        : `종료 코드 ${String(result.status)}`;
     throw new CreateError(
-      `git ${args[0] ?? ""} 실행에 실패했다`,
+      `git ${args[0] ?? ""} 실행에 실패했다(${reason})`,
       "git 저장소·사용자 설정·서명 설정과 쓰기 권한을 확인한다.",
     );
   }

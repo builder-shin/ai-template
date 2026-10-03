@@ -11,6 +11,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { createProject } from "../src/create.ts";
 import { findRepository, templateFiles } from "../src/repository.ts";
+import { runGit } from "../src/git.ts";
 import { fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
 
 function request(target: string, template: "nextjs" | "fastapi" = "nextjs", initialize = true) {
@@ -192,5 +193,12 @@ describe("단독 프로젝트", () => {
     const parent = temporaryFolder();
     expect(() => createProject(request(join(parent, "aitpl-app")), root)).toThrow(/git.*설치/);
     expect(readdirSync(parent)).toEqual([]);
+  });
+
+  it("git 실패 메시지에 stderr의 첫 줄을 남긴다", () => {
+    const root = fixtureRepository();
+    expect(() => runGit(root, ["cat-file", "-p", "aitpl-missing-object"])).toThrow(
+      /pnpm new: git cat-file.*aitpl-missing-object.* — .+/,
+    );
   });
 });
