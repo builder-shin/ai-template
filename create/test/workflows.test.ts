@@ -4,7 +4,8 @@ import { resolve } from "node:path";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { parse } from "yaml";
-import { temporaryFolder } from "./helpers.ts";
+import { fixtureRepository, temporaryFolder, write } from "./helpers.ts";
+import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
 
 interface Workflow {
   jobs: Record<string, { steps: { name?: string; run?: string; env?: Record<string, string> }[] }>;
@@ -36,6 +37,33 @@ it("조합 workflow의 run 명령은 create-combo가 같은 순서로 검증한�
 });
 
 const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
+it.skipIf(!existsSync(bash))("작업 트리가 바뀌면 CI는 해결 방법을 stderr로 알리고 실패한다", () => {
+  const step = workflow(".github/workflows/ci.yml").jobs["create-combo"]?.steps.find(
+    (step) => step.name === "생성 프로젝트의 작업 트리 확인",
+  );
+  const script = step?.run;
+  if (!script) throw new Error("작업 트리 확인 단계가 없다");
+  const repository = fixtureRepository();
+  const run = () =>
+    spawnSync(bash, ["-e", "-c", script], {
+      cwd: repository,
+      env: gitEnvironment(),
+      encoding: "utf8",
+    });
+  // fixture의 무추적 파일도 오염으로 검출한다.
+  const dirty = run();
+  expect(dirty.status).toBe(1);
+  expect(dirty.stdout).toContain("templates/nextjs/untracked.txt");
+  expect(dirty.stderr.trim()).toBe(
+    "생성 프로젝트의 작업 트리가 바뀌었다 — 도구가 쓴 파일을 끄거나 ignore에 더한다.",
+  );
+  write(repository, ".git/info/exclude", "templates/nextjs/untracked.txt\n");
+  const clean = run();
+  expect(clean.status).toBe(0);
+  expect(clean.stdout).toBe("");
+  expect(clean.stderr).toBe("");
+});
+
 it.skipIf(!existsSync(bash))("CI는 기존 컨테이너를 발견하면 trap·실행·삭제 전에 거절한다", () => {
   const step = workflow(".github/workflows/ci.yml").jobs["create-combo"]?.steps.find(
     (step) => step.name === "조합 web 컨테이너 시작 확인",

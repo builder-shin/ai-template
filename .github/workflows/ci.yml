@@ -171,6 +171,7 @@ jobs:
         run: |
           status=$(git status --porcelain)
           if [ -n "$status" ]; then
+            echo "생성 프로젝트의 작업 트리가 바뀌었다 — 도구가 쓴 파일을 끄거나 ignore에 더한다." >&2
             printf '%s\n' "$status"
             exit 1
           fi
