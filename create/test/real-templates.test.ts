@@ -134,10 +134,10 @@ it.each([
   ["fastapi 단독 폴더", "fastapi", "--template", "fastapi"],
   ["조합 --name", "aitpl-reserved", "--api", "fastapi", "--web", "--name", "fastapi"],
   ["조합 폴더", "fastapi", "--api", "fastapi", "--web"],
-])("실제 CLI는 FastAPI 예약 이름을 생성 전에 거절한다: %s", (_name, ...args) => {
+])("실제 CLI는 FastAPI 예약 이름을 생성 전에 거절한다: %s", (_name, folder, ...args) => {
   const parent = temporaryFolder();
-  const target = join(parent, args[0]);
-  const result = runCli([target, ...args.slice(1)], parent);
+  const target = join(parent, folder);
+  const result = runCli([target, ...args], parent);
   expect(result.status, result.stderr).toBe(2);
   expect(result.stderr).toMatch(/pnpm new: .*fastapi.* — .*--name/);
   expect(existsSync(target)).toBe(false);
