@@ -177,7 +177,9 @@ it("CLI는 git 신원이 없으면 init만 남기고 설정과 커밋 방법을 
   expect(result.stdout).toContain("git 사용자 정보가 없다");
   expect(result.stdout).toContain("git config user.name");
   expect(result.stdout).toContain("git config user.email");
-  expect(result.stdout).toContain("git add .과 git commit");
+  const message = `chore: create aitpl-app from ai-template ${git(source, "rev-parse", "--short", "HEAD").trim()}`;
+  expect(result.stdout).toContain(`git commit -m "${message}"`);
+  expect(result.stdout).not.toContain("git add");
   expect(readdirSync(target)).toContain(".git");
-  expect(git(target, "status", "--porcelain")).toContain("?? README.md");
+  expect(git(target, "status", "--porcelain")).toContain("A  README.md");
 });

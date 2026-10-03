@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
   existsSync,
   readFileSync,
@@ -32,6 +33,8 @@ describe("단독 프로젝트", () => {
       }
       const target = join(temporaryFolder(), "aitpl-app");
       const result = createProject(request(target, template), root);
+      if (template === "nextjs")
+        expect(git(target, "ls-files", "-s", "bin/start.sh")).toMatch(/^100755 /);
       expect(result.committed).toBe(true);
       expect(git(target, "status", "--porcelain")).toBe("");
       expect(git(target, "branch", "--show-current").trim()).toBe("main");
@@ -132,7 +135,7 @@ describe("단독 프로젝트", () => {
     const target = join(temporaryFolder(), "aitpl-app");
     expect(createProject(request(target), root).committed).toBe(false);
     expect(existsSync(join(target, ".git"))).toBe(true);
-    expect(git(target, "status", "--porcelain")).toContain("?? README.md");
+    expect(git(target, "status", "--porcelain")).toContain("A  README.md");
   });
 
   it("hook의 git 환경이 원본과 생성 대상의 저장소를 바꾸지 않는다", () => {
@@ -173,6 +176,24 @@ describe("단독 프로젝트", () => {
       expect(findRepository(location)).toBe(root);
     },
   );
+
+  it.skipIf(process.platform !== "win32")("Windows 8.3 CLI 경로도 저장소를 찾는다", ({ skip }) => {
+    const root = fixtureRepository();
+    const short = execFileSync("cmd", ["/d", "/c", `for %I in ("${root}") do @echo %~sI`], {
+      encoding: "utf8",
+    }).trim();
+    if (!short.includes("~")) skip();
+    expect(findRepository(pathToFileURL(join(short, "create/src/cli.ts")).href)).toBe(root);
+  });
+
+  it("같은 저장소의 다른 worktree 안에도 만들지 않는다", () => {
+    const root = fixtureRepository();
+    const worktree = join(temporaryFolder(), "linked");
+    git(root, "worktree", "add", "--detach", worktree);
+    const target = join(worktree, "aitpl-nested");
+    expect(() => createProject(request(target), root)).toThrow(/저장소.* — .*밖/);
+    expect(existsSync(target)).toBe(false);
+  });
 
   it.each(["unstaged", "staged", "deleted"])("추적 파일 변경을 거절한다: %s", (change) => {
     const root = fixtureRepository();
@@ -238,15 +259,19 @@ describe("단독 프로젝트", () => {
 
   it("서명 설정을 따르고 커밋 실패 시 생성 대상을 정리한다", () => {
     const root = fixtureRepository();
-    const config = process.env.GIT_CONFIG_GLOBAL;
-    if (!config) throw new Error("fixture 설정이 없다");
+    const inherited = process.env.GIT_CONFIG_GLOBAL;
+    if (!inherited) throw new Error("fixture 설정이 없다");
+    const before = readFileSync(inherited);
+    const config = join(temporaryFolder(), "signing-config");
     writeFileSync(
       config,
       "[user]\nname = Fixture\nemail = fixture@example.com\n[commit]\ngpgsign = true\n[gpg]\nprogram = aitpl-missing-signing-program\n",
     );
+    vi.stubEnv("GIT_CONFIG_GLOBAL", config);
     const parent = temporaryFolder();
     expect(() => createProject(request(join(parent, "aitpl-app")), root)).toThrow(/git/);
     expect(readdirSync(parent)).toEqual([]);
+    expect(readFileSync(inherited)).toEqual(before);
   });
 
   it("git이 없으면 대상도 만들지 않는다", () => {

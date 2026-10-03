@@ -14,14 +14,14 @@ import {
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { CreateOptions } from "./arguments.ts";
 import { CreateError, errorReason } from "./errors.ts";
-import { initializeGit, runGit } from "./git.ts";
+import { initialCommitMessage, initializeGit, runGit } from "./git.ts";
 import { templateFiles } from "./repository.ts";
 import { renameStandalone } from "./standalone.ts";
 import { writeCombo, type ComboTools } from "./combo.ts";
 import { runPnpm } from "./pnpm.ts";
 
 function canonicalPath(path: string): string {
-  if (existsSync(path)) return realpathSync(path);
+  if (existsSync(path)) return realpathSync.native(path);
   const parent = dirname(path);
   if (parent === path)
     throw new CreateError(
@@ -41,8 +41,13 @@ function inside(path: string, repository: string): boolean {
   );
 }
 
-function validateTarget(target: string, repository: string): void {
-  if (inside(resolve(target), repository) || inside(canonicalPath(target), repository)) {
+function validateTarget(target: string, repositories: readonly string[]): void {
+  if (
+    repositories.some(
+      (repository) =>
+        inside(resolve(target), repository) || inside(canonicalPath(target), repository),
+    )
+  ) {
     throw new CreateError("대상 폴더가 템플릿 저장소 안에 있다", "저장소 밖의 폴더를 지정한다.");
   }
   let info;
@@ -63,6 +68,7 @@ function validateTarget(target: string, repository: string): void {
 export interface CreateResult {
   readonly target: string;
   readonly committed: boolean;
+  readonly commitMessage: string;
 }
 
 export function createProject(
@@ -70,8 +76,12 @@ export function createProject(
   repository: string,
   tools: ComboTools = {},
 ): CreateResult {
-  const root = realpathSync(repository);
-  validateTarget(options.target, root);
+  const root = realpathSync.native(repository);
+  const worktrees = runGit(root, ["worktree", "list", "--porcelain"])
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith("worktree "))
+    .map((line) => canonicalPath(line.slice("worktree ".length)));
+  validateTarget(options.target, worktrees);
   const templates =
     options.template === "combo" ? (["fastapi", "nextjs"] as const) : [options.template];
   const plans = templates.map((template) => ({ template, files: templateFiles(root, template) }));
@@ -82,6 +92,7 @@ export function createProject(
   const firstCreated = mkdirSync(parent, { recursive: true });
   let staging: string | undefined;
   const copiedFiles: string[] = [];
+  const executableFiles: string[] = [];
   let moved = false;
   const movedEntries: string[] = [];
   try {
@@ -96,6 +107,8 @@ export function createProject(
         mkdirSync(dirname(destination), { recursive: true });
         copyFileSync(join(root, "templates", template, file.path), destination);
         copiedFiles.push(relative(staging, destination).split(sep).join("/"));
+        if (file.executable)
+          executableFiles.push(relative(staging, destination).split(sep).join("/"));
         if (process.platform !== "win32") chmodSync(destination, file.executable ? 0o755 : 0o644);
       }
     if (options.template === "combo")
@@ -108,7 +121,7 @@ export function createProject(
       );
     else renameStandalone(staging, options.template, options.name);
     // 생성 중 다른 프로세스가 대상을 채웠다면 덮어쓰지 않는다.
-    validateTarget(options.target, root);
+    validateTarget(options.target, worktrees);
     // Node에는 umask를 읽는 대체 API가 없다. 새 대상도 mkdir의 기본 권한을 따른다.
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     if (process.platform !== "win32") chmodSync(staging, 0o777 & ~process.umask());
@@ -131,9 +144,14 @@ export function createProject(
           options.name,
           sha,
           copiedFiles.filter((file) => existsSync(join(options.target, file))),
+          executableFiles.filter((file) => existsSync(join(options.target, file))),
         )
       : false;
-    return { target: options.target, committed };
+    return {
+      target: options.target,
+      committed,
+      commitMessage: initialCommitMessage(options.name, sha),
+    };
   } catch (error) {
     const failure =
       process.platform === "win32" &&

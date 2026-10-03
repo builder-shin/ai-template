@@ -6,8 +6,8 @@ import { CreateError } from "./errors.ts";
 import { runGit } from "./git.ts";
 
 export function findRepository(cliLocation: string = import.meta.url): string {
-  const expected = realpathSync(resolve(dirname(fileURLToPath(cliLocation)), "../.."));
-  const actual = realpathSync(runGit(expected, ["rev-parse", "--show-toplevel"]).trim());
+  const expected = realpathSync.native(resolve(dirname(fileURLToPath(cliLocation)), "../.."));
+  const actual = realpathSync.native(runGit(expected, ["rev-parse", "--show-toplevel"]).trim());
   if (relative(actual, expected) !== "") {
     throw new CreateError(
       "CLI의 저장소 배치가 올바르지 않다",

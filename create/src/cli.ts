@@ -12,7 +12,7 @@ try {
     console.log(`생성 완료: ${result.target}`);
     if (options.git && !result.committed) {
       console.log(
-        "git 사용자 정보가 없다 — git config user.name과 git config user.email을 설정한 뒤 git add .과 git commit을 실행한다.",
+        `git 사용자 정보가 없다 — git config user.name과 git config user.email을 설정한 뒤 git commit -m "${result.commitMessage}"를 실행한다.`,
       );
     }
     console.log(`다음 명령: cd "${result.target}"`);
