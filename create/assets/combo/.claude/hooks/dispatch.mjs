@@ -8,6 +8,7 @@ const apps = ["api", "web"];
 const label = (app, text) => `[${app}]\n${text}`;
 const details = (result) =>
   [result.stdout, result.stderr, result.error?.message].filter(Boolean).join("\n").trim();
+const withHint = (message, hint) => (message.includes("—") ? message : `${message} — ${hint}`);
 const context = (event, text) => ({
   hookSpecificOutput: { hookEventName: event, additionalContext: text },
 });
@@ -62,6 +63,7 @@ function appHooks(root, app, event, input, raw, execute) {
       const expand = (value) => value.replaceAll("${CLAUDE_PROJECT_DIR}", cwd);
       results.push({
         app,
+        command: expand(hook.command),
         ...execute(expand(hook.command), hook.args.map(expand), {
           cwd,
           env,
@@ -81,6 +83,20 @@ function merge(event, results) {
   const errors = [];
   const decisions = [];
   for (const result of results) {
+    if (result.error) {
+      errors.push(
+        label(
+          result.app,
+          withHint(
+            details(result),
+            result.error.code === "ETIMEDOUT"
+              ? "앱 hook의 실행 시간과 timeout 설정을 확인하고 다시 실행한다."
+              : `${result.command ?? "앱 hook 도구"}를 설치하고 PATH에 추가한 뒤 pnpm setup을 실행한다.`,
+          ),
+        ),
+      );
+      continue;
+    }
     let json;
     const stdout = String(result.stdout ?? "").trim();
     if (stdout.startsWith("{") && stdout.endsWith("}")) {
@@ -93,13 +109,13 @@ function merge(event, results) {
     const specific = json?.hookSpecificOutput;
     const denied = specific?.permissionDecision === "deny" || json?.decision === "block";
     const reason = specific?.permissionDecisionReason ?? json?.reason;
-    if (exitCode(result) === 2 || denied || result.error) {
+    const blocked = exitCode(result) === 2 || denied;
+    if (blocked) {
       blocks.push(
         label(
           result.app,
           (denied && reason) ||
             result.stderr?.trim() ||
-            result.error?.message ||
             "hook이 실패했다 — 앱의 hook 출력을 확인한다.",
         ),
       );
@@ -114,7 +130,7 @@ function merge(event, results) {
     }
     if (specific?.additionalContext) contexts.push(label(result.app, specific.additionalContext));
     else if (!json && stdout && event === "SessionStart") contexts.push(label(result.app, stdout));
-    if (exitCode(result) !== 0 && exitCode(result) !== 2 && !json)
+    if (!blocked && exitCode(result) !== 0 && !json)
       errors.push(label(result.app, details(result)));
   }
   if (event === "SessionStart")
@@ -135,7 +151,7 @@ function merge(event, results) {
               ? {
                   permissionDecision: decision,
                   permissionDecisionReason: blocks.length
-                    ? blocks.join("\n\n")
+                    ? [...blocks, ...errors].join("\n\n")
                     : decisions
                         .filter((item) => item.decision === decision)
                         .map((item) => item.reason)
@@ -145,6 +161,7 @@ function merge(event, results) {
             ...(contexts.length ? { additionalContext: contexts.join("\n\n") } : {}),
           },
         },
+        ...(!blocks.length && errors.length ? { stderr: errors.join("\n\n") } : {}),
       };
   }
   if (blocks.length)
@@ -152,11 +169,16 @@ function merge(event, results) {
       code: 0,
       json: {
         decision: "block",
-        reason: blocks.join("\n\n"),
+        reason: [...blocks, ...errors].join("\n\n"),
         ...(contexts.length ? context(event, contexts.join("\n\n")) : {}),
       },
     };
-  if (contexts.length) return { code: 0, json: context(event, contexts.join("\n\n")) };
+  if (contexts.length)
+    return {
+      code: 0,
+      json: context(event, contexts.join("\n\n")),
+      ...(errors.length ? { stderr: errors.join("\n\n") } : {}),
+    };
   return { code: errors.length ? 1 : 0, stderr: errors.join("\n\n") || undefined };
 }
 
@@ -200,14 +222,18 @@ export function dispatch(
         results.push({
           app,
           status: 2,
-          stderr: `${error.message} — 앱 hook 설정과 도구 설치를 확인한다.`,
+          stderr: withHint(error.message, "앱 hook 설정과 도구 설치를 확인한다."),
         });
       }
     }
     return merge(event, results);
   } catch (error) {
     return merge(event, [
-      { app: "root", status: 2, stderr: `${error.message} — hook 입력과 git 상태를 확인한다.` },
+      {
+        app: "root",
+        status: 2,
+        stderr: withHint(error.message, "hook 입력과 git 상태를 확인한다."),
+      },
     ]);
   }
 }
