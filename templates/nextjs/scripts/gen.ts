@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateWeb, staleFiles } from "./generate";
+import { generateFiles, staleFiles } from "./generate";
 import { pnpm } from "./process.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -31,11 +31,7 @@ try {
   const openapi = readFileSync(join(temporary, "openapi.yaml"), "utf8");
   const mockPath = join(temporary, "mock.ts");
   run(["exec", "openapi-typescript", join(temporary, "openapi.yaml"), "-o", mockPath], root);
-  const expected = {
-    "contract/openapi.yaml": openapi,
-    "contract/mock/src/generated/api.ts": readFileSync(mockPath, "utf8"),
-    ...(await generateWeb(openapi)),
-  };
+  const expected = await generateFiles(root, openapi, readFileSync(mockPath, "utf8"));
   if (check) {
     const actual = Object.fromEntries(
       Object.keys(expected).map((path) => [
