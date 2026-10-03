@@ -7,9 +7,10 @@
   DB는 이 PC에 있고 이름이 _test나 _e2e로 끝나는 DB뿐이다(is_disposable). 함수가 스스로 본다.
 """
 
+import json
 import subprocess
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 from urllib.parse import urlsplit, urlunsplit
 
 import psycopg
@@ -83,6 +84,61 @@ def database_names(settings: Settings) -> list[str]:
 def is_local(database_url: str) -> bool:
     """DB가 이 PC(localhost, 127.0.0.1, ::1)에 있는가."""
     return make_url(database_url).host in LOCAL_HOSTS
+
+
+def require_project_database(settings: Settings) -> None:
+    """로컬 개발 DB 명령은 이 프로젝트의 실행 중인 PostgreSQL 포트만 쓴다."""
+    url = make_url(settings.database_url.get_secret_value())
+    if url.host not in LOCAL_HOSTS:
+        return
+    unavailable = (
+        "이 프로젝트의 PostgreSQL을 확인하지 못했다 — Docker를 켜고 uv run poe setup을 실행한다."
+    )
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "ps", "--status", "running", "--format", "json", "postgres"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise SystemExit(unavailable) from error
+    if result.returncode != 0:
+        raise SystemExit(unavailable)
+    try:
+        output = result.stdout.strip()
+        # Compose 버전에 따라 배열 하나 또는 한 줄에 객체 하나를 출력한다.
+        rows = cast(
+            "list[dict[str, object]]",
+            json.loads(output)
+            if output.startswith("[")
+            else [json.loads(line) for line in output.splitlines() if line.strip()],
+        )
+        running = [
+            row
+            for row in rows
+            if row.get("Service") == "postgres" and row.get("State") == "running"
+        ]
+        published = any(
+            publisher.get("PublishedPort") == (url.port or 5432)
+            for row in running
+            for publisher in cast("list[dict[str, object]]", row.get("Publishers") or [])
+        )
+    except (ValueError, TypeError, AttributeError) as error:
+        raise SystemExit(unavailable) from error
+    if not running:
+        raise SystemExit(
+            "이 프로젝트의 postgres가 실행 중이 아니다. 포트가 다른 프로젝트의 DB일 수 있다 — "
+            "uv run poe setup을 실행한다."
+        )
+    if not published:
+        raise SystemExit(
+            "DATABASE_URL의 포트가 이 프로젝트의 postgres 공개 포트와 다르다 — "
+            ".env의 DATABASE_URL을 compose.yaml에 맞춘다."
+        )
 
 
 def is_disposable(database_url: str) -> bool:

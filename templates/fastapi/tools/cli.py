@@ -148,6 +148,9 @@ def gen_module(name: str, singular: str | None = None) -> None:
 
 def db_migrate() -> None:
     """개발 DB에 마이그레이션을 적용한다(alembic upgrade head)."""
+    from tools import infra
+
+    infra.require_project_database(load_settings())
     raise SystemExit(_python("alembic", "upgrade", "head"))
 
 
@@ -156,6 +159,7 @@ def db_reset() -> None:
     from tools import infra
 
     settings = load_settings()
+    infra.require_project_database(settings)
     infra.reset_database(settings)
     print("개발 DB를 지우고 다시 만들었다.")
     _migrate_and_seed()
@@ -163,4 +167,7 @@ def db_reset() -> None:
 
 def db_revision(message: str) -> None:
     """모델과 개발 DB를 비교해 마이그레이션 초안을 만든다(alembic revision --autogenerate)."""
+    from tools import infra
+
+    infra.require_project_database(load_settings())
     raise SystemExit(_python("alembic", "revision", "--autogenerate", "-m", message))

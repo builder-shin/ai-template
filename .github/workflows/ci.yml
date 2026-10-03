@@ -156,6 +156,8 @@ jobs:
           working-directory: ${{ runner.temp }}/aitpl-combo/apps/api
       - run: pnpm setup
         working-directory: ${{ runner.temp }}/aitpl-combo
+      - run: pnpm db:migrate
+        working-directory: ${{ runner.temp }}/aitpl-combo
       - run: pnpm --filter web exec playwright install-deps chromium
         working-directory: ${{ runner.temp }}/aitpl-combo
       - run: pnpm check
