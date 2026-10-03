@@ -1,6 +1,20 @@
 {
   "assets": [
     {
+      "source": ".gitattributes",
+      "targets": [
+        { "template": "fastapi", "path": ".gitattributes" },
+        { "template": "nextjs", "path": ".gitattributes" }
+      ]
+    },
+    {
+      "source": ".editorconfig",
+      "targets": [
+        { "template": "fastapi", "path": ".editorconfig" },
+        { "template": "nextjs", "path": ".editorconfig" }
+      ]
+    },
+    {
       "source": "contract/api-style/dist/lint.mjs",
       "targets": [{ "template": "fastapi", "path": "api-style/lint.mjs" }]
     },

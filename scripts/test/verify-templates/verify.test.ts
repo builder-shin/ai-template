@@ -62,6 +62,8 @@ function makeRepo(): string {
   });
   writeHooks(repo);
   write(repo, `${WEB}/.env.example`, "API_BASE_URL=\n");
+  write(repo, `${WEB}/.gitattributes`, "* text=auto eol=lf\n");
+  write(repo, `${WEB}/.github/workflows/ci.yml`, "name: ci\n");
   write(repo, `${WEB}/docs/recipes/add-feature.md`, "# 기능 추가\n");
   write(repo, `${WEB}/src/features/posts/index.ts`, "export {};\n");
   write(repo, "contract/openapi.yaml", "openapi: 3.1.0\n");
@@ -90,6 +92,59 @@ describe("verifyTemplate", () => {
     const problems = verify(repo);
     expect(problems).toContain('명령 "db:migrate"가 없다(docs/harness/standard.md의 명령 어휘).');
     expect(problems).toContain('명령 "db:reset"가 없다(docs/harness/standard.md의 명령 어휘).');
+    expect(problems).toContain('명령 "e2e:serve"가 없다(docs/harness/standard.md의 명령 어휘).');
+  });
+
+  it.each(["pnpm", "uv"])("%s 백엔드는 e2e:serve가 있어야 통과한다", (runner) => {
+    const repo = makeRepo();
+    try {
+      writeJson(repo, `${WEB}/template.json`, manifest({ kind: "backend", runner }));
+      const commands = [...COMMANDS, "db:migrate", "db:reset"];
+      const declare = (names: string[]) => {
+        if (runner === "pnpm") {
+          writeJson(repo, `${WEB}/package.json`, {
+            scripts: Object.fromEntries(names.map((name) => [name, "echo"])),
+          });
+        } else {
+          write(
+            repo,
+            `${WEB}/pyproject.toml`,
+            `[tool.poe.tasks]\n${names.map((name) => `"${name}" = "python -V"`).join("\n")}\n`,
+          );
+        }
+      };
+      declare(commands);
+      expect(verify(repo)).toEqual([
+        '명령 "e2e:serve"가 없다(docs/harness/standard.md의 명령 어휘).',
+      ]);
+      declare([...commands, "e2e:serve"]);
+      expect(verify(repo)).toEqual([]);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it.each(["frontend", "backend"])("%s의 CI와 줄바꿈 설정이 없거나 폴더면 거부한다", (kind) => {
+    const repo = makeRepo();
+    try {
+      writeJson(repo, `${WEB}/template.json`, manifest({ kind }));
+      writeJson(repo, `${WEB}/package.json`, {
+        scripts: Object.fromEntries(
+          [...COMMANDS, "db:migrate", "db:reset", "e2e:serve"].map((name) => [name, "echo"]),
+        ),
+      });
+      for (const file of [".github/workflows/ci.yml", ".gitattributes"]) {
+        rmSync(join(repo, WEB, file));
+        expect(verify(repo)).toEqual([`${file}이 없다 — 템플릿 루트에 파일을 만든다.`]);
+        mkdirSync(join(repo, WEB, file));
+        expect(verify(repo)).toEqual([`${file}이 없다 — 템플릿 루트에 파일을 만든다.`]);
+        rmSync(join(repo, WEB, file), { recursive: true });
+        write(repo, `${WEB}/${file}`, "# fixture\n");
+        expect(verify(repo)).toEqual([]);
+      }
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
   });
 
   it("uv runner는 pyproject.toml의 [tool.poe.tasks]로 명령 어휘를 검사한다", () => {
