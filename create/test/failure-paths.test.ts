@@ -8,13 +8,19 @@ import { fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
 
 vi.mock("node:fs", async (original) => {
   const actual = await original<typeof fs>();
-  return { ...actual, rmSync: vi.fn(actual.rmSync), renameSync: vi.fn(actual.renameSync) };
+  return {
+    ...actual,
+    rmSync: vi.fn(actual.rmSync),
+    renameSync: vi.fn(actual.renameSync),
+    mkdtempSync: vi.fn(actual.mkdtempSync),
+  };
 });
 
 const actual = await vi.importActual<typeof fs>("node:fs");
 afterEach(() => {
   vi.mocked(fs.rmSync).mockReset().mockImplementation(actual.rmSync);
   vi.mocked(fs.renameSync).mockReset().mockImplementation(actual.renameSync);
+  vi.mocked(fs.mkdtempSync).mockReset().mockImplementation(actual.mkdtempSync);
   vi.restoreAllMocks();
 });
 
@@ -23,6 +29,16 @@ const request = (target: string) => ({
   name: "my-project",
   template: "nextjs" as const,
   git: false,
+});
+
+it.skipIf(process.platform !== "win32")("쓰기 권한 오류는 이동 잠금 안내로 바꾸지 않는다", () => {
+  const root = fixtureRepository();
+  const target = join(temporaryFolder(), "aitpl-app");
+  const failure = Object.assign(new Error("denied"), { code: "EPERM" });
+  vi.mocked(fs.mkdtempSync).mockImplementationOnce(() => {
+    throw failure;
+  });
+  expect(() => createProject(request(target), root)).toThrow(failure);
 });
 
 it("사용 중인 빈 대상 폴더를 유지하고 그 안에 생성한다", async () => {

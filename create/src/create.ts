@@ -125,17 +125,29 @@ export function createProject(
     // Node에는 umask를 읽는 대체 API가 없다. 새 대상도 mkdir의 기본 권한을 따른다.
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     if (process.platform !== "win32") chmodSync(staging, 0o777 & ~process.umask());
-    if (existsSync(options.target)) {
-      // 기존 빈 폴더의 소유자·권한과 그 안에서 열린 터미널을 유지한다.
-      for (const entry of readdirSync(staging)) {
-        const destination = join(options.target, entry);
-        renameSync(join(staging, entry), destination);
-        movedEntries.push(destination);
+    try {
+      if (existsSync(options.target)) {
+        // 기존 빈 폴더의 소유자·권한과 그 안에서 열린 터미널을 유지한다.
+        for (const entry of readdirSync(staging)) {
+          const destination = join(options.target, entry);
+          renameSync(join(staging, entry), destination);
+          movedEntries.push(destination);
+        }
+        rmdirSync(staging);
+      } else {
+        renameSync(staging, options.target);
+        moved = true;
       }
-      rmdirSync(staging);
-    } else {
-      renameSync(staging, options.target);
-      moved = true;
+    } catch (error) {
+      throw process.platform === "win32" &&
+        error instanceof Error &&
+        "code" in error &&
+        (error.code === "EBUSY" || error.code === "EPERM")
+        ? new CreateError(
+            `대상 폴더를 옮기지 못했다(${errorReason(error)})`,
+            "폴더를 사용하는 프로그램을 닫고 다시 실행한다.",
+          )
+        : error;
     }
     if (options.git && !moved) movedEntries.push(join(options.target, ".git"));
     const committed = options.git
@@ -153,16 +165,6 @@ export function createProject(
       commitMessage: initialCommitMessage(options.name, sha),
     };
   } catch (error) {
-    const failure =
-      process.platform === "win32" &&
-      error instanceof Error &&
-      "code" in error &&
-      (error.code === "EBUSY" || error.code === "EPERM")
-        ? new CreateError(
-            `대상 폴더를 옮기지 못했다(${errorReason(error)})`,
-            "폴더를 사용하는 프로그램을 닫고 다시 실행한다.",
-          )
-        : error;
     const paths = [staging, ...(moved ? [options.target] : movedEntries), firstCreated].filter(
       (path): path is string => path !== undefined,
     );
@@ -171,11 +173,11 @@ export function createProject(
         rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       } catch (cleanupError) {
         console.error(
-          `pnpm new: 생성 실패(${errorReason(failure)}) 뒤 정리하지 못했다(${errorReason(cleanupError)}) — ` +
+          `pnpm new: 생성 실패(${errorReason(error)}) 뒤 정리하지 못했다(${errorReason(cleanupError)}) — ` +
             `남은 경로 ${paths.filter(existsSync).join(", ")}를 사용하는 프로그램을 닫고 정리한다.`,
         );
       }
     }
-    throw failure;
+    throw error;
   }
 }
