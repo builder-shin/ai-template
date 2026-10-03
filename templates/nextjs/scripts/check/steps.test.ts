@@ -2,6 +2,15 @@ import { expect, it } from "vitest";
 import { assembleSteps } from "./steps";
 import { runChecks } from "./runner";
 
+it.each(["e2e/fixtures.ts", "e2e/targets/fastapi.ts"])(
+  "%s 변경은 전체 테스트 캐시를 무효화한다",
+  (path) => {
+    const key = (value: string) =>
+      assembleSteps({ [path]: value }, false, []).find((step) => step.name === "tests")!.key;
+    expect(key("before")).not.toBe(key("after"));
+  },
+);
+
 it("설정 오류는 캐시와 관계없이 generated 단계의 실패로 출력한다", async () => {
   const problem = new Error("gen.config.json 설정이 잘못됐다 — 상대 경로를 넣는다.");
   const steps = assembleSteps({}, true, [], {}, {}, problem);

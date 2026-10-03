@@ -33,7 +33,7 @@ export function assembleSteps(
           : ["run"]),
       ],
       key:
-        key(/^(src|messages|contract)\/|^\.claude\/(hooks\/.*\.mjs$|settings\.json$)/) +
+        key(/^(src|messages|contract|e2e)\/|^\.claude\/(hooks\/.*\.mjs$|settings\.json$)/) +
         JSON.stringify(related),
     },
     {
