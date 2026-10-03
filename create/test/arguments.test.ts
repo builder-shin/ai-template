@@ -40,7 +40,6 @@ describe("CLI 입력", () => {
       ["my-app", "--api", "fastapi"],
       ["my-app", "--web"],
       ["my-app", "--api", "nestjs", "--web"],
-      ["my-app", "--api", "fastapi", "--web"],
       ["my-app", "--template", "nextjs", "--template", "fastapi"],
       ["my-app", "--template", "nextjs", "--no-git=false"],
     ].map((args) => [args]),
@@ -68,5 +67,14 @@ describe("CLI 입력", () => {
     expect(
       parseArguments(["target", "--template", "fastapi", "--name", "a".repeat(50)], {}),
     ).toMatchObject({ name: "a".repeat(50) });
+  });
+
+  it("FastAPI와 web 조합을 받는다", () => {
+    expect(parseArguments(["my-app", "--api", "fastapi", "--web"], {})).toEqual({
+      target: resolve("my-app"),
+      name: "my-app",
+      template: "combo",
+      git: true,
+    });
   });
 });

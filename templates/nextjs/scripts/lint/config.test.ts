@@ -1,8 +1,9 @@
-import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, it } from "vitest";
 import { binary } from "../process.mjs";
+import { linkDependencies } from "../test/dependency-links";
 
 it("App Router의 린트는 프로젝트와 상위 디렉터리에서 Pages 안내 없이 실행된다", () => {
   const root = mkdtempSync(join(tmpdir(), "nextjs-lint-config-"));
@@ -10,7 +11,7 @@ it("App Router의 린트는 프로젝트와 상위 디렉터리에서 Pages 안�
   try {
     mkdirSync(join(project, "scripts/lint"), { recursive: true });
     mkdirSync(join(project, "src/app"), { recursive: true });
-    symlinkSync(resolve("node_modules"), join(project, "node_modules"), "junction");
+    linkDependencies(resolve("."), project);
     cpSync("eslint.config.mjs", join(project, "eslint.config.mjs"));
     cpSync("scripts/lint/boundaries.mjs", join(project, "scripts/lint/boundaries.mjs"));
     writeFileSync(join(project, "package.json"), '{"type":"module"}');

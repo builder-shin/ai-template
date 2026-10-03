@@ -6,18 +6,18 @@ import {
   readFileSync,
   renameSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { binary } from "../process.mjs";
 import { assembleSteps } from "./steps";
+import { linkDependencies } from "../test/dependency-links";
 
 it("이전 타입 생성 뒤 route를 옮겨도 현재 route를 검증하며 dev 산출물을 보존한다", () => {
   const root = mkdtempSync(join(tmpdir(), "nextjs-route-types-"));
   try {
-    symlinkSync(resolve("node_modules"), join(root, "node_modules"), "junction");
+    linkDependencies(resolve("."), root);
     mkdirSync(join(root, "src/app/old"), { recursive: true });
     writeFileSync(
       join(root, "src/app/old/page.tsx"),

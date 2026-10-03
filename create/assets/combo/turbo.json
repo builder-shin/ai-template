@@ -1,0 +1,19 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "tasks": {
+    "dev": { "persistent": true, "cache": false },
+    "check": { "outputs": [] },
+    "web#check": {
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/api/openapi.json"],
+      "outputs": []
+    },
+    "test": { "outputs": [] },
+    "gen": { "cache": false },
+    "web#gen": {
+      "dependsOn": ["api#gen"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/api/openapi.json"],
+      "cache": false
+    },
+    "fix": { "cache": false }
+  }
+}

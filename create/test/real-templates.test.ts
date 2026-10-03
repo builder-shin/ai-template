@@ -1,23 +1,59 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, symlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
-import { expect, it } from "vitest";
+import { beforeEach, expect, it } from "vitest";
 import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
 import { createProject } from "../src/create.ts";
 import { git, temporaryFolder } from "./helpers.ts";
 
 const root = resolve(import.meta.dirname, "../..");
 const require = createRequire(import.meta.url);
+let source: string;
+
+beforeEach(() => {
+  // 수정 중인 실제 파일을 독립 git 스냅샷으로 검증한다. CLI의 변경 거절은 유지한다.
+  source = temporaryFolder();
+  const files = git(
+    root,
+    "ls-files",
+    "--cached",
+    "--others",
+    "--exclude-standard",
+    "-z",
+    "--",
+    "templates",
+    "create/src",
+    "create/assets",
+    "scripts/src/files/git-environment.ts",
+    ".gitattributes",
+    ".editorconfig",
+  )
+    .split("\0")
+    .filter(Boolean);
+  for (const file of new Set(files)) {
+    const target = join(source, file);
+    mkdirSync(resolve(target, ".."), { recursive: true });
+    copyFileSync(join(root, file), target);
+  }
+  git(source, "init", "-b", "main");
+  git(source, "add", ".");
+  git(source, "-c", "commit.gpgsign=false", "commit", "-m", "chore: real template snapshot");
+  symlinkSync(
+    join(root, "node_modules"),
+    join(source, "node_modules"),
+    process.platform === "win32" ? "junction" : "dir",
+  );
+});
 
 it("두 실제 템플릿의 파일 목록·이름·나머지 바이트와 git 상태를 확인한다", () => {
   const parent = temporaryFolder();
   for (const template of ["fastapi", "nextjs"] as const) {
     const name = `aitpl-real-${template}`;
     const target = join(parent, name);
-    createProject({ target, name, template, git: true }, root);
-    const expected = git(root, "ls-files", "-z", "--", `templates/${template}`)
+    createProject({ target, name, template, git: true }, source);
+    const expected = git(source, "ls-files", "-z", "--", `templates/${template}`)
       .split("\0")
       .filter(Boolean)
       .map((file) => file.slice(`templates/${template}/`.length))
@@ -28,9 +64,12 @@ it("두 실제 템플릿의 파일 목록·이름·나머지 바이트와 git �
     expect(readFileSync(join(target, "README.md"), "utf8").split("\n")[0]).toBe(`# ${name}`);
     const renamed = template === "nextjs" ? "package.json" : "compose.yaml";
     for (const file of expected.filter((file) => !["README.md", renamed].includes(file))) {
-      expect(readFileSync(join(target, file)), file).toEqual(
-        readFileSync(join(root, "templates", template, file)),
-      );
+      expect(
+        readFileSync(join(target, file)).equals(
+          readFileSync(join(source, "templates", template, file)),
+        ),
+        file,
+      ).toBe(true);
     }
     if (template === "nextjs") {
       expect(JSON.parse(readFileSync(join(target, "package.json"), "utf8"))).toMatchObject({
@@ -52,7 +91,7 @@ it("실제 CLI의 도움말·사용법 오류·실행 오류는 서로 다른 �
       [
         "--import",
         pathToFileURL(require.resolve("tsx")).href,
-        join(root, "create/src/cli.ts"),
+        join(source, "create/src/cli.ts"),
         ...args,
       ],
       { cwd: parent, env: gitEnvironment(env), encoding: "utf8" },
@@ -63,7 +102,7 @@ it("실제 CLI의 도움말·사용법 오류·실행 오류는 서로 다른 �
   const usage = run(["--template", "bad"]);
   expect(usage.status).toBe(2);
   expect(usage.stderr).toMatch(/pnpm new: .+ — .+/);
-  const failure = run([root, "--template", "nextjs", "--name", "my-web"]);
+  const failure = run([source, "--template", "nextjs", "--name", "my-web"]);
   expect(failure.status).toBe(1);
   expect(failure.stderr).toMatch(/pnpm new: .*저장소.* — .+/);
   const success = run(["aitpl-cli", "--template", "nextjs", "--no-git"], {
