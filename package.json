@@ -8,6 +8,7 @@
   },
   "scripts": {
     "prepare": "lefthook install",
+    "new": "tsx create/src/cli.ts",
     "check": "tsx scripts/src/check/cli.ts",
     "check:format": "prettier --check .",
     "check:lint": "eslint .",

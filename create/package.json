@@ -1,0 +1,13 @@
+{
+  "name": "@ai-template/create",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "check": "pnpm run typecheck && pnpm run test"
+  },
+  "dependencies": {
+    "yaml": "2.9.1"
+  }
+}
