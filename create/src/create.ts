@@ -17,7 +17,7 @@ import { CreateError, errorReason } from "./errors.ts";
 import { initialCommitMessage, initializeGit, runGit } from "./git.ts";
 import { templateFiles } from "./repository.ts";
 import { renameStandalone } from "./standalone.ts";
-import { writeCombo, type ComboTools } from "./combo.ts";
+import { readComboInputs, writeCombo, type ComboTools } from "./combo.ts";
 import { runPnpm } from "./pnpm.ts";
 
 function canonicalPath(path: string): string {
@@ -92,6 +92,10 @@ export function createProject(
   const templates =
     options.template === "combo" ? (["fastapi", "nextjs"] as const) : [options.template];
   const plans = templates.map((template) => ({ template, files: templateFiles(root, template) }));
+  const inputs =
+    options.template === "combo"
+      ? readComboInputs(root, tools.assets ?? join(root, "create/assets/combo"))
+      : [];
   const pnpm = tools.pnpm ?? runPnpm;
   if (options.template === "combo") pnpm(root, ["--version"]);
   const sha = runGit(root, ["rev-parse", "--short", "HEAD"]).trim();
@@ -118,14 +122,7 @@ export function createProject(
           executableFiles.push(relative(staging, destination).split(sep).join("/"));
         if (process.platform !== "win32") chmodSync(destination, file.executable ? 0o755 : 0o644);
       }
-    if (options.template === "combo")
-      writeCombo(
-        staging,
-        root,
-        options.name,
-        tools.assets ?? join(root, "create/assets/combo"),
-        pnpm,
-      );
+    if (options.template === "combo") writeCombo(staging, options.name, inputs, pnpm);
     else renameStandalone(staging, options.template, options.name);
     // 생성 중 다른 프로세스가 대상을 채웠다면 덮어쓰지 않는다.
     validateTarget(options.target, worktrees);

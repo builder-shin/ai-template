@@ -26,11 +26,30 @@ const commands = [
   "e2e:serve",
 ];
 
+export interface ComboInput {
+  readonly path: string;
+  readonly content: string;
+}
+
+export function readComboInputs(repository: string, assets: string): ComboInput[] {
+  const assetPath = resolve(assets);
+  const prefix = relative(repository, assetPath).split(sep).join("/");
+  if (isAbsolute(prefix) || prefix === ".." || prefix.startsWith("../"))
+    throw new CreateError("조합 자산이 저장소 밖에 있다", "저장소 안의 추적 자산 경로를 지정한다.");
+  const inputs = trackedContents(repository, [prefix, ".gitattributes", ".editorconfig"]);
+  for (const file of [".gitattributes", ".editorconfig"])
+    if (!inputs.some((input) => input.path === file))
+      throw new CreateError(`${file}의 추적 원본이 없다`, "루트 설정을 커밋하고 다시 실행한다.");
+  return inputs.map(({ path, content }) => ({
+    path: path.startsWith(`${prefix}/`) ? path.slice(prefix.length + 1) : path,
+    content,
+  }));
+}
+
 export function writeCombo(
   root: string,
-  repository: string,
   name: string,
-  assets: string,
+  inputs: ComboInput[],
   pnpm: PnpmRunner,
 ): void {
   const api = join(root, "apps/api");
@@ -88,19 +107,8 @@ export function writeCombo(
     LEFTHOOK: required(pkg.devDependencies?.lefthook, "devDependencies.lefthook"),
     PRETTIER: required(pkg.devDependencies?.prettier, "devDependencies.prettier"),
   };
-  const assetPath = resolve(assets);
-  const prefix = relative(repository, assetPath).split(sep).join("/");
-  if (isAbsolute(prefix) || prefix === ".." || prefix.startsWith("../"))
-    throw new CreateError("조합 자산이 저장소 밖에 있다", "저장소 안의 추적 자산 경로를 지정한다.");
-  const inputs = trackedContents(repository, [prefix, ".gitattributes", ".editorconfig"]);
-  for (const file of [".gitattributes", ".editorconfig"])
-    if (!inputs.some((input) => input.path === file))
-      throw new CreateError(`${file}의 추적 원본이 없다`, "루트 설정을 커밋하고 다시 실행한다.");
   for (const { path, content } of inputs) {
-    const destination = join(
-      root,
-      path.startsWith(`${prefix}/`) ? relative(assetPath, join(repository, path)) : path,
-    );
+    const destination = join(root, path);
     mkdirSync(dirname(destination), { recursive: true });
     writeFileSync(
       destination,

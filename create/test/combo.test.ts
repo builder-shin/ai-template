@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, mkdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { expect, it, vi } from "vitest";
 import { parseAllDocuments, parse } from "yaml";
@@ -6,6 +6,11 @@ import { createProject } from "../src/create.ts";
 import { rewriteImporters, verifyWebResolutions } from "../src/lockfile.ts";
 import { copyComboAssets, fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
 import { runPnpm } from "../src/pnpm.ts";
+
+vi.mock("node:fs", async (original) => {
+  const fs = await original<typeof import("node:fs")>();
+  return { ...fs, mkdirSync: vi.fn(fs.mkdirSync) };
+});
 
 const lock =
   "---\nlockfileVersion: '9.0'\nimporters:\n  .:\n    packageManagerDependencies: {}\n---\nlockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      react: {specifier: 19.3.0, version: 19.3.0}\n  contract/mock:\n    dependencies:\n      hono: {specifier: 4.0.0, version: 4.0.0}\npackages:\n  react@19.3.0: {resolution: {integrity: fixture}}\nsnapshots:\n  react@19.3.0: {}\n";
@@ -216,6 +221,7 @@ it.each(["create/assets/combo/README.md", ".editorconfig", ".gitattributes"])(
     const root = comboFixture();
     write(root, file, "changed\n");
     const parent = temporaryFolder();
+    vi.mocked(mkdirSync).mockClear();
     expect(() =>
       createProject(
         { target: join(parent, "aitpl-combo"), name: "my-app", template: "combo", git: false },
@@ -223,6 +229,7 @@ it.each(["create/assets/combo/README.md", ".editorconfig", ".gitattributes"])(
         { pnpm: () => undefined },
       ),
     ).toThrow(/pnpm new: .*커밋.* — .+/);
+    expect(mkdirSync).not.toHaveBeenCalled();
     expect(readdirSync(parent)).toEqual([]);
   },
 );
