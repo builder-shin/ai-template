@@ -29,6 +29,7 @@ FastAPI와 Next.js BFF를 함께 개발하는 프로젝트다. Node 24, pnpm 12.
 | `pnpm db:migrate`, `pnpm db:reset` | api 마이그레이션·개발 DB 재설정                                |
 
 setup·E2E·DB 명령은 캐시하지 않는다. gen도 생성물 누락을 피하도록 캐시하지 않는다.
+turbo는 loose 환경 모드로 Docker·uv·프록시·Playwright 등 개발 환경 변수를 앱에 전달한다. 캐시는 선언한 입력만 해시한다.
 dev 이외 앱 명령은 동시 실행 수 1로 돌린다. check 성공은 한 줄, 실패는 실패한 단계 출력만 보여 준다.
 
 ## 앱 사이 흐름

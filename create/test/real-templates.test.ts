@@ -53,6 +53,8 @@ beforeEach(() => {
     .split("\0")
     .filter(Boolean);
   for (const file of new Set(files)) {
+    // 인덱스에 남은 삭제 파일은 작업 트리 스냅샷에 넣지 않는다.
+    if (!existsSync(join(root, file))) continue;
     const target = join(source, file);
     mkdirSync(resolve(target, ".."), { recursive: true });
     copyFileSync(join(root, file), target);
@@ -65,6 +67,23 @@ beforeEach(() => {
     join(source, "node_modules"),
     process.platform === "win32" ? "junction" : "dir",
   );
+});
+
+it("실제 조합은 설치 대역만으로 web 환경 값·OpenAPI 입력과 gen 커밋을 확인한다", () => {
+  const target = join(temporaryFolder(), "aitpl-real-combo");
+  createProject({ target, name: "aitpl-real-combo", template: "combo", git: true }, source, {
+    pnpm: (cwd, args) => {
+      if (args.includes("gen")) write(cwd, "apps/web/generated.txt", "gen 대역\n");
+    },
+  });
+  const example = readFileSync(join(target, "apps/web/.env.example"), "utf8");
+  expect(example).toMatch(/^API_BASE_URL=http:\/\/127\.0\.0\.1:8000\/api\/v1$/m);
+  expect(example).toMatch(/^NEXT_PUBLIC_REALTIME_URL=http:\/\/127\.0\.0\.1:8000$/m);
+  expect(JSON.parse(readFileSync(join(target, "apps/web/gen.config.json"), "utf8"))).toEqual({
+    openapi: "../api/openapi.json",
+  });
+  expect(git(target, "show", "HEAD:apps/web/generated.txt")).toBe("gen 대역\n");
+  expect(git(target, "status", "--porcelain")).toBe("");
 });
 
 it("두 실제 템플릿의 파일 목록·이름·나머지 바이트와 git 상태를 확인한다", () => {

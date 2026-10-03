@@ -116,7 +116,7 @@ export function createProject(
         staging,
         root,
         options.name,
-        tools.assets ?? join(import.meta.dirname, "../assets/combo"),
+        tools.assets ?? join(root, "create/assets/combo"),
         pnpm,
       );
     else renameStandalone(staging, options.template, options.name);

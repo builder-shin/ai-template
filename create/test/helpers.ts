@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, vi } from "vitest";
 import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
 
@@ -26,6 +26,14 @@ export function git(root: string, ...args: string[]): string {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
+}
+
+export function copyComboAssets(target: string): void {
+  const source = resolve(import.meta.dirname, "../..");
+  for (const file of git(source, "ls-files", "-z", "--", "create/assets/combo")
+    .split("\0")
+    .filter(Boolean))
+    write(target, file, readFileSync(join(source, file), "utf8"));
 }
 
 beforeEach(() => {

@@ -9,23 +9,21 @@ function documents(source: string) {
   return docs;
 }
 
-function dependencyDocument(source: string) {
-  const docs = documents(source);
+function dependencyDocument(docs: ReturnType<typeof documents>) {
   // pnpm 12는 도구 설치 잠금과 프로젝트 의존성을 별도 YAML 문서로 저장한다.
   const doc = docs.at(-1);
-  if (!doc || !isMap(doc.get("importers", true)))
+  const importers = doc?.get("importers", true);
+  if (!doc || !isMap(importers))
     throw new CreateError(
       "잠금 파일에 importer가 없다",
       "web에서 pnpm install로 잠금 파일을 만든다.",
     );
-  return doc;
+  return { doc, importers };
 }
 
 export function rewriteImporters(source: string): string {
   const docs = documents(source);
-  const doc = dependencyDocument(source);
-  const importers = doc.get("importers", true);
-  if (!isMap(importers)) throw new Error("importer가 없다");
+  const { doc, importers } = dependencyDocument(docs);
   for (const pair of importers.items) {
     const path = String(pair.key);
     if (path !== "." && !path.startsWith("contract/"))
@@ -35,7 +33,6 @@ export function rewriteImporters(source: string): string {
       );
     pair.key = doc.createNode(path === "." ? "apps/web" : `apps/web/${path}`);
   }
-  docs[docs.length - 1] = doc;
   return docs
     .map((item) => {
       item.directives.docStart = true;
@@ -45,8 +42,14 @@ export function rewriteImporters(source: string): string {
 }
 
 export function verifyWebResolutions(original: string, combined: string): void {
-  const before = dependencyDocument(original).toJS() as Record<string, Record<string, unknown>>;
-  const after = dependencyDocument(combined).toJS() as Record<string, Record<string, unknown>>;
+  const before = dependencyDocument(documents(original)).doc.toJS() as Record<
+    string,
+    Record<string, unknown>
+  >;
+  const after = dependencyDocument(documents(combined)).doc.toJS() as Record<
+    string,
+    Record<string, unknown>
+  >;
   for (const [path, importer] of Object.entries(before.importers ?? {})) {
     const moved = path === "." ? "apps/web" : `apps/web/${path}`;
     if (!isDeepStrictEqual(importer, after.importers?.[moved]))

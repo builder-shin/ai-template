@@ -22,6 +22,21 @@ export interface TemplateFile {
   readonly executable: boolean;
 }
 
+export function trackedContents(
+  repository: string,
+  paths: string[],
+): { path: string; content: string }[] {
+  if (runGit(repository, ["status", "--porcelain", "--untracked-files=no", "--", ...paths]).trim())
+    throw new CreateError(
+      "조합 입력에 커밋하지 않은 변경이 있다",
+      "조합 자산과 루트 설정 변경을 커밋하거나 되돌리고 실행한다.",
+    );
+  return runGit(repository, ["ls-tree", "-r", "--name-only", "-z", "HEAD", "--", ...paths])
+    .split("\0")
+    .filter(Boolean)
+    .map((path) => ({ path, content: runGit(repository, ["show", `HEAD:${path}`]) }));
+}
+
 export function templateFiles(repository: string, template: Template): TemplateFile[] {
   const prefix = `templates/${template}/`;
   if (

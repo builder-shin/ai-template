@@ -1,10 +1,10 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { expect, it, vi } from "vitest";
 import { parseAllDocuments, parse } from "yaml";
 import { createProject } from "../src/create.ts";
 import { rewriteImporters, verifyWebResolutions } from "../src/lockfile.ts";
-import { fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
+import { copyComboAssets, fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
 import { runPnpm } from "../src/pnpm.ts";
 
 const lock =
@@ -96,6 +96,7 @@ function comboFixture() {
   );
   write(root, ".gitattributes", "* text=auto eol=lf\n");
   write(root, ".editorconfig", "root = true\n");
+  copyComboAssets(root);
   git(root, "add", ".");
   git(root, "-c", "commit.gpgsign=false", "commit", "-m", "chore: combo fixture");
   return root;
@@ -105,10 +106,11 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
   const root = comboFixture();
   const target = join(temporaryFolder(), "aitpl-combo");
   const commands: string[][] = [];
+  const directories: string[] = [];
   const result = createProject({ target, name: "my-app", template: "combo", git: true }, root, {
-    assets: resolve(import.meta.dirname, "../assets/combo"),
     pnpm: (cwd, args) => {
       commands.push(args);
+      directories.push(cwd);
       if (args.includes("gen")) write(cwd, "apps/web/generated.txt", "API 타입\n");
     },
   });
@@ -134,6 +136,22 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
     ["--filter", "web", "run", "gen"],
   ]);
   expect(git(target, "status", "--porcelain")).toBe("");
+  expect(directories[0]).toBe(root);
+  expect(new Set(directories.slice(1)).size).toBe(1);
+  expect(directories[1]).not.toBe(root);
+  expect(directories[1]).not.toBe(target);
+  expect(directories[1]).toMatch(/aitpl-my-app-/);
+  expect(readFileSync(join(target, "apps/web/generated.txt"), "utf8")).toBe("API 타입\n");
+  expect(git(target, "show", "HEAD:apps/web/generated.txt")).toBe("API 타입\n");
+  for (const file of [".gitattributes", ".editorconfig"])
+    expect(readFileSync(join(target, file))).toEqual(readFileSync(join(root, file)));
+  expect(readFileSync(join(target, ".prettierrc.json"))).toEqual(
+    readFileSync(join(target, "apps/web/.prettierrc.json")),
+  );
+  for (const file of ["AGENTS.md", "README.md"]) {
+    expect(readFileSync(join(target, file), "utf8")).toContain("my-app");
+    expect(readFileSync(join(target, file), "utf8")).not.toMatch(/\{\{\w+\}\}/);
+  }
   for (const app of ["api", "web"]) {
     expect(readFileSync(join(target, `apps/${app}/README.md`), "utf8")).toBe(
       `# my-app ${app}\n\n내용\n`,
@@ -159,17 +177,98 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
     packages: ["apps/api", "apps/web", "apps/web/contract/*"],
     minimumReleaseAge: 1440,
     allowBuilds: { lefthook: false },
+    overrides: { typescript: "6.0.3" },
   });
   const turbo = JSON.parse(readFileSync(join(target, "turbo.json"), "utf8")) as {
+    envMode: string;
     tasks: Record<string, { dependsOn?: string[]; inputs?: string[]; cache?: boolean }>;
   };
+  expect(turbo.envMode).toBe("loose");
   expect(turbo.tasks["web#gen"]?.dependsOn).toContain("api#gen");
   expect(turbo.tasks["web#check"]?.inputs).toContain("$TURBO_ROOT$/apps/api/openapi.json");
   expect(turbo.tasks.gen?.cache).toBe(false);
   expect(JSON.parse(readFileSync(join(target, "package.json"), "utf8"))).toMatchObject({
     name: "my-app",
+    engines: { node: ">=24 <25" },
     devDependencies: { turbo: "2.11.6", prettier: "3.9.9", lefthook: "2.1.14" },
   });
+});
+
+it("조합 자산은 HEAD의 추적 파일만 복사하며 상대 경로도 받는다", () => {
+  const root = comboFixture();
+  write(root, "create/assets/combo/untracked.txt", "복사 금지\n");
+  const target = join(temporaryFolder(), "aitpl-combo");
+  createProject({ target, name: "my-app", template: "combo", git: false }, root, {
+    assets: relative(process.cwd(), join(root, "create/assets/combo")),
+    pnpm: () => undefined,
+  });
+  expect(existsSync(join(target, "untracked.txt"))).toBe(false);
+  expect(readFileSync(join(target, "scripts/process.mjs"))).toEqual(
+    readFileSync(join(root, "create/assets/combo/scripts/process.mjs")),
+  );
+});
+
+it.each(["create/assets/combo/README.md", ".editorconfig", ".gitattributes"])(
+  "조합 입력의 미커밋 변경을 거절한다: %s",
+  (file) => {
+    const root = comboFixture();
+    write(root, file, "changed\n");
+    const parent = temporaryFolder();
+    expect(() =>
+      createProject(
+        { target: join(parent, "aitpl-combo"), name: "my-app", template: "combo", git: false },
+        root,
+        { pnpm: () => undefined },
+      ),
+    ).toThrow(/pnpm new: .*커밋.* — .+/);
+    expect(readdirSync(parent)).toEqual([]);
+  },
+);
+
+it.each(["API_BASE_URL", "NEXT_PUBLIC_REALTIME_URL"])(
+  "web 환경 예제에 %s가 없으면 거절한다",
+  (key) => {
+    const root = comboFixture();
+    const path = "templates/nextjs/.env.example";
+    write(
+      root,
+      path,
+      readFileSync(join(root, path), "utf8").replace(new RegExp(`^${key}=.*\\n`, "m"), ""),
+    );
+    git(root, "add", path);
+    git(root, "commit", "-m", "chore: missing env key fixture");
+    const parent = temporaryFolder();
+    expect(() =>
+      createProject(
+        { target: join(parent, "aitpl-combo"), name: "my-app", template: "combo", git: false },
+        root,
+        { pnpm: () => undefined },
+      ),
+    ).toThrow(new RegExp(`pnpm new: .*${key}.* — .*env.example`));
+    expect(readdirSync(parent)).toEqual([]);
+  },
+);
+
+it.each(["engines", "devDependencies"])("web package.json의 %s가 없으면 안내한다", (key) => {
+  const root = comboFixture();
+  const file = "templates/nextjs/package.json";
+  const pkg = JSON.parse(readFileSync(join(root, file), "utf8")) as Record<string, unknown>;
+  Reflect.deleteProperty(pkg, key);
+  write(root, file, JSON.stringify(pkg));
+  git(root, "add", file);
+  git(root, "commit", "-m", "chore: missing package metadata fixture");
+  expect(() =>
+    createProject(
+      {
+        target: join(temporaryFolder(), "aitpl-combo"),
+        name: "my-app",
+        template: "combo",
+        git: false,
+      },
+      root,
+      { pnpm: () => undefined },
+    ),
+  ).toThrow(/pnpm new: .*package.json.* — .+/);
 });
 
 it.each(["install", "gen", "--version"])(

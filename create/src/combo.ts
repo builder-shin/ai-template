@@ -1,10 +1,12 @@
-import { copyFileSync, readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { copyFileSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseDocument } from "yaml";
 import { rewriteImporters, verifyWebResolutions } from "./lockfile.ts";
 import { renameStandalone } from "./standalone.ts";
 import type { PnpmRunner } from "./pnpm.ts";
 import { writeHarness } from "./harness.ts";
+import { CreateError } from "./errors.ts";
+import { trackedContents } from "./repository.ts";
 
 export interface ComboTools {
   readonly assets?: string;
@@ -53,42 +55,64 @@ export function writeCombo(
   });
   writeFileSync(join(web, "gen.config.json"), '{ "openapi": "../api/openapi.json" }\n');
   const env = join(web, ".env.example");
-  writeFileSync(
-    env,
-    readFileSync(env, "utf8")
-      .replace(/^API_BASE_URL=\S+/m, "API_BASE_URL=http://127.0.0.1:8000/api/v1")
-      .replace(/^NEXT_PUBLIC_REALTIME_URL=\S+/m, "NEXT_PUBLIC_REALTIME_URL=http://127.0.0.1:8000"),
-  );
+  let example = readFileSync(env, "utf8");
+  for (const [key, value] of Object.entries({
+    API_BASE_URL: "http://127.0.0.1:8000/api/v1",
+    NEXT_PUBLIC_REALTIME_URL: "http://127.0.0.1:8000",
+  })) {
+    const pattern = new RegExp(`^${key}=[^\\s#]+`, "m");
+    if (!pattern.test(example))
+      throw new CreateError(
+        `${key}의 기본값이 없다`,
+        "web .env.example에 키와 기본값을 넣고 커밋한다.",
+      );
+    example = example.replace(pattern, `${key}=${value}`);
+  }
+  writeFileSync(env, example);
   const pkg = JSON.parse(readFileSync(join(web, "package.json"), "utf8")) as {
-    engines: { node: string };
-    devDependencies: { lefthook: string; prettier: string; typescript: string };
+    engines?: { node?: string };
+    devDependencies?: { lefthook?: string; prettier?: string; typescript?: string };
   };
+  const required = (value: string | undefined, key: string): string => {
+    if (typeof value !== "string" || !value.trim())
+      throw new CreateError(
+        `web package.json에 ${key} 값이 없다`,
+        "web package.json의 엔진·도구 버전을 채우고 커밋한다.",
+      );
+    return value;
+  };
+  const typescript = required(pkg.devDependencies?.typescript, "devDependencies.typescript");
   const variables: Record<string, string> = {
     NAME: name,
-    NODE: pkg.engines.node,
-    LEFTHOOK: pkg.devDependencies.lefthook,
-    PRETTIER: pkg.devDependencies.prettier,
+    NODE: required(pkg.engines?.node, "engines.node"),
+    LEFTHOOK: required(pkg.devDependencies?.lefthook, "devDependencies.lefthook"),
+    PRETTIER: required(pkg.devDependencies?.prettier, "devDependencies.prettier"),
   };
-  for (const entry of readdirSync(assets, { recursive: true, withFileTypes: true })) {
-    if (!entry.isFile()) continue;
-    const destination = join(root, entry.parentPath.slice(assets.length), entry.name);
+  const assetPath = resolve(assets);
+  const prefix = relative(repository, assetPath).split(sep).join("/");
+  if (isAbsolute(prefix) || prefix === ".." || prefix.startsWith("../"))
+    throw new CreateError("조합 자산이 저장소 밖에 있다", "저장소 안의 추적 자산 경로를 지정한다.");
+  const inputs = trackedContents(repository, [prefix, ".gitattributes", ".editorconfig"]);
+  for (const file of [".gitattributes", ".editorconfig"])
+    if (!inputs.some((input) => input.path === file))
+      throw new CreateError(`${file}의 추적 원본이 없다`, "루트 설정을 커밋하고 다시 실행한다.");
+  for (const { path, content } of inputs) {
+    const destination = join(
+      root,
+      path.startsWith(`${prefix}/`) ? relative(assetPath, join(repository, path)) : path,
+    );
     mkdirSync(dirname(destination), { recursive: true });
     writeFileSync(
       destination,
-      readFileSync(join(entry.parentPath, entry.name), "utf8").replace(
-        /\{\{(\w+)\}\}/g,
-        (whole: string, key: string) => variables[key] ?? whole,
-      ),
+      content.replace(/\{\{(\w+)\}\}/g, (whole: string, key: string) => variables[key] ?? whole),
     );
   }
-  for (const file of [".gitattributes", ".editorconfig"])
-    copyFileSync(join(repository, file), join(root, file));
   copyFileSync(join(web, ".prettierrc.json"), join(root, ".prettierrc.json"));
   writeHarness(root);
   const workspace = parseDocument(readFileSync(join(web, "pnpm-workspace.yaml"), "utf8"));
   workspace.set("packages", ["apps/api", "apps/web", "apps/web/contract/*"]);
   // workspace 이동 뒤에도 계약 패키지의 TypeScript peer를 템플릿 버전으로 유지한다.
-  workspace.setIn(["overrides", "typescript"], pkg.devDependencies.typescript);
+  workspace.setIn(["overrides", "typescript"], typescript);
   writeFileSync(join(root, "pnpm-workspace.yaml"), workspace.toString());
   const lock = readFileSync(join(web, "pnpm-lock.yaml"), "utf8");
   writeFileSync(join(root, "pnpm-lock.yaml"), rewriteImporters(lock));
