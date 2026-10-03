@@ -17,16 +17,16 @@ FastAPI와 Next.js BFF를 함께 개발하는 프로젝트다. Node 24, pnpm 12.
 
 ## 명령
 
-| 명령                               | 하는 일                                              |
-| ---------------------------------- | ---------------------------------------------------- |
-| `pnpm setup`                       | 도구 확인·frozen 설치 → api setup → web setup        |
-| `pnpm dev`                         | api·worker·scheduler와 백엔드 모드 web을 함께 실행   |
-| `pnpm check`                       | 루트 포맷·실행기 테스트·지침 → api check → web check |
-| `pnpm fix`                         | 앱 자동 수정과 루트 파일 포맷                        |
-| `pnpm test`                        | api와 web 테스트를 차례로 실행                       |
-| `pnpm test:e2e`                    | api E2E → api e2e:serve 위에서 web FastAPI E2E       |
-| `pnpm gen`                         | api OpenAPI 내보내기 → web 타입 생성                 |
-| `pnpm db:migrate`, `pnpm db:reset` | api 마이그레이션·개발 DB 재설정                      |
+| 명령                               | 하는 일                                                        |
+| ---------------------------------- | -------------------------------------------------------------- |
+| `pnpm setup`                       | 도구 확인·frozen 설치 → 루트 hook 설치 → api setup → web setup |
+| `pnpm dev`                         | api·worker·scheduler와 백엔드 모드 web을 함께 실행             |
+| `pnpm check`                       | 루트 포맷·실행기 테스트·지침 → api check → web check           |
+| `pnpm fix`                         | 앱 자동 수정과 루트 파일 포맷                                  |
+| `pnpm test`                        | api와 web 테스트를 차례로 실행                                 |
+| `pnpm test:e2e`                    | api E2E → api e2e:serve 위에서 web FastAPI E2E                 |
+| `pnpm gen`                         | api OpenAPI 내보내기 → web 타입 생성                           |
+| `pnpm db:migrate`, `pnpm db:reset` | api 마이그레이션·개발 DB 재설정                                |
 
 setup·E2E·DB 명령은 캐시하지 않는다. gen도 생성물 누락을 피하도록 캐시하지 않는다.
 dev 이외 앱 명령은 동시 실행 수 1로 돌린다. check 성공은 한 줄, 실패는 실패한 단계 출력만 보여 준다.
@@ -54,6 +54,15 @@ dev 이외 앱 명령은 동시 실행 수 1로 돌린다. check 성공은 한 �
 
 프로젝트 여러 개를 동시에 실행하면 고정 포트가 겹친다. 동시 실행은 지원하지 않는다.
 compose 이름이 프로젝트마다 달라 볼륨은 섞이지 않는다.
+
+## 하네스
+
+- Claude Code를 루트에서 열면 두 앱의 권한과 hook을 합친 루트 설정을 쓴다. 앱 폴더에서 열면 그 앱의 설정을 쓴다.
+- skill은 각 앱의 `.claude/skills/`에 둔다. 루트 세션도 앱 파일을 처음 읽거나 고칠 때 그 아래 skill을 불러온다.
+- 루트 hook은 앱의 `.claude/settings.json`에서 명령을 매번 읽고 앱 폴더에서 실행한다. 앱 hook 설정만 고친다.
+- 편집 hook은 고친 앱만, Stop은 바뀐 앱과 루트 검사만 돈다. 위험 명령은 두 앱이 검사하고 하나라도 거부하면 막는다. SessionStart는 앱별 상태를 함께 보여 준다.
+- 루트 `lefthook.yml`이 커밋 전 앱 포맷·린트와 루트 포맷을 돌리고, 합친 `.betterleaks.toml`로 비밀을 한 번 스캔한다. 푸시 전에는 `pnpm check`를 돌린다.
+- 앱 setup은 git 최상위가 아니면 hook을 설치하지 않는다. 루트 setup이 설치한 hook과 다투지 않는다. 루트 `.mcp.json`은 web의 고정 MCP 서버를 쓴다.
 
 ## 완료 기준
 

@@ -7,6 +7,8 @@ import { setup } from "./setup.mjs";
 import { check, instructionErrors } from "./check.mjs";
 import { testE2e } from "./test-e2e.mjs";
 import { webEnvironment, webE2e } from "./web-e2e.mjs";
+import { stagedFormat } from "./staged-format.mjs";
+import { run as runProcess } from "./process.mjs";
 
 test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈춘다", () => {
   const calls = [];
@@ -22,6 +24,7 @@ test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈
       ["--version"],
       ["--version"],
       ["install", "--frozen-lockfile"],
+      ["exec", "lefthook", "install"],
       ["--filter", "api", "run", "setup"],
     ],
   );
@@ -138,10 +141,77 @@ test("check는 성공 한 줄 또는 실패한 단계만 출력하고 앱을 필
       3,
     );
     assert.deepEqual(output, ["형식 오류"]);
+    const rootCalls = [];
+    assert.equal(
+      check(root, {
+        apps: false,
+        run: (_command, args) => {
+          rootCalls.push(args);
+          return { status: 0 };
+        },
+        output: () => undefined,
+      }),
+      0,
+    );
+    assert.equal(
+      rootCalls.some((args) => args.includes("turbo")),
+      false,
+    );
+    assert.deepEqual(rootCalls.at(-1), [
+      "--test",
+      "scripts/*.test.mjs",
+      ".claude/hooks/*.test.mjs",
+    ]);
     writeFileSync(join(root, "AGENTS.md"), Array(202).fill("규칙").join("\n"));
     mkdirSync(join(root, "apps/api"), { recursive: true });
     writeFileSync(join(root, "apps/api/AGENTS.md"), "# api\n");
     assert.equal(instructionErrors(root).length, 2);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("루트 staged 포맷은 앱·잠금 파일을 빼고 고친 루트 파일만 다시 스테이징한다", () => {
+  const root = mkdtempSync(join(tmpdir(), "aitpl-root-format-"));
+  try {
+    writeFileSync(join(root, "README.md"), "# 루트\n");
+    writeFileSync(join(root, "pnpm-lock.yaml"), "잠금\n");
+    const calls = [];
+    const result = stagedFormat(root, (command, args) => {
+      calls.push([command, args]);
+      return {
+        status: 0,
+        stdout:
+          command === "git" && args[0] === "diff"
+            ? "README.md\0apps/web/file.ts\0pnpm-lock.yaml\0"
+            : "",
+      };
+    });
+    assert.equal(result.status, 0);
+    assert.deepEqual(calls[1], [
+      "pnpm",
+      ["exec", "prettier", "--write", "--ignore-unknown", "README.md"],
+    ]);
+    assert.deepEqual(calls[2], ["git", ["add", "--", "README.md"]]);
+    assert.equal(stagedFormat(root, () => ({ status: 3 })).status, 3);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("node로 직접 실행한 hook도 npm_execpath 없이 PATH의 pnpm JS를 돌린다", () => {
+  const root = mkdtempSync(join(tmpdir(), "aitpl-pnpm-entry-"));
+  try {
+    mkdirSync(join(root, "node_modules/pnpm/bin"), { recursive: true });
+    writeFileSync(
+      join(root, "node_modules/pnpm/bin/pnpm.cjs"),
+      "console.log(JSON.stringify(process.argv.slice(2)));\n",
+    );
+    const result = runProcess("pnpm", ["exec", "prettier", "파일 이름.md"], {
+      env: { PATH: root },
+    });
+    assert.equal(result.status, 0);
+    assert.deepEqual(JSON.parse(result.stdout), ["exec", "prettier", "파일 이름.md"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

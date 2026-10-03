@@ -4,6 +4,7 @@ import { parseDocument } from "yaml";
 import { rewriteImporters, verifyWebResolutions } from "./lockfile.ts";
 import { renameStandalone } from "./standalone.ts";
 import type { PnpmRunner } from "./pnpm.ts";
+import { writeHarness } from "./harness.ts";
 
 export interface ComboTools {
   readonly assets?: string;
@@ -83,6 +84,7 @@ export function writeCombo(
   for (const file of [".gitattributes", ".editorconfig"])
     copyFileSync(join(repository, file), join(root, file));
   copyFileSync(join(web, ".prettierrc.json"), join(root, ".prettierrc.json"));
+  writeHarness(root);
   const workspace = parseDocument(readFileSync(join(web, "pnpm-workspace.yaml"), "utf8"));
   workspace.set("packages", ["apps/api", "apps/web", "apps/web/contract/*"]);
   // workspace 이동 뒤에도 계약 패키지의 TypeScript peer를 템플릿 버전으로 유지한다.
@@ -94,5 +96,6 @@ export function writeCombo(
   pnpm(root, ["install", "--lockfile-only"]);
   verifyWebResolutions(lock, readFileSync(join(root, "pnpm-lock.yaml"), "utf8"));
   pnpm(root, ["install", "--frozen-lockfile"]);
+  pnpm(root, ["exec", "prettier", "--write", ".claude/settings.json", "lefthook.yml", ".mcp.json"]);
   pnpm(root, ["--filter", "web", "run", "gen"]);
 }

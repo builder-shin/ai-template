@@ -22,6 +22,7 @@ export function setup(
   }
   for (const args of [
     ["install", "--frozen-lockfile"],
+    ["exec", "lefthook", "install"],
     ["--filter", "api", "run", "setup"],
     ["--filter", "web", "run", "setup"],
   ]) {
