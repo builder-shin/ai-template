@@ -33,7 +33,7 @@ test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈
     calls.push([command, args, options.cwd]);
     return {
       status: args.includes("setup") ? 7 : 0,
-      stdout: "",
+      stdout: "true\n",
       stderr: "",
     };
   };
@@ -45,7 +45,7 @@ test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈
       ["--version"],
       ["--version"],
       ["install", "--frozen-lockfile"],
-      ["rev-parse", "--show-cdup"],
+      ["rev-parse", "--is-inside-work-tree", "--show-cdup"],
       ["exec", "lefthook", "install"],
       ["--filter", "api", "run", "setup"],
     ],
@@ -73,7 +73,7 @@ test("setup은 도구별 설치 안내를 쓰고 준비되면 web까지 실행�
       nodeVersion: "24.19.0",
       run: (_command, values) => {
         args.push(values);
-        return { status: 0, stdout: "" };
+        return { status: 0, stdout: "true\n" };
       },
     }),
     0,
@@ -84,7 +84,7 @@ test("setup은 도구별 설치 안내를 쓰고 준비되면 web까지 실행�
 test("setup은 git 밖이나 상위 저장소 안이면 hook 설치만 건너뛰고 두 앱을 준비한다", () => {
   for (const git of [
     { status: 128, stderr: "not a git repository" },
-    { status: 0, stdout: "../\n" },
+    { status: 0, stdout: "true\n../\n" },
   ]) {
     const calls = [];
     const messages = [];
@@ -131,7 +131,7 @@ test("setup은 자기 저장소에만 hook을 설치하고 git 지정 환경을 
         nodeVersion: "24.19.0",
         run: (command, args, options) => {
           calls.push({ command, args, options });
-          return { status: 0, stdout: "" };
+          return { status: 0, stdout: "true\n" };
         },
       }),
       0,

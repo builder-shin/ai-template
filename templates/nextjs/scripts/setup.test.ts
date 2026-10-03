@@ -7,6 +7,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -15,6 +16,42 @@ import { afterEach, expect, it, vi } from "vitest";
 import { gitEnvironment } from "./git-environment.mjs";
 
 afterEach(() => vi.unstubAllEnvs());
+
+it.each(["linked", "lowercase", "nested", "bare", "git"])(
+  "setup은 실제 작업 트리 최상위에서만 hook을 설치한다: %s",
+  (kind) => {
+    if (kind === "lowercase" && process.platform !== "win32") return;
+    const fixture = mkdtempSync(join(tmpdir(), "aitpl-web-root-"));
+    const repo = join(fixture, "repo");
+    const env = gitEnvironment();
+    try {
+      expect(spawnSync("git", ["init", "--quiet", ...(kind === "bare" ? ["--bare"] : []), repo], { env }).status).toBe(0);
+      let root = repo;
+      if (kind === "linked") {
+        root = join(fixture, "linked");
+        symlinkSync(repo, root, process.platform === "win32" ? "junction" : "dir");
+      } else if (kind === "lowercase") root = repo[0]!.toLowerCase() + repo.slice(1);
+      else root = join(repo, kind === "git" ? ".git" : "nested");
+      const scripts = join(root, "scripts");
+      mkdirSync(scripts, { recursive: true });
+      for (const file of ["setup.mjs", "envfile.mjs", "git-environment.mjs"])
+        copyFileSync(new URL(file, import.meta.url), join(scripts, file));
+      writeFileSync(join(root, ".env.example"), "FIXTURE_KEY=fixture\n");
+      writeFileSync(join(scripts, "process.mjs"), `
+        import { writeFileSync } from "node:fs";
+        export function pnpm(args) {
+          if (args.includes("lefthook")) writeFileSync("hook-installed.txt", "installed");
+          return { status: 0 };
+        }
+      `);
+      const result = spawnSync(process.execPath, ["--preserve-symlinks-main", join(scripts, "setup.mjs")], { env, encoding: "utf8" });
+      expect(result.status, result.stderr).toBe(0);
+      expect(existsSync(join(root, "hook-installed.txt"))).toBe(["linked", "lowercase"].includes(kind));
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
+  },
+);
 
 it.each([false, true, "main"])(
   "setup은 다른 worktree의 hook 환경을 격리한다: workTree=%s",

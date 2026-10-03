@@ -55,11 +55,11 @@ export function exitCode(result) {
 
 export function isGitRoot(root, execute = run) {
   // git의 상대 위치로 판정하면 링크와 드라이브 문자 표기에 영향을 받지 않는다.
-  const result = execute("git", ["rev-parse", "--show-cdup"], {
+  const result = execute("git", ["rev-parse", "--is-inside-work-tree", "--show-cdup"], {
     cwd: root,
     env: gitEnvironment(),
   });
-  return exitCode(result) === 0 && result.stdout.trim() === "";
+  return exitCode(result) === 0 && result.stdout.trim() === "true";
 }
 
 export function isMain(url) {
