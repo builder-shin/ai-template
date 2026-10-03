@@ -77,6 +77,40 @@ describe("단독 프로젝트", () => {
     expect(existsSync(join(target, ".git"))).toBe(false);
   });
 
+  it.each(["nextjs", "fastapi"] as const)(
+    "%s 첫 커밋은 전역 excludes와 무관하게 복사한 파일을 포함한다",
+    (template) => {
+      const root = fixtureRepository();
+      for (const file of [".env.example", ".claude/settings.json", ".mcp.json"])
+        write(root, `templates/${template}/${file}`, "{}\n");
+      git(root, "add", "--", "templates");
+      git(root, "-c", "commit.gpgsign=false", "commit", "-m", "chore: ignored template fixture");
+      const settings = temporaryFolder();
+      const excludes = join(settings, "excludes");
+      write(settings, "excludes", ".env*\n.claude/\n.mcp.json\n");
+      write(
+        settings,
+        "gitconfig",
+        "[user]\nname = Fixture\nemail = fixture@example.com\n[commit]\ngpgsign = false\n[core]\nexcludesFile = " +
+          JSON.stringify(excludes.replaceAll("\\", "/")) +
+          "\n",
+      );
+      vi.stubEnv("GIT_CONFIG_GLOBAL", join(settings, "gitconfig"));
+      const target = join(temporaryFolder(), "aitpl-app");
+      expect(createProject(request(target, template), root).committed).toBe(true);
+      const files = git(target, "ls-files", "-z").split("\0").filter(Boolean).sort();
+      expect(files).toEqual(
+        templateFiles(root, template)
+          .map((file) => file.path)
+          .sort(),
+      );
+      expect(files).toEqual(
+        expect.arrayContaining([".env.example", ".claude/settings.json", ".mcp.json"]),
+      );
+      expect(git(target, "status", "--porcelain")).toBe("");
+    },
+  );
+
   it("git 사용자 정보가 없으면 init만 남긴다", () => {
     const root = fixtureRepository();
     const config = join(temporaryFolder(), "empty-config");

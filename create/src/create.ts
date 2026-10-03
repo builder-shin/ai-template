@@ -11,7 +11,7 @@ import {
   rmdirSync,
   rmSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { CreateOptions } from "./arguments.ts";
 import { CreateError } from "./errors.ts";
 import { initializeGit, runGit } from "./git.ts";
@@ -75,6 +75,7 @@ export function createProject(
   const parent = dirname(options.target);
   mkdirSync(parent, { recursive: true });
   const staging = mkdtempSync(join(parent, `aitpl-${options.name}-`));
+  const copiedFiles: string[] = [];
   let moved = false;
   try {
     for (const { template, files } of plans)
@@ -86,6 +87,7 @@ export function createProject(
         );
         mkdirSync(dirname(destination), { recursive: true });
         copyFileSync(join(root, "templates", template, file.path), destination);
+        copiedFiles.push(relative(staging, destination).split(sep).join("/"));
         if (process.platform !== "win32") chmodSync(destination, file.executable ? 0o755 : 0o644);
       }
     if (options.template === "combo")
@@ -102,7 +104,14 @@ export function createProject(
     if (existsSync(options.target)) rmdirSync(options.target);
     renameSync(staging, options.target);
     moved = true;
-    const committed = options.git ? initializeGit(options.target, options.name, sha) : false;
+    const committed = options.git
+      ? initializeGit(
+          options.target,
+          options.name,
+          sha,
+          copiedFiles.filter((file) => existsSync(join(options.target, file))),
+        )
+      : false;
     return { target: options.target, committed };
   } catch (error) {
     rmSync(moved ? options.target : staging, { recursive: true, force: true });

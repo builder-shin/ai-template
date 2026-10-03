@@ -28,7 +28,12 @@ export function runGit(cwd: string, args: string[]): string {
   return result.stdout;
 }
 
-export function initializeGit(target: string, name: string, sha: string): boolean {
+export function initializeGit(
+  target: string,
+  name: string,
+  sha: string,
+  copiedFiles: readonly string[],
+): boolean {
   runGit(target, ["init", "-b", "main"]);
   // 자동 추측한 신원으로 커밋하지 않고 사용자가 설정한 신원을 확인한다.
   try {
@@ -39,7 +44,20 @@ export function initializeGit(target: string, name: string, sha: string): boolea
   } catch {
     return false;
   }
-  runGit(target, ["add", "--all"]);
+  // 조합이 만든 파일은 프로젝트 ignore만 적용하고, 복사한 템플릿 파일은 모두 포함한다.
+  const createdFiles = runGit(target, [
+    "-c",
+    "core.excludesFile=",
+    "ls-files",
+    "--others",
+    "--exclude-standard",
+    "-z",
+  ])
+    .split("\0")
+    .filter(Boolean);
+  const files = [...new Set([...copiedFiles, ...createdFiles])];
+  for (let index = 0; index < files.length; index += 50)
+    runGit(target, ["add", "-f", "--", ...files.slice(index, index + 50)]);
   runGit(target, ["commit", "-m", `chore: create ${name} from ai-template ${sha}`]);
   return true;
 }
