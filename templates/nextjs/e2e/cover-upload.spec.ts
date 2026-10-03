@@ -1,4 +1,4 @@
-import { test, expect, signupAndVerify, login } from "./fixtures";
+import { test, expect, signupAndVerify, login, waitForServerAction } from "./fixtures";
 
 test("실제 브라우저 PUT·ready 확인 후 글 커버를 저장하고 해제한다", async ({ page, target }) => {
   const account = await signupAndVerify(page, target, "en");
@@ -27,11 +27,7 @@ test("실제 브라우저 PUT·ready 확인 후 글 커버를 저장하고 해�
     )
     .toBe(1);
   await page.getByRole("button", { name: "Clear image", exact: true }).click();
-  const updateResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === "POST" &&
-      response.request().headers()["next-action"] !== undefined,
-  );
+  const updateResponse = waitForServerAction(page);
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await updateResponse;
   await expect(page.locator('input[name="coverImage"]')).toHaveValue("");

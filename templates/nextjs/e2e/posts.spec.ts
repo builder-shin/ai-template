@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { test, expect, signupAndVerify, login } from "./fixtures";
+import { test, expect, signupAndVerify, login, waitForServerAction } from "./fixtures";
 import { webOrigin } from "./targets";
 import { observeRealtime } from "./realtime";
 import ko from "../messages/ko.json" with { type: "json" };
@@ -41,11 +41,7 @@ for (const locale of ["ko", "en"] as const) {
     const id = editPath.split("/").at(-2)!;
     const editedTitle = `${title} edited`;
     await page.getByLabel(t.posts.titleLabel, { exact: true }).fill(editedTitle);
-    const updateResponse = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.request().headers()["next-action"] !== undefined,
-    );
+    const updateResponse = waitForServerAction(page);
     await page.getByRole("button", { name: t.posts.save, exact: true }).click();
     await updateResponse;
     await page.getByRole("button", { name: t.posts.publish, exact: true }).click();

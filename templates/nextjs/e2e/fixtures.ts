@@ -21,6 +21,14 @@ interface Account {
 const copy = (locale: Account["locale"]) => (locale === "ko" ? ko : en);
 const prefix = (locale: Account["locale"]) => (locale === "ko" ? "" : "/en");
 
+export function waitForServerAction(page: Page) {
+  return page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.request().headers()["next-action"] !== undefined,
+  );
+}
+
 export async function signupAndVerify(
   page: Page,
   target: TargetAdapter,
