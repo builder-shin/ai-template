@@ -14,6 +14,7 @@ vi.mock("node:fs", async (original) => {
     rmSync: vi.fn(actual.rmSync),
     renameSync: vi.fn(actual.renameSync),
     mkdtempSync: vi.fn(actual.mkdtempSync),
+    copyFileSync: vi.fn(actual.copyFileSync),
   };
 });
 
@@ -22,6 +23,7 @@ afterEach(() => {
   vi.mocked(fs.rmSync).mockReset().mockImplementation(actual.rmSync);
   vi.mocked(fs.renameSync).mockReset().mockImplementation(actual.renameSync);
   vi.mocked(fs.mkdtempSync).mockReset().mockImplementation(actual.mkdtempSync);
+  vi.mocked(fs.copyFileSync).mockReset().mockImplementation(actual.copyFileSync);
   vi.restoreAllMocks();
 });
 
@@ -30,6 +32,23 @@ const request = (target: string) => ({
   name: "my-project",
   template: "nextjs" as const,
   git: false,
+});
+
+it("복사 중 중단 표시는 다음 복사 전에 정리하고 오류 130으로 끝낸다", () => {
+  const root = fixtureRepository();
+  const parent = temporaryFolder();
+  let interrupted = false;
+  vi.mocked(fs.copyFileSync).mockImplementationOnce((...args) => {
+    actual.copyFileSync(...args);
+    interrupted = true;
+  });
+  expect(() =>
+    createProject(request(join(parent, "missing/nested/aitpl-app")), root, {
+      interrupted: () => interrupted,
+    }),
+  ).toThrow(expect.objectContaining({ exitCode: 130 }));
+  expect(fs.copyFileSync).toHaveBeenCalledTimes(1);
+  expect(fs.readdirSync(parent)).toEqual([]);
 });
 
 it.skipIf(process.platform !== "win32")("쓰기 권한 오류는 이동 잠금 안내로 바꾸지 않는다", () => {

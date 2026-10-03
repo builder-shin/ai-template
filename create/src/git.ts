@@ -10,6 +10,8 @@ export function runGit(cwd: string, args: string[]): string {
     maxBuffer: 16 * 1024 * 1024,
     stdio: ["ignore", "pipe", "pipe"],
   });
+  if (result.signal === "SIGINT" || result.signal === "SIGTERM")
+    throw new CreateError("git 실행을 중단했다", "정리가 끝난 뒤 다시 실행한다.", 130);
   if (result.error && "code" in result.error && result.error.code === "ENOENT") {
     throw new CreateError("git을 찾을 수 없다", "git을 설치하고 PATH에 추가한다.");
   }
@@ -69,7 +71,8 @@ export function initializeGit(
     if (!runGit(target, ["config", "--get", "user.email"]).trim()) return false;
     runGit(target, ["var", "GIT_AUTHOR_IDENT"]);
     runGit(target, ["var", "GIT_COMMITTER_IDENT"]);
-  } catch {
+  } catch (error) {
+    if (error instanceof CreateError && error.exitCode === 130) throw error;
     return false;
   }
   runGit(target, ["commit", "-m", initialCommitMessage(name, sha)]);

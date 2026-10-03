@@ -19,6 +19,8 @@ export const runPnpm: PnpmRunner = (cwd, args) => {
       maxBuffer: 16 * 1024 * 1024,
     },
   );
+  if (result.signal === "SIGINT" || result.signal === "SIGTERM")
+    throw new CreateError("pnpm 실행을 중단했다", "정리가 끝난 뒤 다시 실행한다.", 130);
   if (result.error && "code" in result.error && result.error.code === "ENOENT")
     throw new CreateError("pnpm을 찾을 수 없다", "pnpm 12.6.0을 설치하고 pnpm new로 실행한다.");
   if (result.error || result.status !== 0)
