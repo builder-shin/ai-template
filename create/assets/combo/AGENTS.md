@@ -62,9 +62,9 @@ compose 이름이 프로젝트마다 달라 볼륨은 섞이지 않는다.
 - 루트 hook은 앱의 `.claude/settings.json`에서 exec form의 command hook을 매번 읽고 앱 폴더에서 실행한다.
 - matcher·이벤트·권한을 바꾸면 루트 `.claude/settings.json`도 고친다. 앱 lefthook·Betterleaks 설정을 바꾸면 루트 `lefthook.yml`·`.betterleaks.toml`도 고친다. prompt hook은 루트 디스패처가 지원하지 않는다.
 - 편집 hook은 고친 앱만, Stop은 바뀐 앱과 루트 검사만 돈다. 위험 명령은 두 앱이 검사하고 하나라도 거부하면 막는다. SessionStart는 앱별 상태를 함께 보여 준다.
-- 앱 hook의 exit 2와 JSON deny·block은 차단한다. 일반 실패·실행 도구 누락·시간 초과는 고치는 방법과 함께 비차단 오류로 알린다.
+- 앱 hook의 exit 2와 JSON deny·block은 차단한다. 일반 실패·실행 도구 누락·시간 초과는 고치는 방법과 함께 비차단 오류로 알린다. 성공 응답의 문맥·권한 결정에 곁들인 오류는 `systemMessage`로 사용자에게 경고를 보여 준다.
 - 루트 `lefthook.yml`이 커밋 전 앱 포맷·린트와 루트 포맷을 돌리고, 합친 `.betterleaks.toml`로 비밀을 한 번 스캔한다. 푸시 전에는 `pnpm check`를 돌린다.
-- 루트와 앱 setup은 자기 폴더가 git 최상위일 때만 hook을 설치한다. 루트가 git 최상위가 아니면 Stop도 안내만 하고 통과한다. 루트에서 `git init` 후 다시 실행한다. 루트 `.mcp.json`은 web의 고정 MCP 서버를 쓴다.
+- 루트와 앱 setup은 자기 폴더가 git 최상위일 때만 hook을 설치한다. 루트가 git 최상위가 아니면 Stop은 `systemMessage`로 사용자에게 경고를 보여 주고 통과한다. 루트에서 `git init` 후 다시 실행한다. 루트 `.mcp.json`은 web의 고정 MCP 서버를 쓴다.
 
 ## 완료 기준
 

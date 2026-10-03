@@ -27,6 +27,8 @@ test("앱 hook ENOENT는 도구를 막지 않고 설치 안내를 한 번만 알
     assert.equal(result.code, event === "SessionStart" ? 0 : 1);
     if (event !== "SessionStart") assert.equal(result.json, undefined);
     assert.match(message, /ENOENT.* — .*설치/s);
+    if (event !== "SessionStart")
+      assert.match(message.split("\n")[0], /^\[api\] .*ENOENT.* — .*설치/);
     assert.equal(message.match(/ENOENT/g)?.length, 1);
     if (event === "SessionStart") assert.match(message, /web 상태/);
   }
@@ -47,6 +49,7 @@ test("앱 hook 시간 초과는 권한 거부 대신 비차단 오류와 시간 
   assert.equal(result.code, 1);
   assert.equal(result.json, undefined);
   assert.match(result.stderr, /ETIMEDOUT.* — .*시간/s);
+  assert.match(result.stderr.split("\n")[0], /^\[api\] .*ETIMEDOUT.* — .*시간/);
 });
 
 test("SessionStart는 실행 오류를 중복 없이 다른 앱 요약과 함께 출력한다", (t) => {
@@ -57,6 +60,9 @@ test("SessionStart는 실행 오류를 중복 없이 다른 앱 요약과 함께
   assert.equal(result.code, 0);
   assert.equal(message.match(/ENOENT/g)?.length, 1);
   assert.match(message, /web 상태/);
+  assert.match(result.json.systemMessage, /^\[api\] .*ENOENT.* — .*설치/);
+  assert.equal(result.json.systemMessage.match(/ENOENT/g)?.length, 1);
+  assert.equal(result.stderr, undefined);
 });
 
 test("이미 고치는 방법이 있는 루트 실행 오류에는 안내를 덧붙이지 않는다", (t) => {
@@ -112,21 +118,52 @@ test("PostToolUse의 차단과 실행 오류도 이유에 한 번씩 보존한�
   assert.equal(result.json.reason.match(/ENOENT/g)?.length, 1);
 });
 
-test("허용 결정과 문맥이 있어도 다른 앱의 비차단 오류를 출력한다", (t) => {
+test("allow·ask·defer 결정과 함께 다른 앱의 비차단 오류를 사용자에게 보여 준다", (t) => {
   const f = fixture(t);
-  const result = f.invoke("PreToolUse", {
-    tool_name: "Bash",
-    results: {
-      api: {
-        json: {
-          hookSpecificOutput: { permissionDecision: "allow", additionalContext: "api 문맥" },
+  for (const decision of ["allow", "ask", "defer"]) {
+    const result = f.invoke("PreToolUse", {
+      tool_name: "Bash",
+      results: {
+        api: {
+          json: {
+            hookSpecificOutput: { permissionDecision: decision, additionalContext: "api 문맥" },
+          },
         },
+        web: { code: 1, stderr: "web 일반 오류" },
       },
-      web: { code: 1, stderr: "web 일반 오류" },
+    });
+    assert.equal(result.code, 0);
+    assert.equal(result.json.hookSpecificOutput.hookEventName, "PreToolUse");
+    assert.equal(result.json.hookSpecificOutput.permissionDecision, decision);
+    assert.match(result.json.hookSpecificOutput.additionalContext, /api 문맥/);
+    assert.equal(result.json.systemMessage, "[web] web 일반 오류");
+    assert.equal(result.stderr, undefined);
+  }
+});
+
+test("PreToolUse·PostToolUse·Stop 문맥과 비차단 실행 오류를 같은 JSON으로 출력한다", (t) => {
+  const f = fixture(t);
+  commandHooks(f, [
+    {
+      type: "command",
+      command: process.execPath,
+      args: ["${CLAUDE_PROJECT_DIR}/.claude/fake.mjs"],
     },
-  });
-  assert.equal(result.json.hookSpecificOutput.permissionDecision, "allow");
-  assert.match(result.stderr, /web 일반 오류/);
+    { type: "command", command: "aitpl-missing-uv", args: [] },
+  ]);
+  for (const event of ["PreToolUse", "PostToolUse", "Stop"]) {
+    const result = f.invoke(event, {
+      tool_name: "Edit",
+      tool_input: { file_path: "apps/api/file.ts" },
+      results: { api: { json: { hookSpecificOutput: { additionalContext: "api 문맥" } } } },
+    });
+    assert.equal(result.code, 0);
+    assert.equal(result.json.decision, undefined);
+    assert.equal(result.json.hookSpecificOutput.hookEventName, event);
+    assert.match(result.json.hookSpecificOutput.additionalContext, /api 문맥/);
+    assert.match(result.json.systemMessage, /^\[api\] .*ENOENT.* — .*설치/);
+    assert.equal(result.stderr, undefined);
+  }
 });
 
 test("이미 고치는 방법이 있는 앱 설정·루트 오류에는 안내를 덧붙이지 않는다", (t) => {

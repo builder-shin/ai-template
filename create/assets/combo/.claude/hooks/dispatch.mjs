@@ -6,6 +6,8 @@ import { formatFile } from "../../scripts/staged-format.mjs";
 
 const apps = ["api", "web"];
 const label = (app, text) => `[${app}]\n${text}`;
+// 비차단 오류는 첫 stderr 줄만 보이는 세션에서도 원인과 방법을 함께 알린다.
+const errorLabel = (app, text) => `[${app}] ${text.replace(/\s*\r?\n\s*/g, " ")}`;
 const details = (result) =>
   [result.stdout, result.stderr, result.error?.message].filter(Boolean).join("\n").trim();
 const withHint = (message, hint) => (message.includes("—") ? message : `${message} — ${hint}`);
@@ -85,7 +87,7 @@ function merge(event, results) {
   for (const result of results) {
     if (result.error) {
       errors.push(
-        label(
+        errorLabel(
           result.app,
           withHint(
             details(result),
@@ -103,7 +105,9 @@ function merge(event, results) {
       try {
         json = JSON.parse(stdout);
       } catch {
-        errors.push(label(result.app, "hook JSON을 읽을 수 없다 — JSON 객체 하나를 출력한다."));
+        errors.push(
+          errorLabel(result.app, "hook JSON을 읽을 수 없다 — JSON 객체 하나를 출력한다."),
+        );
       }
     }
     const specific = json?.hookSpecificOutput;
@@ -131,10 +135,14 @@ function merge(event, results) {
     if (specific?.additionalContext) contexts.push(label(result.app, specific.additionalContext));
     else if (!json && stdout && event === "SessionStart") contexts.push(label(result.app, stdout));
     if (!blocked && exitCode(result) !== 0 && !json)
-      errors.push(label(result.app, details(result)));
+      errors.push(errorLabel(result.app, details(result)));
   }
+  const warning = errors.length ? { systemMessage: errors.join("\n\n") } : {};
   if (event === "SessionStart")
-    return { code: 0, json: context(event, [...contexts, ...blocks, ...errors].join("\n\n")) };
+    return {
+      code: 0,
+      json: { ...context(event, [...contexts, ...blocks, ...errors].join("\n\n")), ...warning },
+    };
   if (event === "PreToolUse") {
     const decision = blocks.length
       ? "deny"
@@ -145,6 +153,7 @@ function merge(event, results) {
       return {
         code: 0,
         json: {
+          ...warning,
           hookSpecificOutput: {
             hookEventName: event,
             ...(decision
@@ -161,13 +170,13 @@ function merge(event, results) {
             ...(contexts.length ? { additionalContext: contexts.join("\n\n") } : {}),
           },
         },
-        ...(!blocks.length && errors.length ? { stderr: errors.join("\n\n") } : {}),
       };
   }
   if (blocks.length)
     return {
       code: 0,
       json: {
+        ...warning,
         decision: "block",
         reason: [...blocks, ...errors].join("\n\n"),
         ...(contexts.length ? context(event, contexts.join("\n\n")) : {}),
@@ -176,8 +185,7 @@ function merge(event, results) {
   if (contexts.length)
     return {
       code: 0,
-      json: context(event, contexts.join("\n\n")),
-      ...(errors.length ? { stderr: errors.join("\n\n") } : {}),
+      json: { ...context(event, contexts.join("\n\n")), ...warning },
     };
   return { code: errors.length ? 1 : 0, stderr: errors.join("\n\n") || undefined };
 }
@@ -201,8 +209,10 @@ export function dispatch(
       if (!isGitRoot(root, execute))
         return {
           code: 0,
-          stderr:
-            "루트가 git 최상위가 아니므로 Stop 검사를 건너뛴다 — 루트에서 git init 후 다시 실행한다.",
+          json: {
+            systemMessage:
+              "루트가 git 최상위가 아니므로 Stop 검사를 건너뛴다 — 루트에서 git init 후 다시 실행한다.",
+          },
         };
       const files = changedFiles(root, execute);
       selected = apps.filter((app) => files.some((path) => path.startsWith(`apps/${app}/`)));

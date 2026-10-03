@@ -265,8 +265,9 @@ test("Stop은 git 밖이나 상위 저장소 안이면 검사 없이 비차단 �
   for (const root of [outside, join(parent.root, "nested")]) {
     const result = dispatch("Stop", JSON.stringify({ cwd: root }), { root, rootCheck });
     assert.equal(result.code, 0);
-    assert.equal(result.json, undefined);
-    assert.match(result.stderr, /git.* — .*git init/);
+    assert.equal(result.json.decision, undefined);
+    assert.match(result.json.systemMessage, /git.* — .*git init/);
+    assert.equal(result.stderr, undefined);
   }
   assert.equal(parent.calls("api").length + parent.calls("web").length, 0);
 });
