@@ -42,21 +42,26 @@ export function instructionErrors(root) {
   return errors;
 }
 
-export function check(root, { run: execute = run, output = console.log } = {}) {
+export function check(root, { run: execute = run, output = console.log, apps = true } = {}) {
   const steps = [
     () => format(root, false, execute),
-    () => execute(process.execPath, ["--test", "scripts/*.test.mjs"], { cwd: root }),
+    () =>
+      execute(process.execPath, ["--test", "scripts/*.test.mjs", ".claude/hooks/*.test.mjs"], {
+        cwd: root,
+      }),
     () => {
       const errors = instructionErrors(root);
       return { status: errors.length ? 1 : 0, stdout: errors.join("\n") };
     },
-    () =>
+  ];
+  if (apps)
+    steps.push(() =>
       execute(
         "pnpm",
         ["exec", "turbo", "run", "check", "--filter=api", "--filter=web", "--concurrency=1"],
         { cwd: root },
       ),
-  ];
+    );
   for (const step of steps) {
     const result = step();
     if (exitCode(result) !== 0) {
@@ -69,6 +74,12 @@ export function check(root, { run: execute = run, output = console.log } = {}) {
   }
   output(`check 통과: ${steps.length}단계`);
   return 0;
+}
+
+export function checkRoot(root) {
+  const messages = [];
+  const status = check(root, { apps: false, output: (text) => messages.push(text) });
+  return { status, stdout: messages.join("\n") };
 }
 
 if (isMain(import.meta.url)) process.exitCode = check(resolve(import.meta.dirname, ".."));

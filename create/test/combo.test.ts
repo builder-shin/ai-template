@@ -79,6 +79,20 @@ function comboFixture() {
   write(root, "templates/nextjs/.github/workflows/ci.yml", "name: web\n");
   write(root, "templates/fastapi/.github/workflows/ci.yml", "name: api\n");
   write(root, "templates/fastapi/openapi.json", "{}\n");
+  for (const template of ["fastapi", "nextjs"]) {
+    write(
+      root,
+      `templates/${template}/.claude/settings.json`,
+      '{"permissions":{"allow":[],"deny":[]}}\n',
+    );
+    write(root, `templates/${template}/lefthook.yml`, "pre-commit:\n  jobs: []\n");
+    write(root, `templates/${template}/.betterleaks.toml`, "[extend]\nuseDefault = true\n");
+  }
+  write(
+    root,
+    "templates/nextjs/.mcp.json",
+    '{"mcpServers":{"next-devtools":{"command":"npx","args":["--yes","next-devtools-mcp@0.4.0"]}}}\n',
+  );
   write(root, ".gitattributes", "* text=auto eol=lf\n");
   write(root, ".editorconfig", "root = true\n");
   git(root, "add", ".");
@@ -98,10 +112,15 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
     },
   });
   expect(result.committed).toBe(true);
+  expect(JSON.parse(readFileSync(join(target, ".mcp.json"), "utf8"))).toMatchObject({
+    mcpServers: { "next-devtools": { command: "npx" } },
+  });
+  expect(existsSync(join(target, ".claude/hooks/stop-check.mjs"))).toBe(true);
   expect(commands).toEqual([
     ["--version"],
     ["install", "--lockfile-only"],
     ["install", "--frozen-lockfile"],
+    ["exec", "prettier", "--write", ".claude/settings.json", "lefthook.yml", ".mcp.json"],
     ["--filter", "web", "run", "gen"],
   ]);
   expect(git(target, "status", "--porcelain")).toBe("");

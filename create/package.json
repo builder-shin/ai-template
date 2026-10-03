@@ -4,10 +4,11 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run && node --test assets/combo/scripts/*.test.mjs",
+    "test": "vitest run && node --test assets/combo/scripts/*.test.mjs assets/combo/.claude/hooks/*.test.mjs",
     "check": "pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
+    "smol-toml": "1.9.0",
     "yaml": "2.9.1"
   }
 }
