@@ -104,7 +104,7 @@ export function parseArguments(
   }
   if (values.api !== undefined && (name === "api" || name === "web")) {
     throw new CreateError(
-      `${name}는 조합 앱의 workspace 패키지 이름이다`,
+      `조합 앱의 workspace 패키지 이름(${name})과 겹친다`,
       "다른 --name을 지정한다.",
       2,
     );

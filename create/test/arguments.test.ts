@@ -4,7 +4,7 @@ import { parseArguments } from "../src/arguments.ts";
 import { CreateError } from "../src/errors.ts";
 
 describe("CLI 입력", () => {
-  it.each(["api", "web"])("조합 예약 이름 %s는 두 입력 경로 모두 오류 2다", (name) => {
+  it.each(["api", "web"])("조합 예약 이름은 두 입력 경로 모두 오류 2다: %s", (name) => {
     for (const args of [[name], ["target", "--name", name]]) {
       try {
         parseArguments([...args, "--api", "fastapi", "--web"], {});
@@ -12,7 +12,9 @@ describe("CLI 입력", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(CreateError);
         expect(error).toMatchObject({ exitCode: 2 });
-        expect((error as Error).message).toMatch(/ — .*--name/);
+        expect((error as Error).message).toBe(
+          `pnpm new: 조합 앱의 workspace 패키지 이름(${name})과 겹친다 — 다른 --name을 지정한다.`,
+        );
       }
     }
   });
