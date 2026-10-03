@@ -156,7 +156,7 @@
 - 확인 결과 FastAPI의 커밋된 `openapi.json`으로 만든 타입에서 web check 9단계가 통과했다. FastAPI 스키마와 제품 코드는 고치지 않는다. TypeSpec 출력만 비교하던 생성기 테스트 하나를 선택한 입력을 읽게 고친다. 커밋하는 web 생성물은 TypeSpec 출력 그대로다.
 - AGENTS.md의 `gen` 행과 `docs/architecture.md`의 계약 절을 고친다. 조합은 생성기가 이 설정에 백엔드 OpenAPI를 연결한다는 개념으로만 설명하고 템플릿 밖 경로를 쓰지 않는다(독립성).
 
-실패 확인: 부모의 `scripts/generate.ts`에는 `readWebOpenapi`·`generateFiles`가 없다. 새 입력 테스트와 `gen.test.ts`의 재현 테스트가 `is not a function`으로 실패한다. 부모의 `assembleSteps`는 여섯째 인자와 `gen.config.json`을 캐시 키에 넣지 않아 캐시 무효화 테스트 두 개도 실패한다. 3개 파일에서 `22 failed | 10 passed`이고 GREEN은 `32 passed`다.
+실패 확인: 부모의 `scripts/generate.ts`에는 `readWebOpenapi`·`generateFiles`가 없다. 새 입력 테스트와 `gen.test.ts`의 재현 테스트가 `is not a function`으로 실패한다. 부모의 `assembleSteps`는 여섯째 인자인 백엔드 스펙을 캐시 키에 넣지 않아 캐시 무효화 테스트 두 개도 실패한다. `gen.config.json`은 기존 `config.` 선택 규칙에 이미 포함되므로 해당 단언은 회귀 방지용이다. 3개 파일에서 `22 failed | 10 passed`이고 GREEN은 `32 passed`다.
 
 **Files:**
 - Modify: `templates/nextjs/AGENTS.md`, `templates/nextjs/docs/architecture.md`, `templates/nextjs/scripts/check/cli.ts`, `templates/nextjs/scripts/check/steps.ts`, `templates/nextjs/scripts/gen.ts`, `templates/nextjs/scripts/generate.ts`

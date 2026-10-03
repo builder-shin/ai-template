@@ -129,7 +129,7 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
 
 ### 4.2 템플릿 변경
 
-- FastAPI 템플릿 `compose.yaml`은 최상위 `name`을 두지 않고 폴더 이름을 기본 compose 이름으로 쓴다. 템플릿 폴더는 `fastapi`라 개발 데이터(`fastapi_*` 볼륨)와 `pnpm conformance fastapi`의 동작은 그대로다. CLI는 생성할 때 맨 앞에 폴더와 관계없이 프로젝트·볼륨 이름을 고정한다는 주석과 `name: <이름>`을 넣는다. 템플릿에 이미 최상위 `name`이 있으면 손으로 복사한 프로젝트끼리 볼륨을 공유하므로 지우도록 안내하고 실패한다. 앱 이미지는 YAML 값의 바이트 범위만 바꿔 주석·앵커를 보존한다.
+- FastAPI 템플릿 `compose.yaml`은 최상위 `name`을 두지 않고 폴더 이름을 기본 compose 이름으로 쓴다. 템플릿 폴더는 `fastapi`라 개발 데이터(`fastapi_*` 볼륨)와 `pnpm conformance fastapi`의 동작은 그대로다. CLI는 생성할 때 맨 앞에 폴더와 관계없이 프로젝트·볼륨 이름을 고정한다는 주석과 `name: <이름>`을 넣는다. 이름은 YAML 문자열로 직렬화해 `null`·`true`·`false`도 문자열로 보존하고, 일반 이름에는 따옴표를 붙이지 않는다. 템플릿에 이미 최상위 `name`이 있으면 손으로 복사한 프로젝트끼리 볼륨을 공유하므로 지우도록 안내하고 실패한다. 앱 이미지는 YAML 값의 바이트 범위만 바꿔 주석·앵커를 보존한다.
 - 두 템플릿에 `.github/workflows/ci.yml`을 둔다(§5.9). 템플릿 저장소에서는 실행되지 않는 파일이고, 폴더째 복사한 프로젝트에서 동작한다.
 - 저장소 루트의 `.gitattributes`와 `.editorconfig`를 `scripts/shared-assets.json`에 더해 두 템플릿에 동기화한다(C16).
 
