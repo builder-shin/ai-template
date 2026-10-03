@@ -106,7 +106,8 @@ export function mergeBetterleaks(api: string, web: string): string {
     return patterns.map((pattern) => {
       // 루트 앵커와 경로 경계를 앱의 상대 경로 기준으로 옮긴다.
       const local = pattern.replace(/^\^/, "").replace(/\(\^\|\/\)/g, "(?:|.*/)");
-      return `^apps/${app}/${pattern.startsWith("^") ? "" : ".*"}(?:${local})`;
+      const anchored = pattern.startsWith("^") || pattern.startsWith("(^|/)");
+      return `^apps/${app}/${anchored ? "" : ".*"}(?:${local})`;
     });
   });
   return (
