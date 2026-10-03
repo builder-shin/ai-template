@@ -23,7 +23,13 @@ from pydantic import SecretStr, TypeAdapter, ValidationError
 from app.core.config import Origins, Settings, load_settings
 from app.storage_setup import ensure_bucket
 from tools.dev import SCHEDULER, WORKER, api
-from tools.infra import RATE_LIMIT_FIELDS, isolated_settings, migrate_disposable, preflight
+from tools.infra import (
+    RATE_LIMIT_FIELDS,
+    isolated_settings,
+    migrate_disposable,
+    preflight,
+    require_project_database,
+)
 from tools.mailpit import MAILPIT_URL
 from tools.processes import CommandStartError, ProcessGroup, run_command
 
@@ -250,13 +256,17 @@ def main() -> int:
             raise E2EError(problem)
         return 0
 
-    return run_with_server(isolated_settings(load_settings(), "e2e"), tests)
+    settings = load_settings()
+    require_project_database(settings)
+    return run_with_server(isolated_settings(settings, "e2e"), tests)
 
 
 def serve_main(args: Sequence[str] | None = None) -> int:
     # 도움말은 설정을 읽거나 인프라를 확인하기 전에 끝낸다.
     options = parse_serve_args(sys.argv[1:] if args is None else args)
-    settings = serve_settings(load_settings(), options.web_url)
+    development = load_settings()
+    require_project_database(development)
+    settings = serve_settings(development, options.web_url)
     cwd = Path(os.environ.get("POE_PWD") or os.getcwd())
 
     def command(group: ProcessGroup) -> int:

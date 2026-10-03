@@ -24,7 +24,8 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 | `uv run poe db:reset`                                         | 로컬 개발 DB를 지우고 다시 만든 뒤 마이그레이션과 시드를 한다                                                                |
 
 - `setup`은 여러 번 돌려도 안전하다. Docker가 켜져 있어야 한다. git hook은 이 폴더가 git 저장소의 최상위일 때만 건다.
-- `dev`·`db:migrate`·`db:reset`·`db:revision`은 로컬 DB에 연결하기 전에 이 프로젝트의 postgres가 실행 중이고 `DATABASE_URL`의 포트를 공개하는지 확인한다. 확인하지 못하면 DB에 연결하지 않는다. Docker를 켜고 `uv run poe setup`을 실행하며, 포트가 다르면 `.env`를 `compose.yaml`에 맞춘다. 원격 호스트는 확인을 건너뛰지만 `db:reset`은 계속 거절한다. 이 소유권 가드는 테스트·`test:e2e`·`e2e:serve`에는 적용하지 않는다. 이들은 일회용 DB·Valkey 번호·테스트 버킷을 쓰며, 외부 E2E 실행기가 준비하는 전용 compose 프로젝트의 소유권 확인은 별도 설계가 필요하다.
+- `dev`·`db:migrate`·`db:reset`·`db:revision`·`test:e2e`·`e2e:serve`는 로컬 DB에 연결하기 전에 이 프로젝트의 postgres가 실행 중이고 `DATABASE_URL`의 포트를 공개하는지 확인한다. 확인하지 못하면 DB에 연결하지 않는다. Docker를 켜고 `uv run poe setup`을 실행하며, 포트가 다르면 `.env`를 `compose.yaml`에 맞춘다. 원격 호스트는 확인을 건너뛰지만 `db:reset`은 계속 거절한다.
+- `test`·`check`는 CI의 외부 서비스를 쓸 수 있도록 도달 여부만 확인한다. 테스트는 일회용 DB·Valkey 번호, 개발 버킷의 `tests/<uuid>/` prefix를 쓰고 Mailpit 메일을 모두 지운다. 다른 스택이 설정된 포트를 점유하면 그 스택의 테스트 자원을 사용한다. `e2e:serve`는 개발 버킷 CORS에 web Origin도 더하므로 소유권 가드를 적용한다. 별도 컨테이너 스택을 쓰는 외부 web E2E 실행기는 `e2e:serve`를 쓰지 않는다.
 - `.env`가 있으면 적힌 값은 그대로 두고, 설정에 새로 생긴 키만 `.env.example`의 값으로 더한다. 설정 오류로 멈추면 `uv run poe setup`을 다시 돌린다.
 - 테스트가 "인프라가 꺼져 있다"로 멈추면 `uv run poe setup`을 돌린다.
 - `dev`는 출력 앞에 프로세스 이름을 붙이고, 하나가 끝나거나 Ctrl+C를 누르면 모두 내린다.

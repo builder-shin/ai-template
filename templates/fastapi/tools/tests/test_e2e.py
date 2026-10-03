@@ -26,6 +26,39 @@ BASE = Settings.model_construct(
 )
 
 
+@pytest.mark.parametrize("serve", [False, True])
+@pytest.mark.parametrize("owned", [False, True])
+def test_e2e_commands_guard_development_database_before_isolation(
+    monkeypatch: pytest.MonkeyPatch, serve: bool, owned: bool
+) -> None:
+    events: list[str] = []
+
+    def guard(settings: Settings) -> None:
+        assert settings is BASE
+        events.append("guard")
+        if not owned:
+            raise SystemExit("다른 프로젝트의 DB")
+
+    def run(settings: Settings, *args: object, **kwargs: object) -> int:
+        assert settings.database_url.get_secret_value().endswith("/app_e2e")
+        events.append("run")
+        return 7
+
+    monkeypatch.setattr(e2e, "load_settings", lambda: BASE)
+    monkeypatch.setattr(e2e, "require_project_database", guard, raising=False)
+    monkeypatch.setattr(e2e, "run_with_server", run)
+    if owned:
+        assert (e2e.serve_main(["--", "node"]) if serve else e2e.main()) == 7
+        assert events == ["guard", "run"]
+    else:
+        with pytest.raises(SystemExit, match="다른 프로젝트의 DB"):
+            if serve:
+                e2e.serve_main(["--", "node"])
+            else:
+                e2e.main()
+        assert events == ["guard"]
+
+
 def test_parse_defaults_and_preserves_command_arguments() -> None:
     options = e2e.parse_serve_args(["--", "node", "runner.mjs", "--web-url", "child-value"])
     assert options.web_url == "http://localhost:3100"
@@ -173,6 +206,7 @@ def lifecycle(
 
     monkeypatch.setattr(e2e, "load_settings", lambda: BASE)
     monkeypatch.setattr(e2e, "preflight", preflight)
+    monkeypatch.setattr(e2e, "require_project_database", lambda settings: None)
     monkeypatch.setattr(e2e, "prepare", prepare)
     monkeypatch.setattr(e2e, "ensure_bucket", cors)
     monkeypatch.setattr(e2e, "ProcessGroup", FakeGroup)
