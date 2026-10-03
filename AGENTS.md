@@ -15,6 +15,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `templates/`            | 템플릿. 각 폴더는 그대로 복사하면 동작하는 독립 프로젝트다                                |
 | `templates/fastapi/`    | FastAPI 백엔드 템플릿                                                                     |
 | `templates/nextjs/`     | Next.js BFF web. 자체 workspace의 계약·목과 인증·글·내 정보·세션·업로드·실시간 기능       |
+| `create/`               | git 추적 템플릿 파일로 독립 프로젝트를 만드는 CLI                                         |
 | `scripts/`              | check 실행기, 도구 설치기, 구조 비교, 지침·템플릿 검사, 동기화                            |
 | `docs/`                 | 하네스 표준, API 규약, 스펙과 계획                                                        |
 
@@ -26,6 +27,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `pnpm fix`                                        | 포맷과 자동 수정 가능한 린트                                                                                                                                                                                                                                                                      |
 | `pnpm gen`                                        | 계약을 컴파일하고 적합성 테스트와 목 서버의 타입을 다시 만든다                                                                                                                                                                                                                                    |
 | `pnpm sync`                                       | 공유 자산 원본을 템플릿 사본 위치로 복사한다                                                                                                                                                                                                                                                      |
+| `pnpm new <대상> --template <fastapi\|nextjs>`    | 저장소 밖에 단독 프로젝트를 만든다. `--name <이름>`, `--no-git`, `--help`를 지원한다                                                                                                                                                                                                              |
 | `pnpm --dir templates/nextjs setup`               | web의 고정 의존성·Chromium 설치와 환경 준비                                                                                                                                                                                                                                                       |
 | `pnpm --dir templates/nextjs dev`                 | 단독 모드의 web(3000)·목(4010), 백엔드 모드의 web                                                                                                                                                                                                                                                 |
 | `pnpm --dir templates/nextjs check`               | web 자체 검사. 루트 check의 템플릿 구조·사본 검사와 함께 통과해야 한다                                                                                                                                                                                                                            |

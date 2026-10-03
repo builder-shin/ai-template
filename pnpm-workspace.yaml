@@ -1,6 +1,7 @@
 packages:
   - contract/*
   - scripts
+  - create
 allowBuilds:
   esbuild: true
   lefthook: false

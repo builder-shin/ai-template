@@ -1,0 +1,187 @@
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { describe, expect, it, vi } from "vitest";
+import { createProject } from "../src/create.ts";
+import { findRepository, templateFiles } from "../src/repository.ts";
+import { fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
+
+function request(target: string, template: "nextjs" | "fastapi" = "nextjs", initialize = true) {
+  return { target, template, name: "my-project", git: initialize };
+}
+
+describe("단독 프로젝트", () => {
+  it.each(["nextjs", "fastapi"] as const)(
+    "%s의 파일만 만들고 main 첫 커밋을 남긴다",
+    (template) => {
+      const root = fixtureRepository();
+      expect(git(root, "status", "--porcelain", "--untracked-files=no")).toBe("");
+      if (template === "nextjs") {
+        expect(templateFiles(root, template).find((file) => file.path === "bin/start.sh")).toEqual({
+          path: "bin/start.sh",
+          executable: true,
+        });
+      }
+      const target = join(temporaryFolder(), "aitpl-app");
+      const result = createProject(request(target, template), root);
+      expect(result.committed).toBe(true);
+      expect(git(target, "status", "--porcelain")).toBe("");
+      expect(git(target, "branch", "--show-current").trim()).toBe("main");
+      expect(git(target, "rev-list", "--count", "HEAD").trim()).toBe("1");
+      expect(git(target, "log", "-1", "--format=%s").trim()).toBe(
+        `chore: create my-project from ai-template ${git(root, "rev-parse", "--short", "HEAD").trim()}`,
+      );
+      expect(readFileSync(join(target, "README.md"), "utf8")).toBe("# my-project\n\n내용\n");
+      expect(existsSync(join(target, "template.json"))).toBe(false);
+      expect(existsSync(join(target, "untracked.txt"))).toBe(false);
+      if (template === "nextjs") {
+        expect(JSON.parse(readFileSync(join(target, "package.json"), "utf8"))).toEqual({
+          name: "my-project",
+          private: true,
+        });
+        expect(readFileSync(join(target, "docs/공백 문서.md"))).toEqual(
+          readFileSync(join(root, "templates/nextjs/docs/공백 문서.md")),
+        );
+        expect(readFileSync(join(target, "pnpm-lock.yaml"))).toEqual(
+          readFileSync(join(root, "templates/nextjs/pnpm-lock.yaml")),
+        );
+        if (process.platform !== "win32")
+          expect(statSync(join(target, "bin/start.sh")).mode & 0o111).toBe(0o111);
+      } else {
+        expect(readFileSync(join(target, "compose.yaml"), "utf8")).toBe(
+          "# 프로젝트 이름\nname: my-project\nx-app: &app\n  image: my-project-app # 이미지\nservices:\n  api:\n    <<: *app\n  postgres:\n    image: postgres:18\n",
+        );
+        expect(readFileSync(join(target, "pyproject.toml"), "utf8")).toBe(
+          '[project]\nname = "app"\n',
+        );
+        expect(readFileSync(join(target, "uv.lock"))).toEqual(
+          readFileSync(join(root, "templates/fastapi/uv.lock")),
+        );
+      }
+    },
+  );
+
+  it("기존 빈 폴더에 git 없이 생성한다", () => {
+    const root = fixtureRepository();
+    const target = temporaryFolder();
+    createProject(request(target, "nextjs", false), root);
+    expect(existsSync(join(target, "package.json"))).toBe(true);
+    expect(existsSync(join(target, ".git"))).toBe(false);
+  });
+
+  it("git 사용자 정보가 없으면 init만 남긴다", () => {
+    const root = fixtureRepository();
+    const config = join(temporaryFolder(), "empty-config");
+    writeFileSync(config, "");
+    vi.stubEnv("GIT_CONFIG_GLOBAL", config);
+    vi.stubEnv("EMAIL", "implicit@example.com");
+    const target = join(temporaryFolder(), "aitpl-app");
+    expect(createProject(request(target), root).committed).toBe(false);
+    expect(existsSync(join(target, ".git"))).toBe(true);
+    expect(git(target, "status", "--porcelain")).toContain("?? README.md");
+  });
+
+  it("hook의 git 환경이 원본과 생성 대상의 저장소를 바꾸지 않는다", () => {
+    const root = fixtureRepository();
+    const before = readFileSync(join(root, ".git/config"));
+    for (const key of [
+      "GIT_DIR",
+      "GIT_WORK_TREE",
+      "GIT_INDEX_FILE",
+      "GIT_OBJECT_DIRECTORY",
+      "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+      "GIT_COMMON_DIR",
+      "GIT_NAMESPACE",
+      "GIT_PREFIX",
+    ]) {
+      vi.stubEnv(key, join(root, "wrong"));
+    }
+    const target = join(temporaryFolder(), "aitpl-app");
+    createProject(request(target), root);
+    expect(git(target, "status", "--porcelain")).toBe("");
+    expect(readFileSync(join(root, ".git/config"))).toEqual(before);
+    expect(findRepository(pathToFileURL(join(root, "create/src/cli.ts")).href)).toBe(root);
+  });
+
+  it("CLI 위치에서 계산한 루트가 git 루트와 다르면 거절한다", () => {
+    const root = fixtureRepository();
+    write(root, "nested/create/src/cli.ts", "");
+    expect(() =>
+      findRepository(pathToFileURL(join(root, "nested/create/src/cli.ts")).href),
+    ).toThrow(/배치/);
+  });
+
+  it.each(["unstaged", "staged", "deleted"])("추적 파일 변경을 거절한다: %s", (change) => {
+    const root = fixtureRepository();
+    write(root, "templates/nextjs/README.md", "# changed\n");
+    if (change === "staged") git(root, "add", "templates/nextjs/README.md");
+    if (change === "deleted") git(root, "rm", "-f", "templates/nextjs/README.md");
+    const target = join(temporaryFolder(), "aitpl-app");
+    expect(() => createProject(request(target), root)).toThrow(/커밋/);
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it("선택하지 않은 템플릿의 변경은 허용한다", () => {
+    const root = fixtureRepository();
+    write(root, "templates/fastapi/README.md", "# changed\n");
+    expect(templateFiles(root, "nextjs").map((file) => file.path)).toContain("docs/공백 문서.md");
+  });
+
+  it("비어 있지 않은 대상과 파일을 보존하며 거절한다", () => {
+    const root = fixtureRepository();
+    const target = temporaryFolder();
+    write(target, "keep.txt", "keep\n");
+    expect(() => createProject(request(target), root)).toThrow(/비어|대상/);
+    expect(readdirSync(target)).toEqual(["keep.txt"]);
+    expect(() => createProject(request(join(target, "keep.txt")), root)).toThrow(/대상/);
+  });
+
+  it("저장소 안이나 링크를 거쳐 저장소 안에 생성하는 것을 거절한다", () => {
+    const root = fixtureRepository();
+    expect(() => createProject(request(join(root, "aitpl-nested")), root)).toThrow(/저장소/);
+    const outside = temporaryFolder();
+    symlinkSync(root, join(outside, "link"), process.platform === "win32" ? "junction" : "dir");
+    expect(() => createProject(request(join(outside, "link/aitpl-nested")), root)).toThrow(
+      /저장소/,
+    );
+    expect(existsSync(join(root, "aitpl-nested"))).toBe(false);
+  });
+
+  it("복사 뒤 이름 변경 실패도 임시 폴더를 정리한다", () => {
+    const root = fixtureRepository();
+    write(root, "templates/nextjs/package.json", "invalid json\n");
+    git(root, "add", "templates");
+    git(root, "-c", "commit.gpgsign=false", "commit", "-m", "chore: invalid fixture");
+    const parent = temporaryFolder();
+    expect(() => createProject(request(join(parent, "aitpl-app")), root)).toThrow();
+    expect(readdirSync(parent)).toEqual([]);
+  });
+
+  it("서명 설정을 따르고 커밋 실패 시 생성 대상을 정리한다", () => {
+    const root = fixtureRepository();
+    const config = process.env.GIT_CONFIG_GLOBAL;
+    if (!config) throw new Error("fixture 설정이 없다");
+    writeFileSync(
+      config,
+      "[user]\nname = Fixture\nemail = fixture@example.com\n[commit]\ngpgsign = true\n[gpg]\nprogram = aitpl-missing-signing-program\n",
+    );
+    const parent = temporaryFolder();
+    expect(() => createProject(request(join(parent, "aitpl-app")), root)).toThrow(/git/);
+    expect(readdirSync(parent)).toEqual([]);
+  });
+
+  it("git이 없으면 대상도 만들지 않는다", () => {
+    const root = fixtureRepository();
+    vi.stubEnv("PATH", "");
+    const parent = temporaryFolder();
+    expect(() => createProject(request(join(parent, "aitpl-app")), root)).toThrow(/git.*설치/);
+    expect(readdirSync(parent)).toEqual([]);
+  });
+});

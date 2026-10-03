@@ -283,6 +283,12 @@ importers:
         specifier: 1.16.0
         version: 1.16.0(@typespec/compiler@1.16.0(@types/node@24.13.6))(@typespec/http@1.16.0(@typespec/compiler@1.16.0(@types/node@24.13.6)))(@typespec/openapi@1.16.0(@typespec/compiler@1.16.0(@types/node@24.13.6))(@typespec/http@1.16.0(@typespec/compiler@1.16.0(@types/node@24.13.6))))
 
+  create:
+    dependencies:
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
+
   scripts: {}
 
 packages:
