@@ -12,6 +12,10 @@ interface Contract {
 
 export function generateMetadata(spec: Contract): Record<string, string> {
   const events = spec["x-realtime-events"];
+  if (!Array.isArray(events))
+    throw new Error("x-realtime-events가 없다 — 백엔드 OpenAPI에 실시간 이벤트를 선언한다.");
+  if (!Array.isArray(spec.components?.schemas?.ErrorCode?.enum))
+    throw new Error("components.schemas.ErrorCode가 없다 — 백엔드 OpenAPI에 에러 코드를 선언한다.");
   for (const event of events) {
     if (!Object.hasOwn(spec.components.schemas, event.payload))
       throw new Error(`실시간 payload ${event.payload}를 계약 schemas에 정의한다.`);

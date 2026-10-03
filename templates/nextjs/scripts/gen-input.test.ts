@@ -100,6 +100,20 @@ describe("web 생성 입력", () => {
   });
 
 
+  it.each(["x-realtime-events", "components.schemas.ErrorCode"])(
+    "%s가 없으면 백엔드에서 선언하도록 안내한다",
+    async (missing) => {
+      const spec = fixture("backend");
+      if (missing === "x-realtime-events") Reflect.deleteProperty(spec, missing);
+      else Reflect.deleteProperty(spec.components.schemas, "ErrorCode");
+      configure({ openapi: "backend.json" });
+      writeFileSync(join(root, "backend.json"), JSON.stringify(spec));
+      await expect(generateFiles(root, contract, mock)).rejects.toThrow(
+        new RegExp(`${missing.replaceAll(".", "\\.")}.*—.*백엔드.*선언`),
+      );
+    },
+  );
+
   it.each(
     [
       null,
