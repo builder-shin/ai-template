@@ -74,7 +74,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 
 ### 생성물
 
-- 직접 고치지 않는다: `openapi.json`(`uv run poe gen`), `uv.lock`(`uv add`, `uv lock`), `api-style/lint.mjs`(저장소의 `pnpm sync`), FastAPI skill 사본(`uv run poe setup`).
+- 직접 고치지 않는다: `openapi.json`(`uv run poe gen`), `uv.lock`(`uv add`, `uv lock`), `api-style/lint.mjs`(템플릿에 포함된 룰셋 사본), FastAPI skill 사본(`uv run poe setup`).
 - 라우트나 문서 모델을 바꾸면 `uv run poe gen`을 돌린다.
 
 ### 억제 주석

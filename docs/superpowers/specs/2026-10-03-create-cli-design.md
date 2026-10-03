@@ -1,12 +1,12 @@
 # create CLI 설계 (하위 프로젝트 3)
 
 - 작성일: 2026-10-03
-- 상태: 승인됨(2026-10-03). 구현 전
+- 상태: 승인됨(2026-10-03). 로컬 검증 완료, Docker 기반 완료 조건은 PR CI 확인 대기(§8.4)
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 3으로 미룬 결정(배포 방식, 조합 루트의 세부 구성, 포트 배정)을 내리고, `create/` CLI와 이번 사이클의 템플릿·저장소 변경을 설계한다.
   - 템플릿의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md), [보강 설계](2026-09-29-fastapi-hardening-design.md), [Next.js web 설계](2026-09-30-nextjs-web-design.md)다.
-- 구현 계획: 프로토타입을 검증한 뒤 `docs/superpowers/plans/`에 쓴다.
-- 다음 단계: 프로토타입(§8.3의 확인부터) → 계획 → 구현
+- 구현 계획: 검증 결과와 이 문서의 결정을 반영해 `docs/superpowers/plans/`에 쓴다.
+- 다음 단계: 생성 프로젝트의 PR CI 확인 → 계획 → 구현
 
 ## 1. 목표와 범위
 
@@ -46,7 +46,7 @@
 | C6  | git         | `git init -b main`과 첫 커밋. 메시지에 템플릿 저장소의 커밋을 적는다                                                                  | hook 설치와 Stop hook의 변경 감지가 git 저장소를 전제한다. 출처가 남는다                                 |
 | C7  | 조합 구조   | `apps/api`(FastAPI와 package.json 래퍼), `apps/web`. 로컬 인프라는 `apps/api/compose.yaml`이고 루트 compose는 두지 않는다             | 프론트는 인프라가 필요 없다. 앱 폴더가 단독 템플릿과 같은 구조로 남아 앱 문서와 명령이 그대로 맞는다    |
 | C8  | workspace   | 루트 pnpm workspace 하나. 루트 잠금 파일은 web 잠금 파일에서 만든다                                                                   | 템플릿에서 검증한 의존성 버전을 그대로 쓴다                                                              |
-| C9  | Turborepo   | `dev`만 앱을 함께 띄우고 나머지는 앱을 차례로 돈다. `check`·`test`·`gen`만 캐시한다                                                    | 동시 실행 부하로 인한 간헐 실패를 피한다. 부수 효과가 있는 명령은 캐시하지 않는다                        |
+| C9  | Turborepo   | `dev`만 앱을 함께 띄우고 나머지는 앱을 차례로 돈다. `check`·`test`를 캐시하고 `gen`은 캐시하지 않는다                                  | 동시 실행 부하를 줄이고, 아직 복원 범위를 검증하지 않은 생성물을 캐시 hit로 누락하지 않는다(§5.4)       |
 | C10 | 계약        | code-first. web `gen`이 api의 `openapi.json`으로 web 타입을 만든다. 목과 TypeSpec 사본은 대역으로 남는다                               | 기반 설계 §3.3, web 설계 §5.4·§8.8                                                                       |
 | C11 | 조합 E2E    | 백엔드 명령 `e2e:serve`가 E2E 설정의 api를 띄우고, 루트 실행기가 그 위에서 web E2E(fastapi 대상)를 돈다                                | web과 api의 실제 연결을 자동으로 확인한다. web 템플릿은 바꾸지 않는다                                    |
 | C12 | Claude 설정 | 루트 설정은 두 앱 설정의 합집합과 hook 디스패처다. skill은 앱에 둔다                                                                   | Claude Code는 시작 폴더의 설정만 읽고, 하위 폴더의 skill은 그 폴더의 파일을 읽을 때 불러온다(§10)       |
@@ -76,19 +76,21 @@ pnpm new --help
 다음이면 아무것도 만들지 않고 `pnpm new: <문제> — <고치는 방법>`을 출력한다. 사용법 오류는 종료 코드 2, 그 밖은 1이다.
 
 - 대상 폴더가 있고 비어 있지 않다.
-- 대상 폴더가 템플릿 저장소 안에 있다.
+- 대상 폴더가 템플릿 저장소 안에 있다. 심볼릭 링크를 따라간 실제 경로도 검사한다.
 - 이름이 규칙에 맞지 않는다.
 - 템플릿 폴더에 커밋하지 않은 변경이 있다.
 - 필요한 도구가 없다: 모두 `git`, 조합은 `pnpm`도.
+
+비어 있는 일반 폴더는 허용한다. 템플릿의 변경 검사는 git 추적 파일만 보며, 무추적 파일은 복사하지 않는다.
 
 ### 3.3 생성 순서
 
 1. 입력과 도구를 검사한다(§3.2).
 2. 대상 폴더와 같은 부모 아래 임시 폴더를 만든다.
 3. 파일을 복사하고 이름을 바꾼다(단독 §4, 조합 §5).
-4. 조합이면 루트 잠금 파일을 만들고(§5.3), `pnpm install --frozen-lockfile`과 web `gen`을 실행해 web 생성물을 api의 `openapi.json` 기준으로 맞춘다(§5.5). 이 단계만 npm 레지스트리에 접속한다.
+4. 조합이면 루트 잠금 파일을 만들고(§5.3), `pnpm install --frozen-lockfile`을 실행한다. 동적으로 합친 `.claude/settings.json`, `lefthook.yml`, `.mcp.json`을 고정 Prettier로 포맷한 뒤 web `gen`을 실행해 web 생성물을 api의 `openapi.json` 기준으로 맞춘다(§5.5). 이 단계만 npm 레지스트리에 접속한다.
 5. 임시 폴더를 대상 폴더로 옮긴다. 어느 단계든 실패하면 임시 폴더를 지우고 대상 폴더는 만들지 않는다.
-6. `git init -b main`과 첫 커밋을 한다(`--no-git`이면 건너뛴다). 메시지는 `chore: create <이름> from ai-template <템플릿 저장소 커밋>`이다. git 사용자 정보가 없으면 init만 하고 커밋 방법을 안내한다. 사용자의 서명 설정은 그대로 따른다.
+6. `git init -b main`과 첫 커밋을 한다(`--no-git`이면 건너뛴다). 메시지는 `chore: create <이름> from ai-template <템플릿 저장소 short SHA>`다. 설정된 `user.name` 또는 `user.email`이 없으면 init만 하고 커밋 방법을 안내한다. git이 환경에서 추측한 신원은 쓰지 않으며, 사용자의 서명 설정은 그대로 따른다. git 단계가 실패하면 생성한 대상도 정리한다.
 7. 다음 명령을 안내한다: 단독 fastapi는 `uv run poe setup`, 단독 nextjs와 조합은 `pnpm setup`.
 
 - CLI와 그 테스트의 git 호출은 상속된 저장소 지정 변수(`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` 등)를 지운 환경에서 한다. W4에서 pre-push hook 안의 테스트가 상속된 `GIT_DIR`로 실제 저장소를 다시 초기화한 일이 있었다.
@@ -160,17 +162,19 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
 ### 5.2 루트 파일
 
 - `package.json`: `name`은 `<이름>`이고 `private`, `type: module`, `packageManager: pnpm@12.6.0`, `engines.node`는 web과 같다. 스크립트는 §5.4의 명령이다.
-- devDependencies는 turbo, lefthook, prettier다. 정확한 버전으로 고정한다. lefthook과 prettier는 web 템플릿과 같은 버전이고, turbo는 `minimumReleaseAge`를 만족하는 최신 2.x다.
+- devDependencies는 turbo, lefthook, prettier다. 정확한 버전으로 고정한다. lefthook과 prettier는 web 템플릿과 같은 버전이다. turbo는 `2.11.6`으로 고정했다. 선정 시각(2026-10-03 06:28 UTC)에 최신 `2.11.7`은 공개 후 24시간이 지나지 않아, `minimumReleaseAge: 1440`을 만족한 최신 안정 2.x를 골랐다. 생성할 때 최신 버전으로 다시 풀지 않는다.
 - `.gitignore`: `node_modules/`, `.turbo/`. 앱의 `.gitignore`는 그대로 둔다.
 - `.prettierrc.json`: web과 같은 설정이다. 루트가 소유한 파일(루트 문서, 설정, `scripts/`, `.claude/hooks/`)만 루트에서 포맷한다.
 
 ### 5.3 workspace와 잠금 파일
 
 - `pnpm-workspace.yaml`의 패키지는 `apps/api`, `apps/web`, `apps/web/contract/*`다. web의 workspace 설정(`minimumReleaseAge`, `allowBuilds`)은 루트로 옮긴다.
+- `overrides.typescript`는 web 템플릿의 정확한 TypeScript 버전(`6.0.3`)으로 둔다. workspace를 옮겨도 계약·목 패키지의 peer가 같은 버전을 쓰게 한다. 루트 devDependencies에 TypeScript를 새로 넣지 않는다.
 - 루트 잠금 파일은 web 잠금 파일에서 만든다.
   1. importer 경로를 바꾼다(`.` → `apps/web`, `contract/<패키지>` → `apps/web/contract/<패키지>`).
   2. `pnpm install --lockfile-only`로 루트와 `apps/api` importer만 더 푼다.
-  3. web 쪽 패키지의 해석 결과가 템플릿 잠금 파일과 같은지 CLI가 확인하고, 다르면 실패한다.
+  3. 모든 web importer, 기존 패키지의 버전 키·resolution과 snapshot 의존성 해석이 템플릿 잠금 파일과 같은지 CLI가 확인하고, 다르면 실패한다. override가 바꾼 peer 선언 문구는 실제 버전 해석과 구분한다.
+- pnpm 12의 잠금 파일은 도구 설치와 프로젝트 의존성의 두 YAML 문서다. 도구 설치 문서는 보존하고 의존성 문서의 importer만 옮긴다.
 - `apps/api`의 Python 의존성은 앱의 `uv.lock`이 그대로 맡는다.
 
 ### 5.4 명령
@@ -181,7 +185,7 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | `setup`                  | 도구 확인(Node 24, pnpm, uv, Docker) → `pnpm install --frozen-lockfile` → 루트 `lefthook install` → api `setup` → web `setup` |
 | `dev`                    | `turbo run dev`: api(8000, worker·scheduler 포함)와 web(3000, 백엔드 모드)을 함께 띄운다                             |
-| `check`                  | 루트 검사(루트 파일 포맷, 루트 스크립트 테스트, 지침 파일) → api `check` → web `check`                               |
+| `check`                  | 루트 검사(루트 파일 포맷, 루트 스크립트 테스트, 지침 파일) → 두 앱의 `check`를 한 번에 하나씩 실행한다. 앱 순서는 고정하지 않는다 |
 | `fix`                    | 앱별 `fix`와 루트 파일 포맷                                                                                           |
 | `test`                   | 앱별 `test`                                                                                                           |
 | `test:e2e`               | api `test:e2e` → web E2E를 실제 api에(§5.7). 첫 실패에서 멈춘다                                                       |
@@ -191,10 +195,11 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
 - `check`의 출력 원칙은 템플릿과 같다. 성공하면 한 줄, 실패하면 실패한 단계의 출력만 보여 준다.
 - Turborepo 설정
   - `dev`는 `persistent`이고 캐시하지 않는다.
-  - `check`·`test`·`gen`은 캐시한다. web의 `check`·`gen` 입력에는 `$TURBO_ROOT$/apps/api/openapi.json`을 더한다.
+  - `check`·`test`는 캐시한다. `gen`과 `web#gen`은 `cache: false`다. api 내보내기와 web의 TypeSpec·목 생성까지 산출물 전체의 복원 범위를 검증하지 않았으므로 캐시 hit로 생성을 건너뛰지 않는다. 정확한 outputs와 복원 검증을 갖춘 뒤 캐시를 켤 수 있다.
+  - web의 `check`·`gen` 입력에는 `$TURBO_ROOT$/apps/api/openapi.json`을 더한다.
   - `web#gen`은 `api#gen`에 의존한다.
-  - 앱을 차례로 돌도록 동시 실행 수를 1로 둔다(`dev` 제외).
-- `setup`, `test:e2e`, `db:*`는 루트 실행기(`scripts/`)가 차례로 부르고 캐시하지 않는다.
+  - 앱 작업은 `--filter=api --filter=web`으로 두 앱만 고른다. web 내부 계약 작업을 중복 실행하지 않는다. 앱을 차례로 돌도록 동시 실행 수를 1로 둔다(`dev` 제외).
+- `setup`, `test:e2e`는 루트 실행기(`scripts/`)가 차례로 부르고 캐시하지 않는다. `db:migrate`, `db:reset`은 루트 package.json 스크립트가 `pnpm --filter api run <명령>`으로 직접 넘기며 캐시하지 않는다.
 
 ### 5.5 계약 연결 (code-first)
 
@@ -213,13 +218,13 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
 - 그래서 백엔드 코드 → `openapi.json` → web 타입이 `check`로 이어진다. api 코드를 바꾸고 `pnpm gen`을 빼먹으면 api나 web의 생성물 검사가 실패한다.
 - 템플릿의 web 생성물은 TypeSpec에서 만든 것이다. 그래서 조합을 만들 때 CLI가 web `gen`을 한 번 실행하고(§3.3), 첫 커밋의 web 생성물이 api `openapi.json`과 맞게 한다.
 - 목과 TypeSpec 사본은 프론트만 개발할 때와 web 통합 테스트에 쓰는 대역이다. 백엔드가 플랫폼 API를 바꿔도 목은 따라가지 않는다. 실제 동작의 차이는 §5.7의 E2E가 잡는다. 이 관계를 루트 AGENTS.md에 적는다.
-- 위험: web 코드가 FastAPI `openapi.json`에서 만든 타입으로도 컴파일되는지는 아직 확인하지 않았다(§8.3의 첫 확인). 다르면 원인 쪽을 고친다. 계약과 다른 스키마 이름이나 모양은 FastAPI 쪽을 고친다(기반 설계 §3.2). 생성 방식의 차이는 web 생성기를 고친다.
+- FastAPI `openapi.json`에서 만든 타입으로 web `check`가 통과했다(§8.4). 계약과 다른 스키마 이름이나 모양은 FastAPI 쪽을 고치고(기반 설계 §3.2), 생성 방식의 차이는 web 생성기를 고친다.
 
 ### 5.6 환경 파일
 
 - `apps/web/.env.example`
   - 조합에서 `API_BASE_URL=http://127.0.0.1:8000/api/v1`, `NEXT_PUBLIC_REALTIME_URL=http://127.0.0.1:8000`으로 바꾼다.
-  - 그래서 web `dev`가 백엔드 모드로 `next dev`만 띄운다. 나머지 값은 템플릿과 같다.
+  - 그래서 web `dev`가 백엔드 모드로 `next dev`만 띄운다. 두 값만 제자리에서 바꾸며 주석과 나머지 값은 템플릿과 같다.
 - `apps/api/.env.example`은 템플릿 그대로다. `FRONTEND_URL`, `REALTIME_ALLOWED_ORIGINS`, `OAUTH_REDIRECT_URIS`, `STORAGE_ALLOWED_ORIGINS`가 이미 web 3000을 가리킨다.
 - 두 앱의 `setup`이 각자 `.env`를 만든다(없으면 복사, 있으면 없는 키만 더한다).
 
@@ -239,6 +244,9 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
    - `E2E_MAILPIT_URL`(Mailpit API), `E2E_OAUTH_URL`(모의 OAuth)
    - `E2E_RECENT_LOGIN_SECONDS`
 6. 명령이 끝나면 세 프로세스를 내리고 명령의 종료 코드로 끝난다. Ctrl+C와 신호도 세 프로세스를 정리한다.
+
+- `--web-url`은 경로·쿼리·조각·계정 없는 http(s) Origin만 받는다. 명령은 poe의 `POE_PWD`(호출한 폴더)에서 실행한다.
+- 서버 준비, 설정 덮어쓰기, 프로세스 그룹, readiness와 로그는 기존 `test:e2e`와 공유한다. readiness가 60초 안에 성공하지 못하면 로그 끝부분을 출력하고 종료 코드 1로 끝난다.
 
 - 루트 `test:e2e`는 두 단계다.
   1. api `test:e2e`(pytest E2E)를 돈다.
@@ -261,10 +269,13 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
 
     | 이벤트                              | 디스패처                                                                                                       |
     | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-    | `PostToolUse` (`Edit`, `Write`)     | 고친 파일이 속한 앱의 hook. 루트 파일이면 루트 포맷만                                                         |
-    | `Stop`                              | `stop_hook_active`면 통과. 바뀐 파일이 있는 앱의 hook만 돌리고, 루트 파일이 바뀌었으면 루트 검사도 돈다. 하나라도 막으면 이유를 모아 막는다 |
-    | `PreToolUse` (`Bash`, `PowerShell`) | 두 앱의 hook을 모두 돌리고 하나라도 거부하면 거부한다                                                         |
+    | `PostToolUse` (`Edit`, `Write`, `MultiEdit`) | 고친 파일이 속한 앱의 hook. 루트 파일이면 루트 포맷만                                                         |
+    | `Stop`                              | `stop_hook_active`면 통과. 바뀐 앱의 hook만 돌리고, 루트 변경에는 포맷·Node 테스트·지침 3단계만 돈다. 하나라도 막으면 이유를 모아 막는다 |
+    | `PreToolUse` (`Bash`, `PowerShell`, `Edit`, `Write`, `MultiEdit`) | 두 앱의 matcher에 맞는 hook을 돌리고 하나라도 거부하면 거부한다. API의 커밋된 마이그레이션 편집 보호도 유지한다 |
     | `SessionStart`                      | 두 앱의 요약을 앱 이름과 함께 이어 붙인다                                                                     |
+
+  - exit 2 또는 JSON deny는 허용보다 우선한다. PreToolUse의 JSON 결정은 deny → defer → ask → allow 순서로 합친다. Stop·PostToolUse는 block과 이유를 모으며, SessionStart는 한 앱의 진단이 실패해도 다른 앱의 요약을 보존한다.
+  - 직접 node로 시작한 hook에도 PATH에서 찾은 pnpm 진입점을 넘긴다. shell 없이 Windows의 pnpm 실행과 web 생성물 검사를 지원한다.
 
 - skill은 앱에 둔다. Claude Code는 시작 폴더 아래의 `.claude/skills/`를 그 폴더의 파일을 처음 읽거나 고칠 때 불러온다(§10).
 - 루트 `.mcp.json`에는 web의 MCP 서버(next-devtools-mcp)를 그대로 올린다.
@@ -278,7 +289,7 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
     - 루트 파일 포맷과 비밀 스캔 한 번을 더한다.
   - 비밀 스캔
     - 루트 `.betterleaks.toml`을 쓴다. 두 앱 설정의 허용 경로에 `apps/<앱>/`을 붙여 합친 파일이다.
-    - 실행 파일은 web의 고정 Betterleaks(`pnpm --filter web run -s tool betterleaks ...`)를 쓴다.
+    - 실행 파일은 web의 고정 Betterleaks를 쓴다. web 작업 폴더에서 루트 저장소와 설정을 모두 지정한다: `pnpm --filter web run -s tool betterleaks git ../.. --pre-commit --staged --no-banner --redact --config ../../.betterleaks.toml`. 루트 파일도 스캔하며 앱의 생성물 예외는 해당 앱 경로 안으로 제한한다.
   - pre-push: 루트 `pnpm check`.
   - 앱의 hook 설치기는 git 최상위가 아니면 hook을 걸지 않으므로 루트 hook과 다투지 않는다.
 - 루트 `scripts/`의 실행기와 `.claude/hooks/`의 디스패처는 Node 내장 모듈만 쓰는 ESM이다. `node --test` 테스트를 함께 두고 루트 `check`가 돈다.
@@ -295,10 +306,13 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
 
 - 단독 워크플로는 템플릿 폴더의 `.github/workflows/ci.yml`이다. 조합 워크플로의 원본은 `create/assets/combo/`에 있다.
 - 템플릿 저장소의 `pnpm check`가 셋 모두를 actionlint로 검사한다.
+- actionlint는 `1.7.12`와 릴리스의 sha256 체크섬으로 고정한다. 외부 shellcheck·pyflakes는 끄고 같은 actionlint 검사로 루트와 생성용 워크플로 4개를 확인한다.
+- 조합 web 이미지의 원본은 `create/assets/combo/apps/web/`에 있다. 루트 lockfile·workspace와 앱 manifest로 `pnpm --filter web... install --frozen-lockfile`을 실행한다. root manifest는 복사하지 않아 turbo·lefthook·prettier 설치를 피한다. workspace의 TypeScript override와 release-age 설정은 유지한다.
+- 빌드는 web 작업 폴더에서 `NEXT_OUTPUT=standalone node node_modules/next/dist/bin/next build`로 실행한다. pnpm run이 나머지 workspace를 자동 설치하는 것을 피한다. runtime은 standalone의 workspace 배치와 정적 자산을 보존하고 `node apps/web/server.js`로 시작한다. UID/GID 10001, HTTP health check와 실행 시 환경 설정은 단독 이미지와 같다. 인접 `Dockerfile.dockerignore`는 환경 파일·git·설치물·캐시·빌드 결과·Python 가상환경을 문맥에서 제외한다.
 
 ## 6. 포트
 
-템플릿의 고정 포트를 그대로 쓰고 모두 127.0.0.1에 연다.
+템플릿의 고정 포트를 그대로 쓴다. 인프라 포트는 127.0.0.1에 열고, web dev는 Next.js의 기본 바인딩(0.0.0.0)을 쓴다.
 
 | 용도                                                                     | 포트                                     |
 | ------------------------------------------------------------------------ | ---------------------------------------- |
@@ -345,12 +359,12 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
 
 - `create-combo`(한도 90분)
   1. 루트 설치
-  2. `pnpm new "$RUNNER_TEMP/combo" --api fastapi --web --name ci-combo`
+  2. `pnpm new "$RUNNER_TEMP/aitpl-combo" --api fastapi --web --name ci-combo`
   3. 생성 폴더에서 `pnpm setup` → Chromium Linux 의존성 → `pnpm check` → `pnpm test:e2e`
-  4. 두 이미지 빌드(§5.9의 조합 단계). 조합용 web Dockerfile을 이 작업이 확인한다
+  4. 두 이미지 빌드(§5.9의 조합 단계) → 조합 web 컨테이너를 띄워 `GET /`의 200 확인(§8.3 #6). 생성 프로젝트의 워크플로는 빌드까지만 한다
   - git 사용자 정보는 작업에서 정한다.
-- `create-standalone`(한도 60분): fastapi를 만들어 `uv run poe setup` → `uv run poe check`, nextjs를 만들어 `pnpm setup` → `pnpm check`.
-- 생성 프로젝트의 워크플로 파일 자체는 실행하지 않는다. actionlint로 검사하고, 같은 단계를 위 작업이 돈다.
+- `create-standalone`(한도 60분): `$RUNNER_TEMP/aitpl-fastapi`를 만들어 `uv run poe setup` → `uv run poe check`, `$RUNNER_TEMP/aitpl-nextjs`를 만들어 `pnpm setup` → `pnpm exec playwright install-deps chromium` → `pnpm check`.
+- 생성 프로젝트의 워크플로 파일 자체는 실행하지 않는다. actionlint로 검사하고, `create-standalone`은 단독 프로젝트의 setup·check를, `create-combo`는 조합의 setup·check·E2E·이미지 빌드와 web 컨테이너 시작을 확인한다.
 
 ## 8. 테스트와 검증
 
@@ -376,16 +390,31 @@ Action은 템플릿 저장소 CI와 같은 SHA로 고정한다. Node 24, pnpm 12
 - 로컬에서는 개발 compose 프로젝트(`fastapi`, `joon`)와 그 볼륨을 쓰거나 내리는 명령을 실행하지 않는다. 생성한 프로젝트는 자기 이름의 compose 프로젝트를 쓰지만, 포트가 개발 스택과 겹치므로 로컬에서 띄우지 않는다.
 - 로컬 확인: CLI 테스트, 생성한 web의 `check`(목 프로세스만 쓴다), FastAPI의 인프라 없는 검사.
 
-### 8.3 위험과 첫 확인
+### 8.3 검증 항목
 
-프로토타입은 다음 순서로 확인한다. 막히면 설계 판단을 기록하고 이 문서를 고친다.
+다음 항목을 확인한다. 로컬 결과와 CI가 맡는 범위는 §8.4에 구분한다.
 
 1. FastAPI `openapi.json`에서 만든 web 타입으로 web `check`가 통과한다(§5.5).
 2. 루트 잠금 파일: web 잠금 파일의 경로를 바꾸고 lockfile-only로 풀어도 web 패키지 해석이 그대로다(§5.3).
 3. 조합 안에서 web `check`와 `build`가 통과한다. workspace를 옮긴 뒤의 경로, tsconfig, Turbopack 루트, 목 통합 테스트를 본다.
 4. 조합 안에서 api `check`가 package.json 래퍼와 `node_modules`가 있어도 통과한다(FastAPI 하네스 검사).
-5. Turborepo가 Windows와 Linux에서 uv 명령을 실행하고 캐시한다.
-6. 조합용 web 이미지가 루트 문맥에서 빌드되고, standalone 출력이 workspace 구조에서 서버를 띄운다(CI).
+5. Turborepo가 Windows와 Linux에서 uv 명령을 실행하고 `check`·`test` 캐시를 쓴다. `gen`은 캐시하지 않는다.
+6. 조합용 web 이미지가 루트 문맥에서 빌드된다(CI). `create-combo`가 컨테이너를 띄워 workspace 배치의 standalone 서버를 실행하고, 60초 안에 `GET /`의 200을 확인한 뒤 정리한다. standalone 서버·정적 자산의 workspace 배치는 로컬 빌드로도 확인한다.
+
+### 8.4 구현 기록 (2026-10-03)
+
+단독·조합 생성, 루트 실행기와 하네스, 생성용 CI를 구현했다. 로컬 확인은 Docker 없이 진행했다.
+
+| 범위 | 확인 결과 |
+| --- | --- |
+| CLI·실행기·디스패처 | create 타입 검사, Vitest 52개와 Node 테스트 23개 통과. 실제 생성 트리·첫 커밋·깨끗한 git 상태, 네 hook과 루트 pre-commit smoke 확인 |
+| 저장소 | 루트 `pnpm check` 11단계, actionlint 워크플로 4개 통과 |
+| web | FastAPI OpenAPI 입력의 `check`, 템플릿 `check` 9단계·build·mock E2E 20개, 생성 단독·조합의 web `check` 통과. 조합의 gen 재실행은 diff 없음 |
+| 잠금 파일·이미지 입력 | web 버전·peer 해석 보존, turbo gen 순서와 캐시 설정 확인. Docker 없는 filtered 설치와 직접 Next 빌드로 standalone의 workspace 서버·정적 자산, root 도구·mock 미설치 확인 |
+| FastAPI | 템플릿과 생성 앱의 Ruff·basedpyright·architecture·harness, 인프라 없는 테스트 55개 통과 |
+| PR CI | 실행 37106952072에서 `create-combo`의 setup·전체 check·실제 api E2E(api 12개·web 20개)·두 이미지 빌드와 `create-standalone`의 setup·check 통과. 루트 check의 Linux fixture 실행 권한을 고쳤으며 재실행과 추가한 조합 web 컨테이너의 `GET /` 200 확인은 대기 |
+
+DB·Valkey·스토리지 기반 테스트와 실제 `e2e:serve`, Docker 이미지 빌드·컨테이너 시작은 로컬에서 실행하지 않았다. 루트 CI의 `create-combo`는 조합 web 이미지에 loopback URL·시간대·매번 만든 32바이트 난수 세션 비밀을 전달하고, loopback 포트의 `GET /`가 200인지 확인한다. 실패하면 로그를 출력하고 성공·실패 모두 같은 단계의 trap으로 컨테이너를 지운다. 생성 프로젝트의 CI는 빌드까지만 한다. Windows·Linux의 Turborepo uv 실행과 캐시 hit도 로컬 dry graph만으로 완료했다고 보지 않는다.
 
 ## 9. 미룬 결정
 
