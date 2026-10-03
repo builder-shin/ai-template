@@ -294,8 +294,14 @@ def test_cleanup_error_keeps_its_message_and_points_to_log(
 def test_server_that_dies_during_successful_command_is_reported(
     monkeypatch: pytest.MonkeyPatch, lifecycle: list[str], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(e2e, "run_command", lambda *args, **kwargs: 0)
-    monkeypatch.setattr("tools.e2e.ProcessGroup.exited", lambda self: ("worker", 9))
+    def command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> int:
+        return 0
+
+    def exited(group: processes.ProcessGroup) -> tuple[str, int]:
+        return "worker", 9
+
+    monkeypatch.setattr(e2e, "run_command", command)
+    monkeypatch.setattr("tools.e2e.ProcessGroup.exited", exited)
     assert e2e.serve_main(["--", "node"]) == 1
     assert lifecycle[-1] == "stop"
     output = capsys.readouterr().out

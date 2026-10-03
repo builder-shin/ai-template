@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from types import FrameType
 
 import pytest
 
@@ -122,6 +123,9 @@ def test_command_cleanup_ignores_repeated_signals_and_forces_after_timeout(
     events: list[str] = []
 
     class FakeProcess:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
         def wait(self, timeout: float | None = None) -> int:
             events.append("wait")
             if len(events) == 1:
@@ -134,14 +138,17 @@ def test_command_cleanup_ignores_repeated_signals_and_forces_after_timeout(
         events.append("force" if force else "stop")
         signal.raise_signal(number)
 
-    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: FakeProcess())
+    def interrupt(number: int, frame: FrameType | None) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(subprocess, "Popen", FakeProcess)
     monkeypatch.setattr(processes, "_signal_tree", stop)
-    previous = signal.signal(number, processes._interrupt)
+    previous = signal.signal(number, interrupt)
     try:
         with pytest.raises(KeyboardInterrupt):
             run_command(["fixture"], cwd=tmp_path, env={})
         assert events == ["wait", "stop", "wait", "force", "wait"]
-        assert signal.getsignal(number) is processes._interrupt
+        assert signal.getsignal(number) is interrupt
     finally:
         signal.signal(number, previous)
 
