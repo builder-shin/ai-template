@@ -41,7 +41,13 @@ for (const locale of ["ko", "en"] as const) {
     const id = editPath.split("/").at(-2)!;
     const editedTitle = `${title} edited`;
     await page.getByLabel(t.posts.titleLabel, { exact: true }).fill(editedTitle);
+    const updateResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.request().headers()["next-action"] !== undefined,
+    );
     await page.getByRole("button", { name: t.posts.save, exact: true }).click();
+    await updateResponse;
     await page.getByRole("button", { name: t.posts.publish, exact: true }).click();
     await expect(page.getByRole("button", { name: t.posts.unpublish, exact: true })).toBeVisible();
     await page.getByRole("link", { name: t.posts.viewPublic, exact: true }).click();
