@@ -11,7 +11,7 @@ import {
   rmdirSync,
   rmSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep, toNamespacedPath } from "node:path";
 import type { CreateOptions } from "./arguments.ts";
 import { CreateError, errorReason } from "./errors.ts";
 import { initialCommitMessage, initializeGit, runGit } from "./git.ts";
@@ -172,18 +172,45 @@ export function createProject(
       commitMessage: initialCommitMessage(options.name, sha),
     };
   } catch (error) {
-    const paths = [staging, ...(moved ? [options.target] : movedEntries), firstCreated].filter(
+    const paths = [staging, ...(moved ? [options.target] : movedEntries)].filter(
       (path): path is string => path !== undefined,
     );
+    const leftovers: string[] = [];
+    const causes: string[] = [];
     for (const path of paths) {
       try {
         rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       } catch (cleanupError) {
-        console.error(
-          `pnpm new: 생성 실패(${errorReason(error)}) 뒤 정리하지 못했다(${errorReason(cleanupError)}) — ` +
-            `남은 경로 ${paths.filter(existsSync).join(", ")}를 사용하는 프로그램을 닫고 정리한다.`,
-        );
+        leftovers.push(path);
+        causes.push(errorReason(cleanupError));
       }
+    }
+    if (firstCreated) {
+      const first = toNamespacedPath(firstCreated);
+      for (let path = toNamespacedPath(parent); inside(path, first); path = dirname(path)) {
+        try {
+          rmdirSync(path);
+        } catch (cleanupError) {
+          // 다른 프로세스가 채운 부모는 보존한다. 상위 폴더도 비어 있지 않다.
+          if (
+            cleanupError instanceof Error &&
+            "code" in cleanupError &&
+            (cleanupError.code === "ENOTEMPTY" || cleanupError.code === "EEXIST")
+          )
+            break;
+          leftovers.push(path);
+          causes.push(errorReason(cleanupError));
+          break;
+        }
+        if (relative(path, first) === "") break;
+      }
+    }
+    if (leftovers.length) {
+      const problem = error instanceof CreateError ? error.problem : errorReason(error);
+      console.error(
+        `pnpm new: 생성 실패(${problem}) 뒤 정리하지 못했다(${causes.join(", ")}) — ` +
+          `남은 경로 ${leftovers.filter(existsSync).join(", ")}를 사용하는 프로그램을 닫고 정리한다.`,
+      );
     }
     throw error;
   }

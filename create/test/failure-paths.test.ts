@@ -4,6 +4,7 @@ import { once } from "node:events";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import { createProject } from "../src/create.ts";
+import { CreateError } from "../src/errors.ts";
 import { fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
 
 vi.mock("node:fs", async (original) => {
@@ -79,6 +80,56 @@ it("뒤 단계가 실패하면 새로 만든 상위 폴더도 정리한다", () 
     SyntaxError,
   );
   expect(fs.readdirSync(parent)).toEqual([]);
+});
+
+it("실패 뒤 새 부모에 다른 프로세스가 만든 파일을 보존한다", () => {
+  const root = fixtureRepository();
+  const parent = temporaryFolder();
+  vi.mocked(fs.mkdtempSync).mockImplementationOnce(() => {
+    write(parent, "missing/keep.txt", "다른 프로세스의 파일");
+    throw new Error("생성 실패");
+  });
+  expect(() => createProject(request(join(parent, "missing/nested/aitpl-app")), root)).toThrow(
+    /생성 실패/,
+  );
+  expect(fs.readFileSync(join(parent, "missing/keep.txt"), "utf8")).toBe("다른 프로세스의 파일");
+  expect(fs.existsSync(join(parent, "missing/nested"))).toBe(false);
+});
+
+it("모든 경로를 정리한 뒤 문제와 실제 남은 경로만 한 번 알린다", () => {
+  const root = fixtureRepository();
+  const target = temporaryFolder();
+  const failure = new CreateError("이동 실패", "원래 해결 방법");
+  vi.mocked(fs.renameSync)
+    .mockImplementationOnce(actual.renameSync)
+    .mockImplementationOnce(actual.renameSync)
+    .mockImplementationOnce(() => {
+      throw failure;
+    });
+  const leftovers: string[] = [];
+  const removed: string[] = [];
+  vi.mocked(fs.rmSync).mockImplementation((path, options) => {
+    if (leftovers.length < 2) {
+      leftovers.push(String(path));
+      throw Object.assign(new Error("locked"), { code: "EBUSY" });
+    }
+    removed.push(String(path));
+    actual.rmSync(path, options);
+  });
+  const messages = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  try {
+    expect(() => createProject(request(target), root)).toThrow(failure);
+    expect(messages).toHaveBeenCalledTimes(1);
+    const message = String(messages.mock.calls[0]?.[0]);
+    expect(message.match(/pnpm new:/g)).toHaveLength(1);
+    expect(message.match(/ — /g)).toHaveLength(1);
+    expect(message).toContain("이동 실패");
+    expect(message).not.toContain("원래 해결 방법");
+    for (const path of leftovers) expect(message).toContain(path);
+    for (const path of removed) expect(message).not.toContain(path);
+  } finally {
+    vi.mocked(fs.rmSync).mockImplementation(actual.rmSync);
+  }
 });
 
 it("정리가 실패해도 원래 오류와 남은 경로를 보존하고 재시도를 지정한다", () => {

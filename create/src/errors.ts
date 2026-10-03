@@ -11,10 +11,12 @@ export function errorReason(error: unknown): string {
 
 export class CreateError extends Error {
   readonly exitCode: 1 | 2;
+  readonly problem: string;
 
   constructor(problem: string, remedy: string, exitCode: 1 | 2 = 1) {
     super(`pnpm new: ${problem} — ${remedy}`);
     this.name = "CreateError";
     this.exitCode = exitCode;
+    this.problem = problem;
   }
 }
