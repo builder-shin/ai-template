@@ -303,7 +303,7 @@ for (const [name, rootPath] of [
   });
 }
 
-test("Stop은 rename의 양쪽 앱과 새 파일을 보고 git 환경을 격리한다", (t) => {
+test("Stop은 rename의 양쪽 앱을 보고 git 환경을 격리한다", (t) => {
   const f = fixture(t);
   f.git("mv", "apps/api/file.ts", "apps/web/renamed.ts");
   const previous = process.env.GIT_DIR;

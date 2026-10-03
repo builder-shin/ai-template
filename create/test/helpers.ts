@@ -1,5 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, vi } from "vitest";
@@ -34,6 +43,16 @@ export function copyComboAssets(target: string): void {
     .split("\0")
     .filter(Boolean))
     write(target, file, readFileSync(join(source, file), "utf8"));
+}
+
+export function copySnapshotFiles(source: string, target: string, files: readonly string[]): void {
+  for (const file of new Set(files)) {
+    // 인덱스에 남은 삭제 파일은 작업 트리 스냅샷에 넣지 않는다.
+    if (!existsSync(join(source, file))) continue;
+    const destination = join(target, file);
+    mkdirSync(dirname(destination), { recursive: true });
+    copyFileSync(join(source, file), destination);
+  }
 }
 
 beforeEach(() => {

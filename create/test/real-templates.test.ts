@@ -1,19 +1,12 @@
 import { spawnSync } from "node:child_process";
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  symlinkSync,
-} from "node:fs";
+import { existsSync, readFileSync, readdirSync, symlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { beforeEach, expect, it } from "vitest";
 import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
 import { createProject } from "../src/create.ts";
-import { git, temporaryFolder, write } from "./helpers.ts";
+import { copySnapshotFiles, git, temporaryFolder, write } from "./helpers.ts";
 
 const root = resolve(import.meta.dirname, "../..");
 const require = createRequire(import.meta.url);
@@ -52,13 +45,7 @@ beforeEach(() => {
   )
     .split("\0")
     .filter(Boolean);
-  for (const file of new Set(files)) {
-    // 인덱스에 남은 삭제 파일은 작업 트리 스냅샷에 넣지 않는다.
-    if (!existsSync(join(root, file))) continue;
-    const target = join(source, file);
-    mkdirSync(resolve(target, ".."), { recursive: true });
-    copyFileSync(join(root, file), target);
-  }
+  copySnapshotFiles(root, source, files);
   git(source, "init", "-b", "main");
   git(source, "add", ".");
   git(source, "-c", "commit.gpgsign=false", "commit", "-m", "chore: real template snapshot");

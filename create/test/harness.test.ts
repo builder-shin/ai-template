@@ -25,12 +25,26 @@ it("앱 경로 권한은 범위를 옮기고 명령 합집합에 루트 어휘�
   }
   expect(settings.permissions.deny).not.toContain("Read(./.env)");
   expect(settings.hooks.PreToolUse[0]?.matcher).toBe("Bash|PowerShell|Edit|Write|MultiEdit");
+  expect(settings.hooks.PostToolUse[0]?.matcher).toBe("Edit|Write|MultiEdit");
   for (const groups of Object.values(settings.hooks)) {
     expect(groups[0]?.hooks[0]).toMatchObject({ type: "command", command: "node" });
     expect(groups[0]?.hooks[0]?.args[0]).toMatch(
       /^\$\{CLAUDE_PROJECT_DIR\}\/\.claude\/hooks\/.+\.mjs$/,
     );
   }
+});
+
+it.each([
+  ["PostToolUse", 120],
+  ["Stop", 1800],
+  ["PreToolUse", 90],
+  ["SessionStart", 180],
+] as const)("루트 %s hook의 시간 제한은 %i초다", (event, timeout) => {
+  const settings = mergeSettings(
+    { permissions: { allow: [], deny: [] } },
+    { permissions: { allow: [], deny: [] } },
+  );
+  expect(settings.hooks[event][0]?.hooks[0]?.timeout).toBe(timeout);
 });
 
 it("앱 hook 작업의 옵션과 glob 범위를 보존하고 비밀 스캔은 한 번만 둔다", () => {

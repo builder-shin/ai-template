@@ -7,7 +7,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { createProject } from "../src/create.ts";
@@ -178,12 +178,16 @@ describe("단독 프로젝트", () => {
   );
 
   it.skipIf(process.platform !== "win32")("Windows 8.3 CLI 경로도 저장소를 찾는다", ({ skip }) => {
-    const root = fixtureRepository();
-    const short = execFileSync("cmd", ["/d", "/c", `for %I in ("${root}") do @echo %~sI`], {
-      encoding: "utf8",
-    }).trim();
-    if (!short.includes("~")) skip();
-    expect(findRepository(pathToFileURL(join(short, "create/src/cli.ts")).href)).toBe(root);
+    // 새 임시 폴더에 8.3 이름이 없으면 기존 작업 트리의 짧은 이름도 확인한다.
+    for (const root of [fixtureRepository(), resolve(import.meta.dirname, "../..")]) {
+      const short = execFileSync("cmd", ["/d", "/c", `for %I in ("${root}") do @echo %~sI`], {
+        encoding: "utf8",
+      }).trim();
+      if (!short.includes("~")) continue;
+      expect(findRepository(pathToFileURL(join(short, "create/src/cli.ts")).href)).toBe(root);
+      return;
+    }
+    skip();
   });
 
   it("같은 저장소의 다른 worktree 안에도 만들지 않는다", () => {
