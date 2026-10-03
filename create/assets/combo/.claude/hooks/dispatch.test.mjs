@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, delimiter } from "node:path";
 import { dispatch } from "./dispatch.mjs";
-import { fixture } from "./dispatch-fixture.mjs";
+import { fixture, linkedRoot } from "./dispatch-fixture.mjs";
 import { gitEnvironment } from "../../scripts/process.mjs";
 import { formatFile } from "../../scripts/staged-format.mjs";
 
@@ -270,6 +270,37 @@ test("Stop은 git 밖이나 상위 저장소 안이면 검사 없이 비차단 �
   }
   assert.equal(parent.calls("api").length + parent.calls("web").length, 0);
 });
+
+for (const [name, rootPath] of [
+  ["junction·symlink", (root, t) => linkedRoot(root, t)],
+  ...(process.platform === "win32"
+    ? [["소문자 드라이브", (root) => root[0].toLowerCase() + root.slice(1)]]
+    : []),
+]) {
+  test(`Stop은 ${name}로 연 자기 저장소에서도 앱과 루트 검사를 실행한다`, (t) => {
+    const f = fixture(t);
+    const root = rootPath(f.root, t);
+    f.write("apps/api/file.ts", "api 변경\n");
+    f.write("README.md", "루트 변경\n");
+    const checked = [];
+    const result = dispatch(
+      "Stop",
+      JSON.stringify({ cwd: root, results: { api: { code: 2, stderr: "api 차단" } } }),
+      {
+        root,
+        rootCheck: (path) => {
+          checked.push(path);
+          return { status: 0 };
+        },
+      },
+    );
+    assert.equal(result.json?.decision, "block");
+    assert.match(result.json.reason, /api 차단/);
+    assert.deepEqual(checked, [root]);
+    assert.equal(f.calls("api").length, 1);
+    assert.equal(f.calls("web").length, 0);
+  });
+}
 
 test("Stop은 rename의 양쪽 앱과 새 파일을 보고 git 환경을 격리한다", (t) => {
   const f = fixture(t);

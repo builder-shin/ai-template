@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
-import { delimiter, join, resolve } from "node:path";
+import { delimiter, join } from "node:path";
 
 export function gitEnvironment(environment = process.env) {
   const env = { ...environment };
@@ -54,11 +54,12 @@ export function exitCode(result) {
 }
 
 export function isGitRoot(root, execute = run) {
-  const result = execute("git", ["rev-parse", "--show-toplevel"], {
+  // git의 상대 위치로 판정하면 링크와 드라이브 문자 표기에 영향을 받지 않는다.
+  const result = execute("git", ["rev-parse", "--show-cdup"], {
     cwd: root,
     env: gitEnvironment(),
   });
-  return exitCode(result) === 0 && resolve(result.stdout.trim()) === resolve(root);
+  return exitCode(result) === 0 && result.stdout.trim() === "";
 }
 
 export function isMain(url) {

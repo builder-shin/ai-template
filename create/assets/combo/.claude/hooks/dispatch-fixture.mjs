@@ -1,9 +1,17 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { dispatch } from "./dispatch.mjs";
 import { gitEnvironment } from "../../scripts/process.mjs";
+
+export function linkedRoot(root, t) {
+  const folder = mkdtempSync(join(tmpdir(), "aitpl-linked-root-"));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const link = join(folder, "root");
+  symlinkSync(root, link, process.platform === "win32" ? "junction" : "dir");
+  return link;
+}
 
 export function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "aitpl-hooks space-"));

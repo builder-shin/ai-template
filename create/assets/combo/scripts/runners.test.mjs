@@ -9,6 +9,7 @@ import { testE2e } from "./test-e2e.mjs";
 import { webEnvironment, webE2e } from "./web-e2e.mjs";
 import { stagedFormat } from "./staged-format.mjs";
 import { run as runProcess } from "./process.mjs";
+import { fixture, linkedRoot } from "../.claude/hooks/dispatch-fixture.mjs";
 
 test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈춘다", () => {
   const calls = [];
@@ -16,7 +17,7 @@ test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈
     calls.push([command, args, options.cwd]);
     return {
       status: args.includes("setup") ? 7 : 0,
-      stdout: command === "git" ? "/combo\n" : "",
+      stdout: "",
       stderr: "",
     };
   };
@@ -28,7 +29,7 @@ test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈
       ["--version"],
       ["--version"],
       ["install", "--frozen-lockfile"],
-      ["rev-parse", "--show-toplevel"],
+      ["rev-parse", "--show-cdup"],
       ["exec", "lefthook", "install"],
       ["--filter", "api", "run", "setup"],
     ],
@@ -54,9 +55,9 @@ test("setup은 도구별 설치 안내를 쓰고 준비되면 web까지 실행�
   assert.equal(
     setup("/combo", {
       nodeVersion: "24.19.0",
-      run: (command, values) => {
+      run: (_command, values) => {
         args.push(values);
-        return { status: 0, stdout: command === "git" ? "/combo\n" : "" };
+        return { status: 0, stdout: "" };
       },
     }),
     0,
@@ -67,7 +68,7 @@ test("setup은 도구별 설치 안내를 쓰고 준비되면 web까지 실행�
 test("setup은 git 밖이나 상위 저장소 안이면 hook 설치만 건너뛰고 두 앱을 준비한다", () => {
   for (const git of [
     { status: 128, stderr: "not a git repository" },
-    { status: 0, stdout: "/parent\n" },
+    { status: 0, stdout: "../\n" },
   ]) {
     const calls = [];
     const messages = [];
@@ -114,7 +115,7 @@ test("setup은 자기 저장소에만 hook을 설치하고 git 지정 환경을 
         nodeVersion: "24.19.0",
         run: (command, args, options) => {
           calls.push({ command, args, options });
-          return { status: 0, stdout: command === "git" ? "/combo\n" : "" };
+          return { status: 0, stdout: "" };
         },
       }),
       0,
@@ -135,6 +136,39 @@ test("setup은 자기 저장소에만 hook을 설치하고 git 지정 환경을 
     }
   }
 });
+
+for (const [name, rootPath] of [
+  ["junction·symlink", (root, t) => linkedRoot(root, t)],
+  ...(process.platform === "win32"
+    ? [["소문자 드라이브", (root) => root[0].toLowerCase() + root.slice(1)]]
+    : []),
+]) {
+  test(`setup은 ${name}로 연 자기 저장소에도 hook을 설치한다`, (t) => {
+    const f = fixture(t);
+    const root = rootPath(f.root, t);
+    const calls = [];
+    const messages = [];
+    const code = setup(root, {
+      nodeVersion: "24.19.0",
+      output: (text) => messages.push(text),
+      run: (command, args, options) => {
+        if (command === "git") return runProcess(command, args, options);
+        calls.push([command, args, options.cwd]);
+        return { status: 0 };
+      },
+    });
+    assert.equal(code, 0);
+    assert.equal(
+      calls.some(([, args]) => args.includes("lefthook")),
+      true,
+    );
+    assert.equal(
+      calls.every(([, , cwd]) => cwd === root),
+      true,
+    );
+    assert.deepEqual(messages, []);
+  });
+}
 
 test("E2E 실행기는 첫 실패를 전파하고 web 실행기의 절대 경로를 넘긴다", () => {
   const calls = [];
