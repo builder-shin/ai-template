@@ -83,11 +83,11 @@ describe("CLI 입력", () => {
   });
 
   it.each([
-    ["target", "--template", "fastapi", "--name", "fastapi"],
-    ["fastapi", "--template", "fastapi"],
-    ["target", "--api", "fastapi", "--web", "--name", "fastapi"],
-    ["fastapi", "--api", "fastapi", "--web"],
-  ])("FastAPI가 있는 프로젝트의 예약 이름은 오류 2다: %j", (...args) => {
+    ["fastapi 단독 --name", "target", "--template", "fastapi", "--name", "fastapi"],
+    ["fastapi 단독 폴더", "fastapi", "--template", "fastapi"],
+    ["조합 --name", "target", "--api", "fastapi", "--web", "--name", "fastapi"],
+    ["조합 폴더", "fastapi", "--api", "fastapi", "--web"],
+  ])("FastAPI가 있는 프로젝트의 예약 이름은 오류 2다: %s", (_name, ...args) => {
     try {
       parseArguments(args, {});
       expect.fail("예약 이름은 거절해야 한다");

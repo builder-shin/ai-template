@@ -130,11 +130,11 @@ it("실제 CLI의 도움말·사용법 오류·실행 오류는 서로 다른 �
 });
 
 it.each([
-  ["aitpl-reserved", "--template", "fastapi", "--name", "fastapi"],
-  ["fastapi", "--template", "fastapi"],
-  ["aitpl-reserved", "--api", "fastapi", "--web", "--name", "fastapi"],
-  ["fastapi", "--api", "fastapi", "--web"],
-])("실제 CLI는 FastAPI 예약 이름을 생성 전에 거절한다: %j", (...args) => {
+  ["fastapi 단독 --name", "aitpl-reserved", "--template", "fastapi", "--name", "fastapi"],
+  ["fastapi 단독 폴더", "fastapi", "--template", "fastapi"],
+  ["조합 --name", "aitpl-reserved", "--api", "fastapi", "--web", "--name", "fastapi"],
+  ["조합 폴더", "fastapi", "--api", "fastapi", "--web"],
+])("실제 CLI는 FastAPI 예약 이름을 생성 전에 거절한다: %s", (_name, ...args) => {
   const parent = temporaryFolder();
   const target = join(parent, args[0]);
   const result = runCli([target, ...args.slice(1)], parent);
