@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, delimiter } from "node:path";
 import { dispatch } from "./dispatch.mjs";
 import { gitEnvironment } from "../../scripts/process.mjs";
+import { formatFile } from "../../scripts/staged-format.mjs";
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "aitpl-hooks space-"));
@@ -138,20 +139,35 @@ test("PostToolUse 루트 파일은 루트 포맷만 돌리고 밖의 경로는 �
   const f = fixture(t);
   const paths = [];
   const rootFormat = (_root, path) => {
-    paths.push(path);
-    return { status: 0 };
+    return formatFile(_root, path, (_command, args) => {
+      paths.push(args.at(-1));
+      return { status: 0 };
+    });
   };
-  f.invoke(
-    "PostToolUse",
-    { tool_name: "Edit", tool_input: { file_path: "README.md" } },
-    { rootFormat },
-  );
+  for (const path of [
+    "README.md",
+    "scripts/a.mjs",
+    ".claude/hooks/x.mjs",
+    ".github/workflows/ci.yml",
+  ]) {
+    f.write(path, "// fixture\n");
+    f.invoke(
+      "PostToolUse",
+      { tool_name: "Edit", tool_input: { file_path: join(f.root, path) } },
+      { rootFormat },
+    );
+  }
   f.invoke(
     "PostToolUse",
     { tool_name: "Edit", tool_input: { file_path: "../outside.ts" } },
     { rootFormat },
   );
-  assert.deepEqual(paths, ["README.md"]);
+  assert.deepEqual(paths, [
+    "README.md",
+    "scripts/a.mjs",
+    ".claude/hooks/x.mjs",
+    ".github/workflows/ci.yml",
+  ]);
   assert.equal(f.calls("api").length + f.calls("web").length, 0);
 });
 

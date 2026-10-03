@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { setup } from "./setup.mjs";
 import { check, instructionErrors } from "./check.mjs";
 import { testE2e } from "./test-e2e.mjs";
@@ -176,6 +176,11 @@ test("루트 staged 포맷은 앱·잠금 파일을 빼고 고친 루트 파일�
   try {
     writeFileSync(join(root, "README.md"), "# 루트\n");
     writeFileSync(join(root, "pnpm-lock.yaml"), "잠금\n");
+    const files = ["README.md", "scripts/a.mjs", ".claude/hooks/x.mjs", ".github/workflows/ci.yml"];
+    for (const path of files.slice(1)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), "// fixture\n");
+    }
     const calls = [];
     const result = stagedFormat(root, (command, args) => {
       calls.push([command, args]);
@@ -183,16 +188,16 @@ test("루트 staged 포맷은 앱·잠금 파일을 빼고 고친 루트 파일�
         status: 0,
         stdout:
           command === "git" && args[0] === "diff"
-            ? "README.md\0apps/web/file.ts\0pnpm-lock.yaml\0"
+            ? `${files.join("\0")}\0apps/web/file.ts\0pnpm-lock.yaml\0`
             : "",
       };
     });
     assert.equal(result.status, 0);
     assert.deepEqual(calls[1], [
       "pnpm",
-      ["exec", "prettier", "--write", "--ignore-unknown", "README.md"],
+      ["exec", "prettier", "--write", "--ignore-unknown", ...files],
     ]);
-    assert.deepEqual(calls[2], ["git", ["add", "--", "README.md"]]);
+    assert.deepEqual(calls[2], ["git", ["add", "--", ...files]]);
     assert.equal(stagedFormat(root, () => ({ status: 3 })).status, 3);
   } finally {
     rmSync(root, { recursive: true, force: true });

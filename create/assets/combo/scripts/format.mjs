@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { exitCode, isMain, run } from "./process.mjs";
 
 export function rootFiles(root) {
@@ -13,7 +13,8 @@ export function rootFiles(root) {
     const base = join(root, folder);
     if (!existsSync(base)) continue;
     for (const entry of readdirSync(base, { recursive: true, withFileTypes: true })) {
-      if (entry.isFile()) files.push(relative(root, join(entry.parentPath, entry.name)));
+      if (entry.isFile())
+        files.push(relative(root, join(entry.parentPath, entry.name)).split(sep).join("/"));
     }
   }
   return files.sort();
