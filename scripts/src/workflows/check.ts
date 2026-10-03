@@ -5,9 +5,9 @@ import { join } from "node:path";
 export function workflowFiles(root: string): string[] {
   return globSync(
     [
-      ".github/workflows/*.yml",
-      "templates/*/.github/workflows/*.yml",
-      "create/assets/combo/.github/workflows/*.yml",
+      ".github/workflows/*.{yml,yaml}",
+      "templates/*/.github/workflows/*.{yml,yaml}",
+      "create/assets/combo/.github/workflows/*.{yml,yaml}",
     ],
     { cwd: root },
   )

@@ -21,17 +21,19 @@ afterEach(() => {
 });
 
 describe("workflowFiles", () => {
-  it("루트, 각 템플릿, 조합의 yml 워크플로만 정렬해서 고른다", () => {
+  it("루트, 각 템플릿, 조합의 yml·yaml 워크플로만 정렬해서 고른다", () => {
     const files = [
       "templates/nextjs/.github/workflows/ci.yml",
       ".github/workflows/release.yml",
       "create/assets/combo/.github/workflows/ci.yml",
       "templates/fastapi/.github/workflows/ci.yml",
       ".github/workflows/ci.yml",
+      ".github/workflows/release.yaml",
+      "templates/nextjs/.github/workflows/release.yaml",
+      "create/assets/combo/.github/workflows/release.yaml",
     ];
     const repo = makeRepo([
       ...files,
-      ".github/workflows/ignored.yaml",
       "create/assets/other/.github/workflows/ci.yml",
       "templates/nested/web/.github/workflows/ci.yml",
       "docs/example.yml",
@@ -39,10 +41,13 @@ describe("workflowFiles", () => {
     mkdirSync(join(repo, ".github/workflows/folder.yml"));
     expect(workflowFiles(repo)).toEqual([
       ".github/workflows/ci.yml",
+      ".github/workflows/release.yaml",
       ".github/workflows/release.yml",
       "create/assets/combo/.github/workflows/ci.yml",
+      "create/assets/combo/.github/workflows/release.yaml",
       "templates/fastapi/.github/workflows/ci.yml",
       "templates/nextjs/.github/workflows/ci.yml",
+      "templates/nextjs/.github/workflows/release.yaml",
     ]);
   });
 
