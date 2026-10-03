@@ -1,11 +1,10 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { checkBreaking } from "../../src/spec-compare/breaking.ts";
+import { TOOL_CACHE_DIR } from "../../src/tools/cache.ts";
 
 /** oasdiff는 처음 한 번 GitHub에서 받아 저장소의 node_modules/.cache에 둔다. */
-const cacheDir = fileURLToPath(
-  new URL("../../../node_modules/.cache/ai-template-tools", import.meta.url),
-);
+const cacheDir = TOOL_CACHE_DIR;
 const fixture = (name: string) =>
   fileURLToPath(new URL(`../fixtures/specs/${name}`, import.meta.url));
 

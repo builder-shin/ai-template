@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { checkBreaking } from "./breaking.ts";
+import { TOOL_CACHE_DIR } from "../tools/cache.ts";
 import {
   compareSpecs,
   describeComparison,
@@ -33,8 +34,7 @@ if (subset) {
   breakingBase = join(mkdtempSync(join(tmpdir(), "spec-compare-")), "contract.json");
   writeFileSync(breakingBase, JSON.stringify(restrictToImplemented(contract, implementation)));
 }
-const cacheDir = join(process.cwd(), "node_modules", ".cache", "ai-template-tools");
-const breaking = await checkBreaking(breakingBase, implementationPath, cacheDir);
+const breaking = await checkBreaking(breakingBase, implementationPath, TOOL_CACHE_DIR);
 if (!breaking.ok) problems.push(`계약을 깨는 변경이 있다(oasdiff):\n${breaking.output}`);
 
 for (const problem of problems) console.error(problem);
