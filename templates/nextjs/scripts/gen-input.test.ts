@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { stringify } from "yaml";
@@ -60,7 +60,12 @@ describe("web 생성 입력", () => {
     expect(files["src/lib/generated/realtime.ts"]).toContain('"backend.changed"');
     expect(files["src/lib/generated/error-codes.ts"]).toContain('"backend.failed"');
     expect(staleFiles(await generateFiles(root, contract, mock), files)).toEqual([]);
-    writeFileSync(join(root, name), stringify(fixture("changed")));
+    writeFileSync(
+      join(root, name),
+      format === "json" ? JSON.stringify(fixture("changed")) : stringify(fixture("changed")),
+    );
+    if (format === "json")
+      expect(JSON.parse(readFileSync(join(root, name), "utf8"))).toEqual(fixture("changed"));
     expect(staleFiles(await generateFiles(root, contract, mock), files)).toEqual([
       "src/lib/api/schema.d.ts",
       "src/lib/generated/error-codes.ts",
@@ -76,6 +81,24 @@ describe("web 생성 입력", () => {
     writeFileSync(join(root, "backend.json"), "스펙 픽스처");
     expect(readWebOpenapi(root, contract)).toBe("스펙 픽스처");
   });
+
+  it.each(["json", "yaml"])("BOM이 붙은 설정과 %s 스펙을 읽는다", async (format) => {
+    writeFileSync(join(root, "gen.config.json"), '\uFEFF{"openapi":"backend.' + format + '"}');
+    const spec =
+      format === "json" ? JSON.stringify(fixture("backend")) : stringify(fixture("backend"));
+    writeFileSync(join(root, `backend.${format}`), "\uFEFF" + spec);
+    expect(readWebOpenapi(root, contract)).toBe(spec);
+    expect((await generateFiles(root, contract, mock))["src/lib/api/schema.d.ts"]).toContain(
+      "backendPayload:",
+    );
+  });
+
+  it("스펙 대신 폴더를 가리키면 파일을 지정하도록 안내한다", () => {
+    configure({ openapi: "backend" });
+    mkdirSync(join(root, "backend"));
+    expect(() => readWebOpenapi(root, contract)).toThrow(/backend.*파일이 아니다 —.*파일/);
+  });
+
 
   it.each(
     [
