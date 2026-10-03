@@ -10,6 +10,7 @@ import {
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { parseDocument } from "yaml";
 import { createProject } from "../src/create.ts";
 import { findRepository, templateFiles } from "../src/repository.ts";
 import { runGit } from "../src/git.ts";
@@ -20,6 +21,15 @@ function request(target: string, template: "nextjs" | "fastapi" = "nextjs", init
 }
 
 describe("단독 프로젝트", () => {
+  it.each(["null", "true", "false"])("compose 이름 %s를 YAML 문자열로 보존한다", (name) => {
+    const root = fixtureRepository();
+    const target = join(temporaryFolder(), "aitpl-app");
+    createProject({ ...request(target, "fastapi", false), name }, root);
+    const compose = parseDocument(readFileSync(join(target, "compose.yaml"), "utf8"));
+    expect(compose.errors).toEqual([]);
+    expect(compose.get("name")).toBe(name);
+  });
+
   it.each(["nextjs", "fastapi"] as const)(
     "%s의 파일만 만들고 main 첫 커밋을 남긴다",
     (template) => {

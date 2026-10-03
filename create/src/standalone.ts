@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { isMap, isScalar, parseDocument } from "yaml";
+import { isMap, isScalar, parseDocument, stringify } from "yaml";
 import type { Template } from "./arguments.ts";
 import { CreateError } from "./errors.ts";
 
@@ -37,7 +37,7 @@ export function renameStandalone(
     }
     // 노드 값의 범위만 바꿔 주석, 앵커와 나머지 바이트를 보존한다.
     const output =
-      `# 폴더와 관계없이 compose 프로젝트와 볼륨 이름을 프로젝트 이름으로 고정한다.\nname: ${name}\n` +
+      `# 폴더와 관계없이 compose 프로젝트와 볼륨 이름을 프로젝트 이름으로 고정한다.\nname: ${stringify(name)}` +
       source.slice(0, image.range[0]) +
       imageName +
       source.slice(image.range[1]);
