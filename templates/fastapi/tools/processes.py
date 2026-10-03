@@ -1,4 +1,4 @@
-"""여러 프로세스를 함께 띄우고 함께 내린다(uv run poe dev, test:e2e).
+"""여러 프로세스와 외부 명령을 띄우고 내린다(uv run poe dev, test:e2e, e2e:serve).
 
 - 출력은 줄마다 프로세스 이름을 붙여 한 곳(콘솔이나 파일)으로 모은다.
 - 하나라도 끝나면 나머지를 모두 내린다. 멈추라는 신호를 받아도 모두 내린다.
@@ -215,9 +215,15 @@ def run_command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> in
             except subprocess.TimeoutExpired:
                 pass  # Windows의 무기한 wait는 Python 신호 처리를 늦춘다.
     finally:
-        _signal_tree(process, force=False)
+        handlers = {number: signal.signal(number, signal.SIG_IGN) for number in STOP_SIGNALS}
         try:
-            process.wait(timeout=STOP_TIMEOUT)
-        except subprocess.TimeoutExpired:
-            _signal_tree(process, force=True)
-            process.wait()
+            _signal_tree(process, force=False)
+            try:
+                process.wait(timeout=STOP_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                _signal_tree(process, force=True)
+                process.wait()
+        finally:
+            for number, handler in handlers.items():
+                if handler is not None:
+                    signal.signal(number, handler)

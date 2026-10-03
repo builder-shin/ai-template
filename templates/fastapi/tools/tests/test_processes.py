@@ -2,6 +2,7 @@
 
 import io
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -9,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from tools import processes
 from tools.processes import STOP_SIGNALS, Command, ProcessGroup, run_all, run_command
 
 # 손자: heartbeat.txt에 계속 점을 찍는다.
@@ -111,3 +113,38 @@ def test_external_command_is_stopped_with_its_descendants(tmp_path: Path, number
             run_command(python(WITH_GRANDCHILD), cwd=tmp_path, env={"PYTHONUTF8": "1"})
     assert time.monotonic() - started < 20
     assert_stopped(tmp_path)
+
+
+@pytest.mark.parametrize("number", STOP_SIGNALS, ids=lambda number: signal.Signals(number).name)
+def test_command_cleanup_ignores_repeated_signals_and_forces_after_timeout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, number: int
+) -> None:
+    events: list[str] = []
+
+    class FakeProcess:
+        def wait(self, timeout: float | None = None) -> int:
+            events.append("wait")
+            if len(events) == 1:
+                raise KeyboardInterrupt
+            if timeout is not None:
+                raise subprocess.TimeoutExpired("fixture", timeout)
+            return 0
+
+    def stop(process: object, *, force: bool) -> None:
+        events.append("force" if force else "stop")
+        signal.raise_signal(number)
+
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: FakeProcess())
+    monkeypatch.setattr(processes, "_signal_tree", stop)
+    previous = signal.signal(number, processes._interrupt)
+    try:
+        with pytest.raises(KeyboardInterrupt):
+            run_command(["fixture"], cwd=tmp_path, env={})
+        assert events == ["wait", "stop", "wait", "force", "wait"]
+        assert signal.getsignal(number) is processes._interrupt
+    finally:
+        signal.signal(number, previous)
+
+
+def test_real_command_preserves_exit_status_on_normal_completion(tmp_path: Path) -> None:
+    assert run_command(python("raise SystemExit(7)"), cwd=tmp_path, env={"PYTHONUTF8": "1"}) == 7
