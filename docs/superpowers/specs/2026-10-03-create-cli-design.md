@@ -88,16 +88,17 @@ pnpm new --help
 
 ### 3.3 생성 순서
 
-1. 입력과 도구를 검사한다(§3.2).
+1. 입력과 도구를 검사한다(§3.2). CLI 위치가 git 루트와 맞는지 확인하며 Windows 경로의 대소문자 차이는 허용한다. 대상 드라이브나 공유가 없으면 폴더를 만들기 전에 거절한다.
 2. 대상 폴더와 같은 부모 아래 임시 폴더를 만든다.
 3. 파일을 복사하고 이름을 바꾼다(단독 §4, 조합 §5).
 4. 조합이면 루트 잠금 파일을 만들고(§5.3), `pnpm install --frozen-lockfile`을 실행한다. 동적으로 합친 `.claude/settings.json`, `lefthook.yml`, `.mcp.json`을 고정 Prettier로 포맷한 뒤 web `gen`을 실행해 web 생성물을 api의 `openapi.json` 기준으로 맞춘다(§5.5). 이 단계만 npm 레지스트리에 접속한다.
 5. 임시 폴더를 대상 폴더로 옮긴다. 어느 단계든 실패하면 임시 폴더를 지우고 대상 폴더는 만들지 않는다.
-6. `git init -b main`과 첫 커밋을 한다(`--no-git`이면 건너뛴다). 메시지는 `chore: create <이름> from ai-template <템플릿 저장소 short SHA>`다. 설정된 `user.name` 또는 `user.email`이 없으면 init만 하고 커밋 방법을 안내한다. git이 환경에서 추측한 신원은 쓰지 않으며, 사용자의 서명 설정은 그대로 따른다. git 단계가 실패하면 생성한 대상도 정리한다.
+6. `git init -b main`과 첫 커밋을 한다(`--no-git`이면 건너뛴다). 복사한 파일은 이름 목록으로 `git add -f`하여 전역 excludes에 빠지지 않게 한다. 조합이 만든 파일은 프로젝트의 ignore 규칙을 적용하며 설치물·캐시는 제외한다. 메시지는 `chore: create <이름> from ai-template <템플릿 저장소 short SHA>`다. 설정된 `user.name` 또는 `user.email`이 없으면 init만 하고 커밋 방법을 안내한다. git이 환경에서 추측한 신원은 쓰지 않으며, 사용자의 서명 설정은 그대로 따른다. git 단계가 실패하면 생성한 대상도 정리한다.
 7. 다음 명령을 안내한다: 단독 fastapi는 `uv run poe setup`, 단독 nextjs와 조합은 `pnpm setup`.
 
 - CLI와 그 테스트의 git 호출은 상속된 저장소 지정 변수(`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` 등)를 지운 환경에서 한다. W4에서 pre-push hook 안의 테스트가 상속된 `GIT_DIR`로 실제 저장소를 다시 초기화한 일이 있었다.
 - 성공 출력은 만든 폴더와 다음 명령 몇 줄이다.
+- 실패 메시지에는 시스템 오류 코드·경로, 일반 오류의 이름·원인, git stderr의 첫 줄 또는 잘못된 옵션의 원인을 남긴다.
 
 ### 3.4 패키지
 
@@ -186,7 +187,7 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
 
 | 명령                     | 동작                                                                                                                  |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `setup`                  | 도구 확인(Node 24, pnpm, uv, Docker) → `pnpm install --frozen-lockfile` → 루트 `lefthook install` → api `setup` → web `setup` |
+| `setup`                  | 도구 확인(Node 24, pnpm, uv, Docker) → `pnpm install --frozen-lockfile` → 루트가 git 최상위일 때만 `lefthook install`(그 밖은 안내 후 생략) → api `setup` → web `setup` |
 | `dev`                    | `turbo run dev`: api(8000, worker·scheduler 포함)와 web(3000, 백엔드 모드)을 함께 띄운다                             |
 | `check`                  | 루트 검사(루트 파일 포맷, 루트 스크립트 테스트, 지침 파일) → 두 앱의 `check`를 한 번에 하나씩 실행한다. 앱 순서는 고정하지 않는다 |
 | `fix`                    | 앱별 `fix`와 루트 파일 포맷                                                                                           |
@@ -273,11 +274,12 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
     | 이벤트                              | 디스패처                                                                                                       |
     | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
     | `PostToolUse` (`Edit`, `Write`, `MultiEdit`) | 고친 파일이 속한 앱의 hook. 루트 파일이면 루트 포맷만                                                         |
-    | `Stop`                              | `stop_hook_active`면 통과. 바뀐 앱의 hook만 돌리고, 루트 변경에는 포맷·Node 테스트·지침 3단계만 돈다. 하나라도 막으면 이유를 모아 막는다 |
+    | `Stop`                              | `stop_hook_active`면 통과. 루트가 자기 git 저장소의 최상위가 아니면 안내 후 검사를 생략한다. 바뀐 앱의 hook만 돌리고, 루트 변경에는 포맷·Node 테스트·지침 3단계만 돈다. 하나라도 막으면 이유를 모아 막는다 |
     | `PreToolUse` (`Bash`, `PowerShell`, `Edit`, `Write`, `MultiEdit`) | 두 앱의 matcher에 맞는 hook을 돌리고 하나라도 거부하면 거부한다. API의 커밋된 마이그레이션 편집 보호도 유지한다 |
     | `SessionStart`                      | 두 앱의 요약을 앱 이름과 함께 이어 붙인다                                                                     |
 
   - exit 2 또는 JSON deny는 허용보다 우선한다. PreToolUse의 JSON 결정은 deny → defer → ask → allow 순서로 합친다. Stop·PostToolUse는 block과 이유를 모으며, SessionStart는 한 앱의 진단이 실패해도 다른 앱의 요약을 보존한다.
+  - 앱 hook을 시작하지 못하거나 시간이 초과하면 설치·시간 설정 안내와 함께 비차단 오류로 알린다. 다른 앱의 차단 이유와 요약도 보존한다.
   - 직접 node로 시작한 hook에도 PATH에서 찾은 pnpm 진입점을 넘긴다. shell 없이 Windows의 pnpm 실행과 web 생성물 검사를 지원한다.
 
 - skill은 앱에 둔다. Claude Code는 시작 폴더 아래의 `.claude/skills/`를 그 폴더의 파일을 처음 읽거나 고칠 때 불러온다(§10).
@@ -291,10 +293,10 @@ FastAPI 패키지 이름 `app`, 계약 사본의 `@ai-template/*`, API 제목은
     - 두 앱 `lefthook.yml`의 pre-commit 작업 가운데 비밀 스캔을 뺀 것을 옮긴다. `root: apps/<앱>/`과 앱 이름 접두사를 붙인다.
     - 루트 파일 포맷과 비밀 스캔 한 번을 더한다.
   - 비밀 스캔
-    - 루트 `.betterleaks.toml`을 쓴다. 두 앱 설정의 허용 경로에 `apps/<앱>/`을 붙여 합친 파일이다.
+    - 루트 `.betterleaks.toml`을 쓴다. 두 앱 설정의 허용 경로에 `apps/<앱>/`을 붙여 합친 파일이며 원래의 `(^|/)` 경계를 유지해 파일 이름 중간에는 예외가 적용되지 않게 한다.
     - 실행 파일은 web의 고정 Betterleaks를 쓴다. web 작업 폴더에서 루트 저장소와 설정을 모두 지정한다: `pnpm --filter web run -s tool betterleaks git ../.. --pre-commit --staged --no-banner --redact --config ../../.betterleaks.toml`. 루트 파일도 스캔하며 앱의 생성물 예외는 해당 앱 경로 안으로 제한한다.
   - pre-push: 루트 `pnpm check`.
-  - 앱의 hook 설치기는 git 최상위가 아니면 hook을 걸지 않으므로 루트 hook과 다투지 않는다.
+  - 루트와 앱의 hook 설치기는 자기 폴더가 git 최상위일 때만 hook을 건다. 상위 저장소 안이나 git 밖에서는 안내 후 설치만 건너뛴다.
 - 루트 `scripts/`의 실행기와 `.claude/hooks/`의 디스패처는 Node 내장 모듈만 쓰는 ESM이다. `node --test` 테스트를 함께 두고 루트 `check`가 돈다.
 
 ### 5.9 CI 워크플로
