@@ -187,6 +187,22 @@ describe("단독 프로젝트", () => {
     expect(() => createProject(request(join(target, "keep.txt")), root)).toThrow(/대상/);
   });
 
+  it.skipIf(process.platform !== "win32").each(["root", "child"])(
+    "없는 드라이브의 %s 경로는 명확한 오류로 거절한다",
+    (kind) => {
+      const root = fixtureRepository();
+      const drive = "QRSTUVWXYZABCDEFGHIJKLMNOP"
+        .split("")
+        .find((letter) => !existsSync(`${letter}:\\`));
+      if (!drive) throw new Error("없는 드라이브가 필요하다");
+      const target = kind === "root" ? `${drive}:\\` : `${drive}:\\aitpl-app`;
+      expect(() => createProject(request(target), root)).toThrow(
+        /^pnpm new: 대상 폴더의 드라이브나 공유를 찾을 수 없다 — .+$/,
+      );
+      expect(existsSync(target)).toBe(false);
+    },
+  );
+
   it("저장소 안이나 링크를 거쳐 저장소 안에 생성하는 것을 거절한다", () => {
     const root = fixtureRepository();
     expect(() => createProject(request(join(root, "aitpl-nested")), root)).toThrow(/저장소/);

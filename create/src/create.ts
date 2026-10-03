@@ -22,7 +22,13 @@ import { runPnpm } from "./pnpm.ts";
 
 function canonicalPath(path: string): string {
   if (existsSync(path)) return realpathSync(path);
-  return join(canonicalPath(dirname(path)), relative(dirname(path), path));
+  const parent = dirname(path);
+  if (parent === path)
+    throw new CreateError(
+      "대상 폴더의 드라이브나 공유를 찾을 수 없다",
+      "접근할 수 있는 드라이브나 공유의 폴더를 지정한다.",
+    );
+  return join(canonicalPath(parent), relative(parent, path));
 }
 
 function inside(path: string, repository: string): boolean {
