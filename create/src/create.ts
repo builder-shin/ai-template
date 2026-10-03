@@ -13,7 +13,7 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { CreateOptions } from "./arguments.ts";
-import { CreateError } from "./errors.ts";
+import { CreateError, errorReason } from "./errors.ts";
 import { initializeGit, runGit } from "./git.ts";
 import { templateFiles } from "./repository.ts";
 import { renameStandalone } from "./standalone.ts";
@@ -79,11 +79,13 @@ export function createProject(
   if (options.template === "combo") pnpm(root, ["--version"]);
   const sha = runGit(root, ["rev-parse", "--short", "HEAD"]).trim();
   const parent = dirname(options.target);
-  mkdirSync(parent, { recursive: true });
-  const staging = mkdtempSync(join(parent, `aitpl-${options.name}-`));
+  const firstCreated = mkdirSync(parent, { recursive: true });
+  let staging: string | undefined;
   const copiedFiles: string[] = [];
   let moved = false;
+  const movedEntries: string[] = [];
   try {
+    staging = mkdtempSync(join(parent, `aitpl-${options.name}-`));
     for (const { template, files } of plans)
       for (const file of files) {
         const destination = join(
@@ -107,9 +109,22 @@ export function createProject(
     else renameStandalone(staging, options.template, options.name);
     // 생성 중 다른 프로세스가 대상을 채웠다면 덮어쓰지 않는다.
     validateTarget(options.target, root);
-    if (existsSync(options.target)) rmdirSync(options.target);
-    renameSync(staging, options.target);
-    moved = true;
+    // Node에는 umask를 읽는 대체 API가 없다. 새 대상도 mkdir의 기본 권한을 따른다.
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    if (process.platform !== "win32") chmodSync(staging, 0o777 & ~process.umask());
+    if (existsSync(options.target)) {
+      // 기존 빈 폴더의 소유자·권한과 그 안에서 열린 터미널을 유지한다.
+      for (const entry of readdirSync(staging)) {
+        const destination = join(options.target, entry);
+        renameSync(join(staging, entry), destination);
+        movedEntries.push(destination);
+      }
+      rmdirSync(staging);
+    } else {
+      renameSync(staging, options.target);
+      moved = true;
+    }
+    if (options.git && !moved) movedEntries.push(join(options.target, ".git"));
     const committed = options.git
       ? initializeGit(
           options.target,
@@ -120,7 +135,29 @@ export function createProject(
       : false;
     return { target: options.target, committed };
   } catch (error) {
-    rmSync(moved ? options.target : staging, { recursive: true, force: true });
-    throw error;
+    const failure =
+      process.platform === "win32" &&
+      error instanceof Error &&
+      "code" in error &&
+      (error.code === "EBUSY" || error.code === "EPERM")
+        ? new CreateError(
+            `대상 폴더를 옮기지 못했다(${errorReason(error)})`,
+            "폴더를 사용하는 프로그램을 닫고 다시 실행한다.",
+          )
+        : error;
+    const paths = [staging, ...(moved ? [options.target] : movedEntries), firstCreated].filter(
+      (path): path is string => path !== undefined,
+    );
+    for (const path of paths) {
+      try {
+        rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      } catch (cleanupError) {
+        console.error(
+          `pnpm new: 생성 실패(${errorReason(failure)}) 뒤 정리하지 못했다(${errorReason(cleanupError)}) — ` +
+            `남은 경로 ${paths.filter(existsSync).join(", ")}를 사용하는 프로그램을 닫고 정리한다.`,
+        );
+      }
+    }
+    throw failure;
   }
 }

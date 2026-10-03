@@ -92,7 +92,7 @@ pnpm new --help
 2. 대상 폴더와 같은 부모 아래 임시 폴더를 만든다.
 3. 파일을 복사하고 이름을 바꾼다(단독 §4, 조합 §5).
 4. 조합이면 루트 잠금 파일을 만들고(§5.3), `pnpm install --frozen-lockfile`을 실행한다. 합치거나 복사한 `.claude/settings.json`, `lefthook.yml`, `.mcp.json`을 고정 Prettier로 포맷한 뒤 web `gen`을 실행해 web 생성물을 api의 `openapi.json` 기준으로 맞춘다(§5.5). 이 단계만 npm 레지스트리에 접속한다.
-5. 임시 폴더를 대상 폴더로 옮긴다. 어느 단계든 실패하면 임시 폴더를 지우고 대상 폴더는 만들지 않는다.
+5. 새 대상에는 기본 폴더 권한으로 임시 폴더를 옮긴다. 기존 빈 대상은 폴더 자체를 유지하고 임시 폴더의 항목만 넣는다. 어느 단계든 실패하면 생성한 항목과 새 부모 폴더를 재시도하며 정리한다. 정리도 실패하면 원래 원인과 남은 경로를 함께 알린다. Windows에서 폴더가 사용 중이면 해당 프로그램을 닫도록 안내한다.
 6. `git init -b main`과 첫 커밋을 한다(`--no-git`이면 건너뛴다). 복사한 파일은 이름 목록으로 `git add -f`하여 전역 excludes에 빠지지 않게 한다. 조합이 만든 파일은 프로젝트의 ignore 규칙을 적용하며 설치물·캐시는 제외한다. 메시지는 `chore: create <이름> from ai-template <템플릿 저장소 short SHA>`다. 설정된 `user.name` 또는 `user.email`이 없으면 init만 하고 커밋 방법을 안내한다. git이 환경에서 추측한 신원은 쓰지 않으며, 사용자의 서명 설정은 그대로 따른다. git 단계가 실패하면 생성한 대상도 정리한다.
 7. 다음 명령을 안내한다: 단독 fastapi는 `uv run poe setup`, 단독 nextjs와 조합은 `pnpm setup`.
 
