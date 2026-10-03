@@ -16,6 +16,7 @@ import {
 } from "./skills";
 import { runChecks, parseCheckArgs } from "./runner";
 import { assembleSteps } from "./steps";
+import { readWebOpenapi } from "../generate";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 process.chdir(root);
@@ -29,6 +30,15 @@ const readFiles = () => ({
   ...readOfficialSkillCopies(root),
 });
 const files = readFiles();
+let webOpenapi: string;
+try {
+  webOpenapi = readWebOpenapi(root, files["contract/openapi.yaml"] ?? "");
+} catch (error) {
+  console.error(
+    `check 실패: generated — ${error instanceof Error ? error.message : String(error)}`,
+  );
+  process.exit(1);
+}
 const cachePath = ".cache/check.json";
 let previous: Record<string, string> = {};
 try {
@@ -37,7 +47,14 @@ try {
   /* 캐시는 없어도 된다. */
 }
 const installedSkills = fast ? {} : installedSkillState(root);
-const steps = assembleSteps(files, fast, related, readRouteTypes(root), installedSkills);
+const steps = assembleSteps(
+  files,
+  fast,
+  related,
+  readRouteTypes(root),
+  installedSkills,
+  webOpenapi,
+);
 const result = await runChecks(steps, previous, async (step) => {
   if (step.name === "i18n") {
     const problems = checkI18n({ ko, en }, errorCodes);
@@ -68,6 +85,7 @@ if (result.cache.types) {
     related,
     readRouteTypes(root),
     installedSkills,
+    webOpenapi,
   ).find((step) => step.name === "types")!.key;
 }
 writeFileSync(cachePath, JSON.stringify(result.cache));

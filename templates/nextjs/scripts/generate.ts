@@ -1,5 +1,7 @@
 import openapiTS, { astToString } from "openapi-typescript";
 import { parse } from "yaml";
+import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, join, win32 } from "node:path";
 
 const header = "// 직접 수정 금지 — pnpm gen으로 생성한다.\n";
 
@@ -41,6 +43,47 @@ export async function generateWeb(openapi: string): Promise<Record<string, strin
   return {
     "src/lib/api/schema.d.ts": header + astToString(await openapiTS(openapi)),
     ...generateMetadata(parse(openapi) as Contract),
+  };
+}
+
+export function readWebOpenapi(root: string, contractOpenapi: string): string {
+  const configPath = join(root, "gen.config.json");
+  if (!existsSync(configPath)) return contractOpenapi;
+  let config: unknown;
+  try {
+    config = JSON.parse(readFileSync(configPath, "utf8"));
+  } catch {
+    throw new Error("gen.config.json을 읽을 수 없다 — 올바른 JSON 파일로 저장한다.");
+  }
+  if (
+    !config ||
+    typeof config !== "object" ||
+    Array.isArray(config) ||
+    Object.keys(config).length !== 1 ||
+    !("openapi" in config) ||
+    typeof config.openapi !== "string" ||
+    !config.openapi.trim() ||
+    isAbsolute(config.openapi) ||
+    win32.isAbsolute(config.openapi)
+  )
+    throw new Error(
+      "gen.config.json 설정이 잘못됐다 — openapi 하나에 web 루트 기준 상대 경로 문자열을 넣는다.",
+    );
+  const specPath = join(root, config.openapi);
+  if (!existsSync(specPath))
+    throw new Error(`${config.openapi} 스펙 파일이 없다 — 백엔드에서 gen을 먼저 실행한다.`);
+  return readFileSync(specPath, "utf8");
+}
+
+export async function generateFiles(
+  root: string,
+  contractOpenapi: string,
+  mockTypes: string,
+): Promise<Record<string, string>> {
+  return {
+    "contract/openapi.yaml": contractOpenapi,
+    "contract/mock/src/generated/api.ts": mockTypes,
+    ...(await generateWeb(readWebOpenapi(root, contractOpenapi))),
   };
 }
 

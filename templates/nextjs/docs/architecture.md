@@ -297,7 +297,11 @@ Hook JSON 형식의 기준은 [Claude Code 공식 문서](https://code.claude.co
 
 `contract/*`는 pnpm workspace다. 목의 `@ai-template/contract`는 TypeSpec 사본으로 연결되고 두 패키지는 루트 `tsconfig.base.json`과 고정된 개발 도구를 사용한다. API 규약도 `docs/conventions/`에 함께 복사해 계약 테스트와 AI가 같은 문서를 읽는다.
 
-`pnpm gen`은 TypeSpec을 컴파일하고 API 선언, 실시간 이벤트 이름·payload 매핑, 에러 코드 목록과 목 타입을 다시 만든다. `pnpm check`는 임시 디렉터리의 생성 결과를 비교하고 계약 두 패키지의 자체 검사도 돌린다. 사본은 원본 포맷을 보존하므로 web 포맷·린트에서 제외한다.
+`pnpm gen`은 TypeSpec을 컴파일하고 API 선언, 실시간 이벤트 이름·payload 매핑, 에러 코드 목록과 목 타입을 다시 만든다. web 루트에 `gen.config.json`이 없으면 모든 타입의 입력은 TypeSpec 계약이다. 조합에서는 생성기가 이 설정에 백엔드의 `gen`이 내보낸 OpenAPI를 연결한다. 조합 루트의 gen이 백엔드 내보내기 뒤 web 생성을 실행한다.
+
+설정은 `openapi` 하나만 받으며 JSON 또는 YAML OpenAPI 파일의 web 루트 기준 상대 경로를 넣는다. 설정이 있으면 web API 선언·실시간 이벤트·에러 코드만 그 스펙에서 만들고, `contract/openapi.yaml`과 목 타입은 TypeSpec에서 계속 만든다. 백엔드 스펙이 없으면 백엔드에서 `gen`을 먼저 실행한다. 목은 프론트 단독 개발과 통합 테스트의 대역이며 백엔드 변경을 자동으로 따라가지 않는다.
+
+`pnpm gen --check`도 같은 입력으로 임시 생성 결과를 비교한다. `pnpm check`의 생성물 캐시는 설정과 외부 스펙 변경을 반영하며 계약 두 패키지의 자체 검사도 돌린다. 사본은 원본 포맷을 보존하므로 web 포맷·린트에서 제외한다.
 web 자체 생성물은 첫 줄에 직접 수정 금지 헤더를 둔다. 계약 생성물은 자체 freshness 검사로 확인한다. [계약 확장](recipes/change-contract.md)의 순서로 이 프로젝트의 TypeSpec과 목 수기 소스를 고치고 `pnpm gen`한다.
 
 `pnpm dev`는 Next 환경 로더로 설정을 준비한다. API 주소가 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 같은 loopback에 목과 web을 함께 시작하며, 외부 백엔드 주소라면 web만 시작한다. 어느 자식이 종료하거나 Ctrl+C를 받으면 자신이 시작한 프로세스 트리를 함께 내린다. dev·HTTP 통합·E2E는 공통 `scripts/process-tree.mjs`를 쓴다. 목은 `node --import tsx`로 직접 실행하고, POSIX에서는 런처 종료 뒤에도 그룹을 정리한다. Windows는 직접 node가 자식을 소유하며 taskkill로 트리를 끝낸다. 종료 확인을 기다리고 한도를 넘으면 강제 종료한다.

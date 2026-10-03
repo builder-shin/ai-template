@@ -13,7 +13,7 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 | `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                                            |
 | `pnpm test`                      | Vitest 단위·통합 테스트                                                               |
 | `pnpm test:e2e`                  | Playwright 인증·기능 E2E. 기본 목(4110) 또는 준비된 FastAPI와 운영 web(3100)          |
-| `pnpm gen`                       | TypeSpec 계약, web API·실시간·에러 타입, 목 타입 생성                                 |
+| `pnpm gen`                       | TypeSpec 계약·목 타입과 web 타입 생성. web은 선택한 `gen.config.json` 스펙을 사용     |
 | `pnpm gen:feature <이름>`        | 골든 posts와 화면·번역·테스트를 복사하고 보호 경로를 등록                             |
 | `pnpm build`, `pnpm start`       | 운영 빌드, 운영 서버(3000)                                                            |
 

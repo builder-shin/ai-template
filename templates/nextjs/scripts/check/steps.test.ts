@@ -2,6 +2,18 @@ import { expect, it } from "vitest";
 import { assembleSteps } from "./steps";
 import { runChecks } from "./runner";
 
+it.each([false, true])(
+  "백엔드 스펙과 입력 설정 변경은 생성물 캐시를 무효화한다 (fast=%s)",
+  (fast) => {
+    const key = (files: Record<string, string>, openapi = "before") =>
+      assembleSteps(files, fast, [], {}, {}, openapi).find((step) => step.name === "generated")!
+        .key;
+    expect(key({}, "before")).not.toBe(key({}, "after"));
+    expect(key({ "gen.config.json": "before" })).not.toBe(key({ "gen.config.json": "after" }));
+    expect(key({ "gen.config.json": "before" })).not.toBe(key({}));
+  },
+);
+
 it.each([false, true])("hook과 권한 변경은 테스트 캐시를 무효화한다 (fast=%s)", (fast) => {
   const related = fast ? ["src/lib/env.ts"] : [];
   const name = fast ? "related-tests" : "tests";
