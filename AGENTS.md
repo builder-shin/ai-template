@@ -53,6 +53,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 - 생성할 템플릿과 조합 자산·루트 `.gitattributes`·`.editorconfig`의 git 추적 변경은 먼저 커밋한다. 조합 입력은 HEAD의 추적 내용을 쓴다. CLI는 추적 파일만 복사하고 `template.json`, 무추적 환경 파일·설치물·캐시는 제외하며 원본 인덱스의 실행 권한을 보존한다. CLI와 테스트의 git 호출은 `scripts/src/files/git-environment.ts`로 상속된 저장소 지정 변수를 제거한다.
 - 조합 생성은 레지스트리에 접속해 잠금 파일을 합치고 frozen 설치·web gen을 실행한다. TypeScript override와 web 버전 해석을 보존한다. 루트 compose는 없고 인프라는 apps/api가 맡는다. gen은 캐시하지 않는다.
 - 기본 생성은 main 브랜치와 출처를 적은 첫 커밋을 만든다. 복사한 파일은 이름 목록으로 강제 추가하고 조합이 만든 파일은 프로젝트 ignore를 따르므로 설치물·캐시는 제외한다. git 신원이 없으면 init과 스테이징 뒤 commit 명령을 안내하며 사용자 서명 설정을 따른다. `--no-git`은 git 초기화와 커밋을 모두 생략한다.
+- `pnpm new`를 생성 중 Ctrl+C로 중단하면 대상 옆의 임시 폴더 `aitpl-<이름>-XXXXXX`가 남을 수 있으므로 지운다. 새 대상은 완성한 임시 폴더를 한 번에 옮긴다. 기존 빈 대상에 항목별로 옮기는 도중 중단하면 대상도 일부 채워질 수 있으므로 생성된 항목을 비운다.
 - 생성 smoke는 OS 임시 폴더의 `aitpl-` 이름을 쓴다. Docker가 필요한 생성 프로젝트 setup·FastAPI check·조합 E2E·이미지 빌드는 PR CI의 `create-combo`·`create-standalone`에서 확인한다. 개발 스택 `fastapi`·`joon`과 볼륨은 쓰거나 내리지 않는다.
 - `.env`를 읽거나 출력하지 않는다. 키와 공개 기본값은 `.env.example`에서 확인한다.
 - 계약은 `contract/typespec/src/`만 고치고 `pnpm gen`으로 생성물을 만든다. `contract/openapi.yaml`과 `**/generated/**`는 직접 고치지 않는다.

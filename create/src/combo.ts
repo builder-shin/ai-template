@@ -11,7 +11,6 @@ import { trackedContents } from "./repository.ts";
 export interface ComboTools {
   readonly assets?: string;
   readonly pnpm?: PnpmRunner;
-  readonly interrupted?: () => boolean;
 }
 
 const commands = [
@@ -52,7 +51,6 @@ export function writeCombo(
   name: string,
   inputs: ComboInput[],
   pnpm: PnpmRunner,
-  checkInterrupted: () => void = () => undefined,
 ): void {
   const api = join(root, "apps/api");
   const web = join(root, "apps/web");
@@ -110,7 +108,6 @@ export function writeCombo(
     PRETTIER: required(pkg.devDependencies?.prettier, "devDependencies.prettier"),
   };
   for (const { path, content } of inputs) {
-    checkInterrupted();
     const destination = join(root, path);
     mkdirSync(dirname(destination), { recursive: true });
     writeFileSync(

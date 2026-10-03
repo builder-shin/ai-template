@@ -74,11 +74,6 @@ export function createProject(
   repository: string,
   tools: ComboTools = {},
 ): CreateResult {
-  const checkInterrupted = () => {
-    if (tools.interrupted?.())
-      throw new CreateError("프로젝트 생성을 중단했다", "정리가 끝난 뒤 다시 실행한다.", 130);
-  };
-  checkInterrupted();
   const root = realpathSync.native(repository);
   const worktrees = runGit(root, ["worktree", "list", "--porcelain"])
     .split(/\r?\n\r?\n/)
@@ -101,11 +96,7 @@ export function createProject(
     options.template === "combo"
       ? readComboInputs(root, tools.assets ?? join(root, "create/assets/combo"))
       : [];
-  const pnpm: typeof runPnpm = (cwd, args) => {
-    checkInterrupted();
-    (tools.pnpm ?? runPnpm)(cwd, args);
-    checkInterrupted();
-  };
+  const pnpm = tools.pnpm ?? runPnpm;
   if (options.template === "combo") pnpm(root, ["--version"]);
   const sha = runGit(root, ["rev-parse", "--short", "HEAD"]).trim();
   const parent = dirname(options.target);
@@ -119,7 +110,6 @@ export function createProject(
     staging = mkdtempSync(join(parent, `aitpl-${options.name}-`));
     for (const { template, files } of plans)
       for (const file of files) {
-        checkInterrupted();
         const destination = join(
           staging,
           options.template === "combo" ? `apps/${template === "fastapi" ? "api" : "web"}` : "",
@@ -132,13 +122,10 @@ export function createProject(
           executableFiles.push(relative(staging, destination).split(sep).join("/"));
         if (process.platform !== "win32") chmodSync(destination, file.executable ? 0o755 : 0o644);
       }
-    checkInterrupted();
-    if (options.template === "combo")
-      writeCombo(staging, options.name, inputs, pnpm, checkInterrupted);
+    if (options.template === "combo") writeCombo(staging, options.name, inputs, pnpm);
     else renameStandalone(staging, options.template, options.name);
     // 생성 중 다른 프로세스가 대상을 채웠다면 덮어쓰지 않는다.
     validateTarget(options.target, worktrees);
-    checkInterrupted();
     // Node에는 umask를 읽는 대체 API가 없다. 새 대상도 mkdir의 기본 권한을 따른다.
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     if (process.platform !== "win32") chmodSync(staging, 0o777 & ~process.umask());
@@ -146,7 +133,6 @@ export function createProject(
       if (existsSync(options.target)) {
         // 기존 빈 폴더의 소유자·권한과 그 안에서 열린 터미널을 유지한다.
         for (const entry of readdirSync(staging)) {
-          checkInterrupted();
           const destination = join(options.target, entry);
           renameSync(join(staging, entry), destination);
           movedEntries.push(destination);
@@ -177,7 +163,6 @@ export function createProject(
           executableFiles.filter((file) => existsSync(join(options.target, file))),
         )
       : false;
-    checkInterrupted();
     return {
       target: options.target,
       committed,
@@ -224,7 +209,6 @@ export function createProject(
           `남은 경로 ${leftovers.filter(existsSync).join(", ")}를 사용하는 프로그램을 닫고 정리한다.`,
       );
     }
-    checkInterrupted();
     throw error;
   }
 }

@@ -3,22 +3,12 @@ import { createProject } from "./create.ts";
 import { CreateError, errorReason } from "./errors.ts";
 import { findRepository } from "./repository.ts";
 
-let interrupted = false;
-const isInterrupted = (): boolean => interrupted;
-const recordInterruption = () => {
-  interrupted = true;
-};
-process.on("SIGINT", recordInterruption);
-process.on("SIGTERM", recordInterruption);
-
 try {
   const options = parseArguments(process.argv.slice(2));
   if (options === "help") {
     console.log(usage);
   } else {
-    const result = createProject(options, findRepository(import.meta.url), {
-      interrupted: isInterrupted,
-    });
+    const result = createProject(options, findRepository(import.meta.url));
     console.log(`생성 완료: ${result.target}`);
     if (options.git && !result.committed) {
       console.log(
@@ -37,8 +27,5 @@ try {
           "템플릿 파일 형식과 대상 폴더의 쓰기 권한을 확인한다.",
         );
   console.error(failure.message);
-  process.exitCode = isInterrupted() ? 130 : failure.exitCode;
-} finally {
-  process.off("SIGINT", recordInterruption);
-  process.off("SIGTERM", recordInterruption);
+  process.exitCode = failure.exitCode;
 }
