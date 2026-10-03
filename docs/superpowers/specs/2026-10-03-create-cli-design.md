@@ -5,8 +5,8 @@
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 3으로 미룬 결정(배포 방식, 조합 루트의 세부 구성, 포트 배정)을 내리고, `create/` CLI와 이번 사이클의 템플릿·저장소 변경을 설계한다.
   - 템플릿의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md), [보강 설계](2026-09-29-fastapi-hardening-design.md), [Next.js web 설계](2026-09-30-nextjs-web-design.md)다.
-- 구현 계획: 검증 결과와 이 문서의 결정을 반영해 `docs/superpowers/plans/`에 쓴다.
-- 다음 단계: 생성 프로젝트의 PR CI 확인 → 계획 → 구현
+- 구현 계획: [create CLI 계획](../plans/2026-10-03-create-cli.md)
+- 다음 단계: 브랜치 PR CI의 Docker 확인(§8.4) → 병합
 
 ## 1. 목표와 범위
 
