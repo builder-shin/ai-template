@@ -172,6 +172,10 @@ jobs:
         shell: bash
         run: |
           container="aitpl-combo-web-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if docker container inspect "$container" >/dev/null 2>&1; then
+            echo "컨테이너가 이미 있다 — 다른 실행 이름을 사용하거나 소유한 컨테이너를 먼저 정리한다." >&2
+            exit 1
+          fi
           cleanup() {
             status=$?
             if [ "$status" -ne 0 ]; then
