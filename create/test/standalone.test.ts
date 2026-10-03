@@ -136,7 +136,7 @@ describe("단독 프로젝트", () => {
     },
   );
 
-  it("git 사용자 정보가 없으면 init만 남긴다", () => {
+  it("git 사용자 정보가 없으면 init과 스테이징을 남긴다", () => {
     const root = fixtureRepository();
     const config = join(temporaryFolder(), "empty-config");
     writeFileSync(config, "");

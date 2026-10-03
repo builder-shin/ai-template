@@ -169,7 +169,7 @@ it("CLI의 일반 형식 오류는 실제 오류 이름과 원인을 알린다",
   expect(readdirSync(parent)).toEqual([]);
 });
 
-it("CLI는 git 신원이 없으면 init만 남기고 설정과 커밋 방법을 안내한다", () => {
+it("CLI는 git 신원이 없으면 init과 스테이징을 남기고 설정과 커밋 방법을 안내한다", () => {
   const parent = temporaryFolder();
   const config = join(parent, "empty-gitconfig");
   write(parent, "empty-gitconfig", "");
