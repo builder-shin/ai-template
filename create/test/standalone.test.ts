@@ -118,6 +118,15 @@ describe("단독 프로젝트", () => {
     ).toThrow(/배치/);
   });
 
+  it.skipIf(process.platform !== "win32")(
+    "Windows CLI 경로의 대소문자가 달라도 저장소를 찾는다",
+    () => {
+      const root = fixtureRepository();
+      const location = pathToFileURL(join(root.toLowerCase(), "create/src/cli.ts")).href;
+      expect(findRepository(location)).toBe(root);
+    },
+  );
+
   it.each(["unstaged", "staged", "deleted"])("추적 파일 변경을 거절한다: %s", (change) => {
     const root = fixtureRepository();
     write(root, "templates/nextjs/README.md", "# changed\n");

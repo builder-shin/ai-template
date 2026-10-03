@@ -1,5 +1,5 @@
 import { realpathSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Template } from "./arguments.ts";
 import { CreateError } from "./errors.ts";
@@ -8,7 +8,7 @@ import { runGit } from "./git.ts";
 export function findRepository(cliLocation: string = import.meta.url): string {
   const expected = realpathSync(resolve(dirname(fileURLToPath(cliLocation)), "../.."));
   const actual = realpathSync(runGit(expected, ["rev-parse", "--show-toplevel"]).trim());
-  if (actual !== expected) {
+  if (relative(actual, expected) !== "") {
     throw new CreateError(
       "CLI의 저장소 배치가 올바르지 않다",
       "ai-template 저장소의 create/src에서 실행한다.",
