@@ -25,7 +25,7 @@ from app.storage_setup import ensure_bucket
 from tools.dev import SCHEDULER, WORKER, api
 from tools.infra import RATE_LIMIT_FIELDS, isolated_settings, migrate_disposable, preflight
 from tools.mailpit import MAILPIT_URL
-from tools.processes import ProcessGroup, run_command
+from tools.processes import CommandStartError, ProcessGroup, run_command
 
 ROOT = Path(__file__).resolve().parent.parent
 PORT = 18000
@@ -40,6 +40,10 @@ RECENT_LOGIN_SECONDS = 10
 
 class E2EError(Exception):
     """서버나 테스트 실패. 프로세스를 내린 뒤 로그 끝부분과 함께 알린다."""
+
+    def __init__(self, problem: str, code: int = 1) -> None:
+        super().__init__(problem)
+        self.code = code
 
 
 @dataclass(frozen=True)
@@ -189,11 +193,11 @@ def run_tests(group: ProcessGroup) -> str | None:
     return None if tests.returncode == 0 else "tests/e2e가 실패했다"
 
 
-def show_failure(problem: str) -> int:
+def show_failure(problem: str, code: int = 1) -> int:
     where = LOG.relative_to(ROOT).as_posix() if LOG.is_relative_to(ROOT) else str(LOG)
     tail = LOG.read_text(encoding="utf-8").splitlines()[-TAIL:]
     print("\n".join([*tail, f"E2E 실패: {problem} — 프로세스 출력 {where}를 확인한다."]))
-    return 1
+    return code
 
 
 def run_with_server(
@@ -222,10 +226,10 @@ def run_with_server(
             finally:
                 group.stop()  # 시작 도중 실패해도 이미 띄운 프로세스를 내린다.
     except KeyboardInterrupt:
-        print("E2E를 멈췄다. 띄운 프로세스를 모두 내렸다.")
+        print(f"E2E를 멈췄다. 띄운 프로세스를 모두 내렸다. 프로세스 출력 {LOG}를 확인한다.")
         return 130
     except E2EError as error:
-        return show_failure(str(error))
+        return show_failure(str(error), error.code)
     return code
 
 
@@ -246,13 +250,24 @@ def serve_main(args: Sequence[str] | None = None) -> int:
 
     def command(group: ProcessGroup) -> int:
         try:
-            return run_command(
+            code = run_command(
                 options.command,
                 cwd=cwd,
                 env=child_environment(options.web_url, os.environ),
             )
-        except OSError:
-            print("E2E 명령을 실행하지 못했다 — 명령 이름과 설치·실행 권한을 확인한다.")
-            return 1
+        except CommandStartError as error:
+            raise E2EError(str(error)) from error
+        exited = group.exited()
+        if exited is not None:
+            raise E2EError(
+                f"명령 실행 중에 끝난 프로세스: {exited[0]}(종료 코드 {exited[1]})", code or 1
+            )
+        if code:
+            raise E2EError(f"E2E 명령이 실패했다(종료 코드 {code})", code)
+        return 0
 
-    return run_with_server(settings, command, storage=True)
+    try:
+        return run_with_server(settings, command, storage=True)
+    except Exception, SystemExit:
+        print(f"E2E 준비·실행·정리 실패 — 프로세스 출력 {LOG}를 확인한다.")
+        raise

@@ -38,6 +38,10 @@ STOP_SIGNALS: tuple[int, ...] = (
 type Handler = Callable[[int, FrameType | None], object] | int | None
 
 
+class CommandStartError(Exception):
+    """외부 명령의 시작 실패. 실행 뒤 정리 오류와 구별한다."""
+
+
 @dataclass(frozen=True)
 class Command:
     """띄울 프로세스 하나. name은 출력 줄 앞에 붙는다."""
@@ -201,13 +205,18 @@ def run_command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> in
     바깥 ProcessGroup이 신호를 KeyboardInterrupt로 바꾼다. 명령은 새 그룹으로 띄워
     백엔드와 같은 방식으로 정리한다.
     """
-    process = subprocess.Popen(
-        args,
-        cwd=cwd,
-        env=env,
-        creationflags=NEW_PROCESS_GROUP,
-        start_new_session=not WINDOWS,
-    )
+    try:
+        process = subprocess.Popen(
+            args,
+            cwd=cwd,
+            env=env,
+            creationflags=NEW_PROCESS_GROUP,
+            start_new_session=not WINDOWS,
+        )
+    except OSError as error:
+        raise CommandStartError(
+            "E2E 명령을 실행하지 못했다 — 명령 이름과 설치·실행 권한을 확인한다."
+        ) from error
     try:
         while True:
             try:

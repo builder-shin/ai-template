@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TextIO
@@ -125,7 +126,14 @@ def test_child_environment_only_adds_backend_facts() -> None:
 
 
 @pytest.fixture
-def lifecycle(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[str]:
+def server_env() -> dict[str, str]:
+    return {}
+
+
+@pytest.fixture
+def lifecycle(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, server_env: dict[str, str]
+) -> list[str]:
     events: list[str] = []
 
     class FakeGroup:
@@ -136,6 +144,7 @@ def lifecycle(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[str]:
             assert cwd == e2e.ROOT
             assert env["DATABASE_URL"].endswith("/app_e2e")
             assert env["REDIS_URL"].endswith("/14")
+            server_env.update(env)
             out.write("api | 서버 로그\n")
 
         def start(self) -> None:
@@ -178,6 +187,8 @@ def test_serve_propagates_command_exit_and_uses_poe_pwd(
     tmp_path: Path,
     lifecycle: list[str],
     code: int,
+    server_env: dict[str, str],
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setenv("POE_PWD", str(tmp_path))
 
@@ -193,6 +204,13 @@ def test_serve_propagates_command_exit_and_uses_poe_pwd(
     monkeypatch.setattr(e2e, "run_command", command)
     assert e2e.serve_main(["--", "node", "runner.mjs", "--flag"]) == code
     assert lifecycle == ["preflight", "prepare", "start", "cors", "ready", "command", "stop"]
+    assert server_env["RECENT_LOGIN_SECONDS"] == "10"
+    assert server_env["FRONTEND_URL"] == "http://localhost:3100"
+    assert server_env["REALTIME_ALLOWED_ORIGINS"] == "http://localhost:3100"
+    assert server_env["OAUTH_REDIRECT_URIS"] == "http://localhost:3100/oauth/callback"
+    assert "http://localhost:3100" in server_env["STORAGE_ALLOWED_ORIGINS"].split(",")
+    if code:
+        assert "processes.log" in capsys.readouterr().out
 
 
 def test_readiness_failure_prints_log_tail_and_stops(
@@ -224,6 +242,7 @@ def test_interruption_stops_backend_and_returns_130(
 def test_test_e2e_uses_shared_startup_without_changing_its_settings(
     monkeypatch: pytest.MonkeyPatch,
     lifecycle: list[str],
+    server_env: dict[str, str],
 ) -> None:
     def tests(group: processes.ProcessGroup) -> None:
         return None
@@ -231,6 +250,14 @@ def test_test_e2e_uses_shared_startup_without_changing_its_settings(
     monkeypatch.setattr(e2e, "run_tests", tests)
     assert e2e.main() == 0
     assert lifecycle == ["preflight", "prepare", "start", "ready", "stop"]
+    assert server_env["RECENT_LOGIN_SECONDS"] == "600"
+    assert server_env["FRONTEND_URL"] == "http://localhost:3000"
+    assert server_env["REALTIME_ALLOWED_ORIGINS"] == "http://localhost:3000"
+    assert server_env["OAUTH_REDIRECT_URIS"] == "http://localhost:3000/oauth/callback"
+    assert set(server_env["STORAGE_ALLOWED_ORIGINS"].split(",")) == {
+        "http://localhost:3000",
+        "http://localhost:3001",
+    }
 
 
 def test_poe_entry_preserves_exit_code(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -241,17 +268,40 @@ def test_poe_entry_preserves_exit_code(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_missing_command_executable_stops_backend(
-    monkeypatch: pytest.MonkeyPatch,
     lifecycle: list[str],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    def command(args: Sequence[str], *, cwd: Path, env: Mapping[str, str]) -> int:
-        raise FileNotFoundError
-
-    monkeypatch.setattr(e2e, "run_command", command)
     assert e2e.serve_main(["--", "missing-command"]) == 1
     assert lifecycle[-1] == "stop"
     assert "설치·실행 권한" in capsys.readouterr().out
+
+
+def test_cleanup_error_keeps_its_message_and_points_to_log(
+    monkeypatch: pytest.MonkeyPatch, lifecycle: list[str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    def stop(process: object, *, force: bool) -> None:
+        raise PermissionError("명령 정리 권한 실패")
+
+    monkeypatch.setattr(processes, "_signal_tree", stop)
+    with pytest.raises(PermissionError, match="명령 정리 권한 실패"):
+        e2e.serve_main(["--", sys.executable, "-c", "raise SystemExit(0)"])
+    assert lifecycle[-1] == "stop"
+    output = capsys.readouterr().out
+    assert "명령을 실행하지 못했다" not in output
+    assert "processes.log" in output
+
+
+def test_server_that_dies_during_successful_command_is_reported(
+    monkeypatch: pytest.MonkeyPatch, lifecycle: list[str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(e2e, "run_command", lambda *args, **kwargs: 0)
+    monkeypatch.setattr("tools.e2e.ProcessGroup.exited", lambda self: ("worker", 9))
+    assert e2e.serve_main(["--", "node"]) == 1
+    assert lifecycle[-1] == "stop"
+    output = capsys.readouterr().out
+    assert "worker" in output
+    assert "9" in output
+    assert "processes.log" in output
 
 
 def test_cors_failure_stops_backend_before_command(
