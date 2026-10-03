@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from app.core.config import load_settings
-from tools.infra import preflight
+from tools.infra import preflight, require_project_database
 from tools.processes import Command, run_all
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -41,6 +41,8 @@ def commands() -> list[Command]:
 
 
 def main() -> int:
-    """인프라가 떠 있는지 본 뒤 세 프로세스를 띄운다. 끝난 프로세스의 종료 코드를 돌려준다."""
-    preflight(load_settings())
+    """프로젝트 DB 소유권·인프라를 확인한 뒤 띄우고, 끝난 프로세스의 종료 코드를 돌려준다."""
+    settings = load_settings()
+    require_project_database(settings)
+    preflight(settings)
     return run_all(commands(), cwd=ROOT, out=sys.stdout)
