@@ -21,6 +21,6 @@
 **/.vscode
 **/.venv
 **/__pycache__
-**/.claude
-**/.agents
-**/docs
+apps/*/.claude
+apps/*/.agents
+apps/*/docs
