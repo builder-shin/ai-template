@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { join } from "node:path";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import { createProject } from "../src/create.ts";
 import { CreateError } from "../src/errors.ts";
 import { fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
@@ -117,7 +117,8 @@ it("실패 뒤 새 부모에 다른 프로세스가 만든 파일을 보존한�
 
 it("모든 경로를 정리한 뒤 문제와 실제 남은 경로만 한 번 알린다", () => {
   const root = fixtureRepository();
-  const target = temporaryFolder();
+  const target = join(temporaryFolder(), "target");
+  fs.mkdirSync(target);
   const failure = new CreateError("이동 실패", "원래 해결 방법");
   vi.mocked(fs.renameSync)
     .mockImplementationOnce(actual.renameSync)
@@ -126,6 +127,14 @@ it("모든 경로를 정리한 뒤 문제와 실제 남은 경로만 한 번 알
       throw failure;
     });
   const leftovers: string[] = [];
+  onTestFinished(() => {
+    try {
+      expect(leftovers.filter(actual.existsSync), "테스트 종료 뒤 남은 경로").toEqual([]);
+    } finally {
+      for (const path of leftovers)
+        actual.rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
   const removed: string[] = [];
   vi.mocked(fs.rmSync).mockImplementation((path, options) => {
     if (leftovers.length < 2) {
@@ -148,6 +157,8 @@ it("모든 경로를 정리한 뒤 문제와 실제 남은 경로만 한 번 알
     for (const path of removed) expect(message).not.toContain(path);
   } finally {
     vi.mocked(fs.rmSync).mockImplementation(actual.rmSync);
+    for (const path of leftovers)
+      actual.rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
 
