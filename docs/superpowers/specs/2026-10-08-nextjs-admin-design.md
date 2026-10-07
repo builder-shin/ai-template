@@ -1,7 +1,7 @@
 # Next.js admin 설계 (하위 프로젝트 4)
 
 - 작성일: 2026-10-08
-- 상태: 초안. 사용자 검토 대기
+- 상태: 승인됨(2026-10-08)
 - 상위 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md)
   - 이 문서는 기반 설계 §10에서 사이클 4로 미룬 결정을 내린다: 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위, 조합에서 web과 admin이 계약·목 패키지를 함께 쓰는 방식, admin 포트.
   - 동작 기준은 [Next.js web 설계](2026-09-30-nextjs-web-design.md), [create CLI 설계](2026-10-03-create-cli-design.md), [FastAPI 설계](2026-09-26-fastapi-template-design.md)다.
@@ -89,12 +89,12 @@
 
 - 화면(`src/app/**`), 기능(web `src/features/**`, admin `src/resources/**`)
 - `src/proxy.ts`와 보호 경로 규칙, 환경 변수 스키마(`src/lib/env.ts`), 앱 화면 문구(`messages/{ko,en}.json`)
-- E2E 시나리오, check 단계 목록, `package.json`, `next.config.ts`, `playwright.config.ts`, `.env.example`, `Dockerfile`, `template.json`, AGENTS.md와 문서
+- E2E 시나리오, check 단계 목록, `package.json`, `next.config.ts`, `playwright.config.ts`, `.env.example`, `Dockerfile`, `app.config.json`, `template.json`, AGENTS.md와 문서
 - web 전용: OAuth(`lib/session/oauth.ts`, `app/oauth/**`), 가입·인증·재설정 화면
 
 ### 3.4 앱마다 다른 값
 
-- 공유 파일에 앱 이름이나 포트를 직접 쓰지 않는다. `template.json`에 앱 이름과 포트(dev, 목, E2E)를 두고 공유 스크립트가 읽는다.
+- 공유 파일에 앱 이름이나 포트를 직접 쓰지 않는다. 앱 루트의 `app.config.json`에 앱 이름과 포트(dev, 목, E2E, E2E 목)를 두고 공유 스크립트가 읽는다. `template.json`은 생성할 때 복사하지 않으므로(create CLI 설계 C4) 쓰지 않는다.
 - 공유 코드가 앱 고유 값을 import해야 하면 두 앱에 같은 이름의 앱 파일을 둔다. 예: 보호 경로를 내보내는 `src/lib/session/routes.ts`.
 - 세션 쿠키 이름은 앱 이름에서 만든다(AD8).
 
@@ -126,7 +126,7 @@ A1은 web의 동작을 바꾸지 않는다. 바뀌는 것은 다음뿐이다.
 templates/nextjs-admin/
 ├── AGENTS.md, CLAUDE.md
 ├── .claude/, .mcp.json, lefthook.yml, .env.example, package.json, next.config.ts, Dockerfile
-├── template.json, gen.config.json(선택)
+├── app.config.json, template.json, gen.config.json(선택)
 ├── contract/                 # 저장소에서 sync한 사본(TypeSpec, openapi.yaml, mock/)
 ├── messages/                 # 앱 문구(ko, en), shared/(공유 사본)
 ├── src/
