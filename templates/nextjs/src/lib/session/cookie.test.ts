@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { appConfig } from "../app-config.mjs";
 import { EncryptJWT, decodeProtectedHeader } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -80,7 +81,7 @@ describe("암호화 세션 쿠키", () => {
       vi.useFakeTimers({ now: new Date("2030-01-01T00:00:00Z") });
       const cookie = await sessionCookie(session, secret, mode);
       expect(cookie).toMatchObject({
-        name: mode === "production" ? "__Host-session" : "session",
+        name: `${mode === "production" ? "__Host-" : ""}${appConfig.app}-session`,
         httpOnly: true,
         sameSite: "lax",
         path: "/",

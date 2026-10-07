@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { createHash, randomUUID } from "node:crypto";
 import { jwtDecrypt, EncryptJWT } from "jose";
 import { JSDOM } from "jsdom";
@@ -85,7 +86,9 @@ async function failed(
   expect(url.searchParams.get("returnTo")).toBe(returnTo);
   const cookies = response.headers.getSetCookie();
   expect(cookies.some((value) => /^oauth=;/.test(value) && /Max-Age=0/i.test(value))).toBe(true);
-  expect(cookies.some((value) => value.startsWith("session="))).toBe(false);
+  expect(cookies.some((value) => value.startsWith(`${appSessionCookieName("development")}=`))).toBe(
+    false,
+  );
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(response.headers.get("referrer-policy")).toBe("no-referrer");
   const page = await fetch(url, { headers });
@@ -128,7 +131,7 @@ describe("실제 목 제공자를 거치는 OAuth HTTP", () => {
       expect(response.headers.get("location")).not.toContain(session.accessToken);
       const sessionPair = response.headers
         .getSetCookie()
-        .find((value) => value.startsWith("session="))!
+        .find((value) => value.startsWith(`${appSessionCookieName("development")}=`))!
         .split(";", 1)[0]!;
       const page = await fetch(`${base}/me`, { headers: { ...headers, Cookie: sessionPair } });
       expect(page.status).toBe(200);

@@ -15,8 +15,9 @@ import {
   readOfficialSkillCopies,
 } from "./skills";
 import { runChecks, parseCheckArgs } from "./runner";
-import { assembleSteps } from "./steps";
+import { assembleSteps, type ContractInputs } from "./steps";
 import { readWebOpenapi } from "../gen-input";
+import { resolveContractPaths } from "../gen-config.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 process.chdir(root);
@@ -31,10 +32,14 @@ const readFiles = () => ({
 });
 const files = readFiles();
 let webOpenapi: string | Error;
+let contract: ContractInputs | Error;
 try {
-  webOpenapi = readWebOpenapi(root, files["contract/openapi.yaml"] ?? "");
+  const paths = resolveContractPaths(root);
+  contract = { ...paths, files: readProjectFiles(paths.root) };
+  webOpenapi = readWebOpenapi(root, contract.files["openapi.yaml"] ?? "");
 } catch (error) {
   webOpenapi = error instanceof Error ? error : new Error(String(error));
+  contract = webOpenapi;
 }
 const cachePath = ".cache/check.json";
 let previous: Record<string, string> = {};
@@ -51,6 +56,7 @@ const steps = assembleSteps(
   readRouteTypes(root),
   installedSkills,
   webOpenapi,
+  contract,
 );
 const result = await runChecks(steps, previous, async (step) => {
   if (step.name === "i18n") {
@@ -83,6 +89,7 @@ if (result.cache.types) {
     readRouteTypes(root),
     installedSkills,
     webOpenapi,
+    contract,
   ).find((step) => step.name === "types")!.key;
 }
 writeFileSync(cachePath, JSON.stringify(result.cache));

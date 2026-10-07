@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { test, expect, signupAndVerify, login, logout } from "./fixtures";
+import { test, expect, sessionCookieName, signupAndVerify, login, logout } from "./fixtures";
 import { webOrigin } from "./targets";
 import { observeRealtime } from "./realtime";
 import en from "../messages/en.json" with { type: "json" };
@@ -33,10 +33,12 @@ test("세션 하나를 폐기하면 다른 컨텍스트는 자동 로그아웃�
     await expect(
       other.getByRole("banner").getByRole("link", { name: en.layout.login, exact: true }),
     ).toBeVisible();
-    expect((await peer.cookies()).some((cookie) => cookie.name === "__Host-session")).toBe(false);
+    expect((await peer.cookies()).some((cookie) => cookie.name === sessionCookieName)).toBe(false);
     await expect(page).toHaveURL("/en/me/sessions");
     await expect(page.getByRole("listitem")).toHaveCount(1);
-    expect((await context.cookies()).some((cookie) => cookie.name === "__Host-session")).toBe(true);
+    expect((await context.cookies()).some((cookie) => cookie.name === sessionCookieName)).toBe(
+      true,
+    );
     await page.reload();
     await expect(current).toHaveCount(1);
     await other.goto("/en/me");
@@ -72,8 +74,10 @@ test("비밀번호 변경은 다른 컨텍스트를 로그아웃하고 새 비�
     await expect(other).toHaveURL("/en/login?returnTo=%2Fen%2Fme");
     await expect.poll(() => revokedConnection.received.has("session.revoked")).toBe(true);
     await expect.poll(() => currentConnection.received.has("session.revoked")).toBe(true);
-    expect((await peer.cookies()).some((cookie) => cookie.name === "__Host-session")).toBe(false);
-    expect((await context.cookies()).some((cookie) => cookie.name === "__Host-session")).toBe(true);
+    expect((await peer.cookies()).some((cookie) => cookie.name === sessionCookieName)).toBe(false);
+    expect((await context.cookies()).some((cookie) => cookie.name === sessionCookieName)).toBe(
+      true,
+    );
     await page.reload();
     await expect(page.getByRole("heading", { name: en.me.title, exact: true })).toBeVisible();
     await logout(page, account);

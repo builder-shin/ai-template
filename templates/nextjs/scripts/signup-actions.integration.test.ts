@@ -1,3 +1,4 @@
+import { appOrigin } from "../src/lib/app-config.mjs";
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, expect, inject, it, vi } from "vitest";
 import {
@@ -15,7 +16,7 @@ beforeEach(() => {
   context.locale = "ko";
   vi.stubEnv("NODE_ENV", "development");
   vi.stubEnv("API_BASE_URL", `${inject("mockBaseUrl")}/api/v1`);
-  vi.stubEnv("APP_URL", "http://localhost:3000");
+  vi.stubEnv("APP_URL", appOrigin("dev"));
   vi.stubEnv("NEXT_PUBLIC_REALTIME_URL", inject("mockBaseUrl"));
   vi.stubEnv("SESSION_SECRET", EXAMPLE_SESSION_SECRET);
 });

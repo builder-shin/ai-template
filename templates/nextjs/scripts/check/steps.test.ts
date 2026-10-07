@@ -2,6 +2,35 @@ import { expect, it } from "vitest";
 import { assembleSteps } from "./steps";
 import { runChecks } from "./runner";
 
+it("선택한 계약의 검사 경로와 입력을 캐시에 반영한다", () => {
+  const contract = {
+    mock: "../../contract/mock",
+    typespec: "../../contract/typespec",
+    files: { "mock/src/main.ts": "before" },
+  };
+  const steps = assembleSteps({}, false, [], {}, {}, "", contract);
+  expect(steps.find((step) => step.name === "contract-mock")?.args).toEqual([
+    "--dir",
+    contract.mock,
+    "run",
+    "check",
+  ]);
+  expect(steps.find((step) => step.name === "contract-typespec")?.args).toEqual([
+    "--dir",
+    contract.typespec,
+    "run",
+    "check",
+  ]);
+  const changed = assembleSteps({}, false, [], {}, {}, "", {
+    ...contract,
+    files: { "mock/src/main.ts": "after" },
+  });
+  for (const name of ["tests", "generated", "contract-mock", "contract-typespec"])
+    expect(steps.find((step) => step.name === name)?.key).not.toBe(
+      changed.find((step) => step.name === name)?.key,
+    );
+});
+
 it.each(["e2e/fixtures.ts", "e2e/targets/fastapi.ts"])(
   "%s 변경은 전체 테스트 캐시를 무효화한다",
   (path) => {

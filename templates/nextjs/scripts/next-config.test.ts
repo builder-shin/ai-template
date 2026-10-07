@@ -1,3 +1,4 @@
+import { appOrigin } from "../src/lib/app-config.mjs";
 import { spawnSync } from "node:child_process";
 import {
   PHASE_DEVELOPMENT_SERVER,
@@ -8,11 +9,11 @@ import { describe, expect, it } from "vitest";
 import { EXAMPLE_SESSION_SECRET } from "../src/lib/env";
 
 const example = {
-  API_BASE_URL: "http://localhost:4010/api/v1",
-  APP_URL: "http://localhost:3000",
+  API_BASE_URL: `${appOrigin("mock")}/api/v1`,
+  APP_URL: appOrigin("dev"),
   SESSION_SECRET: EXAMPLE_SESSION_SECRET,
   TIME_ZONE: "Asia/Seoul",
-  NEXT_PUBLIC_REALTIME_URL: "http://localhost:4010",
+  NEXT_PUBLIC_REALTIME_URL: appOrigin("mock"),
 };
 
 function loadConfig(phase: string, env: Record<string, string | undefined>) {

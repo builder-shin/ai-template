@@ -2,6 +2,7 @@ import ts from "typescript";
 import { envKeys } from "../envfile.mjs";
 import { isGenerated } from "./files";
 import { loadingCopyProblems } from "./loading-copy";
+import { parseAppConfig } from "../../src/lib/app-config.mjs";
 
 const lineCount = (text: string) => (text ? text.replace(/\n$/, "").split("\n").length : 0);
 
@@ -73,6 +74,18 @@ export function checkHarness(
   schemaKeys: readonly string[],
 ): string[] {
   const problems: string[] = [];
+  if ("app.config.json" in files) {
+    try {
+      const config = parseAppConfig(JSON.parse(files["app.config.json"]!));
+      const pkg = JSON.parse(files["package.json"] ?? "{}");
+      if (pkg.scripts?.start !== `next start --port ${config.ports.dev}`)
+        problems.push(
+          `package.json:1 start 포트가 다르다 — next start --port ${config.ports.dev}으로 고치고 app.config.json과 맞춘다.`,
+        );
+    } catch (error) {
+      problems.push(error instanceof Error ? error.message : String(error));
+    }
+  }
   if (!("AGENTS.md" in files)) problems.push("AGENTS.md:1 지침 — 루트 지침을 만든다.");
   for (const [path, content] of Object.entries(files)) {
     problems.push(...loadingCopyProblems(path, content));

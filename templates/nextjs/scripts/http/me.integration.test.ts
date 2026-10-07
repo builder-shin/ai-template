@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { JSDOM } from "jsdom";
 import { profileFixture } from "../../src/features/me/test-fixture";
@@ -33,7 +34,7 @@ it.each(["ko", "en"] as const)(
     const fixture = fixtures[locale === "ko" ? 0 : 1]!;
     const path = locale === "ko" ? "/me" : "/en/me";
     const headers = {
-      Cookie: `session=${await sealSession(fixture.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
+      Cookie: `${appSessionCookieName("development")}=${await sealSession(fixture.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
       "Accept-Language": locale,
       Origin: base,
     };

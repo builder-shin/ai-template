@@ -1,23 +1,26 @@
+import { appOrigin } from "../src/lib/app-config.mjs";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { setTimeout } from "node:timers/promises";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { join } from "node:path";
+import { resolveContractPaths } from "./gen-config.mjs";
 import { describe, expect, it } from "vitest";
 import { isStandalone, mockHost } from "./dev-mode.mjs";
 
 describe("개발 모드", () => {
   it.each([
     undefined,
-    "http://localhost:4010/api/v1",
-    "http://127.0.0.1:4010/api/v1",
-    "http://[::1]:4010/api/v1/",
+    `${appOrigin("mock")}/api/v1`,
+    `${appOrigin("mock", "127.0.0.1")}/api/v1`,
+    `${appOrigin("mock", "[::1]")}/api/v1/`,
   ])("목 주소에서만 함께 실행한다: %s", (url) => expect(isStandalone(url)).toBe(true));
   it.each([
     "http://localhost:8000/api/v1",
     "https://api.example.com/api/v1",
-    "http://localhost:4010/other",
+    `${appOrigin("mock")}/other`,
     "invalid",
   ])("백엔드나 잘못된 주소는 목을 시작하지 않는다: %s", (url) =>
     expect(isStandalone(url)).toBe(false),
@@ -26,9 +29,9 @@ describe("개발 모드", () => {
 
 it.each([
   [undefined, "localhost"],
-  ["http://localhost:4010/api/v1", "localhost"],
-  ["http://127.0.0.1:4010/api/v1", "127.0.0.1"],
-  ["http://[::1]:4010/api/v1/", "::1"],
+  [`${appOrigin("mock")}/api/v1`, "localhost"],
+  [`${appOrigin("mock", "127.0.0.1")}/api/v1`, "127.0.0.1"],
+  [`${appOrigin("mock", "[::1]")}/api/v1/`, "::1"],
 ])("단독 주소의 readiness와 API가 같은 목에 닿는다: %s", async (api, host) => {
   expect(mockHost(api)).toBe(host);
   const listener = createServer();
@@ -41,7 +44,14 @@ it.each([
   const require = createRequire(import.meta.url);
   const child = spawn(
     process.execPath,
-    ["--import", pathToFileURL(require.resolve("tsx")).href, "contract/mock/src/main.ts"],
+    [
+      "--import",
+      pathToFileURL(require.resolve("tsx")).href,
+      join(
+        resolveContractPaths(fileURLToPath(new URL("../", import.meta.url))).mock,
+        "src/main.ts",
+      ),
+    ],
     {
       cwd: new URL("../", import.meta.url),
       env: {

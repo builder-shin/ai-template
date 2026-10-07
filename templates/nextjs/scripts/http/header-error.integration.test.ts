@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { chromium } from "@playwright/test";
 import { expect, it } from "vitest";
 import { EXAMPLE_SESSION_SECRET } from "../../src/lib/env";
@@ -16,7 +17,9 @@ it.each([
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext();
-    await context.addCookies([{ name: "session", value: cookie, url: base }]);
+    await context.addCookies([
+      { name: appSessionCookieName("development"), value: cookie, url: base },
+    ]);
     const page = await context.newPage();
     await page.goto(`${base}${path}`);
     const body = await page.locator("body").innerText();

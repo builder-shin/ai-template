@@ -1,3 +1,5 @@
+import { appOrigin } from "../src/lib/app-config.mjs";
+import { appSessionCookieName } from "../src/lib/app-config.mjs";
 import { afterEach, beforeEach, expect, inject, it, vi } from "vitest";
 import { getHeaderUser } from "../src/lib/session/user";
 import { sealSession } from "../src/lib/session/cookie";
@@ -14,7 +16,7 @@ beforeEach(() => {
   jar.clear();
   vi.stubEnv("NODE_ENV", "development");
   vi.stubEnv("API_BASE_URL", `${inject("mockBaseUrl")}/api/v1`);
-  vi.stubEnv("APP_URL", "http://localhost:3000");
+  vi.stubEnv("APP_URL", appOrigin("dev"));
   vi.stubEnv("NEXT_PUBLIC_REALTIME_URL", inject("mockBaseUrl"));
   vi.stubEnv("SESSION_SECRET", EXAMPLE_SESSION_SECRET);
 });
@@ -25,11 +27,13 @@ it("쿠키가 없으면 API 없이 익명 헤더를 만든다", async () => {
   expect(await getHeaderUser("ko")).toBeNull();
 });
 it("실제 세션으로 이름만 가져오고 토큰은 UI에 넘기지 않는다", async () => {
-  jar.set("session", { value: await sealSession(await login()) });
+  jar.set(appSessionCookieName("development"), { value: await sealSession(await login()) });
   expect(await getHeaderUser("en")).toEqual({ name: "Admin" });
 });
 it("거절된 access 토큰은 갱신 없이 쿠키 정리 흐름으로 보낸다", async () => {
-  jar.set("session", { value: await sealSession({ ...(await login()), accessToken: "rejected" }) });
+  jar.set(appSessionCookieName("development"), {
+    value: await sealSession({ ...(await login()), accessToken: "rejected" }),
+  });
   await expect(getHeaderUser("en")).rejects.toMatchObject({
     digest: "NEXT_REDIRECT;replace;/session/clear?returnTo=%2Fen;307;",
   });

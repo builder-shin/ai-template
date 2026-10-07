@@ -1,3 +1,5 @@
+import { appOrigin } from "../src/lib/app-config.mjs";
+import { appSessionCookieName } from "../src/lib/app-config.mjs";
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, inject, it, vi } from "vitest";
 import { loginAction, logoutAction, resendVerificationAction } from "../src/features/auth/actions";
@@ -23,7 +25,7 @@ beforeEach(() => {
   context.locale = "ko";
   vi.stubEnv("NODE_ENV", "development");
   vi.stubEnv("API_BASE_URL", `${inject("mockBaseUrl")}/api/v1`);
-  vi.stubEnv("APP_URL", "http://localhost:3000");
+  vi.stubEnv("APP_URL", appOrigin("dev"));
   vi.stubEnv("NEXT_PUBLIC_REALTIME_URL", inject("mockBaseUrl"));
   vi.stubEnv("SESSION_SECRET", EXAMPLE_SESSION_SECRET);
 });
@@ -88,7 +90,9 @@ describe("로그인 Action과 실제 목", () => {
     await expect(
       loginAction(returnTo, { ok: true }, form(email, "action-test-password")),
     ).rejects.toMatchObject({ digest: `NEXT_REDIRECT;replace;${target};307;` });
-    const session = await unsealSession(context.jar.get("session")?.value);
+    const session = await unsealSession(
+      context.jar.get(appSessionCookieName("development"))?.value,
+    );
     expect(session).not.toBeNull();
     const { data } = await mockClient(session!.accessToken).GET("/me");
     expect(data!.data.attributes.email).toBe(email);
@@ -104,12 +108,12 @@ describe("로그인 Action과 실제 목", () => {
         email: [expect.any(String)],
       },
     });
-    expect(context.jar.has("session")).toBe(false);
+    expect(context.jar.has(appSessionCookieName("development"))).toBe(false);
   });
   it("틀린 자격증명의 401은 폼 오류이며 로그인으로 재귀 이동하지 않는다", async () => {
     const result = await loginAction("/", { ok: true }, form("missing@example.com"));
     expect(result).toMatchObject({ ok: false, fieldErrors: {}, formError: expect.any(String) });
-    expect(context.jar.has("session")).toBe(false);
+    expect(context.jar.has(appSessionCookieName("development"))).toBe(false);
   });
   it("미인증 계정에는 재발송용 이메일을 돌려준다", async () => {
     const email = await register("ko", false);
@@ -120,7 +124,7 @@ describe("로그인 Action과 실제 목", () => {
       formError: expect.any(String),
     });
     expect(JSON.stringify(result)).not.toContain("action-test-password");
-    expect(context.jar.has("session")).toBe(false);
+    expect(context.jar.has(appSessionCookieName("development"))).toBe(false);
   });
   it("예상 밖 API 오류는 trace와 함께 오류 경계로 넘긴다", async () => {
     vi.stubEnv("API_BASE_URL", "http://127.0.0.1:1/api/v1");
@@ -129,7 +133,7 @@ describe("로그인 Action과 실제 목", () => {
       code: "service.unavailable",
       digest: expect.stringMatching(/^[0-9a-f]{32}$/),
     });
-    expect(context.jar.has("session")).toBe(false);
+    expect(context.jar.has(appSessionCookieName("development"))).toBe(false);
   });
 });
 
@@ -165,11 +169,14 @@ describe("로그아웃 Action", () => {
   it("현재 세션을 실제로 폐기하고 쿠키를 지운 뒤 로케일 홈으로 이동한다", async () => {
     context.locale = "en";
     const session = await login();
-    context.jar.set("session", { value: await sealSession(session) });
+    context.jar.set(appSessionCookieName("development"), { value: await sealSession(session) });
     await expect(logoutAction()).rejects.toMatchObject({
       digest: "NEXT_REDIRECT;replace;/en;307;",
     });
-    expect(context.jar.get("session")).toMatchObject({ value: "", maxAge: 0 });
+    expect(context.jar.get(appSessionCookieName("development"))).toMatchObject({
+      value: "",
+      maxAge: 0,
+    });
     await expect(mockClient(session.accessToken).GET("/me")).rejects.toMatchObject({ status: 401 });
   });
   it.each(["revoked", "offline", "anonymous"])(
@@ -177,14 +184,17 @@ describe("로그아웃 Action", () => {
     async (mode) => {
       if (mode !== "anonymous") {
         const session = await login();
-        context.jar.set("session", { value: await sealSession(session) });
+        context.jar.set(appSessionCookieName("development"), { value: await sealSession(session) });
         if (mode === "revoked") await mockClient(session.accessToken).DELETE("/sessions/current");
         else vi.stubEnv("API_BASE_URL", "http://127.0.0.1:1/api/v1");
       }
       await expect(logoutAction()).rejects.toMatchObject({
         digest: "NEXT_REDIRECT;replace;/;307;",
       });
-      expect(context.jar.get("session")).toMatchObject({ value: "", maxAge: 0 });
+      expect(context.jar.get(appSessionCookieName("development"))).toMatchObject({
+        value: "",
+        maxAge: 0,
+      });
     },
   );
 });

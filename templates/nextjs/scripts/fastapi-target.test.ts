@@ -1,3 +1,4 @@
+import { appOrigin } from "../src/lib/app-config.mjs";
 import { once } from "node:events";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import {
@@ -35,7 +36,7 @@ async function serve(handler: Handler) {
 }
 
 const env = (overrides: Record<string, string | undefined> = {}) => ({
-  APP_URL: "http://localhost:3100",
+  APP_URL: appOrigin("e2e"),
   API_BASE_URL: "http://127.0.0.1:18100/api/v1",
   E2E_MAILPIT_URL: "http://127.0.0.1:28125",
   E2E_OAUTH_URL: "http://127.0.0.1:28180",
@@ -61,7 +62,7 @@ afterEach(async () => {
 describe("FastAPI 대상 설정", () => {
   it("명시한 URL과 창을 검증하고 끝 슬래시를 정리한다", () => {
     expect(parseFastapiTargetEnv(env({ E2E_MAILPIT_URL: "http://127.0.0.1:28125/" }))).toEqual({
-      webOrigin: "http://localhost:3100",
+      webOrigin: appOrigin("e2e"),
       apiBaseUrl: "http://127.0.0.1:18100/api/v1",
       mailpitOrigin: "http://127.0.0.1:28125",
       oauthOrigin: "http://127.0.0.1:28180",
@@ -93,14 +94,14 @@ describe("FastAPI 대상 설정", () => {
     ["API_BASE_URL", "http://[private-value"],
     ["E2E_MAILPIT_URL", "http://*.example.com"],
     ["APP_URL", "file:///tmp/web"],
-    ["APP_URL", "http://localhost:3100/path"],
+    ["APP_URL", `${appOrigin("e2e")}/path`],
     ["API_BASE_URL", "http://127.0.0.1:18100/api/v1?secret=private-value"], // betterleaks:allow 사유: URL 검증용 가짜 비밀
     ["E2E_MAILPIT_URL", "http://user:private-value@localhost:28125"], // betterleaks:allow 사유: URL 검증용 가짜 자격 증명
     ["E2E_MAILPIT_URL", "http://localhost:28125/path"],
     ["E2E_OAUTH_URL", "ftp://localhost"],
     ["E2E_OAUTH_URL", "http://localhost:28180/#private-value"],
-    ["APP_URL", "http://localhost:3100?"],
-    ["APP_URL", "http://localhost:3100#"],
+    ["APP_URL", `${appOrigin("e2e")}?`],
+    ["APP_URL", `${appOrigin("e2e")}#`],
     ["API_BASE_URL", "http://127.0.0.1:18100/api/v1?"],
     ["API_BASE_URL", "http://127.0.0.1:18100/api/v1#"],
     ["E2E_MAILPIT_URL", "http://127.0.0.1:28125?"],
@@ -169,23 +170,19 @@ async function mailbox(messages: (poll: number) => Mail[], status = 200) {
 
 describe("Mailpit 부수 채널", () => {
   it("배달을 폴링하고 수신자·목적·최신 시각에 맞는 실제 URL을 고른다", async () => {
-    const correct = "http://localhost:3100/verify-email?token=new&source=mail";
+    const correct = `${appOrigin("e2e")}/verify-email?token=new&source=mail`;
     const fixture = await mailbox((poll) =>
       poll === 1
         ? []
         : [
             mail(
               "other-recipient",
-              "http://localhost:3100/verify-email?token=other",
+              `${appOrigin("e2e")}/verify-email?token=other`,
               "2020-01-03T00:00:00Z",
               "other@example.com",
             ),
-            mail(
-              "reset",
-              "http://localhost:3100/reset-password?token=reset",
-              "2020-01-04T00:00:00Z",
-            ),
-            mail("older", "http://localhost:3100/verify-email?token=old"),
+            mail("reset", `${appOrigin("e2e")}/reset-password?token=reset`, "2020-01-04T00:00:00Z"),
+            mail("older", `${appOrigin("e2e")}/verify-email?token=old`),
             mail(
               "newer",
               `도움말 http://[broken\nhttps://example.com/help\n${correct}`,
@@ -199,33 +196,33 @@ describe("Mailpit 부수 채널", () => {
   });
 
   it("같은 수신자·목적의 재발송은 이미 돌려준 메일과 더 오래된 메일을 건너뛴다", async () => {
-    const old = mail("old", "http://localhost:3100/verify-email?token=old", "2020-01-02T00:00:00Z");
-    const stale = mail("stale", "http://localhost:3100/verify-email?token=stale");
-    const again = mail("again", "http://localhost:3100/verify-email?token=again", old.Created);
+    const old = mail("old", `${appOrigin("e2e")}/verify-email?token=old`, "2020-01-02T00:00:00Z");
+    const stale = mail("stale", `${appOrigin("e2e")}/verify-email?token=stale`);
+    const again = mail("again", `${appOrigin("e2e")}/verify-email?token=again`, old.Created);
     const fixture = await mailbox((poll) => (poll < 3 ? [old, stale] : [again, old, stale]));
     expect(await fixture.target.mailLink(recipient, "verification")).toBe(
-      "http://localhost:3100/verify-email?token=old",
+      `${appOrigin("e2e")}/verify-email?token=old`,
     );
     expect(await fixture.target.mailLink(recipient, "verification")).toBe(
-      "http://localhost:3100/verify-email?token=again",
+      `${appOrigin("e2e")}/verify-email?token=again`,
     );
     expect(fixture.polls()).toBe(3);
   });
 
   it("목적별 새 메일 기준은 서로 독립이다", async () => {
     const fixture = await mailbox(() => [
-      mail("verify", "http://localhost:3100/verify-email?token=verify", "2020-01-03T00:00:00Z"),
-      mail("reset", "http://localhost:3100/reset-password?token=reset"),
+      mail("verify", `${appOrigin("e2e")}/verify-email?token=verify`, "2020-01-03T00:00:00Z"),
+      mail("reset", `${appOrigin("e2e")}/reset-password?token=reset`),
     ]);
     await fixture.target.mailLink(recipient, "verification");
     expect(await fixture.target.mailLink(recipient, "reset")).toBe(
-      "http://localhost:3100/reset-password?token=reset",
+      `${appOrigin("e2e")}/reset-password?token=reset`,
     );
   });
 
   it.each([
     "https://wrong.example/verify-email?token=private-value", // betterleaks:allow 사유: 메일 링크 검증용 가짜 토큰
-    "http://user:private-value@localhost:3100/verify-email?token=private-value", // betterleaks:allow 사유: 메일 링크 검증용 가짜 자격 증명
+    `http://user:private-value@localhost:${new URL(appOrigin("e2e")).port}/verify-email?token=private-value`, // betterleaks:allow 사유: 메일 링크 검증용 가짜 자격 증명
   ])("다른 Origin이나 자격 증명이 든 인증 링크를 거절한다", async (link) => {
     const fixture = await mailbox(() => [mail("bad", link)]);
     await expect(fixture.target.mailLink(recipient, "verification")).rejects.toThrow("web Origin");
@@ -235,9 +232,7 @@ describe("Mailpit 부수 채널", () => {
   });
 
   it("목적 링크가 없거나 토큰이 비면 제한 시간 뒤 실패한다", async () => {
-    const fixture = await mailbox(() => [
-      mail("empty", "http://localhost:3100/verify-email?token="),
-    ]);
+    const fixture = await mailbox(() => [mail("empty", `${appOrigin("e2e")}/verify-email?token=`)]);
     await expect(fixture.target.mailLink(recipient, "verification")).rejects.toThrow("제한 시간");
     expect(fixture.polls()).toBeGreaterThan(1);
   });

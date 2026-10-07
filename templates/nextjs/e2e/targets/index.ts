@@ -1,9 +1,10 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 import { mockTarget } from "./mock";
 import { fastapiTarget, parseFastapiTargetEnv } from "./fastapi";
+import { appConfig, appOrigin } from "../../src/lib/app-config.mjs";
 
-export const webOrigin = "http://localhost:3100";
-export const mockOrigin = "http://127.0.0.1:4110";
+export const webOrigin = appOrigin("e2e");
+export const mockOrigin = appOrigin("e2eMock", "127.0.0.1");
 export type TargetName = "mock" | "fastapi";
 export type SocialProvider = "google" | "kakao" | "naver";
 export interface SocialIdentity {
@@ -39,7 +40,9 @@ export function targetEnvironment(
     };
   const config = parseFastapiTargetEnv(input);
   if (config.webOrigin !== webOrigin)
-    throw new Error("APP_URL: E2E web은 http://localhost:3100을 쓴다.");
+    throw new Error(
+      `APP_URL이 앱 설정과 다르다 — E2E ${appConfig.app}의 주소 ${webOrigin}을 넣는다.`,
+    );
   let realtime: URL;
   try {
     realtime = new URL(input.NEXT_PUBLIC_REALTIME_URL ?? "");

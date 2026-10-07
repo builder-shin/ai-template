@@ -1,3 +1,4 @@
+import { appOrigin } from "../app-config.mjs";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
@@ -23,7 +24,7 @@ function Consumer({ handler }: { handler: Parameters<typeof useChannel>[1] }) {
 }
 function show(children: React.ReactNode) {
   return render(
-    <RealtimeProvider url="http://localhost:4010" sessionKey={null}>
+    <RealtimeProvider url={appOrigin("mock")} sessionKey={null}>
       {children}
     </RealtimeProvider>,
   );
@@ -69,7 +70,7 @@ it("같은 채널의 소비자를 묶고 마지막 해제 때만 unsubscribe한�
   act(() => socket.fire("connect"));
   expect(socket.emit.mock.calls.filter(([name]) => name === "subscribe")).toHaveLength(1);
   view.rerender(
-    <RealtimeProvider url="http://localhost:4010" sessionKey={null}>
+    <RealtimeProvider url={appOrigin("mock")} sessionKey={null}>
       <Consumer handler={second} />
     </RealtimeProvider>,
   );
@@ -88,7 +89,7 @@ it("렌더 뒤 최신 처리기를 쓰고 연결된 채널에 늦게 들어와�
   const view = show(<Consumer handler={first} />);
   expect(socket.emit).toHaveBeenCalledWith("subscribe", { channel: "posts" }, expect.any(Function));
   view.rerender(
-    <RealtimeProvider url="http://localhost:4010" sessionKey={null}>
+    <RealtimeProvider url={appOrigin("mock")} sessionKey={null}>
       <Consumer handler={second} />
     </RealtimeProvider>,
   );

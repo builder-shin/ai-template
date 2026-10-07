@@ -20,6 +20,24 @@ it("동기화한 계약은 원본 배너를 보존한다", () => {
 });
 
 describe("하네스", () => {
+  it("운영 start 포트가 앱 설정과 다르면 고칠 값을 알린다", () => {
+    const files = {
+      ...base,
+      "app.config.json": JSON.stringify({
+        app: "web",
+        ports: { dev: 3000, mock: 4010, e2e: 3100, e2eMock: 4110 },
+      }),
+      "package.json": JSON.stringify({ scripts: { start: "next start --port 3001" } }),
+    };
+    expect(inspect(files).join("\n")).toMatch(/package\.json.*3000.*app\.config\.json/);
+    expect(
+      inspect({
+        ...files,
+        "package.json": JSON.stringify({ scripts: { start: "next start --port 3000" } }),
+      }),
+    ).toEqual([]);
+  });
+
   it("정상 파일을 통과시킨다", () => expect(inspect(base)).toEqual([]));
   it("양방향 지침 짝과 CLAUDE 내용을 검사한다", () => {
     expect(inspect({ ...base, "src/AGENTS.md": "규칙" }).join()).toMatch(/CLAUDE/);

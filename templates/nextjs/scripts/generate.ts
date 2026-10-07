@@ -1,6 +1,8 @@
 import openapiTS, { astToString } from "openapi-typescript";
 import { parse } from "yaml";
 import { readWebOpenapi } from "./gen-input";
+import { join, relative } from "node:path";
+import { resolveContractPaths } from "./gen-config.mjs";
 
 const header = "// 직접 수정 금지 — pnpm gen으로 생성한다.\n";
 
@@ -54,9 +56,11 @@ export async function generateFiles(
   contractOpenapi: string,
   mockTypes: string,
 ): Promise<Record<string, string>> {
+  const contract = resolveContractPaths(root);
+  const output = (path: string) => relative(root, path).replaceAll("\\", "/");
   return {
-    "contract/openapi.yaml": contractOpenapi,
-    "contract/mock/src/generated/api.ts": mockTypes,
+    [output(contract.openapi)]: contractOpenapi,
+    [output(join(contract.mock, "src/generated/api.ts"))]: mockTypes,
     ...(await generateWeb(readWebOpenapi(root, contractOpenapi))),
   };
 }

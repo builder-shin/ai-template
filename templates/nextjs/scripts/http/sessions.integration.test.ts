@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { JSDOM } from "jsdom";
 import { sessionsFixture } from "../../src/features/sessions/test-fixture";
@@ -34,7 +35,7 @@ it.each(["ko", "en"] as const)(
     const second = await owner.login("Second browser");
     const path = locale === "ko" ? "/me/sessions" : "/en/me/sessions";
     const headers = {
-      Cookie: `session=${await sealSession(owner.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
+      Cookie: `${appSessionCookieName("development")}=${await sealSession(owner.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
       "Accept-Language": locale,
       Origin: base,
     };
@@ -65,7 +66,7 @@ it.each(["ko", "en"] as const)(
     await expect(second.client.GET("/me")).rejects.toMatchObject({ status: 401 });
     const revokedHeaders = {
       ...headers,
-      Cookie: `session=${await sealSession(second.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
+      Cookie: `${appSessionCookieName("development")}=${await sealSession(second.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
     };
     const revoked = await fetch(`${base}${path}`, { headers: revokedHeaders, redirect: "manual" });
     // 스트리밍된 layout 401은 HTTP Location 대신 NEXT_REDIRECT를 HTML에 담을 수도 있다.
@@ -89,7 +90,11 @@ it.each(["ko", "en"] as const)(
     expect(
       cleared.headers
         .getSetCookie()
-        .some((cookie) => cookie.startsWith("session=;") && cookie.includes("Max-Age=0")),
+        .some(
+          (cookie) =>
+            cookie.startsWith(`${appSessionCookieName("development")}=;`) &&
+            cookie.includes("Max-Age=0"),
+        ),
     ).toBe(true);
     const login = await fetch(cleared.headers.get("location")!, {
       headers: { "Accept-Language": locale, Cookie: `NEXT_LOCALE=${locale}` },
@@ -113,7 +118,11 @@ it.each(["ko", "en"] as const)(
     expect(
       ended.headers
         .getSetCookie()
-        .some((cookie) => cookie.startsWith("session=;") && cookie.includes("Max-Age=0")),
+        .some(
+          (cookie) =>
+            cookie.startsWith(`${appSessionCookieName("development")}=;`) &&
+            cookie.includes("Max-Age=0"),
+        ),
     ).toBe(true);
     for (const session of [owner, fourth])
       await expect(session.client.GET("/me")).rejects.toMatchObject({ status: 401 });
@@ -128,7 +137,7 @@ it.each(["ko", "en"] as const)(
       const second = await owner.login();
       const path = locale === "ko" ? "/me/sessions" : "/en/me/sessions";
       const headers = {
-        Cookie: `session=${await sealSession(owner.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
+        Cookie: `${appSessionCookieName("development")}=${await sealSession(owner.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
         "Accept-Language": locale,
         Origin: base,
       };
@@ -147,7 +156,11 @@ it.each(["ko", "en"] as const)(
       expect(
         ended.headers
           .getSetCookie()
-          .some((cookie) => cookie.startsWith("session=;") && cookie.includes("Max-Age=0")),
+          .some(
+            (cookie) =>
+              cookie.startsWith(`${appSessionCookieName("development")}=;`) &&
+              cookie.includes("Max-Age=0"),
+          ),
       ).toBe(true);
       await expect(owner.client.GET("/me")).rejects.toMatchObject({ status: 401 });
       expect((await second.client.GET("/me")).response.status).toBe(200);
@@ -165,7 +178,7 @@ it.each(["ko", "en"] as const)(
       const current = await owner.login("Current browser");
       const path = `${locale === "ko" ? "/me/sessions" : "/en/me/sessions"}?page=2`;
       const headers = {
-        Cookie: `session=${await sealSession(current.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
+        Cookie: `${appSessionCookieName("development")}=${await sealSession(current.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
         "Accept-Language": locale,
         Origin: base,
       };

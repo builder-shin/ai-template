@@ -1,3 +1,4 @@
+import { appOrigin } from "../src/lib/app-config.mjs";
 import "server-only";
 import { afterEach, beforeEach, describe, expect, inject, it, vi } from "vitest";
 import { ApiError } from "../src/lib/api/errors";
@@ -7,7 +8,7 @@ import { refreshSession } from "../src/lib/session/refresh";
 
 beforeEach(() => {
   vi.stubEnv("API_BASE_URL", `${inject("mockBaseUrl")}/api/v1`);
-  vi.stubEnv("APP_URL", "http://localhost:3000");
+  vi.stubEnv("APP_URL", appOrigin("dev"));
   vi.stubEnv("NEXT_PUBLIC_REALTIME_URL", inject("mockBaseUrl"));
   vi.stubEnv("SESSION_SECRET", EXAMPLE_SESSION_SECRET);
 });

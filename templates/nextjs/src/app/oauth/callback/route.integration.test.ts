@@ -1,3 +1,5 @@
+import { sessionCookieName } from "../../../lib/session/cookie";
+import { appSessionCookieName } from "../../../lib/app-config.mjs";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { EXAMPLE_SESSION_SECRET } from "../../../lib/env";
@@ -87,8 +89,8 @@ it.each([
   expect(target.searchParams.get("notice")).toBe("auth.oauth_failed");
   expect(response.cookies.get("oauth")?.value).toBe("");
   expect(response.headers.getSetCookie().join(";")).toMatch(/oauth=;.*Max-Age=0/i);
-  expect(response.cookies.get("session")).toBeUndefined();
-  expect(response.cookies.get("__Host-session")).toBeUndefined();
+  expect(response.cookies.get(appSessionCookieName("development"))).toBeUndefined();
+  expect(response.cookies.get(sessionCookieName("production"))).toBeUndefined();
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(response.headers.get("referrer-policy")).toBe("no-referrer");
   expect(log).toHaveBeenCalledExactlyOnceWith(`OAuth 콜백 처리 실패: ${name}`);
