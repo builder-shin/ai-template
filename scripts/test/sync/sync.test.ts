@@ -1,9 +1,14 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { syncSharedAssets } from "../../src/sync/sync.ts";
 import type { SharedAssetsManifest } from "../../src/verify-templates/manifest.ts";
+
+const repos: string[] = [];
+afterEach(() => {
+  for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
+});
 
 function write(root: string, path: string, content: string): void {
   mkdirSync(dirname(join(root, path)), { recursive: true });
@@ -12,7 +17,8 @@ function write(root: string, path: string, content: string): void {
 
 /** 원본 두 개, web·api 템플릿, 템플릿 밖의 파일을 가진 임시 저장소. web의 계약 사본은 낡았다. */
 function makeRepo(): string {
-  const repo = mkdtempSync(join(tmpdir(), "sync-"));
+  const repo = mkdtempSync(join(tmpdir(), "aitpl-sync-"));
+  repos.push(repo);
   write(repo, "contract/openapi.yaml", "openapi: 3.1.0\n");
   write(repo, "contract/api-style/lint.js", "// 룰셋\n");
   write(repo, "templates/web/template.json", "{}");

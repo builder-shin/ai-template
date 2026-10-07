@@ -4,6 +4,8 @@ import { checkAgentsMd } from "../agents-md/check.ts";
 import { diffDirs, listFiles, sameFile } from "./files.ts";
 import {
   isRecord,
+  managedFiles,
+  overlayFiles,
   readTemplateManifest,
   requiredCommands,
   type SharedAssetsManifest,
@@ -110,6 +112,20 @@ function sharedAssetProblems(
       .flatMap((target) => {
         const source = join(repoRoot, asset.source);
         const copy = join(repoRoot, "templates", templateName, target.path);
+        if (asset.mode === "overlay") {
+          const files = new Set(overlayFiles(repoRoot, asset));
+          return managedFiles(repoRoot, asset).flatMap((file) => {
+            const destination = join(copy, file);
+            const differs = files.has(file)
+              ? !sameFile(join(source, file), destination)
+              : existsSync(destination) && statSync(destination).isFile();
+            return differs
+              ? [
+                  `${join(target.path, file).replaceAll("\\", "/")}가 원본 ${asset.source}/${file}와 다르다 — 원본(${asset.source}/${file})을 고친 뒤 pnpm sync한다.`,
+                ]
+              : [];
+          });
+        }
         const drift = `${target.path}가 원본 ${asset.source}와 다르다`;
         if (existsSync(source) && statSync(source).isFile()) {
           return sameFile(source, copy) ? [] : [`${drift}. pnpm sync를 돌린다.`];

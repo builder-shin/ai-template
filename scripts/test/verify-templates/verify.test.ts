@@ -1,10 +1,15 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { syncSharedAssets } from "../../src/sync/sync.ts";
 import type { SharedAssetsManifest } from "../../src/verify-templates/manifest.ts";
 import { verifyTemplate } from "../../src/verify-templates/verify.ts";
+
+const repos: string[] = [];
+afterEach(() => {
+  for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
+});
 
 const WEB = "templates/web";
 const COMMANDS = ["setup", "dev", "check", "fix", "test", "test:e2e", "gen"];
@@ -53,7 +58,8 @@ function manifest(overrides: Record<string, unknown> = {}) {
 
 /** 하네스 표준을 모두 지킨 web 템플릿과 공유 자산 원본을 가진 임시 저장소. */
 function makeRepo(): string {
-  const repo = mkdtempSync(join(tmpdir(), "verify-"));
+  const repo = mkdtempSync(join(tmpdir(), "aitpl-verify-"));
+  repos.push(repo);
   writeJson(repo, `${WEB}/template.json`, manifest());
   write(repo, `${WEB}/AGENTS.md`, "# web\n");
   write(repo, `${WEB}/CLAUDE.md`, "@AGENTS.md\n");

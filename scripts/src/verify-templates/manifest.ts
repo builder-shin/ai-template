@@ -1,5 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { listFiles } from "./files.ts";
 
 /** 템플릿 루트의 template.json. verify-templates가 템플릿 종류에 맞게 검사하는 데 쓴다. */
 export interface TemplateManifest {
@@ -14,6 +15,10 @@ export interface TemplateManifest {
 /** 공유 자산 원본과, 그 사본이 들어갈 템플릿 안의 경로. */
 export interface SharedAsset {
   readonly source: string;
+  /** 생략하면 통째로 교체한다. overlay는 원본 파일만 같은 상대 경로에 덮는다. */
+  readonly mode?: "overlay";
+  /** pnpm sync가 누적하는 원본 파일 경로. 지운 파일도 남겨 낡은 사본을 찾는다. */
+  readonly managedFiles?: readonly string[];
   readonly targets: readonly { readonly template: string; readonly path: string }[];
 }
 
@@ -65,17 +70,22 @@ function isTemplateName(name: string): boolean {
 }
 
 /**
- * 공유 자산 사본의 절대 경로. templates/<template>/ 안쪽(템플릿 루트 자체는 제외)일 때만 돌려준다.
+ * 공유 자산 사본의 절대 경로. templates/<template>/ 안쪽일 때만 돌려준다. overlay는 루트도 허용한다.
  * manifest 검사와 pnpm sync가 함께 쓰는 가드라, 검사를 거치지 않은 manifest로도 템플릿 밖을 지우지 못한다.
  */
-export function copyPath(repoRoot: string, template: string, path: string): string | undefined {
+export function copyPath(
+  repoRoot: string,
+  template: string,
+  path: string,
+  overlay = false,
+): string | undefined {
   if (!isTemplateName(template) || isAbsolute(path)) return undefined;
   const templates = resolve(repoRoot, "templates");
   const base = resolve(templates, template);
   // 이름 규칙과 별개로, 템플릿 폴더가 정말 templates/ 바로 아래로 풀렸는지 다시 본다.
   if (dirname(base) !== templates) return undefined;
   const destination = resolve(base, path);
-  return isInside(base, destination) ? destination : undefined;
+  return isInside(base, destination) || (overlay && destination === base) ? destination : undefined;
 }
 
 /** 공유 자산 원본의 절대 경로. 저장소 안이면서 templates/ 밖인 상대 경로일 때만 돌려준다. */
@@ -99,7 +109,7 @@ function sourceProblems(repoRoot: string, source: unknown, at: string): string[]
     : [`${at}: ${source}가 없다. 저장소에 있는 파일이나 폴더를 적는다.`];
 }
 
-function targetProblems(repoRoot: string, target: unknown, at: string): string[] {
+function targetProblems(repoRoot: string, target: unknown, at: string, overlay: boolean): string[] {
   if (!isRecord(target)) return [`${at}: { "template", "path" } 꼴의 객체여야 한다.`];
   const { template, path } = target;
   if (typeof template !== "string" || !isTemplateName(template)) {
@@ -107,7 +117,12 @@ function targetProblems(repoRoot: string, target: unknown, at: string): string[]
       `${at}.template: templates/ 바로 아래 폴더 이름 하나를 적는다. 빈 값, ".", "..", 그리고 "/", "\\", ":" 같은 구분자는 안 된다.`,
     ];
   }
-  if (typeof path === "string" && copyPath(repoRoot, template, path) !== undefined) return [];
+  if (typeof path === "string" && copyPath(repoRoot, template, path, overlay) !== undefined)
+    return [];
+  if (overlay)
+    return [
+      `${at}.path: 템플릿 밖의 경로다 — templates/${template}/ 안의 상대 경로를 적는다. 루트는 "."이다.`,
+    ];
   return [
     `${at}.path: templates/${template}/ 안쪽의 상대 경로를 적는다. 빈 값, ".", 절대 경로, 템플릿 밖으로 나가는 경로는 안 된다.`,
   ];
@@ -116,11 +131,35 @@ function targetProblems(repoRoot: string, target: unknown, at: string): string[]
 function assetProblems(repoRoot: string, asset: unknown, at: string): string[] {
   if (!isRecord(asset)) return [`${at}: { "source", "targets" } 꼴의 객체여야 한다.`];
   const problems = sourceProblems(repoRoot, asset.source, `${at}.source`);
+  if (asset.mode !== undefined && asset.mode !== "overlay") {
+    problems.push(`${at}.mode: 알 수 없는 복사 방식이다 — mode를 빼거나 "overlay"를 적는다.`);
+  }
+  if (asset.mode === "overlay" && problems.length === 0 && typeof asset.source === "string") {
+    if (!statSync(join(repoRoot, asset.source)).isDirectory()) {
+      problems.push(`${at}.source: 덮어 놓기 원본이 폴더가 아니다 — 원본 폴더를 적는다.`);
+    } else if (linkedPath(repoRoot, join(repoRoot, asset.source)) !== undefined) {
+      problems.push(`${at}.source: ${asset.source} 원본 경로에 링크가 있다 — 일반 폴더를 적는다.`);
+    }
+  }
+  if (asset.managedFiles !== undefined) {
+    if (asset.mode !== "overlay" || !Array.isArray(asset.managedFiles)) {
+      problems.push(
+        `${at}.managedFiles: 삭제 기록 형식이 틀렸다 — overlay 항목에 파일 경로 배열을 적는다.`,
+      );
+    } else {
+      for (const [index, file] of (asset.managedFiles as unknown[]).entries()) {
+        if (!isManagedFile(file))
+          problems.push(
+            `${at}.managedFiles[${String(index)}]: 안전한 파일 경로가 아니다 — node_modules를 뺀 슬래시 구분 상대 파일 경로를 적는다.`,
+          );
+      }
+    }
+  }
   if (!Array.isArray(asset.targets)) return [...problems, `${at}.targets: 배열이어야 한다.`];
   return [
     ...problems,
     ...(asset.targets as unknown[]).flatMap((target, index) =>
-      targetProblems(repoRoot, target, `${at}.targets[${String(index)}]`),
+      targetProblems(repoRoot, target, `${at}.targets[${String(index)}]`, asset.mode === "overlay"),
     ),
   ];
 }
@@ -130,9 +169,112 @@ export function sharedAssetsProblems(repoRoot: string, manifest: unknown): strin
   if (!isRecord(manifest) || !Array.isArray(manifest.assets)) {
     return ['{ "assets": [...] } 꼴의 객체여야 한다.'];
   }
-  return (manifest.assets as unknown[]).flatMap((asset, index) =>
+  const problems = (manifest.assets as unknown[]).flatMap((asset, index) =>
     assetProblems(repoRoot, asset, `assets[${String(index)}]`),
   );
+  return problems.length > 0
+    ? problems
+    : writeProblems(repoRoot, manifest as unknown as SharedAssetsManifest);
+}
+
+/** 기록은 운영체제와 관계없이 정규화된 상대 파일 경로만 받는다. */
+function isManagedFile(file: unknown): file is string {
+  return (
+    typeof file === "string" &&
+    !/[\\:]/.test(file) &&
+    file
+      .split("/")
+      .every((part) => part !== "" && part !== "." && part !== ".." && part !== "node_modules")
+  );
+}
+
+/** overlay는 캐시를 포함해 모든 원본 파일을 복사한다. 설치물만 뺀다. */
+export function overlayFiles(repoRoot: string, asset: SharedAsset): string[] {
+  return listFiles(join(repoRoot, asset.source), new Set(["node_modules"]));
+}
+
+/** 원본 파일과 삭제 기록을 합친 관리 범위. 기록은 템플릿에 복사하지 않는다. */
+export function managedFiles(repoRoot: string, asset: SharedAsset): string[] {
+  return [...new Set([...overlayFiles(repoRoot, asset), ...(asset.managedFiles ?? [])])].sort();
+}
+
+function linkedPath(repoRoot: string, location: string): string | undefined {
+  let path = location;
+  while (isInside(resolve(repoRoot), path)) {
+    if (lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink()) return path;
+    path = dirname(path);
+  }
+  return undefined;
+}
+
+/** 링크를 따라 쓰거나 폴더 전체를 덮지 않도록 모든 대상 파일을 미리 검사한다. */
+function overlayDestinationProblems(
+  repoRoot: string,
+  destination: string,
+  current: boolean,
+  source: string,
+): string[] {
+  let path = destination;
+  while (isInside(resolve(repoRoot), path)) {
+    const stat = lstatSync(path, { throwIfNoEntry: false });
+    if (stat?.isSymbolicLink())
+      return [
+        `${relative(repoRoot, path)}: 대상에 링크가 있다 — 일반 폴더나 파일로 바꾼 뒤 pnpm sync한다.`,
+      ];
+    if (path === destination && current && stat?.isDirectory())
+      return [
+        `${relative(repoRoot, path)}: 사본 파일 자리에 폴더가 있다 — 앱 파일을 옮기고 원본(${source})을 고친 뒤 pnpm sync한다.`,
+      ];
+    path = dirname(path);
+  }
+  return [];
+}
+
+function writeProblems(repoRoot: string, manifest: SharedAssetsManifest): string[] {
+  const problems: string[] = [];
+  const writes: { path: string; owner: string }[] = [];
+  for (const [index, asset] of manifest.assets.entries()) {
+    const files = asset.mode === "overlay" ? managedFiles(repoRoot, asset) : [""];
+    const current = new Set(asset.mode === "overlay" ? overlayFiles(repoRoot, asset) : []);
+    for (const file of current) {
+      const source = join(repoRoot, asset.source, file);
+      if (lstatSync(source).isSymbolicLink())
+        problems.push(
+          `${asset.source}/${file}: 원본 파일에 링크가 있다 — 일반 파일로 바꾼 뒤 pnpm sync한다.`,
+        );
+    }
+    for (const [targetIndex, target] of asset.targets.entries()) {
+      const base = copyPath(repoRoot, target.template, target.path, asset.mode === "overlay");
+      if (base === undefined) continue;
+      const owner = `assets[${String(index)}].targets[${String(targetIndex)}]`;
+      for (const file of files) {
+        const path = resolve(base, file);
+        for (const previous of writes) {
+          if (
+            relative(previous.path, path) === "" ||
+            isInside(previous.path, path) ||
+            isInside(path, previous.path)
+          ) {
+            if (previous.owner !== owner)
+              problems.push(
+                `${owner}: ${previous.owner}와 쓰기 경로 ${relative(repoRoot, path)}가 겹친다 — 한 항목만 쓰도록 경로를 나눈다.`,
+              );
+          }
+        }
+        writes.push({ path, owner });
+        if (asset.mode === "overlay")
+          problems.push(
+            ...overlayDestinationProblems(
+              repoRoot,
+              path,
+              current.has(file),
+              `${asset.source}/${file}`,
+            ),
+          );
+      }
+    }
+  }
+  return problems;
 }
 
 /** scripts/shared-assets.json을 읽고 검사한다. 문제가 있으면 문제 목록을 돌려준다. */
