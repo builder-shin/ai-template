@@ -6,7 +6,7 @@
   - 이 문서는 기반 설계 §10에서 사이클 4로 미룬 결정을 내린다: 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위, 조합에서 web과 admin이 계약·목 패키지를 함께 쓰는 방식, admin 포트.
   - 동작 기준은 [Next.js web 설계](2026-09-30-nextjs-web-design.md), [create CLI 설계](2026-10-03-create-cli-design.md), [FastAPI 설계](2026-09-26-fastapi-template-design.md)다.
 - 구현 계획: 마일스톤(§11)마다 `docs/superpowers/plans/`에 쓴다.
-- 다음 단계: A1 프로토타입 → 계획 → 구현
+- 현재 단계: A1 구현 뒤 A2 프로토타입. A2 계획·검토·PR CI·병합은 후속 단계다(§15).
 
 ## 1. 목표와 범위
 
@@ -502,6 +502,16 @@ Docker가 필요한 확인은 PR CI에서만 한다(AD16).
 9. 로케일 쿠키(A2): 공유 i18n 설정의 `NEXT_LOCALE`은 두 앱이 같은 이름이라 localhost에서 web과 admin의 언어 선택이 서로 덮인다. 계정 `locale` 동기화(AD11)로 같은 사용자의 선택이라 해는 작다. 그대로 둘지 `<app>-locale`로 나눌지 A2에서 정한다.
 10. 공유 테스트의 입력값(A2 전): 공유 테스트에는 web 값(`app: "web"`, 3000·4010 등)이 검증 입력으로 들어 있다. 실행 앱의 설정이 아니고 admin 사본에서도 통과하므로 허용한다(§3.4는 실행 코드에 대한 규칙이다).
 
+### A2 프로토타입에서 확인한 결정 (2026-10-08)
+
+| 항목 | 결정과 근거 |
+| --- | --- |
+| 1 선언 타입 | `src/lib/resources/contract.ts`가 `ApiPaths`의 단일 컬렉션 GET에서 JSON:API type·attributes·relationships·query와 쓰기 operation을 추출한다. `defineResource`는 type만으로 추론하고 `NoInfer`로 키 오류의 타입 확장을 막는다. `AnyResource`는 판별 union이다. 동적 경로 단언은 data.ts의 비공개 요청 경계에만 두고 실제 목 통합으로 확인한다. 현재 sort 생성 타입은 string이므로 선언 타입은 속성 키로 제한한다. 생성기는 `x-jsonapi-sort` 후보를 우선하며 속성 밖 후보는 제외한다. 음성 fixture의 `@ts-expect-error` 12개를 기존 types 단계가 컴파일하고 오류가 사라지면 TS2578로 실패한다. |
+| 5 Base UI 부품 | 고정 shadcn 4.21.0·base-nova가 table·dialog·select·sheet·checkbox·badge를 제공했다. Task 4에서 table·dialog·select·checkbox·badge 5개를 추가했고 다시 제공된 기존 button·sheet는 원래 바이트로 복구했다. Table은 native table, dialog·sheet는 Base UI Dialog, select의 다중 선택은 Select.Root multiple, checkbox는 Checkbox, badge는 useRender다. 기존 @base-ui/react 1.8.0·cn 0.4.0·lucide-react 1.49.0·class-variance-authority 0.7.1을 쓰며 의존성·잠금 변경은 없다. 새 부품은 원본에서 생성·번역 후 sync했고 고정 앱 import는 여덟 개를 유지했다. |
+| 7 E2E 계정 | A2는 실제 목 API로 UUID별 일반 회원을 가입시키고 `/_test/mail`의 인증 링크로 인증한다. 시드 관리자는 API로 역할을 만들고 부여한다. 기본 관리 계정은 admin:access·posts:manage·users:read, 부분 관리 계정은 시나리오별 권한을 받는다. admin의 fixtures와 scripts/test/admin-fixture.ts에 두며 시드 계정은 브라우저 주체로 쓰지 않는다. A3의 FastAPI 가입·Mailpit 준비는 아직 구현하지 않았다. |
+| 8 실시간 출처 | 목 기본값에 `http://localhost:3001`을 추가해 web 3000과 함께 허용한다. admin E2E는 3101, web E2E는 3100을 명시한다. FastAPI 기본값 변경과 admin FastAPI 실행기는 A3다. 글 목록·상세는 posts:all을 구독하고 첫 이벤트부터 100ms의 고정 창으로 갱신을 묶는다. 채널 변경·unmount 때 예약을 취소한다. 성공한 subscribe ACK 뒤 다른 세션의 생성·수정이 목록·상세에 반영되는지 확인한다. |
+| 9 로케일 쿠키 | NEXT_LOCALE을 유지한다. 운영은 서로 다른 host의 host-only 쿠키라 공유하지 않고 localhost에서는 같은 사용자의 계정 locale 동기화가 선택을 맞춘다. 이름을 바꿔 기존 web 동작을 바꾸지 않는다. 세션 쿠키는 별도로 app 이름에서 계산한다. |
+
 ## 13. 미룬 결정
 
 기반 설계 §10의 admin 행은 이 문서로 정한다. 남는 것은 다음이다.
@@ -524,3 +534,23 @@ Docker가 필요한 확인은 PR CI에서만 한다(AD16).
 - 공유 자산 동기화 목록은 `scripts/shared-assets.json`이다. 지금 web에는 `contract/mock`, `contract/typespec`, `contract/openapi.yaml`, 규약 문서 둘이 들어간다.
 - 현재 조합의 workspace는 `apps/api`, `apps/web`, `apps/web/contract/*`다(create CLI 설계 §5.3).
 - 기반 설계 §4.3: admin 앱에 로그인하려면 `admin:access`가 있어야 한다. §4.9: admin에는 전체 글 관리(필터, 상태 변경, 삭제, 실시간 반영)가 들어간다.
+
+## 15. A2 프로토타입 구현 기록 (2026-10-08)
+
+A1 머리 c76118b에서 여섯 작업과 Task 2 후속 수정을 순서대로 구현했다. 독립 admin의 공통 사본은 `scripts/shared-assets.json`에 등록하고 원본 수정 뒤 `pnpm sync`로만 맞췄다. 기존 web은 check 9단계·build·목 E2E 20개를 유지했다.
+
+| 작업 | 구현 |
+| --- | --- |
+| 1 / 6c9c901 | overlay 대상별 managedFiles·새 대상 충돌/삭제 보호, 삭제 경로 출력, git 인덱스 원본 선택, fix:shared와 앱 계약 문서, 절대 경로 fixture |
+| 2 / 085cc97 | 독립 admin·포트 3001/4011/3101/4111·잠금·공통 버전 검사·CI nextjs-admin·password 로그인과 admin:access gate·locale·관리 shell·실시간 권한 회수·인증 E2E 5개 |
+| 3 / ee0b6a2 | 선언 타입·NoInfer·판별 registry·server-only 데이터 계층·URL 필터/정렬/20개 페이지/include·선언 필드 쓰기·음성 타입 fixture·실제 목 통합 |
+| 2 후속 / bfb8845 | 검증된 gen.config.openapi가 있으면 backend URL을 허용하고 단독 loopback mock 포트 오류는 계속 거절하는 공유 harness 검사 |
+| 4 / d305a70 | 범용 경로·권한별 메뉴·목록·상세·폼·삭제/동작 dialog·필드 override·관계 옵션 403 분리·TIME_ZONE 기간·Base UI 부품·경계 린트·resource-messages. admin check 10단계 |
+| 5 / ec58792 | posts 골든·상태만 PATCH하는 발행/취소·직접 Action 권한/조건 재검사·Retry-After 보존·100ms 목록/상세 실시간·목 E2E 11개. 당시 단위·통합 553개 통과 |
+| 6 | gen:resource의 계약 선언·메시지·등록 초안, 기존 자료 보호, 계약 조각·실제 계약 타입/문구 검증, 리소스/필드/동작 레시피·skill·문서 |
+
+생성기는 API 타입 생성과 같은 `gen.config.json`의 contract·openapi를 읽고 기본은 계약 openapi.yaml이다. 로컬 $ref·allOf·nullable 합성을 처리한다. 읽기 열·상세와 쓰기 필드를 구분하고 operation이 없는 화면은 만들지 않는다. 권한은 x-permission, 없으면 admin:access 검토 초안이다. ko/en 자리표시자는 type·필드·enum 값이며 점이 든 값은 중첩 키다. AST로 등록 배열 끝에 추가하고 기존 문구·등록 순서를 보존한다. 동작·실시간·제품별 입력은 골든과 레시피에 따라 사람이 선언한다. 사용자·역할·권한·감사 로그는 생성기 테스트 입력이며 제품 registry에는 등록하지 않았다.
+
+확인 범위는 루트 check 11단계, admin check 10단계·build·실제 목 Chromium E2E 11개다. 공유 변경이 있던 Task 2·4와 후속 수정은 web check·build·목 E2E 20개도 확인했다. Docker·개발 fastapi/joon·FastAPI E2E는 로컬에서 실행하지 않았다. A2 PR CI의 이미지 검증과 검토, A3의 나머지 제품 리소스·FastAPI E2E·create CLI가 남는다.
+
+Task 5에서 Next 스트리밍 not-found는 응답 시작 뒤 HTTP 200일 수 있어 UI와 head의 noindex를 함께 확인했다. 빠른 모바일 메뉴 이동 중 Next의 `The destination stream closed early` 진단이 있었으나 11개 UI/API assertion은 통과했다. 이 관찰을 기능 실패로 숨기거나 원인을 확정하지 않았다.

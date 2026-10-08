@@ -14,6 +14,7 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 | `pnpm test`                      | Vitest 단위·실제 목 통합 검사                                       |
 | `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 Chromium E2E                          |
 | `pnpm gen`                       | TypeSpec·목·API·에러·실시간 타입 생성                               |
+| `pnpm gen:resource <type>`       | 계약에서 리소스 선언·ko/en 문구·등록 초안 생성                      |
 | `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                                |
 
 ## 구조
@@ -69,6 +70,19 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 | `src/lib/session/routes.ts`            | `isProtectedPath`                                   |
 
 `.claude/settings.json`의 exec hook·명령 권한·환경 읽기와 생성물 편집 차단, strict tsconfig와 `@/*` 별칭, check의 `types`·`harness` 이름, Vitest의 `mockBaseUrl`, start의 dev 포트, 환경 예시의 dev·mock 포트도 유지한다.
+
+## 리소스
+
+- 리소스 하나는 `src/resources/<type>/resource.ts` 하나로 선언하고 `src/resources/index.ts`에 등록한다. 등록 순서가 메뉴 순서다. 처음 허용된 리소스가 홈이다. 없는 type·선언 없는 화면은 404다.
+- `app`·`lib`·`components`는 등록 목록만 가져온다. 리소스끼리 내부를 가져오지 않는다. `lib/resources`·선언·리소스의 `actions.ts`는 server-only다.
+- `defineResource`가 생성 계약 타입으로 열·필드·필터·정렬·쓰기 operation을 검사한다. 타입을 넓혀 우회하지 않는다. sort가 string이면 속성 키로 제한하며 서버 후보는 계약 확장으로 확인한다.
+- 목록 쿼리는 URL에 둔다. 선언한 필터·sort만 보내고 page[size]는 20, include는 서버 선언만 쓴다. 읽기·쓰기는 요청의 세션 클라이언트를 쓴다.
+- 입력 종류는 `create`·`edit`의 fields, 표시·enum values·관계 대상·필드 override는 최상위 fields에 둔다. 폼은 선언한 필드만 보낸다.
+- 메뉴·버튼·화면과 Server Action 모두 권한·조건을 확인한다. 최종 판정은 API다. 삭제·확인 동작은 dialog를 사용한다. 리소스 전체 화면 override는 두지 않는다.
+- 문구는 `resources.<type>.title`, `fields.<name>`, `enums.<field>.<value>`, `actions.<name>`이다. enum에는 values를 선언한다. 점이 있는 값은 카탈로그의 중첩 키로 적는다. `resource-messages`가 ko/en을 검사한다.
+- 골든은 `src/resources/posts/`다. 글은 목록·상세·발행·발행 취소·삭제만 제공한다. 작성·수정 화면은 선언하지 않는다. 생성기는 계약의 쓰기 operation도 뽑으므로 제품 범위에 맞춰 초안을 줄인다.
+- 생성기의 문구는 번역 전 자리표시자다. 권한은 `x-permission`, 없으면 `admin:access` 초안이므로 반드시 검토한다. 이미 있는 리소스·문구·등록은 덮지 않는다.
+- 절차: [리소스 추가](docs/recipes/add-resource.md), [필드 종류 추가](docs/recipes/add-field-kind.md), [동작 추가](docs/recipes/add-action.md). `.claude/skills/add-resource/`는 리소스 레시피를 따른다.
 
 ## 완료 기준
 

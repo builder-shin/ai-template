@@ -153,6 +153,14 @@ test("등록하지 않은 리소스와 글 작성·수정 화면은 404다", asy
     await expect(page.getByRole("heading", { name: "화면을 찾을 수 없습니다" })).toBeVisible();
     // 스트리밍이 시작된 not-found는 HTTP 200일 수 있다. 오류 화면과 색인 금지로 확인한다.
     expect([200, 404]).toContain(response!.status());
-    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute("content", "noindex");
+    // 스트리밍 경계가 같은 메타를 여러 번 넣어도 모두 색인을 막아야 한다.
+    await expect
+      .poll(async () => {
+        const contents = await page
+          .locator('head meta[name="robots"]')
+          .evaluateAll((elements) => elements.map((element) => element.getAttribute("content")));
+        return contents.length > 0 && contents.every((content) => content === "noindex");
+      })
+      .toBe(true);
   }
 });
