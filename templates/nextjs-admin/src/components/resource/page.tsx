@@ -90,7 +90,12 @@ export async function ResourcePage({
         errors: [{ code: "resource.conflict", params: {} }],
         traceId: "",
       });
-    return await FormScreen({ context, mode: "edit", record: document.data });
+    return await FormScreen({
+      context,
+      mode: "edit",
+      record: document.data,
+      included: "included" in document ? (document.included ?? []) : [],
+    });
   } catch (error) {
     redirectOnUnauthorized(error, locale === "en" ? "/en" : "/");
     if (!(error instanceof ApiError)) throw error;

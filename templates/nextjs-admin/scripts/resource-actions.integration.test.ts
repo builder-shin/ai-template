@@ -16,6 +16,7 @@ const context = vi.hoisted(() => ({
   locale: "ko",
   jar: new Map<string, { value: string }>(),
   calls: 0,
+  noDetail: false,
 }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => context.jar.get(name) }),
@@ -28,6 +29,9 @@ vi.mock("../src/resources/index", async () => {
     resources: [
       {
         ...postsFixture,
+        get detail() {
+          return context.noDetail ? undefined : postsFixture.detail;
+        },
         fields: {
           status: { kind: "enum", values: ["draft", "published"] },
           coverImage: { kind: "file", relation: { type: "files", label: "filename" } },
@@ -53,6 +57,7 @@ beforeEach(() => {
   context.jar.clear();
   context.locale = "ko";
   context.calls = 0;
+  context.noDetail = false;
   vi.stubEnv("NODE_ENV", "development");
   vi.stubEnv("API_BASE_URL", `${inject("mockBaseUrl")}/api/v1`);
   vi.stubEnv("NEXT_PUBLIC_REALTIME_URL", inject("mockBaseUrl"));
@@ -144,6 +149,29 @@ it("생성 뒤 새 상세로 이동한다", async () => {
     digest: expect.stringMatching(/^NEXT_REDIRECT;replace;\/posts\/.+;307;$/),
   });
 });
+it.each(["create", "edit"] as const)(
+  "상세 없는 저장은 영문 목록으로 이동한다: %s",
+  async (mode) => {
+    const seed = await seedFixture(inject("mockBaseUrl"));
+    await session(seed);
+    context.locale = "en";
+    context.noDetail = true;
+    const { document } = await post();
+    const form = new FormData();
+    form.set("title", "목록으로 돌아갈 글");
+    form.set("body", "본문");
+    form.set("status", "draft");
+    await expect(
+      saveResourceAction(
+        "posts",
+        mode,
+        mode === "edit" ? document.data.id : null,
+        { ok: true },
+        form,
+      ),
+    ).rejects.toMatchObject({ digest: "NEXT_REDIRECT;replace;/en/posts;307;" });
+  },
+);
 it("삭제는 실제 API를 호출하고 목록으로 이동한다", async () => {
   const seed = await seedFixture(inject("mockBaseUrl"));
   await session(seed);

@@ -55,7 +55,8 @@
     "confirm": "확인",
     "deleteDescription": "이 항목을 삭제할까요?",
     "actionDescription": "이 동작을 실행할까요?",
-    "retryAfter": "{seconds}초 뒤에 다시 시도하세요."
+    "retryAfter": "{seconds}초 뒤에 다시 시도하세요.",
+    "none": "선택 안 함"
   },
   "resources": {
     "posts": {

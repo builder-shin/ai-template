@@ -26,6 +26,7 @@ export function ResourceSelect({
   invalid,
   describedBy,
   allowEmpty = false,
+  emptyLabel = "all",
   disabled = false,
 }: {
   name: string;
@@ -37,6 +38,7 @@ export function ResourceSelect({
   invalid?: boolean;
   describedBy?: string | undefined;
   allowEmpty?: boolean;
+  emptyLabel?: "all" | "none";
   disabled?: boolean;
 }) {
   const t = useTranslations("resource");
@@ -160,7 +162,7 @@ export function ResourceSelect({
         )}
         {error && <p role="alert">{t("optionsError")}</p>}
         <SelectGroup>
-          {allowEmpty && !multiple && <SelectItem value="">{t("all")}</SelectItem>}
+          {allowEmpty && !multiple && <SelectItem value="">{t(emptyLabel)}</SelectItem>}
           {items.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}

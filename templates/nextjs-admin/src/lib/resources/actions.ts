@@ -108,7 +108,7 @@ export async function saveResourceAction(
             id!,
             parsed.values as WriteValues<AnyResource["type"], "edit">,
           );
-    target = location(type, document.data.id, ctx.locale);
+    target = location(type, ctx.resource.detail ? document.data.id : null, ctx.locale);
     revalidatePath(location(type, null, ctx.locale));
   } catch (error) {
     const resource = findScreen(resources, type, mode);

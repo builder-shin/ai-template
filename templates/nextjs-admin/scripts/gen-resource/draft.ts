@@ -102,11 +102,18 @@ export async function draftResource(spec: unknown, type: string) {
     const targetPath = paths[`/api/v1/${targetType}`] ? `/api/v1/${targetType}` : `/${targetType}`;
     const target = read(paths[targetPath]);
     const targetGet = read(target.get);
-    const targetRecord = read(
-      property(document(object(read(targetGet.responses))["200"]), "data").items,
+    const targetDetail = read(read(paths[`${targetPath}/{id}`]).get);
+    const targetData = property(
+      document(object(read((target.get ? targetGet : targetDetail).responses))["200"]),
+      "data",
     );
+    const targetRecord = read(targetData.type === "array" ? targetData.items : targetData);
     const targetAttributes = properties(property(targetRecord, "attributes"));
-    const label = ["name", "title", "code", "email"].find((key) => key in targetAttributes) ?? "id";
+    const label =
+      ["name", "title", "code", "email", "filename"].find((key) => key in targetAttributes) ??
+      Object.keys(targetAttributes)[0];
+    if (!label)
+      throw new Error(`${name}: 관계 대상의 라벨 속성 없음 — 대상 응답의 attributes를 선언한다.`);
     fields[name] = {
       kind: targetType === "files" ? "file" : data.type === "array" ? "relation-many" : "relation",
       relation: {
