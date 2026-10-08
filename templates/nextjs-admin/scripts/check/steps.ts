@@ -56,6 +56,16 @@ export function assembleSteps(
       ...(inputError ? { inputError: inputError.message } : {}),
     },
   ];
+  steps.push({
+    name: "resource-messages",
+    args: [
+      "tsx",
+      "--import",
+      "./scripts/check/register-resources.mjs",
+      "scripts/check/resource-messages.ts",
+    ],
+    key: key(/^src\/resources\/|^src\/lib\/resources\/|^messages\//),
+  });
   if (!fast) {
     steps.push({
       name: "i18n",

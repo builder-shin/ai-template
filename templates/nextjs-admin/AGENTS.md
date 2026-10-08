@@ -4,17 +4,17 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 
 ## 명령
 
-| 명령                             | 하는 일                                                       |
-| -------------------------------- | ------------------------------------------------------------- |
-| `pnpm setup`                     | 고정 설치·환경 키 보충·독립 git hook·Chromium 준비            |
-| `pnpm dev`                       | 단독 admin(3001)·목(4011), 백엔드 모드는 admin만 실행         |
-| `pnpm check`                     | 포맷·린트·타입·단위·통합·생성물·i18n·계약·하네스 9단계        |
-| `pnpm check --fast -- <파일...>` | Stop hook의 빠른 검사                                         |
-| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                    |
-| `pnpm test`                      | Vitest 단위·실제 목 통합 검사                                 |
-| `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 인증·권한·언어 Chromium E2E 5개 |
-| `pnpm gen`                       | TypeSpec·목·API·에러·실시간 타입 생성                         |
-| `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                          |
+| 명령                             | 하는 일                                                             |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `pnpm setup`                     | 고정 설치·환경 키 보충·독립 git hook·Chromium 준비                  |
+| `pnpm dev`                       | 단독 admin(3001)·목(4011), 백엔드 모드는 admin만 실행               |
+| `pnpm check`                     | 포맷·린트·타입·단위·통합·생성물·리소스 문구·i18n·계약·하네스 10단계 |
+| `pnpm check --fast -- <파일...>` | Stop hook의 빠른 검사                                               |
+| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                          |
+| `pnpm test`                      | Vitest 단위·실제 목 통합 검사                                       |
+| `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 인증·권한·언어 Chromium E2E 5개       |
+| `pnpm gen`                       | TypeSpec·목·API·에러·실시간 타입 생성                               |
+| `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                                |
 
 ## 구조
 
@@ -53,6 +53,16 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 - 소스 400줄·테스트 600줄을 넘기지 않는다. 억제 주석에는 같은 줄의 `사유: 설명`, 테스트 가짜 비밀에는 `betterleaks:allow 사유: 설명`을 단다.
 - 템플릿 밖의 파일을 참조하지 않는다. hook을 끄거나 `--no-verify`를 쓰지 않는다. 커밋은 영문 Conventional Commits이며 AI 태그·트레일러를 쓰지 않는다.
 - Docker 이미지는 이 프로젝트를 문맥으로 빌드하고 Node 24.19.0·pnpm 12.6.0·UID 10001을 쓴다. `NEXT_OUTPUT=standalone`은 이미지 빌드에만 설정한다. 일반 빌드·E2E는 `next start`다.
+
+## 리소스
+
+- 리소스 하나는 `src/resources/<type>/resource.ts`의 선언 하나다. `src/resources/index.ts`의 등록 순서가 메뉴와 첫 화면 순서다. 선언의 권한이 있는 리소스만 보인다. 미등록 리소스와 선언에 없는 화면은 API 호출 전에 404다.
+- 화면은 `resources/index.ts`에서만 등록 목록을 가져온다. 리소스끼리 내부를 가져오지 않고 기반·컴포넌트는 화면에 의존하지 않는다. `lib/resources/`와 리소스의 `actions.ts`는 server-only다.
+- 열·상세·쓰기 필드는 계약의 속성·관계 이름, 필터는 목록 operation의 쿼리 키로 타입 검사한다. 계약에 없는 쓰기 operation은 선언할 수 없다. 정렬은 계약이 허용한 목록 operation에서 속성 키만 검사하며 서버의 지원 후보는 선언자가 확인한다.
+- 필터·정렬·페이지는 URL 쿼리다. 선언한 필터와 정렬만 보내고 페이지 크기는 20이다. 관계 표시는 선언의 `include`로 함께 읽는다. 등록한 상세 화면과 보기 권한이 있을 때만 관계 링크를 만든다. 파일은 이름만 보인다.
+- 기간 필터의 날짜는 `TIME_ZONE`의 하루 시작·끝으로 API에 보낸다. 잘못된 URL 필터의 4xx는 같은 화면의 안내다. 관계 옵션의 403은 해당 필터만 비활성화하고 안내한다. 검색 가능한 관계는 첫 20개만 읽고, 검색 없는 관계는 마지막 페이지까지 읽는다.
+- 최상위 `fields`에 표시 종류·열거값 `values`·관계 대상과 라벨·표시 override를 둔다. 열거값은 런타임 목록도 선언한다.
+- 문구는 `resources.<type>.title`, `fields.<name>`, `enums.<name>.<value>`, `actions.<name>`이다. `resource-messages` 검사가 등록 선언에서 키를 모아 ko/en 양쪽의 빈 문구와 누락을 확인한다. 전체 check는 format·lint·types·tests·generated·resource-messages·i18n·contract-typespec·contract-mock·harness의 10단계다.
 
 ## 고정 앱 계약
 
