@@ -64,26 +64,39 @@
 ### 3.1 위치와 동기화
 
 - 원본은 `shared/nextjs/`다. 안쪽 경로는 템플릿 안 경로를 그대로 따른다. 예: `shared/nextjs/src/lib/session/cookie.ts` → 두 템플릿의 `src/lib/session/cookie.ts`.
-- `scripts/shared-assets.json`에 원본 폴더를 템플릿 루트에 덮어 놓는 항목을 더한다. 사본에 해당하는 파일만 쓰고 템플릿의 다른 파일은 건드리지 않는다. 대상은 `nextjs`와 `nextjs-admin`이다.
+- `scripts/shared-assets.json`에 `mode: "overlay"`, `source: "shared/nextjs"`, 템플릿 루트 대상(`path: "."`)을 둔다. 사본에 해당하는 파일만 쓰고 템플릿의 다른 파일은 건드리지 않는다. A1의 대상은 `nextjs`이며 `nextjs-admin`은 A2에서 더한다. 정렬된 `managedFiles`는 현재 파일과 삭제 기록의 합집합이다.
 - 계약·목·규약 문서 사본(`contract/**`, `docs/conventions/**`)은 지금처럼 따로 동기화하고 admin에도 같은 사본을 둔다.
 
 ### 3.2 공유하는 것
 
-파일 단위의 최종 목록은 A1 프로토타입에서 확정한다. 공유 파일의 테스트도 같이 옮겨 두 템플릿의 check에서 돈다.
+아래는 A1 프로토타입에서 확정한 원본 132개다. 정확한 파일 목록은 `scripts/shared-assets.json`의 `shared/nextjs` 항목에 있다. 구현 옆 테스트와 해당 스크립트 테스트·fixture도 원본에 두며 템플릿 사본의 check에서 돈다.
 
 - 앱 코드
   - `src/lib/api/**`: 클라이언트, JSON:API 도우미, 에러 번역, 경로·추적
-  - `src/lib/session/`: 쿠키 암호화, 토큰 갱신, 요청·사용자. OAuth(`oauth.ts`)는 빼고 web에 남긴다
-  - `src/lib/realtime/**`, `src/lib/i18n/` 기반, `src/lib/env/startup.ts`, `src/lib/testing/**`
+  - `src/lib/session/`: `cookie.ts`, `key.ts`, `refresh.ts`, `request.ts`, `user.ts`, `redirect.ts`와 쿠키·redirect 테스트. `oauth.ts`·테스트와 보호 규칙 `routes.ts`는 앱 파일이다
+  - `src/lib/realtime/**`, `src/lib/i18n/**`(routing·navigation·request·catalogs·merge·타입과 테스트), `src/lib/env/startup.ts`·테스트, `src/lib/testing/account.ts`
+  - `src/lib/app-config.mjs`: 앱 이름·포트·쿠키 이름 읽기. `src/lib/utils.ts`: UI 클래스 병합
   - `src/components/ui/**`: shadcn 부품. 두 앱이 쓰는 부품의 합집합이다
-  - 공용 컴포넌트: 스피너, 제출 버튼, 에러 경계, 언어 전환
+  - 공용 컴포넌트: `spinner.tsx`, `submit-button.tsx`, `error-boundary.tsx`, `locale-switcher.tsx`, `common.test.tsx`. 헤더·404와 그 테스트는 앱에 둔다
   - 생성물: `src/lib/generated/**`(에러 코드, 실시간 이벤트)
   - 공유 메시지: `messages/shared/{ko,en}.json`(에러 코드 번역과 공통 문구)
 - 스크립트와 하네스
-  - check 실행기와 공용 단계: 타입, i18n 키 일치, 로딩 문구 금지, skill, 하네스
-  - 계약 생성(`gen`, `generate`, `gen-input`), 목 실행, E2E 실행 도구와 대상(목·FastAPI), 테스트 도우미
-  - 프로세스·환경·git 환경 도구, workspace 루트 탐색
-  - Claude Code hook 스크립트(`.claude/hooks/*.mjs`), 경계 린트 규칙, 고정 바이너리 설치기(Betterleaks)
+  - `scripts/check/**` 중 `steps.ts`·`steps.test.ts`를 뺀 실행기·파일 읽기·타입·i18n·로딩 문구·skill·하네스와 테스트. 단계 목록은 앱이 소유한다
+  - 계약 생성: `scripts/gen.ts`, `generate.ts`, `gen-input.ts`, `gen-config.mjs`와 `gen.test.ts`, `gen-input.test.ts`, `gen-input-light.test.ts`, `gen-config.test.ts`
+  - 개발·설치: `scripts/dev.mjs`, `dev-mode.mjs`, `setup.mjs`와 테스트. `scripts/app-config.test.ts`, `api-types.test.ts`, `i18n-types.test.ts`
+  - E2E: `scripts/e2e-server.ts`, `e2e-runtime.ts`·테스트, `scripts/fastapi-target.test.ts`, `e2e/targets/{index,mock,fastapi}.ts`. 공통 대상은 메일·최근 로그인 창을 다루며 OAuth는 요구하지 않는다
+  - 테스트 지원: `scripts/test/{browser,dependency-links,mock-server,server-only,session,server-action}.ts`와 browser·mock-server·server-action 테스트, `scripts/http/server.ts`, `scripts/session-core.test.ts`, `session-refresh.integration.test.ts`
+  - 프로세스·환경: `scripts/{process,process-tree,envfile,git-environment}.mjs`와 process·process-tree·envfile 테스트, `scripts/workspace-root.ts`·테스트
+  - hook: `.claude/hooks/*.mjs`, `scripts/hooks/**`(JSON fixture 포함). 공식 skill 동기화: `scripts/skills/{sync.ts,sources.json}`
+  - 린트: `scripts/lint/boundaries.mjs`·`rules.test.ts`. Betterleaks: `scripts/tools/{cli,betterleaks,betterleaks.test}.ts`
+
+혼합 파일은 다음처럼 나눴다. 공통 코드가 가져오는 앱 파일은 두 앱에서 같은 경로·내보내기 이름을 쓴다.
+
+- `redirect.ts`는 경로 디코딩·로케일 제거·점 구간 정리만 하고 `src/lib/session/routes.ts`의 `isProtectedPath`를 부른다. web의 기능 생성기와 페이지 레시피도 `routes.ts`를 수정한다.
+- `e2e/targets/app.ts`는 `appEnvironment`, `mockEnvironment`, `extendTarget`을 내보낸다. web은 OAuth URL·목 콜백·소셜 어댑터를 여기서 더한다. 소셜 구현·타입은 `e2e/targets/social.ts`, 검사는 `scripts/social-target.test.ts`다. 공통 E2E 테스트의 앱별 추가 설정은 `scripts/test/e2e-app.ts`의 `extraE2eEnv`로 준다.
+- `scripts/lint/app.mjs`는 web의 features 요소·정책·서버 파일 패턴을 공통 `architectureConfig`에 넘긴다. web 경계와 ESLint 설정 테스트는 앱에 남긴다.
+- 공용 컴포넌트 검사는 `common.test.tsx`, 헤더·404 검사는 `layout.test.tsx`다. 세션 읽기·401 검사는 `session-core.test.ts`, 앱의 쿠키 정리 route 검사는 `session-request.test.ts`다. Server Action 응답 대기는 web E2E fixture에서 공통 `scripts/test/server-action.ts`로 분리했다.
+- 환경 스키마·테스트(`src/lib/env.ts`, `env.test.ts`), instrumentation·next 설정·proxy·HTTP 시나리오·Vitest global setup은 앱 파일이다. 시작 검증과 check는 같은 경로의 앱 스키마를 가져온다.
 
 ### 3.3 앱마다 두는 것
 
@@ -108,6 +121,7 @@
 
 - 저장소 루트 check의 사본 검사가 공유 사본도 확인한다. 템플릿에서 사본을 고치면 "원본(`shared/nextjs/…`)을 고친 뒤 `pnpm sync`한다"로 실패한다.
 - 생성한 프로젝트에서는 평범한 파일이다. 템플릿 지침은 원본 폴더를 언급하지 않는다.
+- 공유 생성물(API 타입, 에러 코드, 실시간 이벤트)도 원본에 있다. 계약을 바꾼 뒤에는 저장소 전용 helper `scripts/src/sync/gen-nextjs.mjs`가 루트 계약으로 원본의 생성물을 만들고 `pnpm sync`가 사본을 맞춘다. 템플릿의 `pnpm gen`은 사본을 고쳐 사본 검사를 실패시키므로 저장소에서는 쓰지 않는다.
 
 ### 3.7 web 변경
 
@@ -458,6 +472,8 @@ Docker가 필요한 확인은 PR CI에서만 한다(AD16).
 6. 잠금 파일 합치기(A3): web·admin 잠금 파일 importer 합치기와 해석 보존.
 7. E2E 계정 준비(A2·A3): 목의 테스트 통로와 FastAPI의 가입·Mailpit 흐름으로 일반 회원과 일부 권한 관리자를 만드는 방법.
 8. 실시간 허용 출처(A2·A3): 목·FastAPI 기본값과 E2E 출처.
+9. 로케일 쿠키(A2): 공유 i18n 설정의 `NEXT_LOCALE`은 두 앱이 같은 이름이라 localhost에서 web과 admin의 언어 선택이 서로 덮인다. 계정 `locale` 동기화(AD11)로 같은 사용자의 선택이라 해는 작다. 그대로 둘지 `<app>-locale`로 나눌지 A2에서 정한다.
+10. 공유 테스트의 입력값(A2 전): 공유 테스트에는 web 값(`app: "web"`, 3000·4010 등)이 검증 입력으로 들어 있다. 실행 앱의 설정이 아니고 admin 사본에서도 통과하므로 허용한다(§3.4는 실행 코드에 대한 규칙이다).
 
 ## 13. 미룬 결정
 
