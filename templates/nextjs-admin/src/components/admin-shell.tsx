@@ -12,9 +12,11 @@ import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose 
 export function AdminShell({
   children,
   account,
+  menu = [],
 }: {
   children: ReactNode;
   account: { name: string | null; email: string | null };
+  menu?: readonly { href: string; label: string }[];
 }) {
   const t = useTranslations("layout");
   return (
@@ -37,7 +39,13 @@ export function AdminShell({
                     <X aria-hidden="true" />
                   </SheetClose>
                 </SheetHeader>
-                <nav aria-label={t("menu")} className="p-4" />
+                <nav aria-label={t("menu")} className="flex flex-col gap-3 p-4">
+                  {menu.map((item) => (
+                    <SheetClose key={item.href} render={<Link href={item.href} />}>
+                      {item.label}
+                    </SheetClose>
+                  ))}
+                </nav>
               </SheetContent>
             </Sheet>
           </div>
@@ -58,7 +66,13 @@ export function AdminShell({
       </header>
       <div className="flex flex-1">
         <aside className="hidden w-56 shrink-0 border-r p-4 md:block">
-          <nav aria-label={t("menu")} />
+          <nav aria-label={t("menu")} className="flex flex-col gap-3">
+            {menu.map((item) => (
+              <Link key={item.href} href={item.href}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </aside>
         <main
           id="main"

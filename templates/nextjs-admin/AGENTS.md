@@ -4,17 +4,17 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 
 ## 명령
 
-| 명령                             | 하는 일                                                |
-| -------------------------------- | ------------------------------------------------------ |
-| `pnpm setup`                     | 고정 설치·환경 키 보충·독립 git hook·Chromium 준비     |
-| `pnpm dev`                       | 단독 admin(3001)·목(4011), 백엔드 모드는 admin만 실행  |
-| `pnpm check`                     | 포맷·린트·타입·단위·통합·생성물·i18n·계약·하네스 9단계 |
-| `pnpm check --fast -- <파일...>` | Stop hook의 빠른 검사                                  |
-| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                             |
-| `pnpm test`                      | Vitest 단위·실제 목 통합 검사                          |
-| `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 Chromium E2E             |
-| `pnpm gen`                       | TypeSpec·목·API·에러·실시간 타입 생성                  |
-| `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                   |
+| 명령                             | 하는 일                                                             |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `pnpm setup`                     | 고정 설치·환경 키 보충·독립 git hook·Chromium 준비                  |
+| `pnpm dev`                       | 단독 admin(3001)·목(4011), 백엔드 모드는 admin만 실행               |
+| `pnpm check`                     | 포맷·린트·타입·단위·통합·생성물·리소스 문구·i18n·계약·하네스 10단계 |
+| `pnpm check --fast -- <파일...>` | Stop hook의 빠른 검사                                               |
+| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                          |
+| `pnpm test`                      | Vitest 단위·실제 목 통합 검사                                       |
+| `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 Chromium E2E                          |
+| `pnpm gen`                       | TypeSpec·목·API·에러·실시간 타입 생성                               |
+| `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                                |
 
 ## 구조
 

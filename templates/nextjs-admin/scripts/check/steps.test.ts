@@ -118,7 +118,7 @@ it.each(installedChanges)(
       first.cache,
       execute,
     );
-    expect(cached.output).toContain("9 캐시");
+    expect(cached.output).toContain("10 캐시");
     expect(calls).toEqual([]);
     const updated = await runChecks(
       assembleSteps(files, false, [], {}, changed),
@@ -127,6 +127,25 @@ it.each(installedChanges)(
     );
     expect(updated.ok).toBe(true);
     expect(calls).toEqual(["harness"]);
-    expect(updated.output).toContain("8 캐시");
+    expect(updated.output).toContain("9 캐시");
   },
 );
+it("리소스 문구 검사는 실제 명령이며 선언과 메시지 변경에 다시 돈다", () => {
+  const key = (files: Record<string, string>) =>
+    stepKey(assembleSteps(files, false, []), "resource-messages");
+  expect(
+    assembleSteps({}, false, []).find((step) => step.name === "resource-messages")?.args,
+  ).toEqual([
+    "tsx",
+    "--import",
+    "./scripts/check/register-resources.mjs",
+    "scripts/check/resource-messages.ts",
+  ]);
+  for (const path of [
+    "src/resources/index.ts",
+    "messages/ko.json",
+    "src/lib/resources/definition.ts",
+  ])
+    expect(key({ [path]: "before" })).not.toBe(key({ [path]: "after" }));
+  expect(assembleSteps({}, true, []).some((step) => step.name === "resource-messages")).toBe(true);
+});

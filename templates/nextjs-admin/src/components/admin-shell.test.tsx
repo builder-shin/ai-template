@@ -36,3 +36,25 @@ it("계정 정보·언어·로그아웃과 좁은 화면 메뉴 시트를 제공
   await user.click(screen.getByRole("button", { name: "메뉴 닫기" }));
   expect(screen.queryByRole("dialog")).toBeNull();
 });
+it("전달한 메뉴 순서를 데스크톱과 시트에서 보존한다", async () => {
+  render(
+    <NextIntlClientProvider locale="ko" messages={ko}>
+      <AdminShell
+        account={{ name: null, email: null }}
+        menu={[
+          { href: "/roles", label: "역할" },
+          { href: "/posts", label: "글" },
+        ]}
+      >
+        본문
+      </AdminShell>
+    </NextIntlClientProvider>,
+  );
+  expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
+    "관리",
+    "역할",
+    "글",
+  ]);
+  await userEvent.setup().click(screen.getByRole("button", { name: "메뉴 열기" }));
+  expect(screen.getByRole("dialog").querySelectorAll("nav a")).toHaveLength(2);
+});

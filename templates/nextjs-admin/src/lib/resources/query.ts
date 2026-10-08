@@ -1,5 +1,7 @@
 import "server-only";
 import { buildQuery } from "../api/jsonapi";
+import { envSchema } from "../env";
+import { calendarDateFilter } from "./date";
 import type { ListQuery } from "./contract";
 import type { AnyResource } from "./definition";
 
@@ -16,7 +18,15 @@ export function resourceQuery<R extends AnyResource>(
   const filter: Record<string, string> = {};
   for (const key of Object.keys(resource.list.filters ?? {})) {
     const value = scalar(params[key]);
-    if (value !== undefined) filter[key.slice(7, -1)] = value;
+    if (value !== undefined)
+      filter[key.slice(7, -1)] =
+        resource.list.filters?.[key as keyof typeof resource.list.filters] === "date"
+          ? calendarDateFilter(
+              value,
+              key.endsWith("To]"),
+              envSchema.shape.TIME_ZONE.parse(process.env.TIME_ZONE),
+            )
+          : value;
   }
   const rawPage = scalar(params["page[number]"]);
   const number = rawPage && /^[1-9]\d*$/.test(rawPage) ? Number(rawPage) : 1;

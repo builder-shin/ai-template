@@ -1,4 +1,6 @@
 import "server-only";
+import type { ComponentType } from "react";
+import type { DisplayProps, InputProps } from "../../components/resource/types";
 import type { FormResult } from "../api/errors";
 import type { components } from "../api/schema";
 import type {
@@ -17,8 +19,18 @@ import type {
 type Permission = components["schemas"]["PermissionCode"];
 export type InputKind = "text" | "textarea" | "enum" | "boolean";
 export type FilterKind = "text" | "enum" | "relation" | "date";
+export type DisplayKind =
+  "text" | "textarea" | "date" | "enum" | "boolean" | "relation" | "relation-many" | "file";
+export type FieldPresentation = {
+  kind?: DisplayKind;
+  values?: readonly string[];
+  relation?: { type: string; label: string; search?: boolean };
+  display?: ComponentType<DisplayProps>;
+  input?: ComponentType<InputProps>;
+};
 export type ResourceForm<T extends ResourceType, M extends "create" | "edit"> = {
   permission: Permission;
+  visible?: (record: ResourceRecord<T>) => boolean;
   fields: {
     readonly [K in WriteAttributeKey<T, M>]?: InputKind;
   } & {
@@ -35,6 +47,7 @@ export type ResourceAction<T extends ResourceType> = {
 export type ResourceDefinition<T extends ResourceType> = {
   type: T;
   permission: Permission;
+  fields?: Partial<Record<FieldKey<T>, FieldPresentation>>;
   list: {
     columns: readonly FieldKey<T>[];
     filters?: Partial<Record<FilterKey<T>, FilterKind>>;
@@ -53,7 +66,9 @@ export type ResourceDefinition<T extends ResourceType> = {
       };
   create?: [ContractOperation<T, "create">] extends [never] ? never : ResourceForm<T, "create">;
   edit?: [ContractOperation<T, "edit">] extends [never] ? never : ResourceForm<T, "edit">;
-  delete?: [ContractOperation<T, "delete">] extends [never] ? never : { permission: Permission };
+  delete?: [ContractOperation<T, "delete">] extends [never]
+    ? never
+    : { permission: Permission; visible?: (record: ResourceRecord<T>) => boolean };
   actions?: readonly ResourceAction<T>[];
   realtime?: { channel: string };
 };

@@ -1,4 +1,6 @@
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { resources } from "@/resources";
+import { visibleResources } from "@/lib/resources/access";
 import type { ReactNode } from "react";
 import { requireAdmin } from "../../../lib/admin/account";
 import { AdminShell } from "../../../components/admin-shell";
@@ -16,5 +18,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       </main>
     );
   }
-  return <AdminShell account={{ name: account.name, email: account.email }}>{children}</AdminShell>;
+  const t = await getTranslations({ locale });
+  const translate = t as (key: string) => string;
+  const menu = visibleResources(resources, account.permissions).map((resource) => ({
+    href: `/${resource.type}`,
+    label: translate(`resources.${resource.type}.title`),
+  }));
+  return (
+    <AdminShell account={{ name: account.name, email: account.email }} menu={menu}>
+      {children}
+    </AdminShell>
+  );
 }
