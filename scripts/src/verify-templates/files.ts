@@ -4,12 +4,12 @@ import { join, relative } from "node:path";
 const IGNORED = new Set(["node_modules", ".cache"]);
 
 /** 폴더 안의 파일을 상대 경로(슬래시 구분)로 모두 나열한다. node_modules는 뺀다. */
-export function listFiles(dir: string): string[] {
+export function listFiles(dir: string, ignored: ReadonlySet<string> = IGNORED): string[] {
   if (!existsSync(dir)) return [];
   const files: string[] = [];
   const visit = (current: string): void => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
-      if (IGNORED.has(entry.name)) continue;
+      if (ignored.has(entry.name)) continue;
       const path = join(current, entry.name);
       if (entry.isDirectory()) visit(path);
       else files.push(relative(dir, path).replaceAll("\\", "/"));

@@ -1,3 +1,6 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { format, resolveConfig } from "prettier";
 import { readSharedAssets } from "../verify-templates/manifest.ts";
 import { syncSharedAssets } from "./sync.ts";
 
@@ -10,4 +13,10 @@ if (Array.isArray(shared)) {
 }
 
 const copied = syncSharedAssets(repoRoot, shared);
+if (shared.assets.some((asset) => asset.mode === "overlay")) {
+  const path = join(repoRoot, "scripts/shared-assets.json");
+  const before = readFileSync(path, "utf8");
+  const after = await format(before, { ...(await resolveConfig(path)), filepath: path });
+  if (after !== before) writeFileSync(path, after);
+}
 console.log(copied.length > 0 ? copied.join("\n") : "동기화할 공유 자산이 없다.");

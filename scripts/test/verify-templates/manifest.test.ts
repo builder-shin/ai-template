@@ -1,8 +1,13 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { readSharedAssets } from "../../src/verify-templates/manifest.ts";
+
+const repos: string[] = [];
+afterEach(() => {
+  for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
+});
 
 const TEMPLATE_RULE =
   'templates/ 바로 아래 폴더 이름 하나를 적는다. 빈 값, ".", "..", 그리고 "/", "\\", ":" 같은 구분자는 안 된다.';
@@ -17,7 +22,8 @@ function write(root: string, path: string, content: string): void {
 
 /** 원본 contract/openapi.yaml이 있는 임시 저장소에 shared-assets.json을 쓰고 읽는다. */
 function read(manifest: unknown) {
-  const repo = mkdtempSync(join(tmpdir(), "shared-assets-"));
+  const repo = mkdtempSync(join(tmpdir(), "aitpl-shared-assets-"));
+  repos.push(repo);
   write(repo, "contract/openapi.yaml", "openapi: 3.1.0\n");
   write(repo, "scripts/shared-assets.json", JSON.stringify(manifest));
   return readSharedAssets(repo);
