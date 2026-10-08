@@ -1,7 +1,7 @@
 import { ko, en } from "../src/lib/i18n/catalogs";
 import { randomUUID } from "node:crypto";
 import { test, expect, signupAndVerify, login, waitForServerAction } from "./fixtures";
-import { webOrigin } from "./targets";
+import { applicationOrigin } from "./targets";
 import { observeRealtime } from "./realtime";
 
 for (const locale of ["ko", "en"] as const) {
@@ -92,7 +92,7 @@ test("다른 컨텍스트의 발행·취소가 공개 목록에 새로고침 없
   await page.getByLabel(en.posts.bodyLabel, { exact: true }).fill("Live publication");
   await page.getByRole("button", { name: en.posts.save, exact: true }).click();
   await expect(page).toHaveURL(/\/en\/my-posts\/[^/]+\/edit$/);
-  const peer = await browser.newContext({ baseURL: webOrigin });
+  const peer = await browser.newContext({ baseURL: applicationOrigin });
   try {
     const reader = await peer.newPage();
     const realtime = observeRealtime(reader);

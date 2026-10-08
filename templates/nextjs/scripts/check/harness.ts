@@ -84,6 +84,25 @@ export function checkHarness(
           `package.json:1 start — app.config.json의 dev 포트로 고친다: next start --port ${config.ports.dev}`,
         );
       const appUrl = files[".env.example"]?.match(/^\s*APP_URL\s*=(.*)$/m)?.[1];
+      for (const [key, suffix] of [
+        ["API_BASE_URL", "/api/v1"],
+        ["NEXT_PUBLIC_REALTIME_URL", ""],
+      ] as const) {
+        const value = files[".env.example"]?.match(new RegExp(`^\\s*${key}\\s*=(.*)$`, "m"))?.[1];
+        if (value === undefined) continue;
+        const expected = `http://localhost:${config.ports.mock}${suffix}`;
+        let actual = "";
+        try {
+          const url = new URL(value.split(" #")[0]?.trim() ?? "");
+          actual = url.origin + (url.pathname === "/" ? "" : url.pathname);
+        } catch {
+          /* URL이 아니어도 같은 수정 안내를 낸다. */
+        }
+        if (actual !== expected)
+          problems.push(
+            `.env.example:1 환경 — ${key}: app.config.json의 mock 포트로 고친다: ${expected}`,
+          );
+      }
       if (appUrl !== undefined) {
         const expectedOrigin = `http://localhost:${config.ports.dev}`;
         let origin = "";

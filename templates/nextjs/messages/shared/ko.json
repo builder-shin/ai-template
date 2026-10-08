@@ -5,7 +5,8 @@
     "en": "English"
   },
   "accessibility": {
-    "spinner": "진행 중"
+    "spinner": "진행 중",
+    "close": "닫기"
   },
   "errorPage": {
     "title": "오류가 발생했습니다",

@@ -4,7 +4,7 @@ import { mockTarget } from "./mock";
 import { fastapiTarget, parseFastapiTargetEnv } from "./fastapi";
 import { appOrigin } from "../../src/lib/app-config.mjs";
 
-export const webOrigin = appOrigin("e2e");
+export const applicationOrigin = appOrigin("e2e");
 export const mockOrigin = appOrigin("e2eMock", "127.0.0.1");
 export type TargetName = "mock" | "fastapi";
 export interface TargetAdapter {
@@ -24,14 +24,14 @@ export function targetEnvironment(
   if (name === "mock")
     return {
       E2E_TARGET: name,
-      APP_URL: webOrigin,
+      APP_URL: applicationOrigin,
       API_BASE_URL: `${mockOrigin}/api/v1`,
       NEXT_PUBLIC_REALTIME_URL: mockOrigin,
       ...appEnvironment(name, input),
     };
   const config = parseFastapiTargetEnv(input);
-  if (config.webOrigin !== webOrigin)
-    throw new Error(`APP_URL이 앱 설정과 다르다 — E2E 주소를 넣는다: ${webOrigin}`);
+  if (config.applicationOrigin !== applicationOrigin)
+    throw new Error(`APP_URL이 앱 설정과 다르다 — E2E 주소를 넣는다: ${applicationOrigin}`);
   let realtime: URL;
   try {
     realtime = new URL(input.NEXT_PUBLIC_REALTIME_URL ?? "");
@@ -48,7 +48,7 @@ export function targetEnvironment(
     throw new Error("NEXT_PUBLIC_REALTIME_URL: FastAPI 실시간 Origin을 설정한다.");
   return {
     E2E_TARGET: name,
-    APP_URL: config.webOrigin,
+    APP_URL: config.applicationOrigin,
     API_BASE_URL: config.apiBaseUrl,
     NEXT_PUBLIC_REALTIME_URL: realtime.origin,
     E2E_MAILPIT_URL: config.mailpitOrigin,

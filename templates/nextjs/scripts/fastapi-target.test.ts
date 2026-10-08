@@ -58,7 +58,7 @@ describe("FastAPI 대상 설정", () => {
   });
   it("명시한 URL과 창을 검증하고 끝 슬래시를 정리한다", () => {
     expect(parseFastapiTargetEnv(env({ E2E_MAILPIT_URL: "http://127.0.0.1:28125/" }))).toEqual({
-      webOrigin: appOrigin("e2e"),
+      applicationOrigin: appOrigin("e2e"),
       apiBaseUrl: "http://127.0.0.1:18100/api/v1",
       mailpitOrigin: "http://127.0.0.1:28125",
       recentLoginSeconds: 10,

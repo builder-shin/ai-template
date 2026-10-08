@@ -82,7 +82,7 @@ export function fastapiSocial(
       await claimsField.fill(JSON.stringify(claims));
       // 폼 제출·제공자→FastAPI→web 리다이렉트를 따른다. BFF의 PKCE 쿠키는 그대로 둔다.
       await form.locator('input[type="submit"]').click();
-      await page.waitForURL((url) => url.origin === config.webOrigin);
+      await page.waitForURL((url) => url.origin === config.applicationOrigin);
     },
     async denySocialLogin(page, provider) {
       const { state, callback } = await providerPage(page, provider);
@@ -90,7 +90,7 @@ export function fastapiSocial(
       callback.searchParams.set("state", state);
       callback.searchParams.set("error", "access_denied");
       await page.goto(callback.href);
-      await page.waitForURL((url) => url.origin === config.webOrigin);
+      await page.waitForURL((url) => url.origin === config.applicationOrigin);
     },
   };
 }

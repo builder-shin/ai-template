@@ -14,7 +14,7 @@ function problemsOf(env: Record<string, string>): readonly string[] {
 }
 
 describe("loadConfig", () => {
-  it("변수가 없으면 FastAPI 템플릿 .env.example의 개발용 값으로 뜬다", () => {
+  it("변수가 없으면 web·admin을 허용하는 개발용 기본값으로 뜬다", () => {
     expect(loadConfig({})).toEqual({
       recentLoginSeconds: 600,
       port: 4010,
@@ -40,7 +40,7 @@ describe("loadConfig", () => {
         userQuota: 1_073_741_824,
       },
       storageAllowedOrigins: ["http://localhost:3000", "http://localhost:3001"],
-      realtimeAllowedOrigins: ["http://localhost:3000"],
+      realtimeAllowedOrigins: ["http://localhost:3000", "http://localhost:3001"],
     });
   });
 

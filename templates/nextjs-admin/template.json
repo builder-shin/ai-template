@@ -1,0 +1,6 @@
+{
+  "name": "nextjs-admin",
+  "kind": "frontend",
+  "runner": "pnpm",
+  "goldenModule": "src/resources/posts"
+}

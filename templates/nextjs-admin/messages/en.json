@@ -1,0 +1,32 @@
+{
+  "home": {
+    "title": "Admin",
+    "description": "Manage your service.",
+    "empty": "No admin resources are registered."
+  },
+  "auth": {
+    "login": "Log in",
+    "email": "Email",
+    "passwordLabel": "Password",
+    "noAccess": "You do not have access to the admin app.",
+    "retryAfter": "Try again in {seconds} seconds."
+  },
+  "layout": {
+    "brand": "Admin",
+    "menu": "Admin menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "logout": "Log out",
+    "skipToContent": "Skip to content",
+    "unnamedUser": "User"
+  },
+  "forbidden": {
+    "title": "Access denied",
+    "description": "Check your admin permissions or log in with another account."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "Check the address.",
+    "home": "Go to admin home"
+  }
+}

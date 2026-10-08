@@ -121,7 +121,7 @@ export const DEFAULT_CONFIG: MockConfig = {
     userQuota: 1_073_741_824,
   },
   storageAllowedOrigins: ["http://localhost:3000", "http://localhost:3001"],
-  realtimeAllowedOrigins: ["http://localhost:3000"],
+  realtimeAllowedOrigins: ["http://localhost:3000", "http://localhost:3001"],
 };
 
 /** 시드 관리자 비밀번호의 최소 길이. FastAPI 설정(seed_admin_password)과 가입 규칙과 같다. */

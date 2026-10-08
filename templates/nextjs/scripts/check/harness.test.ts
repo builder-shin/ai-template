@@ -8,6 +8,30 @@ const base = {
 };
 const inspect = (files: Record<string, string>) => checkHarness(files, ["A", "B"]);
 
+it.each([3000, 3001])("앱 %s의 목 API·실시간 예시 포트를 검사한다", (dev) => {
+  const mock = dev + 1010;
+  const files = {
+    ...base,
+    "app.config.json": JSON.stringify({
+      app: "example",
+      ports: { dev, mock, e2e: dev + 100, e2eMock: mock + 100 },
+    }),
+    "package.json": JSON.stringify({ scripts: { start: `next start --port ${dev}` } }),
+    ".env.example": `API_BASE_URL=http://localhost:${mock}/api/v1\nNEXT_PUBLIC_REALTIME_URL=http://localhost:${mock}\nAPP_URL=http://localhost:${dev}\n`,
+  };
+  const keys = ["API_BASE_URL", "NEXT_PUBLIC_REALTIME_URL", "APP_URL"];
+  expect(checkHarness(files, keys)).toEqual([]);
+  expect(
+    checkHarness(
+      { ...files, ".env.example": files[".env.example"].replaceAll(String(mock), "9999") },
+      keys,
+    ),
+  ).toEqual([
+    `.env.example:1 환경 — API_BASE_URL: app.config.json의 mock 포트로 고친다: http://localhost:${mock}/api/v1`,
+    `.env.example:1 환경 — NEXT_PUBLIC_REALTIME_URL: app.config.json의 mock 포트로 고친다: http://localhost:${mock}`,
+  ]);
+});
+
 it("동기화한 계약은 원본 배너를 보존한다", () => {
   expect(
     inspect({

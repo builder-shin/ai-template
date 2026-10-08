@@ -1,0 +1,59 @@
+[
+  {
+    "name": "next-dev-loop",
+    "package": "next",
+    "version": "16.3.8",
+    "url": "https://raw.githubusercontent.com/vercel/next.js/b0fad0d45eb4c4430fda5eeeb442e8a5af08a5f6/skills/next-dev-loop",
+    "commit": "b0fad0d45eb4c4430fda5eeeb442e8a5af08a5f6",
+    "installedDirectory": null,
+    "files": {
+      "SKILL.md": "6b8749833d92be29d11598fffcb6863ae32421c88b16299af808f7de3faf7d85"
+    }
+  },
+  {
+    "name": "shadcn",
+    "package": "shadcn",
+    "version": "4.21.0",
+    "url": "https://raw.githubusercontent.com/shadcn-ui/ui/7c9eaba1c0a6404c990c144a654792e3313c650d/skills/shadcn",
+    "commit": "7c9eaba1c0a6404c990c144a654792e3313c650d",
+    "installedDirectory": null,
+    "files": {
+      "SKILL.md": "deba6c5152d9835892fa7dffeb1fedbb689ddac7e59e14e57ec5eaf9463309e4",
+      "cli.md": "a381e35bf36fe7bb851952c13707e01e82434fd7a4a4e53f6df26c6370838904",
+      "customization.md": "84c1d47168c4b8adb5840e4af30a4e373ae3377c1110478c8974f398dd63f5ba",
+      "mcp.md": "8d696b4e45b7d0e337367248513bd9acebe8f3bcfd7b748c775e5a337c8f38c8",
+      "registry.md": "4f239be36bd2b58e17047db1ca80ab7da00e15a8b73242e5e4d50d113c4caa05",
+      "rules/base-vs-radix.md": "2b2deb47d004285220c1fc6b38bb2edc2d0ccbcdafd031b0b189d5d8ed0d1ba8",
+      "rules/chat.md": "de29c12524a27578a59ecf8c95ea939278c1a3572a3706bfc99f6f92cb770b7b",
+      "rules/composition.md": "f282df828d83a91132a846ddb62eea149a7c7c94822e9ca88cfddf85af01aa41",
+      "rules/forms.md": "29593e14381e34626f8e0e9c15c59f3394b92a0623af6a6ec94585400123853c",
+      "rules/icons.md": "d4a58266648872d9ee07d0c2368843a1cb88b8253b7f528dd7bda9d68b6c2535",
+      "rules/styling.md": "f88fbd72dff862805b786dc7d7e4c74c83030fc278c5b97c993e4e665001798c",
+      "LICENSE.md": "1564074e13439397221ffd522e2e504d56561994a23d371aa5e3ad43e4f5423f"
+    },
+    "fileUrls": {
+      "LICENSE.md": "https://raw.githubusercontent.com/shadcn-ui/ui/7c9eaba1c0a6404c990c144a654792e3313c650d/LICENSE.md"
+    }
+  },
+  {
+    "name": "playwright-cli",
+    "package": "@playwright/cli",
+    "version": "0.1.22",
+    "url": "https://registry.npmjs.org/@playwright/cli/-/cli-0.1.22.tgz",
+    "commit": null,
+    "installedDirectory": "skills/playwright-cli",
+    "files": {
+      "references/element-attributes.md": "bf19aa4671e0a50a0fefa9c790f39124e803060eefe395042b723c29fcb7faa2",
+      "references/playwright-tests.md": "c5b0719fef2cfdff50bd744051b2f9afc119775db4b48e9b2882c1cf3886797c",
+      "references/pr-attachments.md": "24b118e74598be72e73e24fe223d295b9099c85b1860a7c8f6e5690c9038fa2a",
+      "references/request-mocking.md": "54e801c9663fc2b6d68ceb058cb1c360724c2499f42acc7852a68e83e5b5f37c",
+      "references/running-code.md": "3029569ed6ddaeffc0b87badde967efdc2973b1677f078830098146eb3b78ebe",
+      "references/session-management.md": "a4f16271f95d3eec7bc56e659d8adbb8f6ad7d603a6fa15efdcdd071a50c6ce3",
+      "references/storage-state.md": "9ac47f9ae4a1aedcd2077f8ac9ab1ba6bee1962cb83ff51adcd36fb6d83b5ec6",
+      "references/test-generation.md": "27ecb11ef647999bd7486695bb1aacc3682097e6bb5742804cb6c8769c2b5364",
+      "references/tracing.md": "ef73e71bee792e341df9cd4f60529c929ade48b538ac76e033f4f20843e8dbda",
+      "references/video-recording.md": "1c800b897824cb54394c34265d8ebffdbb530adfc8d612c5d798b667a1799f48",
+      "SKILL.md": "9bba755285a4c9ad72a4a41b9c7baef6fb516d329c0b44ed0573715f4479b906"
+    }
+  }
+]

@@ -4,13 +4,13 @@ import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mockOrigin, webOrigin, targetEnvironment } from "../e2e/targets";
+import { mockOrigin, applicationOrigin, targetEnvironment } from "../e2e/targets";
 import { startE2eServers, type ServerDependencies } from "./e2e-runtime";
 import { extraE2eEnv } from "./test/e2e-app";
 
 const env = {
   E2E_TARGET: "fastapi",
-  APP_URL: webOrigin,
+  APP_URL: applicationOrigin,
   API_BASE_URL: "http://127.0.0.1:18100/api/v1",
   NEXT_PUBLIC_REALTIME_URL: "http://127.0.0.1:18100",
   E2E_MAILPIT_URL: "http://127.0.0.1:28125",
