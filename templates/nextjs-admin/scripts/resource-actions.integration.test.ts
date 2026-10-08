@@ -74,6 +74,34 @@ async function post(status: "draft" | "published" = "draft") {
   });
   return { document, member };
 }
+it.each(["detail", "list"])(
+  "선언 밖 저장 모드는 API 호출 전에 404로 거절한다: %s",
+  async (mode) => {
+    const seed = await seedFixture(inject("mockBaseUrl"));
+    await session(seed);
+    const { document } = await post();
+    const form = new FormData();
+    form.set("title", "우회하여 바뀌면 안 되는 제목");
+    const requests = vi.spyOn(globalThis, "fetch");
+    try {
+      await expect(
+        // 클라이언트가 바인딩 인자를 변조한 요청을 재현한다.
+        saveResourceAction(
+          "posts",
+          mode as Parameters<typeof saveResourceAction>[1],
+          document.data.id,
+          { ok: true },
+          form,
+        ),
+      ).rejects.toMatchObject({ status: 404, code: "resource.not_found" });
+      expect(requests).not.toHaveBeenCalled();
+    } finally {
+      requests.mockRestore();
+    }
+    const unchanged = await createResourceData(seed.client).detail(postsFixture, document.data.id);
+    expect(unchanged.data.attributes).toMatchObject({ title: "화면 테스트", body: "본문" });
+  },
+);
 it("폼 검증 오류는 실제 pointer를 필드에 붙인다", async () => {
   const seed = await seedFixture(inject("mockBaseUrl"));
   await session(seed);

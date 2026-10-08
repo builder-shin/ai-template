@@ -83,6 +83,7 @@ export async function saveResourceAction(
   _state: ResourceState,
   form: FormData,
 ): Promise<ResourceState> {
+  if (mode !== "create" && mode !== "edit") throw denied("resource.not_found");
   const locale = await getLocale();
   let inputs: Record<string, unknown> | undefined;
   let target: string;

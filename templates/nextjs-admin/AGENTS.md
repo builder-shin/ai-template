@@ -65,6 +65,7 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 - 쿼리 이동 뒤 필터 막대의 검색·날짜·선택·정렬 값은 새 URL을 따른다. 같은 쿼리의 새로고침도 선택기에 새 옵션과 라벨을 반영하며 이전 관계 검색 결과를 대체한다.
 - 기간 필터의 날짜는 `TIME_ZONE`의 하루 시작·끝으로 API에 보낸다. 잘못된 URL 필터의 4xx는 같은 화면의 안내다. 관계 옵션의 403은 해당 필터만 비활성화하고 안내한다. 검색 가능한 관계는 첫 20개만 읽고, 검색 없는 관계는 마지막 페이지까지 읽는다.
 - 최상위 `fields`에 표시 종류·열거값 `values`·관계 대상과 라벨·표시·입력 override를 둔다. 열거값은 런타임 목록도 선언한다. 입력 종류는 `create`·`edit`의 `fields`에 두고 폼은 선언한 필드만 보낸다.
+- 범용 저장 Action은 런타임에도 `create`·`edit` 모드만 허용한다. 그 밖의 모드는 권한 검사·API 호출 전에 404 `resource.not_found`로 거절한다.
 - 메뉴·버튼·화면과 Server Action은 모두 권한·조건을 확인하며 최종 판정은 API가 한다. Action은 최신 단건을 읽어 조건을 다시 확인한다. 권한이 없으면 `permission.denied`, 권한은 있으나 현재 조건과 다르면 `resource.conflict` 안내다.
 - 삭제와 확인이 필요한 동작은 dialog를 거친다. 필드 표시·입력만 바꿔 끼우며 리소스 전체 화면 override는 없다.
 - 문구는 `resources.<type>.title`, `fields.<name>`, `enums.<name>.<value>`, `actions.<name>`이다. `resource-messages` 검사가 등록 선언에서 키를 모아 ko/en 양쪽의 빈 문구와 누락을 확인한다. 전체 check는 format·lint·types·tests·generated·resource-messages·i18n·contract-typespec·contract-mock·harness의 10단계다.
