@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "gen": "tsx scripts/gen.ts",
+    "gen:resource": "tsx scripts/gen-resource/cli.ts",
     "skills:sync": "tsx scripts/skills/sync.ts",
     "tool": "tsx scripts/tools/cli.ts"
   },

@@ -65,9 +65,12 @@ Next.js 공유 import 검사는 목록(`scripts/shared-assets.json`)의 모든 �
 
 ```sh
 git add shared/nextjs/수정한-파일.ts
+pnpm sync
 pnpm fix:shared shared/nextjs/수정한-파일.ts
 pnpm sync
 ```
+
+새 원본끼리 import하면 첫 `pnpm sync`로 사본을 먼저 만들어야 한다. ESLint가 원본 내용을 사본 경로에서 검사하며 import 대상도 그 위치에서 찾기 때문이다. 기존 원본만 수정하면 첫 동기화는 생략할 수 있다.
 
 파일 인자를 생략하면 추적 중인 일반 공유 소스를 모두 고른다. helper(`scripts/src/sync/fix-nextjs.mjs`)는 원본 내용에 web의 ESLint 설정과 대응 사본 경로를 적용해 자동 수정한 뒤, 사본 경로의 Prettier 설정으로 포맷한다. 원본에만 쓰며 생성물·환경 파일은 제외한다. web 의존성이 설치되어 있어야 한다. 자동 수정할 수 없는 린트 오류는 실패 코드로 알린다. 이후 원본·manifest·사본을 함께 스테이징하고 루트·템플릿 check로 확인한다.
 

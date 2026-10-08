@@ -110,9 +110,11 @@
 
 - 골든 모듈 `posts`는 모든 계층, 테스트, 권한, 실시간, 다국어의 정답 예시다.
 - 생성기(`gen:module <name>` 등)는 골든 모듈을 복사해 이름을 바꾸고 등록 작업(라우터·모듈 등록, 권한 문자열, i18n 키, 마이그레이션 초안, 테스트)까지 처리한다.
+- admin의 `gen:resource <type>`은 계약에서 선언·ko/en 자리표시자·등록을 만든다. 범용 화면은 복사하지 않는다. 목록 없는 type과 기존 리소스·문구·등록은 쓰기 전에 거절한다. 글 골든에는 목록·상세·상태 변경·삭제·실시간이 있고 작성·수정 폼은 없다.
 - 골든 모듈은 생성기가 읽는 표시를 주석으로 단다(복사하지 않을 줄, 이름을 바꾸지 않을 줄, 새 모듈에서 고칠 곳). 생성기는 만든 뒤 고칠 곳을 목록으로 알린다.
 - 절차의 원본은 `docs/recipes/*.md`다. Claude Code skill(`.claude/skills/<이름>/SKILL.md`)은 레시피를 불러오고 생성기를 호출하는 얇은 포장이다.
 - 공식 제공 skill이 있으면 넣는다(FastAPI 공식 에이전트 skill, Next.js `next-dev-loop`, Playwright CLI skill).
+- admin은 `docs/recipes/add-resource.md`, `add-field-kind.md`, `add-action.md`와 `.claude/skills/add-resource/SKILL.md`를 둔다. 자체 check는 `resource-messages`를 포함한 10단계이며 등록 선언의 동적 메시지 키·enum values를 ko/en 양쪽에서 검사한다.
 
 ## 외부 도구 연결
 
@@ -130,7 +132,7 @@
 - 템플릿은 저장소의 다른 폴더를 참조하지 않는다. 공유 자산은 사본으로 들어간다.
 - 원본과 사본 위치는 `scripts/shared-assets.json`에 적는다. `pnpm sync`가 파일·폴더를 복사하며 `mode: "overlay"`는 원본 파일만 대상의 같은 상대 경로에 덮는다. 다른 앱 파일은 보존한다.
 - Next.js 공통 코드·테스트·하네스의 원본은 `shared/nextjs/`다. 대상은 `templates/nextjs`와 `templates/nextjs-admin`이다. 덮어 놓기는 git 인덱스의 원본만 복사하며 항목·대상의 `managedFiles`로 삭제된 사본까지 추적한다. 새 대상은 기존 대상의 기록을 물려받지 않는다. 기록은 생성 프로젝트에 들어가지 않는다.
-- 공유 원본은 별도 프로젝트가 아니다. 루트 포맷·린트에서 제외하고 템플릿 사본의 check로 검사한다. 원본 자동 수정은 루트 `pnpm fix:shared [원본 파일...]` 뒤 `pnpm sync`로 한다. 저장소 사본 검사는 누락·내용 차이·삭제 사본 잔존을 거절한다.
+- 공유 원본은 별도 프로젝트가 아니다. 루트 포맷·린트에서 제외하고 템플릿 사본의 check로 검사한다. 새 원본은 `git add` → `pnpm sync` → `pnpm fix:shared <파일...>` → `pnpm sync` 순서로 맞춘다. 새 원본끼리 import하면 사본 경로에서 검사하는 ESLint가 대상을 찾도록 첫 동기화가 필요하다. 기존 원본의 자동 수정은 루트 `pnpm fix:shared [원본 파일...]` 뒤 `pnpm sync`로 한다. 저장소 사본 검사는 누락·내용 차이·삭제 사본 잔존을 거절한다.
 - 사본을 직접 고치지 않는다. 원본을 고치고 `pnpm sync`를 돌린다.
 
 지침 파일 검사는 `git ls-files --cached --others --exclude-standard`로 파일을 고른다. `.gitignore`에 있는 폴더(`.venv`, `node_modules` 등)는 보지 않는다.

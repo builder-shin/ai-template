@@ -2,7 +2,7 @@
 
 서버가 API를 읽고 Server Action이 쓴다. 브라우저에는 계정 표시 정보만 전달한다. API 토큰은 JWE 세션 쿠키에 두며 proxy에서만 갱신한다. 여러 인스턴스에서는 갱신을 같은 프로세스로 보내는 sticky session이 필요하다.
 
-비밀번호 로그인은 `POST /sessions`의 password grant 뒤 발급 토큰으로 `/me`를 읽는다. `admin:access`가 없으면 새 세션을 끝내고 세션·`NEXT_LOCALE` 쿠키를 쓰지 않는다. 발급 뒤 실패한 세션도 정리한다. 보호 레이아웃과 관리 홈은 요청마다 다시 확인하며 React 캐시는 요청 안의 중복 조회만 묶는다. `/forbidden`은 권한 판정 밖에서 계정을 읽어 메뉴 없는 레이아웃과 로그아웃을 보인다.
+비밀번호 로그인은 `POST /sessions`의 password grant 뒤 발급 토큰으로 `/me`를 읽는다. `admin:access`가 없으면 새 세션을 끝내고 세션·`NEXT_LOCALE` 쿠키를 쓰지 않는다. 발급 뒤 실패한 세션도 정리한다. 보호 레이아웃은 문서 요청마다, 관리 홈·리소스 화면과 Action은 요청마다 다시 확인한다. 클라이언트 이동은 레이아웃을 다시 실행하지 않으며 React 캐시는 요청 안의 중복 조회만 묶는다. `/forbidden`은 권한 판정 밖에서 계정을 읽어 메뉴 없는 레이아웃과 로그아웃을 보인다.
 
 실시간 `me.updated`가 화면을 갱신해 접근 권한을 다시 확인한다. 현재 세션의 `session.revoked`는 401 확인 뒤 로그인 화면으로 보내며 다른 세션의 폐기는 무시한다. 로그아웃은 API 실패에도 브라우저 쿠키를 지우고 같은 언어의 로그인 화면으로 간다. 401은 쿠키 정리 route를 거쳐 로그인으로 보내고 그 밖의 모든 4xx는 `RequestNotice`로 같은 화면에 번역한다. 429는 `Retry-After`도 보인다. 서버 오류와 Next 이동·404 제어 흐름은 다시 던진다.
 
@@ -22,11 +22,13 @@
 
 최상위 fields의 표시 종류·열거값·관계 라벨·override가 목록과 상세에 쓰인다. `resource-messages`는 서버 표식만 이 검사 프로세스에서 풀어 선언을 읽고 제목·필드·필터·정렬·열거값·동작의 ko/en 문구를 검사한다. 전체 check와 빠른 검사에 모두 포함한다.
 
-글 골든은 `src/resources/posts/`에 있다. 목록과 상세에 작성자·표지 이미지를 include하며 파일 이름을 표시한다. 작성·수정 화면 없이 발행·발행 취소·삭제를 제공한다. 글 동작의 inline Server Action은 관리 권한과 최신 상태를 확인한 뒤 status만 PATCH한다. 이미 목표 상태인 글은 `resource.conflict` 안내로 반환한다.
+글 골든은 `src/resources/posts/`에 있다. 목록과 상세에 작성자·표지 이미지를 include하며 상세에서만 표지 이미지의 파일 이름을 표시한다. 목록에는 coverImage 열이 없다. 작성·수정 화면 없이 발행·발행 취소·삭제를 제공한다. 글 동작의 inline Server Action은 관리 권한과 최신 상태를 확인한 뒤 status만 PATCH한다. 이미 목표 상태인 글은 `resource.conflict` 안내로 반환한다.
 
 선언한 실시간 채널은 목록·상세에서만 구독한다. 구독 컴포넌트: `ResourceRealtime`. 첫 이벤트부터 1000ms 고정 창 안의 연속 이벤트를 한 번의 갱신으로 묶으며 이후 이벤트로 예약을 미루지 않는다. 상세는 자신의 레코드 id와 같은 이벤트만 반영한다. 숨은 탭은 갱신을 보류하고 다시 보일 때 한 번 갱신한다. 채널·레코드 변경과 unmount 때 이전 예약과 보류를 취소한다.
 
 목록 갱신 한 번은 `/me`, 목록, 검색 가능한 각 관계 필터의 첫 페이지를 읽는다.
+
+현재 제품 등록은 posts 하나다. `pnpm gen:resource <type>`은 API 타입 생성과 같은 `gen.config.json` 입력으로 선언·ko/en 자리표시자·등록 초안을 만들고 기존 자료는 덮지 않는다. operation의 `x-permission`이 없으면 `admin:access`를 넣으므로 권한·필드·문구를 검토한다. [리소스](recipes/add-resource.md)·[필드 종류](recipes/add-field-kind.md)·[동작](recipes/add-action.md) 레시피를 따른다. 사용자·역할·권한·감사 로그의 제품 화면과 FastAPI 대상 확장은 후속 범위다.
 
 ## 테스트
 

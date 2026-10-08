@@ -14,6 +14,7 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 | `pnpm test`                      | Vitest 단위·실제 목 통합 검사                                       |
 | `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 인증·글·권한·언어 Chromium E2E 11개   |
 | `pnpm gen`                       | TypeSpec·목·API·에러·실시간 타입 생성                               |
+| `pnpm gen:resource <type>`       | 계약에서 리소스 선언·ko/en 문구·등록 초안 생성                      |
 | `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                                |
 
 ## 구조
@@ -35,7 +36,7 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 - 먼저 [설치 버전 문서](docs/stack.md)를 읽는다. Next.js 문서는 `node_modules/next/dist/docs`다. `agentRules: false`를 유지한다.
 - 브라우저는 백엔드 API를 직접 부르지 않는다. 토큰은 서버의 암호화 쿠키에만 둔다. 개발 `admin-session`, 운영 `__Host-admin-session`이다.
 - 로그인은 password grant다. `/me`의 `meta.permissions`에 `admin:access`가 없으면 발급한 세션을 끝내고 세션·`NEXT_LOCALE` 쿠키를 쓰지 않는다. 발급 뒤 실패한 세션도 끝낸다.
-- `/login` 외의 모든 화면은 로그인이 필요하다. `(admin)` 레이아웃과 관리 홈은 요청마다 권한을 확인한다. 권한 상실은 `/forbidden`, 401은 쿠키 정리 뒤 로그인으로 보낸다. `/forbidden`은 계정만 읽고 관리 권한을 요구하지 않는다.
+- `/login` 외의 모든 화면은 로그인이 필요하다. `(admin)` 레이아웃은 문서 요청마다, 관리 홈·리소스 화면과 Action은 요청마다 권한을 확인한다. 클라이언트 이동은 레이아웃을 다시 실행하지 않는다. 권한 상실은 `/forbidden`, 401은 쿠키 정리 뒤 로그인으로 보낸다. `/forbidden`은 계정만 읽고 관리 권한을 요구하지 않는다.
 - 소셜로만 가입해 비밀번호가 없는 계정은 로그인할 수 없다. web의 비밀번호 재설정으로 비밀번호를 정하거나 다른 관리자 계정을 쓴다. 이 앱에는 소셜 로그인·가입·메일 인증·재설정 화면이 없다.
 - 로그아웃은 현재 API 세션을 끝내고 쿠키를 지운 뒤 같은 언어의 `/login`으로 간다. API 실패에도 브라우저 쿠키를 지운다.
 - 갱신은 `proxy.ts` 한 곳에서만 한다. 읽기와 Action은 `createSessionApiClient`를 쓴다. 401은 `redirectOnUnauthorized`로 처리한다.
@@ -56,7 +57,7 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 
 ## 리소스
 
-- 골든은 `src/resources/posts/`다. 목록·상세·발행·발행 취소·삭제·실시간만 제공하며 작성·수정 화면은 없다. 목록과 상세는 작성자와 표지 이미지를 함께 읽고 파일 이름을 보인다.
+- 골든은 `src/resources/posts/`다. 목록·상세·발행·발행 취소·삭제·실시간만 제공하며 작성·수정 화면은 없다. 목록과 상세는 작성자와 표지 이미지를 함께 읽고, 상세에서만 표지 이미지의 파일 이름을 보인다. 목록에는 coverImage 열이 없다.
 - 실시간 채널이 있는 목록·상세만 구독한다. 구독 컴포넌트: `ResourceRealtime`. 첫 이벤트부터 1000ms 고정 창 안의 이벤트를 한 번의 갱신으로 묶으며 이후 이벤트로 예약을 미루지 않는다. 상세는 자신의 레코드 이벤트만 반영한다. 숨은 탭은 갱신을 보류하고 다시 보일 때 한 번 갱신한다. 채널·레코드 변경과 unmount 때 예약과 보류를 취소한다.
 - 리소스 하나는 `src/resources/<type>/resource.ts`의 선언 하나다. `src/resources/index.ts`의 등록 순서가 메뉴와 첫 화면 순서다. 선언의 권한이 있는 리소스만 보인다. 미등록 리소스와 선언에 없는 화면은 API 호출 전에 404다.
 - 화면은 `resources/index.ts`에서만 등록 목록을 가져온다. 리소스끼리 내부를 가져오지 않고 기반·컴포넌트는 화면에 의존하지 않는다. `lib/resources/`와 리소스의 `actions.ts`는 server-only다.
@@ -69,6 +70,9 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 - 메뉴·버튼·화면과 Server Action은 모두 권한·조건을 확인하며 최종 판정은 API가 한다. Action은 최신 단건을 읽어 조건을 다시 확인한다. 권한이 없으면 `permission.denied`, 권한은 있으나 현재 조건과 다르면 `resource.conflict` 안내다.
 - 삭제와 확인이 필요한 동작은 dialog를 거친다. 필드 표시·입력만 바꿔 끼우며 리소스 전체 화면 override는 없다.
 - 문구는 `resources.<type>.title`, `fields.<name>`, `enums.<name>.<value>`, `actions.<name>`이다. `resource-messages` 검사가 등록 선언에서 키를 모아 ko/en 양쪽의 빈 문구와 누락을 확인한다. 전체 check는 format·lint·types·tests·generated·resource-messages·i18n·contract-typespec·contract-mock·harness의 10단계다.
+- `pnpm gen:resource <type>`은 계약의 목록·쓰기 operation에서 수정 가능한 초안을 만든다. 권한은 `x-permission`, 없으면 `admin:access` 초안이므로 실제 읽기·쓰기 권한을 검토한다. 글은 계약에 생성·수정 operation이 있어도 관리 앱에서 해당 선언을 제거한다.
+- 생성기의 ko/en 문구는 번역 전 자리표시자다. 점이 든 이름·값은 중첩 키로 적는다. 기존 리소스 폴더·문구·등록은 덮지 않는다. 현재 제품 등록은 posts 하나이며 사용자·역할·권한·감사 로그는 후속 범위다.
+- 절차: [리소스 추가](docs/recipes/add-resource.md), [필드 종류 추가](docs/recipes/add-field-kind.md), [동작 추가](docs/recipes/add-action.md). `.claude/skills/add-resource/SKILL.md`는 리소스 레시피를 부르는 얇은 포장이다.
 
 ## 고정 앱 계약
 

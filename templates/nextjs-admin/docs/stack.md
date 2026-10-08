@@ -67,7 +67,7 @@ CI는 위 @playwright/test의 CLI로 `pnpm exec playwright install --with-deps c
 
 shadcn 원문의 latest 명령은 프로젝트 pin인 `pnpm exec shadcn`으로 바꾼다. Playwright CLI는 `pnpm exec playwright-cli`를 쓰며 E2E의 `pnpm exec playwright`와 구분한다. CLI 0.1.22의 전이 의존성 `playwright`·`playwright-core`는 정확히 `1.64.0-alpha-1790635538000`이며 각각 2026-09-28 22:50:35.411 UTC·22:52:15.870 UTC에 공개됐다. 세 패키지 모두 1440분 정책을 만족한다. 기존 테스트 러너와 Chromium 설치는 1.63.0을 유지한다.
 
-check의 harness는 네트워크 없이 공식 사본의 누락·변경과 설치 패키지의 버전을 검사한다. Playwright는 설치 패키지의 skill 폴더도 고정 해시와 비교한다. 캐시 키에 설치 패키지 버전·설치 skill 해시를 포함한다. 전용 열거기가 공식 사본·설치 원본 skill 폴더의 예상 밖 항목(숨김 파일·빈 폴더·링크 포함)을 모두 거절한다. 전체 check는 기존 9단계다. 줄 끝 CRLF·LF만 같은 것으로 본다. 복원은 아래 명령으로 한다. Next·shadcn은 고정 커밋에서, Playwright는 설치된 패키지에서 읽으며 해시가 다르면 쓰기 전에 실패한다. 예상 밖 항목은 직접 지운다.
+check의 harness는 네트워크 없이 공식 사본의 누락·변경과 설치 패키지의 버전을 검사한다. Playwright는 설치 패키지의 skill 폴더도 고정 해시와 비교한다. 캐시 키에 설치 패키지 버전·설치 skill 해시를 포함한다. 전용 열거기가 공식 사본·설치 원본 skill 폴더의 예상 밖 항목(숨김 파일·빈 폴더·링크 포함)을 모두 거절한다. 전체 check는 리소스 문구 검사를 포함한 10단계다. 줄 끝 CRLF·LF만 같은 것으로 본다. 복원은 아래 명령으로 한다. Next·shadcn은 고정 커밋에서, Playwright는 설치된 패키지에서 읽으며 해시가 다르면 쓰기 전에 실패한다. 예상 밖 항목은 직접 지운다.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -75,7 +75,7 @@ pnpm skills:sync
 pnpm check
 ```
 
-이 프로젝트의 공식 skill 세 개는 `next-dev-loop`, `playwright-cli`, `shadcn`이다. 레시피는 [계약 확장](recipes/change-contract.md) 하나이며 TypeSpec·목 수기 소스와 생성물 갱신 순서를 안내한다.
+이 프로젝트의 공식 skill 세 개는 `next-dev-loop`, `playwright-cli`, `shadcn`이다. 앱 skill `add-resource`는 [리소스 추가](recipes/add-resource.md) 레시피를 부른다. [필드 종류](recipes/add-field-kind.md)·[동작](recipes/add-action.md)·[계약 확장](recipes/change-contract.md) 레시피도 따른다.
 
 ### 실행과 검증
 
@@ -83,7 +83,7 @@ Node 24.19.0, TypeScript 6.0.3과 typescript-eslint 8.71.0을 유지한다. 의�
 
 [Dockerfile](../Dockerfile)은 Node `24.19.0-bookworm-slim`, pnpm 12.6.0과 UID/GID 10001을 쓴다. 이미지 빌드는 `NEXT_OUTPUT=standalone`, 일반 빌드·E2E는 `next start`다. 실행 설정은 [아키텍처](architecture.md#실행과-이미지)를 따른다. 환경 스키마는 서버 시작과 instrumentation에서 확인하며 빌드에는 비밀이 필요 없다.
 
-관리 인증 E2E는 실제 목과 Playwright 1.63.0 Chromium의 5개 시나리오다. Docker 이미지와 외부 FastAPI 실행 결과는 해당 CI에서 확인한다.
+관리 E2E는 실제 목과 Playwright 1.63.0 Chromium의 인증·글·권한·언어 시나리오 11개다. Docker 이미지와 외부 FastAPI 실행 결과는 해당 CI에서 확인한다.
 
 ### 알려진 peer 경고
 

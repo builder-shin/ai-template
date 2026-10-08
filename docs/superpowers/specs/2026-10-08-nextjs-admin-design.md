@@ -6,11 +6,13 @@
   - 이 문서는 기반 설계 §10에서 사이클 4로 미룬 결정을 내린다: 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위, 조합에서 web과 admin이 계약·목 패키지를 함께 쓰는 방식, admin 포트.
   - 동작 기준은 [Next.js web 설계](2026-09-30-nextjs-web-design.md), [create CLI 설계](2026-10-03-create-cli-design.md), [FastAPI 설계](2026-09-26-fastapi-template-design.md)다.
 - 구현 계획: 마일스톤(§11)마다 `docs/superpowers/plans/`에 쓴다.
-- 다음 단계: A1 프로토타입 → 계획 → 구현
+- 현재 단계: A2 구현, PR CI·병합 뒤 A3
 
 ## 1. 목표와 범위
 
 ### 1.1 산출물
+
+현재 단계는 A2 구현, PR CI·병합 뒤 A3다. A2 제품 등록은 글 하나이며 나머지 리소스·FastAPI E2E·create CLI 확장은 A3다.
 
 1. `shared/nextjs/`: web과 admin이 같이 쓰는 코드의 원본. `pnpm sync`가 두 템플릿에 같은 바이트로 복사한다(§3).
 2. 계약 위치 설정: 템플릿이 목 서버와 TypeSpec의 위치를 `gen.config.json`에서 읽는다. 조합은 루트 `contract/` 하나를 공유한다(§3.5, §9).
@@ -48,7 +50,7 @@
 | AD4 | 화면 방식 | 리소스마다 선언 파일 하나를 두고 범용 목록·상세·폼 화면이 그린다. 선언의 키는 계약에서 만든 타입으로 검사한다 | 새 리소스 추가가 선언 하나로 끝나 화면이 일관된다. 계약이 바뀌면 타입 검사가 선언의 오래된 키를 잡는다 |
 | AD5 | 바꿔 끼우기 | 선언으로 안 되는 부분은 필드 표시·입력 컴포넌트와 동작(Server Action)만 리소스 폴더에서 바꾼다 | 범용 화면의 일관성을 지킨다. 지금 리소스 다섯 개에 필요한 것보다 넓히지 않는다 |
 | AD6 | 인증 범위 | 비밀번호 로그인, 로그아웃, 권한 없음 화면만 둔다 | 사용자 결정(2026-10-08). 소셜로만 가입해 비밀번호가 없는 계정은 admin에 들어올 수 없다(문서에 적는다) |
-| AD7 | 관리자 판정 | 로그인 직후 `admin:access`가 없으면 그 세션을 끝낸다. 로그인 중에는 레이아웃이 요청마다 확인하고 실시간 `me.updated`로 다시 확인한다 | admin 앱이 관리자가 아닌 세션을 쥐지 않는다. 역할을 잃으면 다음 요청이나 이벤트에서 막힌다 |
+| AD7 | 관리자 판정 | 로그인 직후 `admin:access`가 없으면 그 세션을 끝낸다. 로그인 중에는 레이아웃이 문서 요청마다, 화면과 Action이 요청마다 확인하고 실시간 `me.updated`로 다시 확인한다 | admin 앱이 관리자가 아닌 세션을 쥐지 않는다. 역할을 잃으면 다음 요청이나 이벤트에서 막힌다 |
 | AD8 | 세션 쿠키 이름 | 앱 이름에서 만든다: `web-session`, `admin-session`. 운영에서는 `__Host-` 접두사를 붙인다 | 쿠키는 포트를 구분하지 않아 같은 이름이면 localhost:3000과 :3001의 로그인이 서로 덮어쓴다 |
 | AD9 | 포트 | admin dev 3001, 단독 admin의 목 4011, E2E admin 3101·목 4111. 조합은 api 8000, web 3000, admin 3001 | 단독 web(3000·4010)과 단독 admin을 함께 띄울 수 있다. 기반 설계 §10의 admin 포트 3001 |
 | AD10 | 계약 위치 | `gen.config.json`의 `contract`(기본 `contract`). 조합은 루트 `contract/` 하나를 두 앱이 공유한다. web만 있는 조합도 같은 배치다 | 같은 이름의 패키지(`@ai-template/contract`, `@ai-template/mock`)가 workspace에 두 번 들어가지 않는다. 조합 배치가 하나라 CLI와 문서가 단순하다 |
@@ -148,7 +150,7 @@ import 밖에도 아래 앱 계약이 있다. 새 앱을 만들 때 함께 맞�
 - 생성한 프로젝트에서는 평범한 파일이다. 템플릿 지침은 원본 폴더를 언급하지 않는다.
 - 공유 생성물(API 타입, 에러 코드, 실시간 이벤트)도 원본에 있다. 계약을 바꾼 뒤에는 저장소 전용 helper `scripts/src/sync/gen-nextjs.mjs`가 루트 계약으로 원본의 생성물을 만들고 `pnpm sync`가 사본을 맞춘다. 템플릿의 `pnpm gen`은 사본을 고쳐 사본 검사를 실패시키므로 저장소에서는 쓰지 않는다.
 
-- 원본의 포맷·자동 수정은 루트 `pnpm fix:shared [원본 파일...]`로 한다. 파일을 생략하면 추적 중인 일반 공유 소스를 모두 고른다. web의 ESLint 설정과 사본 경로로 원본 내용을 검사·수정하고 Prettier로 포맷한 뒤 원본에만 쓴다. 생성물과 환경 파일은 제외한다. 실행 뒤 `pnpm sync`와 템플릿 check로 확인한다.
+- 원본의 포맷·자동 수정은 루트 `pnpm fix:shared [원본 파일...]`로 한다. 파일을 생략하면 추적 중인 일반 공유 소스를 모두 고른다. web의 ESLint 설정과 사본 경로로 원본 내용을 검사·수정하고 Prettier로 포맷한 뒤 원본에만 쓴다. 생성물과 환경 파일은 제외한다. 새 원본은 `git add` → `pnpm sync` → `pnpm fix:shared <파일...>` → `pnpm sync` 순서다. 새 원본끼리 import하면 ESLint가 사본 경로에서 대상을 찾으므로 첫 동기화가 필요하다. 기존 원본만 수정하면 첫 동기화는 생략할 수 있다. 실행 뒤 `pnpm sync`와 템플릿 check로 확인한다.
 
 ### 3.7 web 변경
 
@@ -202,7 +204,7 @@ templates/nextjs-admin/
 
 - 로그인은 `POST /sessions`(grantType `password`)다. 성공하면 BFF가 `/me`의 `meta.permissions`를 읽고, `admin:access`가 없으면 `DELETE /sessions/current`로 세션을 끝낸 뒤 쿠키를 만들지 않는다.
 - `proxy.ts`는 web처럼 세션 확인과 토큰 갱신만 한다. `/login` 밖은 모두 로그인이 필요하다.
-- `(admin)` 레이아웃(Server Component)은 요청마다 `/me`를 읽어 `admin:access`를 확인하고, 없으면 `/forbidden`으로 보낸다. 리소스 화면은 선언의 권한을 확인한다.
+- `(admin)` 레이아웃은 문서 요청마다, 리소스 화면과 Action은 요청마다 `/me`를 읽어 `admin:access`와 리소스 권한을 확인한다. 클라이언트 이동은 레이아웃을 다시 실행하지 않는다. 권한이 없으면 `/forbidden`으로 보낸다.
 - 화면에서 동작을 숨기는 것은 편의다. 최종 판단은 백엔드이고 403은 그 자리의 안내로 보여 준다.
 - 로그아웃은 Server Action이다(`DELETE /sessions/current`, 쿠키 삭제, `/login`).
 - 소셜로만 가입한 계정은 비밀번호가 없어 admin에 로그인할 수 없다. web에서 비밀번호를 정하거나(재설정 흐름) 다른 관리자 계정을 쓴다. 이 한계를 admin 문서에 적는다.
@@ -221,10 +223,10 @@ templates/nextjs-admin/
 
 ### 4.6 실시간
 
-- 공유 `RealtimeProvider`를 쓴다. BFF가 `POST /realtime-tickets`로 티켓을 받는다.
+- 공유 `RealtimeProvider`를 쓰며 세션 id를 key로 유지한다. BFF가 `POST /realtime-tickets`로 티켓을 받는다.
 - `me.updated`: 화면을 새로 그려 레이아웃이 권한을 다시 확인한다.
-- `session.revoked`: 로그인 화면으로 보낸다.
-- 선언에 `realtime` 채널이 있는 리소스는 목록과 상세가 그 채널을 구독하고, 이벤트가 오면 `router.refresh()`로 다시 그린다. 짧은 시간에 여러 번 오면 한 번으로 묶는다.
+- `session.revoked`: 현재 세션의 401을 확인한 뒤 로그인 화면으로 보낸다. 다른 세션의 폐기는 무시한다.
+- 선언에 `realtime` 채널이 있는 리소스는 목록과 상세가 그 채널을 구독하고 `ResourceRealtime`이 첫 이벤트부터 1초 고정 창으로 묶어 `router.refresh()`를 실행한다. 이후 이벤트로 예약을 미루지 않는다. 상세는 자신의 레코드 이벤트만 반영하며 숨은 탭은 갱신을 보류하고 다시 보일 때 한 번 갱신한다. 채널·레코드 변경과 unmount 때 이전 예약과 보류를 취소한다.
 - 목 서버와 FastAPI의 실시간 허용 출처 기본값에 admin 출처를 더한다(§10).
 
 ### 4.7 에러
@@ -254,7 +256,7 @@ export default defineResource({
     columns: ["title", "author", "status", "publishedAt", "createdAt"],
     filters: { "filter[q]": "text", "filter[status]": "enum", "filter[author]": "relation" },
     sort: { fields: ["createdAt", "publishedAt", "title"], default: "-createdAt" },
-    include: ["author"],
+    include: ["author", "coverImage"],
   },
   detail: { fields: ["title", "body", "status", "author", "coverImage", "publishedAt"] },
   actions: [publish, unpublish], // ./actions.ts의 Server Action과 표시 조건
@@ -337,7 +339,7 @@ export default defineResource({
 
 | 리소스 | 마일스톤 | 권한 | 내용 |
 | --- | --- | --- | --- |
-| 글 | A2(골든) | `posts:manage` | 목록(검색·상태·작성자 필터, `createdAt`·`publishedAt`·`title` 정렬, 작성자 include), 상세, 발행·발행 취소, 삭제, 실시간 `posts:all` |
+| 글 | A2(골든) | `posts:manage` | 목록(검색·상태·작성자 필터, `createdAt`·`publishedAt`·`title` 정렬, 작성자·표지 이미지 include), 상세, 발행·발행 취소, 삭제, 실시간 `posts:all` |
 | 사용자 | A3 | `users:read`, 수정은 `users:manage` | 목록(검색·상태·역할 필터), 상세, 수정(상태, 역할 다중 선택) |
 | 역할 | A3 | `roles:read`, 쓰기는 `roles:manage` | 목록(검색), 상세, 생성·수정(이름, 권한 선택기), 삭제. 시스템 역할은 삭제 버튼을 감추고 백엔드 거부도 번역한다 |
 | 권한 | A3 | `roles:read` | 읽기 전용 목록 |
@@ -410,7 +412,7 @@ A1 뒤에도 web의 check, build, E2E 20개(목), FastAPI E2E(`pnpm web-e2e fast
 
 | 작업 | 마일스톤 | 내용 |
 | --- | --- | --- |
-| `nextjs-admin` | A2 | 고정 설치, check, build, 목 E2E |
+| `nextjs-admin` | A2 | 고정 설치, check, 목 E2E(운영 빌드 포함), 이미지 빌드 |
 | `nextjs-admin-e2e-fastapi` | A3 | `pnpm admin-e2e fastapi` |
 | `create-combo` | A3 | FastAPI+web+admin 조합의 setup → check → test:e2e(web·admin 모두 실제 api), 이미지 셋, web·admin 컨테이너 `GET /` |
 | `create-standalone` | A3 | admin 단독 setup → check 추가 |
@@ -502,6 +504,16 @@ Docker가 필요한 확인은 PR CI에서만 한다(AD16).
 9. 로케일 쿠키(A2): 공유 i18n 설정의 `NEXT_LOCALE`은 두 앱이 같은 이름이라 localhost에서 web과 admin의 언어 선택이 서로 덮인다. 계정 `locale` 동기화(AD11)로 같은 사용자의 선택이라 해는 작다. 그대로 둘지 `<app>-locale`로 나눌지 A2에서 정한다.
 10. 공유 테스트의 입력값(A2 전): 공유 테스트에는 web 값(`app: "web"`, 3000·4010 등)이 검증 입력으로 들어 있다. 실행 앱의 설정이 아니고 admin 사본에서도 통과하므로 허용한다(§3.4는 실행 코드에 대한 규칙이다).
 
+### A2 프로토타입에서 확인한 결정 (2026-10-08)
+
+| 항목 | 결정과 근거 |
+| --- | --- |
+| 1 선언 타입 | `src/lib/resources/contract.ts`가 `ApiPaths`의 단일 컬렉션 GET에서 JSON:API type·attributes·relationships·query와 쓰기 operation을 추출한다. `defineResource`는 type만으로 추론하고 `NoInfer`로 키 오류의 타입 확장을 막는다. `AnyResource`는 판별 union이다. 동적 경로 단언은 data.ts의 비공개 요청 경계에만 두고 실제 목 통합으로 확인한다. 현재 sort 생성 타입은 string이므로 선언 타입은 속성 키로 제한한다. 생성기는 `x-jsonapi-sort` 후보를 우선하며 속성 밖 후보는 제외한다. 음성 fixture의 `@ts-expect-error` 12개를 기존 types 단계가 컴파일하고 오류가 사라지면 TS2578로 실패한다. |
+| 5 Base UI 부품 | 고정 shadcn 4.21.0·base-nova가 table·dialog·select·sheet·checkbox·badge를 제공했다. Task 3이 여섯 부품을 한 번에 더하고 CLI가 다시 쓴 기존 부품은 되돌렸다. Table은 native table, dialog·sheet는 Base UI Dialog, select의 다중 선택은 Select.Root multiple, checkbox는 Checkbox, badge는 useRender다. 기존 @base-ui/react 1.8.0·cn 0.4.0·lucide-react 1.49.0·class-variance-authority 0.7.1을 쓰며 의존성·잠금 변경은 없다. 새 부품은 원본에서 생성·번역 후 sync했고 고정 앱 import는 여덟 개를 유지했다. |
+| 7 E2E 계정 | A2는 실제 목 API로 UUID별 일반 회원을 가입시키고 `/_test/mail`의 인증 링크로 인증한다. 시드 관리자는 API로 역할을 만들고 부여한다. 기본 관리 계정은 admin:access·posts:manage·users:read, 부분 관리 계정은 시나리오별 권한을 받는다. admin의 fixtures와 scripts/test/admin-fixture.ts에 두며 시드 계정은 브라우저 주체로 쓰지 않는다. A3의 FastAPI 가입·Mailpit 준비는 아직 구현하지 않았다. |
+| 8 실시간 출처 | 목 기본값에 `http://localhost:3001`을 추가해 web 3000과 함께 허용한다. admin E2E는 3101, web E2E는 3100을 명시한다. FastAPI 기본값 변경과 admin FastAPI 실행기는 A3다. 글 목록·상세는 posts:all을 구독하고 첫 이벤트부터 1초의 고정 창으로 갱신을 묶는다. 상세는 자신의 레코드 이벤트만 반영하며 숨은 탭은 다시 보일 때 한 번 갱신한다. 채널·레코드 변경·unmount 때 예약과 보류를 취소한다. 성공한 subscribe ACK 뒤 다른 세션의 생성·수정이 목록·상세에 반영되는지 확인한다. |
+| 9 로케일 쿠키 | NEXT_LOCALE을 유지한다. 운영은 서로 다른 host의 host-only 쿠키라 공유하지 않고 localhost에서는 같은 사용자의 계정 locale 동기화가 선택을 맞춘다. 이름을 바꿔 기존 web 동작을 바꾸지 않는다. 세션 쿠키는 별도로 app 이름에서 계산한다. |
+
 ## 13. 미룬 결정
 
 기반 설계 §10의 admin 행은 이 문서로 정한다. 남는 것은 다음이다.
@@ -524,3 +536,46 @@ Docker가 필요한 확인은 PR CI에서만 한다(AD16).
 - 공유 자산 동기화 목록은 `scripts/shared-assets.json`이다. 지금 web에는 `contract/mock`, `contract/typespec`, `contract/openapi.yaml`, 규약 문서 둘이 들어간다.
 - 현재 조합의 workspace는 `apps/api`, `apps/web`, `apps/web/contract/*`다(create CLI 설계 §5.3).
 - 기반 설계 §4.3: admin 앱에 로그인하려면 `admin:access`가 있어야 한다. §4.9: admin에는 전체 글 관리(필터, 상태 변경, 삭제, 실시간 반영)가 들어간다.
+
+## 15. A2 구현 기록 (2026-10-08)
+
+A1 머리에서 SDD 아홉 태스크와 리뷰 수정을 순서대로 구현했다. 독립 admin의 공통 사본은 덮어 놓기 대상에 등록하고 원본 수정 뒤 동기화로 맞췄다. 현재 제품 등록은 posts 하나다.
+
+| 태스크 | 구현 |
+| --- | --- |
+| 1 | overlay 대상별 managedFiles, 새 대상 충돌·삭제 보호, git 인덱스 원본 선택, 삭제 경로 출력, fix:shared |
+| 2 | 독립 admin·포트 3001/4011/3101/4111, 공통 의존성 버전 검사, 목의 admin 출처, CI nextjs-admin, 앱 계약 여덟 개 |
+| 3 | table·dialog·select·sheet·checkbox·badge, 닫기 번역과 팝업 DOM 검사, 기존 부품 복구·원본 동기화 |
+| 4 | password grant와 admin:access, 보호 레이아웃·메뉴·언어·로그아웃·forbidden, 목 인증 E2E 5개 |
+| 5 | 계약 타입 기반 defineResource·데이터 계층, 필드·쿼리·operation 음성 검사, 실제 목 CRUD |
+| 6 | 범용 목록·상세·필터·페이지·표시, 관계 옵션·권한·기간 날짜, resource-messages로 admin check 10단계 |
+| 7 | 범용 생성·수정 폼, 필드 오류·삭제·동작, 최신 레코드 조건과 상태 충돌 |
+| 8 | posts 골든·발행·발행 취소·삭제, 목록·상세 실시간, 인증·글·권한·언어 목 E2E 11개 |
+| 9 | 계약 기반 리소스 생성기, 실제 계약의 초안 다섯 개 strict 컴파일·문구 검사, 레시피 셋과 add-resource skill |
+
+확인 범위는 루트 check 11단계, admin check 10단계·build·실제 목 Chromium E2E 11개다. 공유 변경 태스크는 web check 9단계·build·목 E2E 20개도 확인했다. 테스트 경고 검사는 전체 로그에서 stderr·Warning·ENVIRONMENT_FALLBACK이 0인지 확인한다. Docker·FastAPI E2E·이미지 빌드는 PR CI에서 확인하며 로컬 개발 fastapi·joon은 사용하지 않았다.
+
+계획이 바꾼 결정은 다음과 같다.
+
+- 검색 가능한 관계 옵션은 첫 페이지 20개와 대상 검색을 쓰고 검색 없는 대상만 끝까지 읽는다.
+- 관계 링크는 등록한 상세 화면과 보기 권한이 있는 대상에만 보인다.
+- 잘못된 URL 필터를 포함한 목록 4xx는 그 자리의 번역 안내다.
+- 권한이 있으나 최신 상태가 조건과 다르면 409 resource.conflict로 알린다.
+- 글 목록·상세는 작성자·표지 이미지를 include하고 표지 이미지 파일 이름은 상세에서만 보인다.
+
+SDD 리뷰에서 바꾼 내용은 다음과 같다.
+
+- 사본 없는 공유 import 오류 메시지는 git add를 안내한다.
+- 새 공유 원본 순서: `git add` → `pnpm sync` → `pnpm fix:shared <파일...>` → `pnpm sync`.
+- 목 문서는 템플릿 밖 저장소 경로를 포함하지 않는다.
+- 필터 파라미터가 없는 목록의 `list.filters` 타입: `never`.
+- 필터 막대는 URL 쿼리·갱신 옵션을 따르며 시작한 관계 검색은 새로고침에도 유지한다.
+- 오래된 수정 화면은 같은 화면에서 409 `resource.conflict` 오류를 보인다.
+- 알 수 없는 저장 모드는 권한 검사 전에 거절한다.
+- 실시간 갱신은 1초 고정 창이며 상세는 자기 레코드만, 숨은 탭은 복귀 때 한 번 갱신한다.
+- 로그인 뒤 복귀 경로 보존은 A3로 남긴다. 쿼리 키: `returnTo`.
+- 실시간 provider의 key는 세션 id를 유지한다. 컴포넌트: `RealtimeProvider`.
+
+Base UI 팝업의 열림은 findByRole, 닫힘은 waitFor로 기다린다. 번역 테스트는 intlFixture로 환경 스키마의 TIME_ZONE을 고정한다. Next 스트리밍 404는 응답 시작 뒤 HTTP 200일 수 있어 화면과 head의 noindex를 함께 확인했다. 빠른 메뉴 이동에서 Next의 The destination stream closed early 진단을 관찰했으며 UI/API assertion 통과와 별도로 기록했다. 원인은 확정하지 않았다.
+
+A2는 PR CI의 check·fastapi·nextjs·nextjs-admin·nextjs-e2e-fastapi·conformance-fastapi·conformance-mock·create-combo·create-standalone 아홉 작업과 검토·병합을 남긴다. 사용자·역할·권한·감사 로그의 제품 등록, admin FastAPI E2E와 가입·Mailpit 준비, create CLI의 admin 지원은 A3다.
