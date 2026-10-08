@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ESLint } from "eslint";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { architectureConfig } from "./boundaries.mjs";
+import { appArchitectureConfig } from "./app.mjs";
 import tseslint from "typescript-eslint";
 
 const root = resolve(".cache/boundary-fixture");
@@ -40,7 +40,7 @@ async function lint(path: string, code: string) {
     overrideConfigFile: true,
     overrideConfig: [
       { files: ["**/*.ts"], languageOptions: { parser: tseslint.parser } },
-      architectureConfig(root),
+      appArchitectureConfig(root),
     ],
   });
   const result = await eslint.lintText(code, { filePath: `${root}/${path}` });

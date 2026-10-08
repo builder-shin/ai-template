@@ -140,7 +140,7 @@ describe("골든 기능 생성", () => {
     );
     expect(file("scripts/http/blog-posts.integration.test.ts")).toContain("features/blog-posts/");
     expect(file("scripts/http/my-blog-posts.integration.test.ts")).toContain("/my-blog-posts/new");
-    expect(file("src/lib/session/redirect.ts")).toContain('"/my-blog-posts"');
+    expect(file("src/lib/session/routes.ts")).toContain('"/my-blog-posts"');
     for (const locale of ["ko", "en"]) {
       const catalog = JSON.parse(file(`messages/${locale}.json`));
       expect(catalog.blogPosts.newBlogPost).toBeTruthy();
@@ -181,8 +181,8 @@ it("이름", () => {
     expect(output).not.toContain("unusedPost");
     expect(output).toContain('const contractValue = "post.invalid_transition"');
     expect(output).toContain('const resourceType = "posts"');
-    expect(file("src/lib/session/redirect.ts")).toContain('"/my-blog-posts"');
-    expect(file("src/lib/session/redirect.ts")).toContain('"/my-categories"');
+    expect(file("src/lib/session/routes.ts")).toContain('"/my-blog-posts"');
+    expect(file("src/lib/session/routes.ts")).toContain('"/my-categories"');
     const blog = run("blog-posts");
     expect(blog.status).not.toBe(0);
   });

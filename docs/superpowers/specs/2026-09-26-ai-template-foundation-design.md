@@ -49,6 +49,8 @@ ai-template/
 │   ├── api-style/                # JSON:API 스타일 룰셋 (Redocly)과 룰셋 테스트
 │   ├── conformance/              # 블랙박스 적합성 테스트 (Vitest)
 │   └── mock/                     # 인메모리 목 서버 (하위 프로젝트 2에서 구현)
+├── shared/
+│   └── nextjs/                   # 프론트 공통 코드·테스트·하네스 원본, sync로 사본을 만든다
 ├── templates/
 │   ├── fastapi/                  # 각 폴더는 그대로 복사하면 동작하는 독립 프로젝트
 │   ├── nestjs/

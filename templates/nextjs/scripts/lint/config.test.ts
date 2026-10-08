@@ -14,6 +14,7 @@ it("App Router의 린트는 프로젝트와 상위 디렉터리에서 Pages 안�
     linkDependencies(resolve("."), project);
     cpSync("eslint.config.mjs", join(project, "eslint.config.mjs"));
     cpSync("scripts/lint/boundaries.mjs", join(project, "scripts/lint/boundaries.mjs"));
+    cpSync("scripts/lint/app.mjs", join(project, "scripts/lint/app.mjs"));
     writeFileSync(join(project, "package.json"), '{"type":"module"}');
     writeFileSync(join(project, "tsconfig.json"), '{"compilerOptions":{}}');
     const file = join(project, "src/app/page.tsx");

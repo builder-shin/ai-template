@@ -16,6 +16,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `templates/`            | 템플릿. 각 폴더는 그대로 복사하면 동작하는 독립 프로젝트다                                |
 | `templates/fastapi/`    | FastAPI 백엔드 템플릿                                                                     |
 | `templates/nextjs/`     | Next.js BFF web. 자체 workspace의 계약·목과 인증·글·내 정보·세션·업로드·실시간 기능       |
+| `shared/nextjs/`        | Next.js 앱 공통 코드·테스트·하네스 원본. sync가 템플릿의 같은 경로에 복사한다             |
 | `create/`               | git 추적 템플릿 파일로 단독·FastAPI+web 조합 프로젝트를 만드는 CLI                        |
 | `create/assets/combo/`  | 조합 루트 실행기·하네스·CI와 조합용 web 이미지의 원본                                     |
 | `scripts/`              | check 실행기, 도구 설치기, 구조 비교, 지침·템플릿 검사, 동기화                            |
@@ -59,6 +60,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 - 계약은 `contract/typespec/src/`만 고치고 `pnpm gen`으로 생성물을 만든다. `contract/openapi.yaml`과 `**/generated/**`는 직접 고치지 않는다.
 - API 규약은 `docs/conventions/jsonapi.md`, 에러 코드는 `docs/conventions/error-codes.md`를 따른다.
 - 템플릿은 저장소의 다른 폴더를 참조하지 않는다. 공유 자산은 원본을 고친 뒤 `pnpm sync`한다.
+- Next.js 공유 사본은 `scripts/shared-assets.json`이 정한다. `shared/nextjs/` 원본만 고치고 `pnpm sync`한다. 원본은 템플릿 사본의 check로 검사하며 독립 프로젝트가 아니다.
 - web 계약의 원본·사본 편집 순서는 [web 계약 동기화](docs/conventions/web-contract.md)를 따른다. 템플릿 레시피는 독립 프로젝트의 절차다.
 - 템플릿은 `docs/harness/standard.md`를 지킨다. `pnpm check`가 `templates/`를 검사한다.
 - web 규칙은 `templates/nextjs/AGENTS.md`, W1~W4 구현·검증 기록은 `docs/superpowers/specs/2026-09-30-nextjs-web-design.md`를 읽는다. web의 check·build·mock E2E·FastAPI E2E는 빌드 산출물을 함께 쓰므로 순서대로 실행한다. W4의 CI는 PR CI에서 확인한다.

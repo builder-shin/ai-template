@@ -8,7 +8,7 @@ import { createTarget, targetName, type TargetAdapter } from "./targets";
 export const sessionCookieName = appSessionCookieName("production");
 
 export { expect };
-export const test = base.extend<{ target: TargetAdapter }>({
+export const test = base.extend<{ target: ReturnType<typeof createTarget> }>({
   target: async ({ request }, provide) => {
     await provide(createTarget(targetName(), request));
   },
@@ -24,13 +24,7 @@ interface Account {
 const copy = (locale: Account["locale"]) => (locale === "ko" ? ko : en);
 const prefix = (locale: Account["locale"]) => (locale === "ko" ? "" : "/en");
 
-export function waitForServerAction(page: Page) {
-  return page.waitForResponse(
-    (response) =>
-      response.request().method() === "POST" &&
-      response.request().headers()["next-action"] !== undefined,
-  );
-}
+export { waitForServerAction } from "../scripts/test/server-action";
 
 export async function signupAndVerify(
   page: Page,
