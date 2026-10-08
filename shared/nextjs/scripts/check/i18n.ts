@@ -38,7 +38,7 @@ export function checkI18n(app: Catalogs, codes: readonly string[], shared: Catal
     ...(["ko", "en"] as const).flatMap((locale) =>
       messageCollisions(shared[locale], app[locale]).map(
         (key) =>
-          `messages/${locale}.json: ${key} — messages/shared/${locale}.json과 겹치는 키를 한 카탈로그에만 둔다.`,
+          `messages/${locale}.json: ${key} — 공유 카탈로그(messages/shared/${locale}.json)와 겹치는 키를 한 카탈로그에만 둔다.`,
       ),
     ),
   ];

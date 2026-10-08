@@ -48,7 +48,7 @@ describe("i18n 검사 단계", () => {
     const app = { ko: {}, en: {}, [locale]: { common: { title: "Title" } } };
     const shared = { ko: {}, en: {}, [locale]: { common: { title: "Title" } } };
     expect(checkI18n(app, [], shared).join("\n")).toContain(
-      `messages/${locale}.json: common.title — messages/shared/${locale}.json과 겹치는 키를 한 카탈로그에만 둔다.`,
+      `messages/${locale}.json: common.title — 공유 카탈로그(messages/shared/${locale}.json)와 겹치는 키를 한 카탈로그에만 둔다.`,
     );
   });
 
@@ -62,7 +62,7 @@ describe("i18n 검사 단계", () => {
     const app = { ko: { common: "앱" }, en: { common: "App" } };
     const shared = { ko: { common: { title: "공통" } }, en: { common: { title: "Shared" } } };
     expect(checkI18n(app, [], shared).join("\n")).toContain(
-      "messages/ko.json: common — messages/shared/ko.json과 겹치는 키를 한 카탈로그에만 둔다.",
+      "messages/ko.json: common — 공유 카탈로그(messages/shared/ko.json)와 겹치는 키를 한 카탈로그에만 둔다.",
     );
   });
 
@@ -133,7 +133,7 @@ describe("i18n 검사 단계", () => {
     });
     expect(result.ok).toBe(false);
     expect(result.output).toContain(
-      "messages/ko.json: errors.auth.unauthenticated — messages/shared/ko.json과 겹치는 키를 한 카탈로그에만 둔다.",
+      "messages/ko.json: errors.auth.unauthenticated — 공유 카탈로그(messages/shared/ko.json)와 겹치는 키를 한 카탈로그에만 둔다.",
     );
     expect(result.cache).not.toHaveProperty("i18n");
   });
