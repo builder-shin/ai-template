@@ -66,6 +66,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 - `.env`를 읽거나 출력하지 않는다. 키와 공개 기본값은 `.env.example`에서 확인한다.
 - 계약은 `contract/typespec/src/`만 고치고 `pnpm gen`으로 생성물을 만든다. `contract/openapi.yaml`과 `**/generated/**`는 직접 고치지 않는다.
 - API 규약은 `docs/conventions/jsonapi.md`, 에러 코드는 `docs/conventions/error-codes.md`를 따른다.
+- 목에 리소스를 더하면 `contract/conformance/test/flows/`에 적합성 흐름도 더한다. 로컬 `pnpm conformance mock`과 CI의 `conformance-fastapi`를 통과해야 한다.
 - 템플릿은 저장소의 다른 폴더를 참조하지 않는다. 공유 자산은 원본을 고친 뒤 `pnpm sync`한다.
 - Next.js 공유 사본은 `scripts/shared-assets.json`이 정한다. `shared/nextjs/` 원본만 고치고 `pnpm sync`한다. 원본은 템플릿 사본의 check로 검사하며 독립 프로젝트가 아니다.
 - 덮어 놓기는 git 인덱스의 원본만 복사한다. 새 원본은 `git add` → `pnpm sync` → `pnpm fix:shared <파일...>` → `pnpm sync` 순서로 맞춘다. 새 원본끼리 import하면 ESLint가 사본 경로에서 이를 찾으므로 첫 동기화가 필요하다. 템플릿의 `pnpm fix`로 공유 사본을 고치지 않는다.

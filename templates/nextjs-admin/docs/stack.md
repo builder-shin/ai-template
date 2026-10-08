@@ -45,7 +45,7 @@ Next 설정이 가져오는 React 플러그인은 아직 ESLint 10의 context AP
 
 계약과 목의 의존성은 사본 package.json의 정확한 pin을 유지한다. 목의 `@ai-template/contract: workspace:*`는 이 프로젝트 안의 TypeSpec 사본만 가리킨다. Socket.IO 클라이언트 4.8.4는 앱의 실시간 런타임 의존성이다. 2026-09-25 08:35 UTC에 공개되어 `minimumReleaseAge: 1440`을 만족한다.
 
-Markdown 부품과 SSR 테스트의 jsdom 타입도 위 고정 버전을 유지한다. raw HTML 플러그인은 넣지 않는다.
+`react-markdown`·`remark-gfm`·`@types/jsdom`은 공통 의존성 버전 규칙을 위해 위 고정 버전의 선언만 유지한다.
 
 lockfile은 openapi-fetch의 `openapi-typescript-helpers` 0.1.0, Next 린트의 `eslint-plugin-import` 2.32.0·`eslint-plugin-jsx-a11y` 6.10.2·`eslint-plugin-react` 7.37.5도 고정한다. next-intl의 네이티브 전이 의존성 `@parcel/watcher` 2.6.0·`@swc/core` 1.16.12는 빌드 허용 목록에 추가했다. 공개 후 1440분 규칙은 유지한다.
 
@@ -83,7 +83,7 @@ Node 24.19.0, TypeScript 6.0.3과 typescript-eslint 8.71.0을 유지한다. 의�
 
 [Dockerfile](../Dockerfile)은 Node `24.19.0-bookworm-slim`, pnpm 12.6.0과 UID/GID 10001을 쓴다. 이미지 빌드는 `NEXT_OUTPUT=standalone`, 일반 빌드·E2E는 `next start`다. 실행 설정은 [아키텍처](architecture.md#실행과-이미지)를 따른다. 환경 스키마는 서버 시작과 instrumentation에서 확인하며 빌드에는 비밀이 필요 없다.
 
-관리 E2E는 실제 목과 Playwright 1.63.0 Chromium의 인증·글·권한·언어 시나리오 11개다. Docker 이미지와 외부 FastAPI 실행 결과는 해당 CI에서 확인한다.
+관리 E2E는 실제 목과 Playwright 1.63.0 Chromium의 인증·글·권한·언어 시나리오 11개다. Docker 이미지 빌드는 CI에서 확인하며 admin의 FastAPI E2E는 A3에서 추가한다.
 
 ### 알려진 peer 경고
 
