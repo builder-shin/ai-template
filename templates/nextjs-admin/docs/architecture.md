@@ -20,9 +20,13 @@
 
 최상위 fields의 표시 종류·열거값·관계 라벨·override가 목록과 상세에 쓰인다. `resource-messages`는 서버 표식만 이 검사 프로세스에서 풀어 선언을 읽고 제목·필드·필터·정렬·열거값·동작의 ko/en 문구를 검사한다. 전체 check와 빠른 검사에 모두 포함한다.
 
+글 골든은 `src/resources/posts/`에 있다. 목록과 상세에 작성자·표지 이미지를 include하며 파일 이름을 표시한다. 작성·수정 화면 없이 발행·발행 취소·삭제를 제공한다. 글 동작의 inline Server Action은 관리 권한과 최신 상태를 확인한 뒤 status만 PATCH한다. 이미 목표 상태인 글은 `resource.conflict` 안내로 반환한다.
+
+선언한 실시간 채널은 목록·상세의 `ResourceRealtime`이 구독한다. 첫 이벤트부터 100ms 고정 창 안의 연속 이벤트를 한 번의 `router.refresh()`로 묶으며 다음 이벤트마다 예약을 미루지 않는다. 채널 변경·unmount 때 이전 예약을 취소한다.
+
 ## 테스트
 
-Vitest global setup이 실제 목 프로세스를 시작하고 `mockBaseUrl`을 제공한다. 요청 저장소를 대체한 Action 검사도 실제 HTTP API로 로그인·권한·폐기를 확인한다. 앱 번역 테스트는 `scripts/test/intl-fixture.ts`로 환경 스키마의 시간대를 고정한다. E2E 5개는 목(4111), 운영 admin(3101), 두 Chromium worker로 인증·권한·언어를 확인하며 실행기가 시작한 자원을 종료한다. 기존 포트의 서버는 재사용하거나 종료하지 않는다. 영상·스크린샷·trace는 저장하지 않는다.
+Vitest global setup이 실제 목 프로세스를 시작하고 `mockBaseUrl`을 제공한다. 요청 저장소를 대체한 Action 검사도 실제 HTTP API로 로그인·권한·폐기를 확인한다. 앱 번역 테스트는 `scripts/test/intl-fixture.ts`로 환경 스키마의 시간대를 고정한다. E2E 11개는 목(4111), 운영 admin(3101), 두 Chromium worker로 인증·글·권한·언어를 확인하며 실행기가 시작한 자원을 종료한다. 작성자 필터는 대상 검색으로 고르고 실시간 검사는 화면마다 새 subscribe ACK를 확인한 뒤 다른 세션에서 변경한다. 기존 포트의 서버는 재사용하거나 종료하지 않는다. 영상·스크린샷·trace는 저장하지 않는다.
 
 ## 실행과 이미지
 

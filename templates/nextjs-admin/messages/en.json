@@ -56,5 +56,22 @@
     "deleteDescription": "Delete this record?",
     "actionDescription": "Run this action?",
     "retryAfter": "Try again in {seconds} seconds."
+  },
+  "resources": {
+    "posts": {
+      "title": "Posts",
+      "fields": {
+        "title": "Title",
+        "author": "Author",
+        "status": "Status",
+        "publishedAt": "Published at",
+        "createdAt": "Created at",
+        "body": "Body",
+        "coverImage": "Cover image",
+        "q": "Search"
+      },
+      "enums": { "status": { "draft": "Draft", "published": "Published" } },
+      "actions": { "publish": "Publish", "unpublish": "Unpublish" }
+    }
   }
 }

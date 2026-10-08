@@ -12,7 +12,7 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 | `pnpm check --fast -- <파일...>` | Stop hook의 빠른 검사                                               |
 | `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                          |
 | `pnpm test`                      | Vitest 단위·실제 목 통합 검사                                       |
-| `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 인증·권한·언어 Chromium E2E 5개       |
+| `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 인증·글·권한·언어 Chromium E2E 11개   |
 | `pnpm gen`                       | TypeSpec·목·API·에러·실시간 타입 생성                               |
 | `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                                |
 
@@ -56,6 +56,8 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 
 ## 리소스
 
+- 골든은 `src/resources/posts/`다. 목록·상세·발행·발행 취소·삭제·실시간만 제공하며 작성·수정 화면은 없다. 목록과 상세는 작성자와 표지 이미지를 함께 읽고 파일 이름을 보인다.
+- 실시간 채널이 있는 목록·상세만 `ResourceRealtime`으로 구독한다. 첫 이벤트부터 100ms 고정 창 안의 이벤트를 한 번의 갱신으로 묶고 채널 변경·unmount 때 예약을 취소한다.
 - 리소스 하나는 `src/resources/<type>/resource.ts`의 선언 하나다. `src/resources/index.ts`의 등록 순서가 메뉴와 첫 화면 순서다. 선언의 권한이 있는 리소스만 보인다. 미등록 리소스와 선언에 없는 화면은 API 호출 전에 404다.
 - 화면은 `resources/index.ts`에서만 등록 목록을 가져온다. 리소스끼리 내부를 가져오지 않고 기반·컴포넌트는 화면에 의존하지 않는다. `lib/resources/`와 리소스의 `actions.ts`는 server-only다.
 - 열·상세·쓰기 필드는 계약의 속성·관계 이름, 필터는 목록 operation의 쿼리 키로 타입 검사한다. 필터 파라미터가 없는 목록은 `filters`를 선언할 수 없다. 계약에 없는 쓰기 operation은 선언할 수 없다. 정렬은 계약이 허용한 목록 operation에서 속성 키만 검사하며 서버의 지원 후보는 선언자가 확인한다.

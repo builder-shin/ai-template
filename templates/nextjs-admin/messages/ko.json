@@ -56,5 +56,22 @@
     "deleteDescription": "이 항목을 삭제할까요?",
     "actionDescription": "이 동작을 실행할까요?",
     "retryAfter": "{seconds}초 뒤에 다시 시도하세요."
+  },
+  "resources": {
+    "posts": {
+      "title": "글",
+      "fields": {
+        "title": "제목",
+        "author": "작성자",
+        "status": "상태",
+        "publishedAt": "발행 시각",
+        "createdAt": "작성 시각",
+        "body": "본문",
+        "coverImage": "표지 이미지",
+        "q": "검색"
+      },
+      "enums": { "status": { "draft": "초안", "published": "발행됨" } },
+      "actions": { "publish": "발행", "unpublish": "발행 취소" }
+    }
   }
 }

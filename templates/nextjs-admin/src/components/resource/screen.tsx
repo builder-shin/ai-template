@@ -21,6 +21,7 @@ import { ResourceFilters } from "./filters";
 import { ResourcePagination } from "./pagination";
 import { FieldDisplay } from "./display";
 import { ResourceControls } from "./controls";
+import { ResourceRealtime } from "./realtime";
 
 export type ScreenContext = {
   resource: AnyResource;
@@ -144,6 +145,7 @@ export async function ListScreen({
         controls: <RecordControls context={context} record={record} />,
       }))}
     >
+      {resource.realtime && <ResourceRealtime channel={resource.realtime.channel} />}
       <ResourceFilters
         type={resource.type}
         query={query}
@@ -184,6 +186,7 @@ export function DetailScreen({
         ),
       }))}
     >
+      {resource.realtime && <ResourceRealtime channel={resource.realtime.channel} />}
       <RecordControls context={context} record={document.data} />
     </ResourceDetail>
   );
