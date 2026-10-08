@@ -23,6 +23,7 @@ export function ResourceFilters({
   const router = useRouter();
   return (
     <form
+      key={resourceUrl(type, query, {})}
       className="flex flex-wrap items-end gap-3"
       onSubmit={(event) => {
         event.preventDefault();

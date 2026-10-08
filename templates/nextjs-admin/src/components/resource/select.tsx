@@ -14,10 +14,12 @@ import { Button } from "../ui/button";
 import { Spinner } from "../spinner";
 import type { Option, SearchOptions } from "./types";
 
+const emptyOptions: readonly Option[] = [];
+
 export function ResourceSelect({
   name,
   label,
-  options = [],
+  options = emptyOptions,
   defaultValue,
   multiple = false,
   search,
@@ -38,7 +40,12 @@ export function ResourceSelect({
   disabled?: boolean;
 }) {
   const t = useTranslations("resource");
-  const [items, setItems] = useState(options);
+  const [searchResult, setSearchResult] = useState<{
+    source: readonly Option[];
+    items: readonly Option[];
+  }>();
+  // 새 서버 옵션이 오면 이전 검색 결과를 버린다.
+  const items = searchResult?.source === options ? searchResult.items : options;
   const [pending, start] = useTransition();
   const [error, setError] = useState(false);
   const [term, setTerm] = useState("");
@@ -94,7 +101,7 @@ export function ResourceSelect({
               onClick={() =>
                 start(async () => {
                   try {
-                    setItems(await search(term));
+                    setSearchResult({ source: options, items: await search(term) });
                     setError(false);
                   } catch {
                     setError(true);
