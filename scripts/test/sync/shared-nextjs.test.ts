@@ -116,7 +116,7 @@ it("공유 원본이 가져오는 앱 파일은 고정 목록뿐이다", () => {
         resolve(root, asset.source),
         resolve(root, "templates", target.template, target.path),
       ),
-      "공유 원본에만 있는 파일을 가져온다 — pnpm sync로 사본을 맞춘다",
+      "공유 원본에만 있는 파일을 가져온다 — 새 원본은 git add한 뒤 pnpm sync로 사본을 맞춘다",
     ).toEqual([]);
   }
 });
