@@ -78,6 +78,11 @@ it("발행·발행 취소는 상태만 PATCH하고 최신 조건으로 버튼과
     ok: false,
     formError: "현재 상태에서는 요청을 처리할 수 없습니다.",
   });
+  const direct = resources[0]!.actions!.find((action) => action.name === "publish")!;
+  expect(await direct.action(record.id)).toMatchObject({
+    ok: false,
+    formError: "현재 상태에서는 요청을 처리할 수 없습니다.",
+  });
   expect(await runResourceAction("posts", "unpublish", record.id)).toEqual({ ok: true });
   const unpublished = (
     await seed.client.GET("/posts/{id}", { params: { path: { id: record.id } } })
@@ -95,9 +100,15 @@ it("추가 권한 없는 관리자는 직접 글 동작을 호출해도 상태�
   const partial = await partialAdminFixture(inject("mockBaseUrl"));
   await session(partial.owner);
   const { record, member } = await draft();
-  expect(await runResourceAction("posts", "publish", record.id)).toMatchObject({ ok: false });
+  expect.soft(await runResourceAction("posts", "publish", record.id)).toMatchObject({
+    ok: false,
+    formError: "이 작업을 할 권한이 없습니다.",
+  });
   const direct = resources[0]!.actions!.find((action) => action.name === "publish")!;
-  expect(await direct.action(record.id)).toMatchObject({ ok: false });
+  expect(await direct.action(record.id)).toMatchObject({
+    ok: false,
+    formError: "이 작업을 할 권한이 없습니다.",
+  });
   expect(
     (await member.owner.client.GET("/posts/{id}", { params: { path: { id: record.id } } })).data!
       .data.attributes.status,
@@ -107,7 +118,7 @@ it("없는 글의 동작은 번역한 오류로 반환한다", async () => {
   await session(await seedFixture(inject("mockBaseUrl")));
   expect(
     await runResourceAction("posts", "publish", "01900000-0000-7000-8000-000000000000"),
-  ).toMatchObject({ ok: false, formError: expect.any(String) });
+  ).toMatchObject({ ok: false, formError: "요청한 자료를 찾을 수 없습니다." });
 });
 it("글 Server Action은 실제 429의 Retry-After를 안내 상태에 보존한다", async () => {
   const mock = await startMock({ env: { RATE_LIMIT_GLOBAL: "12" } });
