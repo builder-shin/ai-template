@@ -48,7 +48,7 @@ export type ResourceDefinition<T extends ResourceType> = {
   fields?: Partial<Record<FieldKey<T>, FieldPresentation>>;
   list: {
     columns: readonly FieldKey<T>[];
-    filters?: Partial<Record<FilterKey<T>, FilterKind>>;
+    filters?: [FilterKey<T>] extends [never] ? never : Partial<Record<FilterKey<T>, FilterKind>>;
     sort?: "sort" extends keyof ListQuery<T>
       ? {
           fields: readonly SortKey<T>[];

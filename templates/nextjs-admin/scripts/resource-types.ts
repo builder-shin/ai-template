@@ -79,6 +79,15 @@ export function resourceTypeChecks(client: ReturnType<typeof createApiClient>) {
   defineResource({
     type: "permissions",
     permission: "roles:read",
+    list: {
+      columns: ["group"],
+      // @ts-expect-error 사유: 필터 파라미터 없는 목록은 필터 선언을 거절해야 한다.
+      filters: { "filter[bogus]": "text" },
+    },
+  });
+  defineResource({
+    type: "permissions",
+    permission: "roles:read",
     list: { columns: ["group"] },
     // @ts-expect-error 사유: 권한에는 단건 operation이 없다.
     detail: { fields: ["group"] },
