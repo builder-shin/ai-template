@@ -19,18 +19,18 @@ Server Component가 읽고 Server Action이 쓰는 BFF 템플릿이다. Node 24�
 
 ## 구조
 
-| 경로                | 내용                                                  |
-| ------------------- | ----------------------------------------------------- |
-| `src/app/[locale]/` | ko/en 페이지·레이아웃                                 |
-| `messages/`         | ko 기준 메시지 타입, ko/en 번역과 모든 계약 에러 코드 |
-| `src/proxy.ts`      | 로케일 라우팅, 로그인 검사, 세션 갱신                 |
-| `src/features/`     | auth·posts(골든)·me·sessions·files의 공개 `index.ts`  |
-| `src/lib/`          | 설정, API·세션 등 공통 기반                           |
-| `src/components/`   | 헤더·상태 UI, CLI로 추가한 Base UI 기반 `ui/`         |
-| `scripts/`          | check, setup, gen, 경계 린트, 외부 도구               |
-| `.claude/hooks/`    | 편집·종료·위험 명령·세션 시작 hook                    |
-| `e2e/`              | Playwright 인증·기능 흐름과 메일·재인증·소셜 어댑터   |
-| `docs/`             | 아키텍처, 버전 문서, 레시피                           |
+| 경로                | 내용                                                                                           |
+| ------------------- | ---------------------------------------------------------------------------------------------- |
+| `src/app/[locale]/` | ko/en 페이지·레이아웃                                                                          |
+| `messages/`         | ko 기준 메시지 타입, 앱 화면 문구(ko/en), `messages/shared/`의 공통 문구와 모든 계약 에러 코드 |
+| `src/proxy.ts`      | 로케일 라우팅, 로그인 검사, 세션 갱신                                                          |
+| `src/features/`     | auth·posts(골든)·me·sessions·files의 공개 `index.ts`                                           |
+| `src/lib/`          | 설정, API·세션 등 공통 기반                                                                    |
+| `src/components/`   | 헤더·상태 UI, CLI로 추가한 Base UI 기반 `ui/`                                                  |
+| `scripts/`          | check, setup, gen, 경계 린트, 외부 도구                                                        |
+| `.claude/hooks/`    | 편집·종료·위험 명령·세션 시작 hook                                                             |
+| `e2e/`              | Playwright 인증·기능 흐름과 메일·재인증·소셜 어댑터                                            |
+| `docs/`             | 아키텍처, 버전 문서, 레시피                                                                    |
 
 ## 핵심 규칙
 
