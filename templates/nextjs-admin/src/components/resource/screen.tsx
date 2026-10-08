@@ -22,6 +22,7 @@ import { ResourcePagination } from "./pagination";
 import { FieldDisplay } from "./display";
 import { ResourceControls } from "./controls";
 import { ResourceRealtime } from "./realtime";
+import { withCurrentOptions } from "./current-options";
 
 export type ScreenContext = {
   resource: AnyResource;
@@ -103,6 +104,7 @@ export async function ListScreen({
             if (!(problem instanceof ApiError) || problem.status !== 403) throw problem;
             error = translateApiError(problem, context.locale);
           }
+          options = withCurrentOptions(options, query[key], field.relation, document.included);
         }
         return {
           name: key,
@@ -215,15 +217,11 @@ export async function FormScreen({
               ? raw.id
               : null
           : raw;
-      const options =
+      const loadedOptions =
         kind === "relation" || kind === "relation-many"
           ? await relationOptions(context.client, resource, name)
           : optionValues(context, name);
-      // 현재 값이 대상 목록에 없어도 폼에서 빠뜨리지 않는다.
-      const selected = Array.isArray(value) ? value : value ? [value] : [];
-      for (const id of selected)
-        if (typeof id === "string" && !options.some((option) => option.value === id))
-          options.push({ value: id, label: id });
+      const options = withCurrentOptions(loadedOptions, value, field.relation);
       const props: InputProps = {
         name,
         kind,
