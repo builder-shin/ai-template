@@ -5,9 +5,20 @@ import { isAbsolute, join, resolve, win32 } from "node:path";
 export function readGenConfig(root) {
   const path = join(root, "gen.config.json");
   if (!existsSync(path)) return {};
+  let source;
+  try {
+    source = readFileSync(path, "utf8");
+  } catch {
+    throw new Error("gen.config.json을 읽을 수 없다 — 올바른 JSON 파일로 저장한다.");
+  }
+  return parseGenConfig(source);
+}
+
+/** @param {string} source @returns {{openapi?: string, contract?: string}} */
+export function parseGenConfig(source) {
   let config;
   try {
-    config = JSON.parse(readFileSync(path, "utf8").replace(/^\uFEFF/, ""));
+    config = JSON.parse(source.replace(/^\uFEFF/, ""));
   } catch {
     throw new Error("gen.config.json을 읽을 수 없다 — 올바른 JSON 파일로 저장한다.");
   }
