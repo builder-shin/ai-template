@@ -11,10 +11,12 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { gitEnvironment } from "../../src/files/git-environment.ts";
 import { syncSharedAssets } from "../../src/sync/sync.ts";
 import { listFiles } from "../../src/verify-templates/files.ts";
 import {
   readSharedAssets,
+  type SharedAssetTarget,
   type SharedAssetsManifest,
 } from "../../src/verify-templates/manifest.ts";
 import { verifyTemplate } from "../../src/verify-templates/verify.ts";
@@ -33,7 +35,11 @@ const read = (repo: string, path: string) => readFileSync(join(repo, path), "utf
 const raw = (repo: string) =>
   JSON.parse(read(repo, "scripts/shared-assets.json")) as SharedAssetsManifest;
 const target = (template = "web", path = ".") => ({ template, path });
-const overlay = (targets = [target()]) => ({ source: "shared/nextjs", mode: "overlay", targets });
+const overlay = (targets: readonly SharedAssetTarget[] = [target()]) => ({
+  source: "shared/nextjs",
+  mode: "overlay",
+  targets,
+});
 
 function save(repo: string, assets: unknown[]): void {
   write(repo, "scripts/shared-assets.json", `${JSON.stringify({ assets }, null, 2)}\n`);
@@ -96,14 +102,114 @@ function makeRepo(): string {
   write(repo, "templates/web/docs/recipes/add-feature.md", "# 기능 추가\n");
   write(repo, "templates/web/src/features/posts/index.ts", "export {};\n");
   save(repo, [overlay()]);
+  execFileSync("git", ["init", "--quiet"], { cwd: repo, env: gitEnvironment() });
+  execFileSync("git", ["config", "core.autocrlf", "false"], { cwd: repo, env: gitEnvironment() });
+  execFileSync("git", ["config", "core.ignorecase", "false"], { cwd: repo, env: gitEnvironment() });
+  track(repo);
   return repo;
 }
 
+function track(repo: string): void {
+  execFileSync("git", ["add", "--all", "--", "shared/nextjs"], {
+    cwd: repo,
+    env: gitEnvironment(),
+  });
+}
+
 describe("공유 자산 덮어 놓기", () => {
+  it("새 대상은 다른 대상의 기록 경로에서 앱 파일을 덮지 않는다", () => {
+    const repo = makeRepo();
+    syncSharedAssets(repo, load(repo));
+    const asset = load(repo).assets[0];
+    if (!asset) throw new Error("원본 항목이 없다");
+    write(repo, "shared/nextjs/src/lib/cookie.ts", "// 새 원본\n");
+    write(repo, "templates/admin/src/lib/cookie.ts", "// 관리자 앱 파일\n");
+    save(repo, [{ ...asset, targets: [...asset.targets, target("admin")] }]);
+    expect(() => syncSharedAssets(repo, raw(repo))).toThrow(/앱 파일 자리/);
+    expect(read(repo, "templates/admin/src/lib/cookie.ts")).toBe("// 관리자 앱 파일\n");
+    expect(read(repo, "templates/web/src/lib/cookie.ts")).toBe("// 공통 쿠키\n");
+    write(repo, "templates/admin/src/lib/cookie.ts", "// 새 원본\n");
+    syncSharedAssets(repo, load(repo));
+    write(repo, "shared/nextjs/src/lib/cookie.ts", "// 다음 원본\n");
+    syncSharedAssets(repo, load(repo));
+    expect(read(repo, "templates/admin/src/lib/cookie.ts")).toBe("// 다음 원본\n");
+  });
+
+  it("새 대상은 지운 원본의 기록 경로에서 앱 파일을 계속 보존한다", () => {
+    const repo = makeRepo();
+    syncSharedAssets(repo, load(repo));
+    rmSync(join(repo, "shared/nextjs/src/lib/cookie.ts"));
+    const asset = load(repo).assets[0];
+    if (!asset) throw new Error("원본 항목이 없다");
+    for (const file of [
+      "template.json",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "package.json",
+      ".claude/settings.json",
+      ".env.example",
+      ".gitattributes",
+      ".github/workflows/ci.yml",
+      "docs/recipes/add-feature.md",
+      "src/features/posts/index.ts",
+    ])
+      write(repo, `templates/admin/${file}`, read(repo, `templates/web/${file}`));
+    write(repo, "templates/admin/src/lib/cookie.ts", "// 관리자 앱 파일\n");
+    save(repo, [{ ...asset, targets: [...asset.targets, target("admin")] }]);
+    syncSharedAssets(repo, load(repo));
+    syncSharedAssets(repo, load(repo));
+    expect(read(repo, "templates/admin/src/lib/cookie.ts")).toBe("// 관리자 앱 파일\n");
+    expect(verifyTemplate(repo, "admin", load(repo))).toEqual([]);
+    expect(existsSync(join(repo, "templates/web/src/lib/cookie.ts"))).toBe(false);
+    write(repo, "shared/nextjs/src/lib/cookie.ts", "// 다시 공유할 원본\n");
+    expect(() => syncSharedAssets(repo, raw(repo))).toThrow(/앱 파일 자리/);
+  });
+
+  it("항목 기록만 있는 이전 형식도 새 대상의 앱 파일을 덮지 않는다", () => {
+    const repo = makeRepo();
+    write(repo, "templates/admin/src/lib/cookie.ts", "// 관리자 앱 파일\n");
+    save(repo, [{ ...overlay([target(), target("admin")]), managedFiles: ["src/lib/cookie.ts"] }]);
+    expect(() => syncSharedAssets(repo, raw(repo))).toThrow(/앱 파일 자리/);
+    expect(existsSync(join(repo, "templates/web/src/lib/cookie.ts"))).toBe(false);
+  });
+
+  it("지운 사본마다 경로 한 줄을 출력하고 삭제 없는 실행은 기존 줄 수다", () => {
+    const repo = makeRepo();
+    save(repo, [overlay([target(), target("admin", "base")])]);
+    expect(syncSharedAssets(repo, load(repo))).toHaveLength(2);
+    rmSync(join(repo, "shared/nextjs/src/lib/cookie.ts"));
+    const lines = syncSharedAssets(repo, load(repo));
+    expect(lines.filter((line) => line.includes("삭제"))).toEqual([
+      "templates/web/src/lib/cookie.ts: 사본 삭제",
+      "templates/admin/base/src/lib/cookie.ts: 사본 삭제",
+    ]);
+    expect(lines).toHaveLength(4);
+    expect(syncSharedAssets(repo, load(repo))).toHaveLength(2);
+  });
+
+  it("미추적 편집기·OS 파일은 복사하거나 기록하지 않고 스테이징한 파일만 더한다", () => {
+    const repo = makeRepo();
+    for (const file of [".DS_Store", "src/lib/cookie.ts~", "src/lib/new.ts"])
+      write(repo, `shared/nextjs/${file}`, "// 미추적\n");
+    syncSharedAssets(repo, load(repo));
+    for (const file of [".DS_Store", "src/lib/cookie.ts~", "src/lib/new.ts"]) {
+      expect(existsSync(join(repo, "templates/web", file))).toBe(false);
+      expect(load(repo).assets[0]?.managedFiles).not.toContain(file);
+    }
+    execFileSync("git", ["add", "--", "shared/nextjs/src/lib/new.ts"], {
+      cwd: repo,
+      env: gitEnvironment(),
+    });
+    syncSharedAssets(repo, load(repo));
+    expect(read(repo, "templates/web/src/lib/new.ts")).toBe("// 미추적\n");
+    expect(load(repo).assets[0]?.managedFiles).toContain("src/lib/new.ts");
+  });
+
   it("기록에 없는 새 원본은 다른 내용의 앱 파일을 덮지 않는다", () => {
     const repo = makeRepo();
     syncSharedAssets(repo, load(repo));
     write(repo, "shared/nextjs/src/lib/local.ts", "// 공통 판\n");
+    track(repo);
     expect(readSharedAssets(repo)).toEqual([
       "templates/web/src/lib/local.ts: 앱 파일 자리에 새 원본(shared/nextjs/src/lib/local.ts)을 쓸 수 없다 — 앱 파일을 옮기거나 원본과 같은 내용으로 맞춘 뒤 pnpm sync한다.",
     ]);
@@ -136,6 +242,7 @@ describe("공유 자산 덮어 놓기", () => {
     syncSharedAssets(repo, load(repo));
     rmSync(join(repo, "shared/nextjs/src/lib/cookie.ts"));
     write(repo, "shared/nextjs/src/lib/Cookie.ts", "// 공통 쿠키\n");
+    track(repo);
     expect(readSharedAssets(repo)).toEqual([
       "assets[0].managedFiles: 대소문자만 다른 경로가 있다(src/lib/Cookie.ts, src/lib/cookie.ts) — 옛 경로의 사본을 지우고 managedFiles에서 뺀 뒤 pnpm sync한다.",
     ]);
@@ -316,7 +423,11 @@ describe("덮어 놓기 manifest 검사", () => {
       let other: unknown;
       if (kind === "다른 overlay") other = overlay();
       else if (kind === "삭제 기록")
-        other = { ...overlay(), source: "other", managedFiles: ["src/lib/cookie.ts"] };
+        other = {
+          ...overlay([{ ...target(), managedFiles: ["src/lib/cookie.ts"] }]),
+          source: "other",
+          managedFiles: ["src/lib/cookie.ts"],
+        };
       else if (kind === "상위 교체 폴더")
         other = { source: "other", targets: [target("web", "src")] };
       else
@@ -371,6 +482,16 @@ describe("덮어 놓기 manifest 검사", () => {
       expect(readSharedAssets(repo)).toEqual(
         expect.arrayContaining([expect.stringMatching(/managedFiles/)]),
       );
+    },
+  );
+
+  it.each([null, "src/lib/cookie.ts", [1], ["../outside"]])(
+    "대상의 잘못된 삭제 기록은 쓰기 전에 거절한다: %j",
+    (history) => {
+      const repo = makeRepo();
+      save(repo, [{ ...overlay(), targets: [{ ...target(), managedFiles: history }] }]);
+      expect(() => syncSharedAssets(repo, raw(repo))).toThrow(/targets\[0\]\.managedFiles/);
+      expect(existsSync(join(repo, "templates/web/src/lib/cookie.ts"))).toBe(false);
     },
   );
 });

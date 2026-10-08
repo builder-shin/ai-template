@@ -67,6 +67,8 @@
 - `scripts/shared-assets.json`에 `mode: "overlay"`, `source: "shared/nextjs"`, 템플릿 루트 대상(`path: "."`)을 둔다. 사본에 해당하는 파일만 쓰고 템플릿의 다른 파일은 건드리지 않는다. A1의 대상은 `nextjs`이며 `nextjs-admin`은 A2에서 더한다. 정렬된 `managedFiles`는 현재 파일과 삭제 기록의 합집합이다.
 - 계약·목·규약 문서 사본(`contract/**`, `docs/conventions/**`)은 지금처럼 따로 동기화하고 admin에도 같은 사본을 둔다.
 
+- 덮어 놓기 원본은 git 인덱스에 있고 디스크에 남은 파일만 고른다. 새 파일은 먼저 `git add`한다. 각 대상에도 `managedFiles`를 두어 실제로 받은 경로만 기록한다. 새 대상의 현재 원본 경로는 빈 자리나 같은 바이트만 받아들이고, 이미 지운 원본 경로의 앱 파일은 보존한다. 사본을 지우면 경로마다 한 줄씩 알린다.
+
 ### 3.2 공유하는 것
 
 아래는 A1 프로토타입에서 확정한 원본 132개다. 정확한 파일 목록은 `scripts/shared-assets.json`의 `shared/nextjs` 항목에 있다. 구현 옆 테스트와 해당 스크립트 테스트·fixture도 원본에 두며 템플릿 사본의 check에서 돈다.
@@ -105,6 +107,29 @@
 - E2E 시나리오, check 단계 목록, `package.json`, `next.config.ts`, `playwright.config.ts`, `.env.example`, `Dockerfile`, `app.config.json`, `template.json`, AGENTS.md와 문서
 - web 전용: OAuth(`lib/session/oauth.ts`, `app/oauth/**`), 가입·인증·재설정 화면
 
+공유 코드가 import하는 고정 앱 파일은 다음 여덟 개다. 두 앱이 같은 경로와 내보내기를 제공한다.
+
+| 파일                                   | 계약                                                |
+| -------------------------------------- | --------------------------------------------------- |
+| `app.config.json`                      | 앱 이름과 `ports.dev`, `mock`, `e2e`, `e2eMock`     |
+| `messages/en.json`, `messages/ko.json` | 공유 카탈로그와 겹치지 않는 앱 문구                 |
+| `e2e/targets/app.ts`                   | `appEnvironment`, `mockEnvironment`, `extendTarget` |
+| `scripts/check/steps.ts`               | `assembleSteps`, `ContractInputs`                   |
+| `scripts/test/e2e-app.ts`              | 통합 검사에 더할 `extraE2eEnv`                      |
+| `src/lib/env.ts`                       | `envSchema`                                         |
+| `src/lib/session/routes.ts`            | `isProtectedPath`                                   |
+
+import 밖에도 아래 앱 계약이 있다. 새 앱을 만들 때 함께 맞춘다.
+
+| 위치                                   | 계약                                                                                                                                                       |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.claude/settings.json`                | 공통 hook의 exec form, 명령 어휘 허용, 환경 파일 읽기·생성물 Edit/Write·위험 명령 차단                                                                     |
+| `tsconfig.json`, `tsconfig.check.json` | strict 설정과 `@/*` → `src/*`, 공통 TS·TSX·MJS 포함. check 설정은 기본 설정을 잇고 `.next/dev`를 제외                                                      |
+| check 단계 이름 `types`, `harness`     | `types` 성공 뒤 route 타입의 캐시를 다시 계산하고, `harness`는 공통 하네스·공식 skill 검사를 직접 실행                                                     |
+| Vitest global setup                    | `ProvidedContext.mockBaseUrl: string`을 선언하고 실제 목 서버의 Origin을 `project.provide("mockBaseUrl", …)`로 제공. 종료 함수로 서버 정리                 |
+| `package.json`의 `start`               | `next start --port <ports.dev>`                                                                                                                            |
+| `.env.example`                         | `envSchema`와 같은 키. 공통 키는 `API_BASE_URL`, `APP_URL`, `SESSION_SECRET`, `TIME_ZONE`, `NEXT_PUBLIC_REALTIME_URL`; 단독 기본 주소는 앱의 dev·mock 포트 |
+
 ### 3.4 앱마다 다른 값
 
 - 공유 파일에 앱 이름이나 포트를 직접 쓰지 않는다. 앱 루트의 `app.config.json`에 앱 이름과 포트(dev, 목, E2E, E2E 목)를 두고 공유 스크립트가 읽는다. `template.json`은 생성할 때 복사하지 않으므로(create CLI 설계 C4) 쓰지 않는다.
@@ -122,6 +147,8 @@
 - 저장소 루트 check의 사본 검사가 공유 사본도 확인한다. 템플릿에서 사본을 고치면 "원본(`shared/nextjs/…`)을 고친 뒤 `pnpm sync`한다"로 실패한다.
 - 생성한 프로젝트에서는 평범한 파일이다. 템플릿 지침은 원본 폴더를 언급하지 않는다.
 - 공유 생성물(API 타입, 에러 코드, 실시간 이벤트)도 원본에 있다. 계약을 바꾼 뒤에는 저장소 전용 helper `scripts/src/sync/gen-nextjs.mjs`가 루트 계약으로 원본의 생성물을 만들고 `pnpm sync`가 사본을 맞춘다. 템플릿의 `pnpm gen`은 사본을 고쳐 사본 검사를 실패시키므로 저장소에서는 쓰지 않는다.
+
+- 원본의 포맷·자동 수정은 루트 `pnpm fix:shared [원본 파일...]`로 한다. 파일을 생략하면 추적 중인 일반 공유 소스를 모두 고른다. web의 ESLint 설정과 사본 경로로 원본 내용을 검사·수정하고 Prettier로 포맷한 뒤 원본에만 쓴다. 생성물과 환경 파일은 제외한다. 실행 뒤 `pnpm sync`와 템플릿 check로 확인한다.
 
 ### 3.7 web 변경
 

@@ -1,11 +1,12 @@
 import { cpSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import {
   copyPath,
   managedFiles,
   overlayFiles,
   sharedAssetsProblems,
   sourcePath,
+  targetManagedFiles,
   type SharedAssetsManifest,
 } from "../verify-templates/manifest.ts";
 
@@ -27,7 +28,16 @@ export function syncSharedAssets(repoRoot: string, manifest: SharedAssetsManifes
   const updated = {
     ...manifest,
     assets: manifest.assets.map((asset) =>
-      asset.mode === "overlay" ? { ...asset, managedFiles: managedFiles(repoRoot, asset) } : asset,
+      asset.mode === "overlay"
+        ? {
+            ...asset,
+            managedFiles: managedFiles(repoRoot, asset),
+            targets: asset.targets.map((target) => ({
+              ...target,
+              managedFiles: targetManagedFiles(repoRoot, asset, target),
+            })),
+          }
+        : asset,
     ),
   };
   if (JSON.stringify(updated) !== JSON.stringify(manifest)) {
@@ -48,7 +58,7 @@ export function syncSharedAssets(repoRoot: string, manifest: SharedAssetsManifes
       if (source === undefined || destination === undefined) continue;
       if (asset.mode === "overlay") {
         const files = new Set(overlayFiles(repoRoot, asset));
-        for (const file of managedFiles(repoRoot, asset)) {
+        for (const file of targetManagedFiles(repoRoot, asset, target)) {
           const copy = join(destination, file);
           if (files.has(file)) {
             mkdirSync(dirname(copy), { recursive: true });
@@ -56,6 +66,7 @@ export function syncSharedAssets(repoRoot: string, manifest: SharedAssetsManifes
           } else if (existsSync(copy) && statSync(copy).isFile()) {
             // 삭제 기록이 폴더가 된 경우 앱 파일이 있을 수 있으므로 폴더는 지우지 않는다.
             rmSync(copy);
+            copied.push(`${relative(repoRoot, copy).replaceAll("\\", "/")}: 사본 삭제`);
           }
         }
         copied.push(`${asset.source} → templates/${target.template}/${target.path}`);

@@ -28,6 +28,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm check`                                      | 완료 기준. 성공하면 한 줄, 실패하면 실패한 단계의 출력만 보여 준다                                                                                                                                                                                                                                |
 | `pnpm fix`                                        | 포맷과 자동 수정 가능한 린트                                                                                                                                                                                                                                                                      |
+| `pnpm fix:shared [원본 파일...]`                  | Next.js 공유 원본에 Prettier·web ESLint 자동 수정을 적용한다. 실행 뒤 `pnpm sync`한다                                                                                                                                                                                                             |
 | `pnpm gen`                                        | 계약을 컴파일하고 적합성 테스트와 목 서버의 타입을 다시 만든다                                                                                                                                                                                                                                    |
 | `pnpm sync`                                       | 공유 자산 원본을 템플릿 사본 위치로 복사한다                                                                                                                                                                                                                                                      |
 | `pnpm new <대상> --template <fastapi\|nextjs>`    | 저장소 밖에 단독 프로젝트를 만든다. `--name <이름>`, `--no-git`, `--help`를 지원한다                                                                                                                                                                                                              |
@@ -61,6 +62,8 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 - API 규약은 `docs/conventions/jsonapi.md`, 에러 코드는 `docs/conventions/error-codes.md`를 따른다.
 - 템플릿은 저장소의 다른 폴더를 참조하지 않는다. 공유 자산은 원본을 고친 뒤 `pnpm sync`한다.
 - Next.js 공유 사본은 `scripts/shared-assets.json`이 정한다. `shared/nextjs/` 원본만 고치고 `pnpm sync`한다. 원본은 템플릿 사본의 check로 검사하며 독립 프로젝트가 아니다.
+- 덮어 놓기는 git 인덱스의 원본만 복사한다. 새 원본은 `git add`한 뒤 `pnpm fix:shared`, `pnpm sync` 순서로 맞춘다. 템플릿의 `pnpm fix`로 공유 사본을 고치지 않는다.
+- 공유 파일을 앱 소유로 돌릴 때는 먼저 항목과 해당 대상의 `managedFiles`에서 경로를 뺀다. 그 뒤 공유 원본을 지우고 앱 파일을 남긴 다음 `pnpm sync`한다. 새 대상은 기존 대상의 삭제 기록을 물려받지 않는다. 절차는 [동기화 문서](scripts/src/sync/README.md)를 따른다.
 - web 계약의 원본·사본 편집 순서는 [web 계약 동기화](docs/conventions/web-contract.md)를 따른다. 템플릿 레시피는 독립 프로젝트의 절차다.
 - 템플릿은 `docs/harness/standard.md`를 지킨다. `pnpm check`가 `templates/`를 검사한다.
 - web 규칙은 `templates/nextjs/AGENTS.md`, W1~W4 구현·검증 기록은 `docs/superpowers/specs/2026-09-30-nextjs-web-design.md`를 읽는다. web의 check·build·mock E2E·FastAPI E2E는 빌드 산출물을 함께 쓰므로 순서대로 실행한다. W4의 CI는 PR CI에서 확인한다.

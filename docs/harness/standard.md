@@ -129,8 +129,8 @@
 
 - 템플릿은 저장소의 다른 폴더를 참조하지 않는다. 공유 자산은 사본으로 들어간다.
 - 원본과 사본 위치는 `scripts/shared-assets.json`에 적는다. `pnpm sync`가 파일·폴더를 복사하며 `mode: "overlay"`는 원본 파일만 대상의 같은 상대 경로에 덮는다. 다른 앱 파일은 보존한다.
-- Next.js 공통 코드·테스트·하네스의 원본은 `shared/nextjs/`다. A1의 대상은 `templates/nextjs`이며 admin은 A2에서 더한다. `managedFiles`는 삭제된 원본의 사본까지 추적하고 생성 프로젝트에 들어가지 않는다.
-- 공유 원본은 별도 프로젝트가 아니다. 루트 포맷·린트에서 제외하고 템플릿 사본의 check로 검사한다. 저장소 사본 검사는 누락·내용 차이·삭제 사본 잔존을 거절한다.
+- Next.js 공통 코드·테스트·하네스의 원본은 `shared/nextjs/`다. A1의 대상은 `templates/nextjs`이며 admin은 A2에서 더한다. 덮어 놓기는 git 인덱스의 원본만 복사하며 항목·대상의 `managedFiles`로 삭제된 사본까지 추적한다. 새 대상은 기존 대상의 기록을 물려받지 않는다. 기록은 생성 프로젝트에 들어가지 않는다.
+- 공유 원본은 별도 프로젝트가 아니다. 루트 포맷·린트에서 제외하고 템플릿 사본의 check로 검사한다. 원본 자동 수정은 루트 `pnpm fix:shared [원본 파일...]` 뒤 `pnpm sync`로 한다. 저장소 사본 검사는 누락·내용 차이·삭제 사본 잔존을 거절한다.
 - 사본을 직접 고치지 않는다. 원본을 고치고 `pnpm sync`를 돌린다.
 
 지침 파일 검사는 `git ls-files --cached --others --exclude-standard`로 파일을 고른다. `.gitignore`에 있는 폴더(`.venv`, `node_modules` 등)는 보지 않는다.
