@@ -47,6 +47,14 @@
     "searchRelation": "대상 검색",
     "optionsError": "목록을 읽지 못했습니다. 다시 검색하세요.",
     "yes": "예",
-    "no": "아니요"
+    "no": "아니요",
+    "edit": "수정",
+    "delete": "삭제",
+    "save": "저장",
+    "cancel": "취소",
+    "confirm": "확인",
+    "deleteDescription": "이 항목을 삭제할까요?",
+    "actionDescription": "이 동작을 실행할까요?",
+    "retryAfter": "{seconds}초 뒤에 다시 시도하세요."
   }
 }

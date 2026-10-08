@@ -61,7 +61,9 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 - 열·상세·쓰기 필드는 계약의 속성·관계 이름, 필터는 목록 operation의 쿼리 키로 타입 검사한다. 필터 파라미터가 없는 목록은 `filters`를 선언할 수 없다. 계약에 없는 쓰기 operation은 선언할 수 없다. 정렬은 계약이 허용한 목록 operation에서 속성 키만 검사하며 서버의 지원 후보는 선언자가 확인한다.
 - 필터·정렬·페이지는 URL 쿼리다. 선언한 필터와 정렬만 보내고 페이지 크기는 20이다. 관계 표시는 선언의 `include`로 함께 읽는다. 등록한 상세 화면과 보기 권한이 있을 때만 관계 링크를 만든다. 파일은 이름만 보인다.
 - 기간 필터의 날짜는 `TIME_ZONE`의 하루 시작·끝으로 API에 보낸다. 잘못된 URL 필터의 4xx는 같은 화면의 안내다. 관계 옵션의 403은 해당 필터만 비활성화하고 안내한다. 검색 가능한 관계는 첫 20개만 읽고, 검색 없는 관계는 마지막 페이지까지 읽는다.
-- 최상위 `fields`에 표시 종류·열거값 `values`·관계 대상과 라벨·표시 override를 둔다. 열거값은 런타임 목록도 선언한다.
+- 최상위 `fields`에 표시 종류·열거값 `values`·관계 대상과 라벨·표시·입력 override를 둔다. 열거값은 런타임 목록도 선언한다. 입력 종류는 `create`·`edit`의 `fields`에 두고 폼은 선언한 필드만 보낸다.
+- 메뉴·버튼·화면과 Server Action은 모두 권한·조건을 확인하며 최종 판정은 API가 한다. Action은 최신 단건을 읽어 조건을 다시 확인한다. 권한이 없으면 `permission.denied`, 권한은 있으나 현재 조건과 다르면 `resource.conflict` 안내다.
+- 삭제와 확인이 필요한 동작은 dialog를 거친다. 필드 표시·입력만 바꿔 끼우며 리소스 전체 화면 override는 없다.
 - 문구는 `resources.<type>.title`, `fields.<name>`, `enums.<name>.<value>`, `actions.<name>`이다. `resource-messages` 검사가 등록 선언에서 키를 모아 ko/en 양쪽의 빈 문구와 누락을 확인한다. 전체 check는 format·lint·types·tests·generated·resource-messages·i18n·contract-typespec·contract-mock·harness의 10단계다.
 
 ## 고정 앱 계약

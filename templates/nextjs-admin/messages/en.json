@@ -47,6 +47,14 @@
     "searchRelation": "Search records",
     "optionsError": "Could not read options. Search again.",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "deleteDescription": "Delete this record?",
+    "actionDescription": "Run this action?",
+    "retryAfter": "Try again in {seconds} seconds."
   }
 }

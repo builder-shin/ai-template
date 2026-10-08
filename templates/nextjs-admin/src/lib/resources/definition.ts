@@ -1,6 +1,6 @@
 import "server-only";
 import type { ComponentType } from "react";
-import type { DisplayProps } from "../../components/resource/types";
+import type { DisplayProps, InputProps } from "../../components/resource/types";
 import type { FormResult } from "../api/errors";
 import type { components } from "../api/schema";
 import type {
@@ -26,9 +26,11 @@ export type FieldPresentation = {
   values?: readonly string[];
   relation?: { type: string; label: string; search?: boolean };
   display?: ComponentType<DisplayProps>;
+  input?: ComponentType<InputProps>;
 };
 export type ResourceForm<T extends ResourceType, M extends "create" | "edit"> = {
   permission: Permission;
+  visible?: (record: ResourceRecord<T>) => boolean;
   fields: {
     readonly [K in WriteAttributeKey<T, M>]?: InputKind;
   } & {
@@ -64,7 +66,9 @@ export type ResourceDefinition<T extends ResourceType> = {
       };
   create?: [ContractOperation<T, "create">] extends [never] ? never : ResourceForm<T, "create">;
   edit?: [ContractOperation<T, "edit">] extends [never] ? never : ResourceForm<T, "edit">;
-  delete?: [ContractOperation<T, "delete">] extends [never] ? never : { permission: Permission };
+  delete?: [ContractOperation<T, "delete">] extends [never]
+    ? never
+    : { permission: Permission; visible?: (record: ResourceRecord<T>) => boolean };
   actions?: readonly ResourceAction<T>[];
   realtime?: { channel: string };
 };

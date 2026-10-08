@@ -1,7 +1,7 @@
 import "server-only";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
-import { findScreen, type Screen } from "../../lib/resources/access";
+import { findScreen, controlsFor, type Screen } from "../../lib/resources/access";
 import { createResourceData } from "../../lib/resources/data";
 import type { AnyResource } from "../../lib/resources/definition";
 import type { ResourceSearchParams } from "../../lib/resources/query";
@@ -12,7 +12,7 @@ import { ApiError } from "../../lib/api/errors";
 import { redirectOnUnauthorized } from "../../lib/session/request";
 import { getEnv } from "../../lib/env";
 import { RequestNotice } from "../request-notice";
-import { ListScreen, DetailScreen } from "./screen";
+import { ListScreen, DetailScreen, FormScreen } from "./screen";
 
 export async function ResourcePage({
   registry,
@@ -28,11 +28,15 @@ export async function ResourcePage({
   searchParams?: ResourceSearchParams;
 }) {
   const resource = findScreen(registry, type, screen);
-  if (!resource || (screen !== "list" && screen !== "detail")) notFound();
+  if (!resource) notFound();
   const locale = await getLocale();
   try {
     const account = await requireAdmin(locale);
-    if (!account.permissions.includes(resource.permission))
+    if (
+      !account.permissions.includes(resource.permission) ||
+      ((screen === "create" || screen === "edit") &&
+        !account.permissions.includes(resource[screen]!.permission))
+    )
       redirect(locale === "en" ? "/en/forbidden" : "/forbidden");
     const client = await createSessionApiClient({ locale });
     const data = createResourceData(client);
@@ -71,12 +75,16 @@ export async function ResourcePage({
         }
       return await ListScreen({ context, document, query });
     }
+    if (screen === "create") return await FormScreen({ context, mode: "create" });
     if (!id) notFound();
     const document = await data.detail(
       { ...resource, detail: { fields: resource.detail?.fields ?? [] } } as AnyResource,
       id,
     );
-    return DetailScreen({ context, document });
+    if (screen === "detail") return DetailScreen({ context, document });
+    if (!controlsFor(resource, account.permissions, document.data).edit)
+      redirect(locale === "en" ? "/en/forbidden" : "/forbidden");
+    return await FormScreen({ context, mode: "edit", record: document.data });
   } catch (error) {
     redirectOnUnauthorized(error, locale === "en" ? "/en" : "/");
     if (!(error instanceof ApiError)) throw error;

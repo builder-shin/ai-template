@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { ResourceList, TableSkeleton } from "./list";
 import { ResourceFilters } from "./filters";
 import { ResourcePagination } from "./pagination";
+import { ResourceForm, ResourceInput, useResourceField } from "./form";
+import { ResourceControls } from "./controls";
 import { ResourceDetail } from "./detail";
 import ko from "../../../messages/ko.json";
 import shared from "../../../messages/shared/ko.json";
@@ -111,6 +113,130 @@ it("페이지 링크는 필터와 정렬을 유지하고 크기는 20이다", ()
   expect(url.searchParams.get("page[size]")).toBe("20");
   expect(url.searchParams.get("filter[q]")).toBe("단어");
   expect(url.searchParams.get("sort")).toBe("title");
+});
+it("폼은 실제 제출 뒤 필드 오류·배너를 표시하고 입력을 보존한다", async () => {
+  const user = userEvent.setup();
+  async function action(_state: unknown, data: FormData) {
+    expect(data.get("title")).toBe("유지할 제목");
+    return {
+      ok: false as const,
+      fieldErrors: { title: ["제목을 확인하세요."] },
+      formError: "요청을 확인하세요.",
+    };
+  }
+  show(
+    <ResourceForm title="수정" action={action} permalink="/posts/1/edit" cancelHref="/posts/1">
+      <ResourceInput name="title" label="제목" kind="text" />
+    </ResourceForm>,
+  );
+  await user.type(screen.getByRole("textbox", { name: "제목" }), "유지할 제목");
+  await user.click(screen.getByRole("button", { name: "저장" }));
+  expect(await screen.findByText("제목을 확인하세요.")).toBeDefined();
+  expect(screen.getByRole("textbox").getAttribute("aria-invalid")).toBe("true");
+  expect(screen.getByRole("alert").textContent).toBe("요청을 확인하세요.");
+  expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("유지할 제목");
+});
+it("입력 override는 같은 필드 오류 상태와 폼 이름을 쓴다", async () => {
+  function Custom() {
+    const { invalid, describedBy } = useResourceField("title");
+    return (
+      <input
+        id="title"
+        name="title"
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+        defaultValue="바꾼 입력"
+      />
+    );
+  }
+  show(
+    <ResourceForm
+      title="생성"
+      action={async () => ({ ok: false, formError: null, fieldErrors: { title: ["오류"] } })}
+      permalink="/posts/new"
+      cancelHref="/posts"
+    >
+      <ResourceInput name="title" label="제목" kind="text">
+        <Custom />
+      </ResourceInput>
+    </ResourceForm>,
+  );
+  await userEvent.setup().click(screen.getByRole("button", { name: "저장" }));
+  expect(await screen.findByText("오류")).toBeDefined();
+  expect(screen.getByRole("textbox").getAttribute("aria-invalid")).toBe("true");
+});
+it("체크박스·여러 줄·열거값·다중 관계 입력이 폼으로 제출된다", async () => {
+  const user = userEvent.setup();
+  let submitted: FormData | undefined;
+  show(
+    <ResourceForm
+      title="수정"
+      action={async (_state, data) => {
+        submitted = data;
+        return { ok: true };
+      }}
+      permalink="/roles/1/edit"
+      cancelHref="/roles/1"
+    >
+      <ResourceInput name="enabled" label="활성" kind="boolean" defaultValue={true} />
+      <ResourceInput name="body" label="본문" kind="textarea" defaultValue="본문 값" />
+      <ResourceInput
+        name="roles"
+        label="역할"
+        kind="relation-many"
+        defaultValue={["a"]}
+        options={[
+          { value: "a", label: "A" },
+          { value: "b", label: "B" },
+        ]}
+      />
+    </ResourceForm>,
+  );
+  await user.click(screen.getByRole("combobox", { name: "역할" }));
+  await user.click(await screen.findByRole("option", { name: "B" }));
+  await user.keyboard("{Escape}");
+  await user.click(screen.getByRole("button", { name: "저장" }));
+  expect(submitted?.getAll("roles")).toEqual(["a", "b"]);
+  expect(submitted?.get("enabled")).toBe("true");
+  expect(submitted?.get("body")).toBe("본문 값");
+});
+it("삭제는 확인 전 호출하지 않고 실패 문구를 대화상자에 남긴다", async () => {
+  const user = userEvent.setup();
+  let calls = 0;
+  show(
+    <ResourceControls
+      controls={[
+        {
+          label: "삭제",
+          confirmation: true,
+          destructive: true,
+          action: async () => {
+            calls++;
+            return { ok: false, formError: "시스템 역할은 삭제할 수 없습니다.", fieldErrors: {} };
+          },
+        },
+      ]}
+    />,
+  );
+  await user.click(screen.getByRole("button", { name: "삭제" }));
+  expect(calls).toBe(0);
+  const dialog = await screen.findByRole("dialog", { name: "삭제" });
+  await user.click(within(dialog).getByRole("button", { name: "취소" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(calls).toBe(0);
+  await user.click(screen.getByRole("button", { name: "삭제" }));
+  const reopened = await screen.findByRole("dialog", { name: "삭제" });
+  await user.click(within(reopened).getByRole("button", { name: "확인" }));
+  expect(await screen.findByRole("alert")).toHaveProperty(
+    "textContent",
+    "시스템 역할은 삭제할 수 없습니다.",
+  );
+  expect(calls).toBe(1);
+});
+it("확인 없는 동작은 제출하고 성공하면 화면을 갱신한다", async () => {
+  show(<ResourceControls controls={[{ label: "발행", action: async () => ({ ok: true }) }]} />);
+  await userEvent.setup().click(screen.getByRole("button", { name: "발행" }));
+  expect(navigation.refresh).toHaveBeenCalledOnce();
 });
 it("관계 필터는 대상 검색 결과에서 선택한다", async () => {
   const user = userEvent.setup();
