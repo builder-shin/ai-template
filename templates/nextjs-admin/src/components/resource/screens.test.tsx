@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { ResourceList, TableSkeleton } from "./list";
@@ -13,7 +13,7 @@ import ko from "../../../messages/ko.json";
 import shared from "../../../messages/shared/ko.json";
 import { intlFixture } from "../../../scripts/test/intl-fixture";
 import type { Query } from "./url";
-import type { Option } from "./types";
+import type { Option, SearchOptions } from "./types";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 vi.mock("../../lib/i18n/navigation", () => ({
@@ -31,6 +31,15 @@ function translated(node: React.ReactNode) {
 }
 function show(node: React.ReactNode) {
   return render(translated(node));
+}
+function relationBar(options: readonly Option[], search: SearchOptions, query: Query = {}) {
+  return (
+    <ResourceFilters
+      type="posts"
+      query={query}
+      filters={[{ name: "filter[author]", label: "작성자", kind: "relation", options, search }]}
+    />
+  );
 }
 
 it("목록의 행과 키보드가 상세를 열고 내부 버튼은 행 이동을 막는다", async () => {
@@ -208,38 +217,123 @@ it("쿼리가 같아도 새 관계 옵션과 라벨을 선택기에 반영한다
   expect(await screen.findByRole("option", { name: "새 작성자" })).toBeDefined();
   expect(screen.queryByRole("option", { name: "이전 이름" })).toBeNull();
 });
-it("관계 검색 뒤 새 옵션을 받으면 검색 결과 대신 갱신한 목록을 보인다", async () => {
+it("열린 관계 검색 결과는 같은 기본 옵션의 새 배열을 받아도 유지된다", async () => {
   const user = userEvent.setup();
-  const bar = (options: readonly Option[]) => (
-    <ResourceFilters
-      type="posts"
-      query={{}}
-      filters={[
-        {
-          name: "filter[author]",
-          label: "작성자",
-          kind: "relation",
-          options,
-          search: async () => [{ value: "s", label: "검색 작성자" }],
-        },
-      ]}
-    />
-  );
-  const result = show(bar([{ value: "u", label: "이전 작성자" }]));
+  const search = async () => [{ value: "s", label: "검색 작성자" }];
+  const result = show(relationBar([{ value: "u", label: "기본 작성자" }], search));
   await user.click(screen.getByRole("combobox", { name: "작성자" }));
-  expect(await screen.findByRole("option", { name: "이전 작성자" })).toBeDefined();
   await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "찾을 이름");
   await user.click(screen.getByRole("button", { name: "검색" }));
   expect(await screen.findByRole("option", { name: "검색 작성자" })).toBeDefined();
-  result.rerender(translated(bar([{ value: "v", label: "갱신 작성자" }])));
-  await user.click(await screen.findByRole("option", { name: "갱신 작성자" }));
-  expect(screen.queryByRole("option", { name: "검색 작성자" })).toBeNull();
+  result.rerender(translated(relationBar([{ value: "u", label: "기본 작성자" }], search)));
+  await user.click(await screen.findByRole("option", { name: "검색 작성자" }));
   await user.click(screen.getByRole("button", { name: "적용" }));
   expect(
     new URL(navigation.push.mock.calls[0]![0], "http://localhost").searchParams.get(
       "filter[author]",
     ),
-  ).toBe("v");
+  ).toBe("s");
+});
+it("새로고침 뒤 도착한 관계 검색 응답도 열린 팝업에 보인다", async () => {
+  const user = userEvent.setup();
+  const response = Promise.withResolvers<Option[]>();
+  const search = () => response.promise;
+  const result = show(relationBar([{ value: "u", label: "기본 작성자" }], search));
+  await user.click(screen.getByRole("combobox", { name: "작성자" }));
+  await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "찾을 이름");
+  await user.click(screen.getByRole("button", { name: "검색" }));
+  result.rerender(translated(relationBar([{ value: "u", label: "기본 작성자" }], search)));
+  await act(async () => response.resolve([{ value: "s", label: "늦게 찾은 작성자" }]));
+  expect(await screen.findByRole("option", { name: "늦게 찾은 작성자" })).toBeDefined();
+});
+it("관계 검색 팝업을 닫고 다시 열면 갱신한 기본 옵션을 보인다", async () => {
+  const user = userEvent.setup();
+  const search = async () => [{ value: "s", label: "검색 작성자" }];
+  const result = show(relationBar([{ value: "u", label: "기본 작성자" }], search));
+  await user.click(screen.getByRole("combobox", { name: "작성자" }));
+  await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "찾을 이름");
+  await user.click(screen.getByRole("button", { name: "검색" }));
+  expect(await screen.findByRole("option", { name: "검색 작성자" })).toBeDefined();
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  result.rerender(translated(relationBar([{ value: "v", label: "갱신 작성자" }], search)));
+  await user.click(screen.getByRole("combobox", { name: "작성자" }));
+  expect(await screen.findByRole("option", { name: "갱신 작성자" })).toBeDefined();
+  expect(screen.queryByRole("option", { name: "검색 작성자" })).toBeNull();
+});
+it("관계 검색어를 바꾸거나 비우면 이전 검색 결과를 끝낸다", async () => {
+  const user = userEvent.setup();
+  const search = async () => [{ value: "s", label: "검색 작성자" }];
+  show(relationBar([{ value: "u", label: "기본 작성자" }], search));
+  await user.click(screen.getByRole("combobox", { name: "작성자" }));
+  const input = await screen.findByRole("textbox", { name: "대상 검색" });
+  await user.type(input, "이름");
+  await user.click(screen.getByRole("button", { name: "검색" }));
+  expect(await screen.findByRole("option", { name: "검색 작성자" })).toBeDefined();
+  await user.type(input, " 변경");
+  expect(await screen.findByRole("option", { name: "기본 작성자" })).toBeDefined();
+  expect(screen.queryByRole("option", { name: "검색 작성자" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "검색" }));
+  expect(await screen.findByRole("option", { name: "검색 작성자" })).toBeDefined();
+  await user.clear(input);
+  expect(await screen.findByRole("option", { name: "기본 작성자" })).toBeDefined();
+  expect(screen.queryByRole("option", { name: "검색 작성자" })).toBeNull();
+});
+it.each(["검색어 변경", "팝업 닫기"])(
+  "관계 검색 응답은 세션 종료 뒤 도착하면 반영하지 않는다 (%s)",
+  async (end) => {
+    const user = userEvent.setup();
+    const response = Promise.withResolvers<Option[]>();
+    show(relationBar([{ value: "u", label: "기본 작성자" }], () => response.promise));
+    await user.click(screen.getByRole("combobox", { name: "작성자" }));
+    const input = await screen.findByRole("textbox", { name: "대상 검색" });
+    await user.type(input, "이름");
+    await user.click(screen.getByRole("button", { name: "검색" }));
+    if (end === "검색어 변경") await user.clear(input);
+    else {
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    }
+    await act(async () => response.resolve([{ value: "s", label: "끝난 검색 작성자" }]));
+    if (end === "팝업 닫기") await user.click(screen.getByRole("combobox", { name: "작성자" }));
+    expect(await screen.findByRole("option", { name: "기본 작성자" })).toBeDefined();
+    expect(screen.queryByRole("option", { name: "끝난 검색 작성자" })).toBeNull();
+  },
+);
+it("URL 쿼리가 바뀌면 열린 관계 검색을 끝낸다", async () => {
+  const user = userEvent.setup();
+  const response = Promise.withResolvers<Option[]>();
+  const search = () => response.promise;
+  const result = show(relationBar([{ value: "u", label: "기본 작성자" }], search));
+  await user.click(screen.getByRole("combobox", { name: "작성자" }));
+  await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "이름");
+  await user.click(screen.getByRole("button", { name: "검색" }));
+  result.rerender(
+    translated(
+      relationBar([{ value: "v", label: "새 기본 작성자" }], search, { "filter[q]": "새 검색" }),
+    ),
+  );
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  await act(async () => response.resolve([{ value: "s", label: "이전 쿼리 작성자" }]));
+  await user.click(screen.getByRole("combobox", { name: "작성자" }));
+  expect(await screen.findByRole("option", { name: "새 기본 작성자" })).toBeDefined();
+  expect(screen.queryByRole("option", { name: "이전 쿼리 작성자" })).toBeNull();
+});
+it("필터 적용 뒤 URL이 바뀌어도 적용 버튼의 포커스를 유지한다", async () => {
+  const user = userEvent.setup();
+  const bar = (query: Query) => (
+    <ResourceFilters
+      type="posts"
+      query={query}
+      filters={[{ name: "filter[q]", label: "검색", kind: "text" }]}
+    />
+  );
+  const result = show(bar({}));
+  await user.type(screen.getByRole("searchbox", { name: "검색" }), "적용할 검색");
+  const apply = screen.getByRole("button", { name: "적용" });
+  await user.click(apply);
+  result.rerender(translated(bar({ "filter[q]": "적용할 검색" })));
+  expect(document.activeElement).toBe(apply);
 });
 it("폼은 실제 제출 뒤 필드 오류·배너를 표시하고 입력을 보존한다", async () => {
   const user = userEvent.setup();

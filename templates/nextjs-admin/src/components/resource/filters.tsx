@@ -21,9 +21,9 @@ export function ResourceFilters({
 }) {
   const t = useTranslations("resource");
   const router = useRouter();
+  const queryKey = resourceUrl(type, query, {});
   return (
     <form
-      key={resourceUrl(type, query, {})}
       className="flex flex-wrap items-end gap-3"
       onSubmit={(event) => {
         event.preventDefault();
@@ -40,7 +40,7 @@ export function ResourceFilters({
       }}
     >
       {filters.map((filter) => (
-        <div key={filter.name} className="flex flex-col gap-1">
+        <div key={`${queryKey}:${filter.name}`} className="flex flex-col gap-1">
           <Label htmlFor={filter.name}>{filter.label}</Label>
           {filter.kind === "enum" || filter.kind === "relation" ? (
             <ResourceSelect
@@ -68,7 +68,7 @@ export function ResourceFilters({
         </div>
       ))}
       {sort.length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div key={`${queryKey}:sort`} className="flex flex-col gap-1">
           <Label htmlFor="sort">{t("sort")}</Label>
           <ResourceSelect
             name="sort"

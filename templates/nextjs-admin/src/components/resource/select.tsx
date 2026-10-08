@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   Select,
@@ -40,15 +40,18 @@ export function ResourceSelect({
   disabled?: boolean;
 }) {
   const t = useTranslations("resource");
-  const [searchResult, setSearchResult] = useState<{
-    source: readonly Option[];
-    items: readonly Option[];
-  }>();
-  // 새 서버 옵션이 오면 이전 검색 결과를 버린다.
-  const items = searchResult?.source === options ? searchResult.items : options;
+  const [searchResult, setSearchResult] = useState<readonly Option[]>();
+  const searchVersion = useRef(0);
   const [pending, start] = useTransition();
   const [error, setError] = useState(false);
   const [term, setTerm] = useState("");
+  // 열린 검색은 새로고침과 무관하게 유지하고, 종료한 검색의 늦은 응답은 버린다.
+  const items = term ? (searchResult ?? options) : options;
+  function endSearch() {
+    searchVersion.current++;
+    setSearchResult(undefined);
+    setError(false);
+  }
   const [value, setValue] = useState<string | string[] | null>(
     multiple
       ? Array.isArray(defaultValue)
@@ -64,6 +67,12 @@ export function ResourceSelect({
       multiple={multiple}
       value={value}
       onValueChange={setValue}
+      onOpenChange={(open) => {
+        if (!open) {
+          endSearch();
+          setTerm("");
+        }
+      }}
       items={items}
       disabled={disabled}
     >
@@ -81,7 +90,10 @@ export function ResourceSelect({
             <Input
               aria-label={t("searchRelation")}
               value={term}
-              onChange={(event) => setTerm(event.target.value)}
+              onChange={(event) => {
+                endSearch();
+                setTerm(event.target.value);
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") event.preventDefault();
                 if (
@@ -98,16 +110,20 @@ export function ResourceSelect({
               type="button"
               variant="outline"
               disabled={pending}
-              onClick={() =>
+              onClick={() => {
+                const version = ++searchVersion.current;
                 start(async () => {
                   try {
-                    setSearchResult({ source: options, items: await search(term) });
-                    setError(false);
+                    const result = await search(term);
+                    if (version === searchVersion.current) {
+                      setSearchResult(result);
+                      setError(false);
+                    }
                   } catch {
-                    setError(true);
+                    if (version === searchVersion.current) setError(true);
                   }
-                })
-              }
+                });
+              }}
             >
               {pending ? <Spinner /> : t("search")}
             </Button>
