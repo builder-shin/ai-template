@@ -46,7 +46,6 @@ export function ResourceSelect({
   const [error, setError] = useState(false);
   const [term, setTerm] = useState("");
   // 열린 검색은 새로고침과 무관하게 유지하고, 종료한 검색의 늦은 응답은 버린다.
-  const items = term ? (searchResult ?? options) : options;
   function endSearch() {
     searchVersion.current++;
     setSearchResult(undefined);
@@ -61,12 +60,42 @@ export function ResourceSelect({
         ? defaultValue
         : null,
   );
+  const [retainedOptions, setRetainedOptions] = useState<readonly Option[]>([]);
+  // 현재 선택에서 본 라벨만 보관하고 최신 기본 옵션의 라벨을 우선한다.
+  const selectedOptions = (Array.isArray(value) ? value : [value]).flatMap((id) => {
+    const option =
+      options.find((option) => option.value === id) ??
+      searchResult?.find((option) => option.value === id) ??
+      retainedOptions.find((option) => option.value === id);
+    return option ? [option] : [];
+  });
+  if (
+    selectedOptions.length !== retainedOptions.length ||
+    selectedOptions.some(
+      (option, index) =>
+        option.value !== retainedOptions[index]?.value ||
+        option.label !== retainedOptions[index]?.label,
+    )
+  )
+    setRetainedOptions(selectedOptions);
+  const items = [
+    ...new Map(
+      [...(term ? (searchResult ?? options) : options), ...selectedOptions].map((option) => [
+        option.value,
+        option,
+      ]),
+    ).values(),
+  ];
   return (
     <Select
       name={name}
       multiple={multiple}
       value={value}
-      onValueChange={setValue}
+      onValueChange={(next) => {
+        setValue(next);
+        const values = Array.isArray(next) ? next : [next];
+        setRetainedOptions(items.filter((option) => values.includes(option.value)));
+      }}
       onOpenChange={(open) => {
         if (!open) {
           endSearch();

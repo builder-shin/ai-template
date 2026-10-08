@@ -41,6 +41,25 @@ function relationBar(options: readonly Option[], search: SearchOptions, query: Q
     />
   );
 }
+function relationForm(multiple: boolean, defaultValue?: string | string[]) {
+  return (
+    <ResourceForm
+      title="수정"
+      action={async () => ({ ok: true })}
+      permalink="/users/u/edit"
+      cancelHref="/users/u"
+    >
+      <ResourceInput
+        name="roles"
+        label="역할"
+        kind={multiple ? "relation-many" : "relation"}
+        defaultValue={defaultValue}
+        options={[{ value: "a", label: "기존 역할" }]}
+        search={async () => [{ value: "s", label: "검색 역할" }]}
+      />
+    </ResourceForm>
+  );
+}
 
 it("목록의 행과 키보드가 상세를 열고 내부 버튼은 행 이동을 막는다", async () => {
   const user = userEvent.setup();
@@ -289,7 +308,7 @@ it.each(["검색어 변경", "팝업 닫기"])(
     const input = await screen.findByRole("textbox", { name: "대상 검색" });
     await user.type(input, "이름");
     await user.click(screen.getByRole("button", { name: "검색" }));
-    if (end === "검색어 변경") await user.clear(input);
+    if (end === "검색어 변경") await user.type(input, " 변경");
     else {
       await user.keyboard("{Escape}");
       await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
@@ -484,6 +503,10 @@ it("관계 필터는 대상 검색 결과에서 선택한다", async () => {
   );
   await user.click(screen.getByRole("button", { name: "검색" }));
   await user.click(await screen.findByRole("option", { name: "찾은 작성자" }));
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  expect
+    .soft(screen.getByRole("combobox", { name: "작성자" }).textContent)
+    .toContain("찾은 작성자");
   await user.click(screen.getByRole("button", { name: "적용" }));
   expect(
     new URL(navigation.push.mock.calls[0]![0], "http://localhost").searchParams.get(
@@ -491,6 +514,39 @@ it("관계 필터는 대상 검색 결과에서 선택한다", async () => {
     ),
   ).toBe("u");
 });
+it("다중 관계의 검색 선택은 팝업을 닫아도 값과 라벨을 유지한다", async () => {
+  const user = userEvent.setup();
+  show(relationForm(true));
+  const trigger = screen.getByRole("combobox", { name: "역할" });
+  const form = trigger.closest("form")!;
+  await user.click(trigger);
+  await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "역할 이름");
+  await user.click(screen.getByRole("button", { name: "검색" }));
+  await user.click(await screen.findByRole("option", { name: "검색 역할" }));
+  expect(new FormData(form).getAll("roles")).toEqual(["s"]);
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  expect.soft(new FormData(form).getAll("roles")).toEqual(["s"]);
+  expect.soft(trigger.textContent).toContain("검색 역할");
+});
+it.each([false, true])(
+  "관계 검색 결과에 없는 기존 선택을 보존한다 (다중 선택: %s)",
+  async (multiple) => {
+    const user = userEvent.setup();
+    show(relationForm(multiple, multiple ? ["a"] : "a"));
+    const trigger = screen.getByRole("combobox", { name: "역할" });
+    const form = trigger.closest("form")!;
+    await user.click(trigger);
+    await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "다른 역할");
+    await user.click(screen.getByRole("button", { name: "검색" }));
+    expect(await screen.findByRole("option", { name: "검색 역할" })).toBeDefined();
+    expect.soft(new FormData(form).getAll("roles")).toEqual(["a"]);
+    expect.soft(trigger.textContent).toContain("기존 역할");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    expect(new FormData(form).getAll("roles")).toEqual(["a"]);
+  },
+);
 it("정렬은 선언한 후보의 오름·내림만 선택할 수 있다", async () => {
   const user = userEvent.setup();
   show(
