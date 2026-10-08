@@ -8,6 +8,114 @@ const base = {
 };
 const inspect = (files: Record<string, string>) => checkHarness(files, ["A", "B"]);
 
+const apiKeys = ["API_BASE_URL", "NEXT_PUBLIC_REALTIME_URL", "APP_URL"];
+function apiExample(api: string, realtime: string, dev = 3000) {
+  return {
+    ...base,
+    "app.config.json": JSON.stringify({
+      app: "example",
+      ports: { dev, mock: dev + 1010, e2e: dev + 100, e2eMock: dev + 1110 },
+    }),
+    "package.json": JSON.stringify({ scripts: { start: `next start --port ${dev}` } }),
+    ".env.example": `API_BASE_URL=${api}\nNEXT_PUBLIC_REALTIME_URL=${realtime}\nAPP_URL=http://localhost:${dev}\n`,
+  };
+}
+
+it("조합의 백엔드 OpenAPI와 8000번 API·실시간 예시를 통과시킨다", () => {
+  expect(
+    checkHarness(
+      {
+        ...apiExample("http://127.0.0.1:8000/api/v1", "http://127.0.0.1:8000"),
+        "gen.config.json": '{ "openapi": "../api/openapi.json" }\n',
+      },
+      apiKeys,
+    ),
+  ).toEqual([]);
+});
+
+it("단독 프로젝트도 백엔드 스펙을 선택하면 로컬 백엔드 주소를 허용한다", () => {
+  expect(
+    checkHarness(
+      {
+        ...apiExample("http://localhost:9000/api/v1", "http://localhost:9000", 3001),
+        "gen.config.json": '{ "openapi": "backend/openapi.json" }\n',
+      },
+      apiKeys,
+    ),
+  ).toEqual([]);
+});
+
+it("외부 백엔드 예시를 목 포트 오류로 보고하지 않는다", () => {
+  expect(
+    checkHarness(apiExample("https://api.example.com/api/v1", "https://api.example.com"), apiKeys),
+  ).toEqual([]);
+});
+
+it.each(["localhost", "127.0.0.1", "[::1]"])(
+  "백엔드 선언이 없는 %s의 목 포트 드리프트를 잡는다",
+  (host) => {
+    expect(
+      checkHarness(
+        {
+          ...apiExample(`http://${host}:4010/api/v1`, `http://${host}:4010`, 3001),
+          "gen.config.json": '{ "contract": "contract" }\n',
+        },
+        apiKeys,
+      ),
+    ).toEqual([
+      ".env.example:1 환경 — API_BASE_URL: app.config.json의 mock 포트로 고친다: http://localhost:4011/api/v1",
+      ".env.example:1 환경 — NEXT_PUBLIC_REALTIME_URL: app.config.json의 mock 포트로 고친다: http://localhost:4011",
+    ]);
+  },
+);
+
+it.each(["localhost", "127.0.0.1", "[::1]"])(
+  "%s의 정상 목 주소와 API 끝 슬래시를 실행기처럼 허용한다",
+  (host) => {
+    expect(
+      checkHarness(apiExample(`http://${host}:4010/api/v1/`, `http://${host}:4010`), apiKeys),
+    ).toEqual([]);
+  },
+);
+
+it("빈 OpenAPI 설정은 백엔드 선언으로 인정하지 않는다", () => {
+  expect(
+    checkHarness(
+      {
+        ...apiExample("http://localhost:9999/api/v1", "http://localhost:9999"),
+        "gen.config.json": '{ "openapi": "" }\n',
+      },
+      apiKeys,
+    ),
+  ).toEqual([
+    "gen.config.json openapi가 잘못됐다 — openapi에 앱 루트 기준 상대 경로 문자열을 넣는다.",
+  ]);
+});
+
+it.each([3000, 3001])("앱 %s의 목 API·실시간 예시 포트를 검사한다", (dev) => {
+  const mock = dev + 1010;
+  const files = {
+    ...base,
+    "app.config.json": JSON.stringify({
+      app: "example",
+      ports: { dev, mock, e2e: dev + 100, e2eMock: mock + 100 },
+    }),
+    "package.json": JSON.stringify({ scripts: { start: `next start --port ${dev}` } }),
+    ".env.example": `API_BASE_URL=http://localhost:${mock}/api/v1\nNEXT_PUBLIC_REALTIME_URL=http://localhost:${mock}\nAPP_URL=http://localhost:${dev}\n`,
+  };
+  const keys = ["API_BASE_URL", "NEXT_PUBLIC_REALTIME_URL", "APP_URL"];
+  expect(checkHarness(files, keys)).toEqual([]);
+  expect(
+    checkHarness(
+      { ...files, ".env.example": files[".env.example"].replaceAll(String(mock), "9999") },
+      keys,
+    ),
+  ).toEqual([
+    `.env.example:1 환경 — API_BASE_URL: app.config.json의 mock 포트로 고친다: http://localhost:${mock}/api/v1`,
+    `.env.example:1 환경 — NEXT_PUBLIC_REALTIME_URL: app.config.json의 mock 포트로 고친다: http://localhost:${mock}`,
+  ]);
+});
+
 it("동기화한 계약은 원본 배너를 보존한다", () => {
   expect(
     inspect({

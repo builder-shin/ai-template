@@ -1,0 +1,6 @@
+{
+  "session_id": "fixture-session",
+  "hook_event_name": "SessionStart",
+  "source": "startup",
+  "model": "fixture-model"
+}

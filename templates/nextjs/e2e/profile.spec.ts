@@ -1,7 +1,7 @@
 import { ko, en } from "../src/lib/i18n/catalogs";
 import { randomUUID } from "node:crypto";
 import { test, expect, signupAndVerify, login, logout } from "./fixtures";
-import { webOrigin } from "./targets";
+import { applicationOrigin } from "./targets";
 
 for (const locale of ["ko", "en"] as const) {
   const t = locale === "ko" ? ko : en;
@@ -60,7 +60,7 @@ test("프로필 언어를 바꾸면 URL·쿠키·다음 로그인 언어가 함�
   );
   await logout(page, { ...account, locale: "en" });
   // 한국어 로그인으로 들어가도 저장한 계정 언어가 우선한다.
-  await context.addCookies([{ name: "NEXT_LOCALE", value: "ko", url: webOrigin }]);
+  await context.addCookies([{ name: "NEXT_LOCALE", value: "ko", url: applicationOrigin }]);
   await login(page, account, false);
   await expect(page).toHaveURL("/en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");

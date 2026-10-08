@@ -1,0 +1,14 @@
+{
+  "home": {
+    "title": "Admin",
+    "description": "Manage your service."
+  },
+  "layout": {
+    "skipToContent": "Skip to content"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "Check the address.",
+    "home": "Go to admin home"
+  }
+}

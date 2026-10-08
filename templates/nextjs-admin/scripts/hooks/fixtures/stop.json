@@ -1,0 +1,6 @@
+{
+  "session_id": "fixture-session",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "구현 완료"
+}

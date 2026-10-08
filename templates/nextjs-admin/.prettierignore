@@ -1,0 +1,17 @@
+node_modules/
+.next/
+.cache/
+coverage/
+playwright-report/
+test-results/
+pnpm-lock.yaml
+next-env.d.ts
+**/generated/**
+src/lib/api/schema.d.ts
+contract/openapi.yaml
+contract/
+docs/conventions/
+# 공식 skill은 고정 원본의 텍스트를 보존한다.
+.claude/skills/shadcn/
+.claude/skills/next-dev-loop/
+.claude/skills/playwright-cli/

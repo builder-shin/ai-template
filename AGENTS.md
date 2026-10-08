@@ -6,21 +6,22 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 
 ## 구조
 
-| 경로                    | 내용                                                                                      |
-| ----------------------- | ----------------------------------------------------------------------------------------- |
-| `contract/typespec/`    | 플랫폼 API 계약 원본(TypeSpec)                                                            |
-| `contract/openapi.yaml` | 계약 컴파일 결과. 생성물이라 직접 고치지 않는다                                           |
-| `contract/api-style/`   | JSON:API 룰셋(Redocly). 백엔드 템플릿이 사본으로 쓴다                                     |
-| `contract/conformance/` | 두 백엔드와 목에 똑같이 돌리는 적합성 테스트 틀                                           |
-| `contract/mock/`        | 플랫폼 API를 메모리로 구현한 목 서버(Hono). 단독 web의 개발 백엔드이자 적합성 `mock` 대상 |
-| `templates/`            | 템플릿. 각 폴더는 그대로 복사하면 동작하는 독립 프로젝트다                                |
-| `templates/fastapi/`    | FastAPI 백엔드 템플릿                                                                     |
-| `templates/nextjs/`     | Next.js BFF web. 자체 workspace의 계약·목과 인증·글·내 정보·세션·업로드·실시간 기능       |
-| `shared/nextjs/`        | Next.js 앱 공통 코드·테스트·하네스 원본. sync가 템플릿의 같은 경로에 복사한다             |
-| `create/`               | git 추적 템플릿 파일로 단독·FastAPI+web 조합 프로젝트를 만드는 CLI                        |
-| `create/assets/combo/`  | 조합 루트 실행기·하네스·CI와 조합용 web 이미지의 원본                                     |
-| `scripts/`              | check 실행기, 도구 설치기, 구조 비교, 지침·템플릿 검사, 동기화                            |
-| `docs/`                 | 하네스 표준, API 규약, 스펙과 계획                                                        |
+| 경로                      | 내용                                                                                      |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| `contract/typespec/`      | 플랫폼 API 계약 원본(TypeSpec)                                                            |
+| `contract/openapi.yaml`   | 계약 컴파일 결과. 생성물이라 직접 고치지 않는다                                           |
+| `contract/api-style/`     | JSON:API 룰셋(Redocly). 백엔드 템플릿이 사본으로 쓴다                                     |
+| `contract/conformance/`   | 두 백엔드와 목에 똑같이 돌리는 적합성 테스트 틀                                           |
+| `contract/mock/`          | 플랫폼 API를 메모리로 구현한 목 서버(Hono). 단독 web의 개발 백엔드이자 적합성 `mock` 대상 |
+| `templates/`              | 템플릿. 각 폴더는 그대로 복사하면 동작하는 독립 프로젝트다                                |
+| `templates/fastapi/`      | FastAPI 백엔드 템플릿                                                                     |
+| `templates/nextjs/`       | Next.js BFF web. 자체 workspace의 계약·목과 인증·글·내 정보·세션·업로드·실시간 기능       |
+| `templates/nextjs-admin/` | Next.js 관리 BFF. 자체 계약·목, 비밀번호 로그인·관리 권한·ko/en·실시간 접근 확인          |
+| `shared/nextjs/`          | Next.js 앱 공통 코드·테스트·하네스 원본. sync가 템플릿의 같은 경로에 복사한다             |
+| `create/`                 | git 추적 템플릿 파일로 단독·FastAPI+web 조합 프로젝트를 만드는 CLI                        |
+| `create/assets/combo/`    | 조합 루트 실행기·하네스·CI와 조합용 web 이미지의 원본                                     |
+| `scripts/`                | check 실행기, 도구 설치기, 구조 비교, 지침·템플릿 검사, 동기화                            |
+| `docs/`                   | 하네스 표준, API 규약, 스펙과 계획                                                        |
 
 ## 명령
 
@@ -35,6 +36,9 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `pnpm new <대상> --api fastapi --web`             | 저장소 밖에 apps/api·apps/web 조합을 만든다. web 의존성 버전을 보존하고 api OpenAPI로 web 타입을 생성한다. `--name`, `--no-git`를 지원한다                                                                                                                                                        |
 | `pnpm new --help`                                 | 단독·조합 생성의 사용법과 이름 규칙을 보여 준다                                                                                                                                                                                                                                                   |
 | `pnpm --dir templates/nextjs setup`               | web의 고정 의존성·Chromium 설치와 환경 준비                                                                                                                                                                                                                                                       |
+| `pnpm --dir templates/nextjs-admin setup`         | admin의 고정 의존성·Chromium 설치와 환경 준비                                                                                                                                                                                                                                                     |
+| `pnpm --dir templates/nextjs-admin dev`           | 단독 admin(3001)·목(4011), 백엔드 모드의 admin                                                                                                                                                                                                                                                    |
+| `pnpm --dir templates/nextjs-admin check`         | admin 자체 검사. 루트의 템플릿 구조·사본·공통 의존성 버전 검사도 통과해야 한다                                                                                                                                                                                                                    |
 | `pnpm --dir templates/nextjs dev`                 | 단독 모드의 web(3000)·목(4010), 백엔드 모드의 web                                                                                                                                                                                                                                                 |
 | `pnpm --dir templates/nextjs check`               | web 자체 검사. 루트 check의 템플릿 구조·사본 검사와 함께 통과해야 한다                                                                                                                                                                                                                            |
 | `pnpm --dir templates/nextjs test:e2e`            | 목(4110)과 운영 web(3100)에 붙는 Chromium E2E 20개. 기본 대상은 mock이며 FastAPI는 준비된 외부 주소·설정을 받는다                                                                                                                                                                                 |
@@ -67,6 +71,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 - web 계약의 원본·사본 편집 순서는 [web 계약 동기화](docs/conventions/web-contract.md)를 따른다. 템플릿 레시피는 독립 프로젝트의 절차다.
 - 템플릿은 `docs/harness/standard.md`를 지킨다. `pnpm check`가 `templates/`를 검사한다.
 - web 규칙은 `templates/nextjs/AGENTS.md`, W1~W4 구현·검증 기록은 `docs/superpowers/specs/2026-09-30-nextjs-web-design.md`를 읽는다. web의 check·build·mock E2E·FastAPI E2E는 빌드 산출물을 함께 쓰므로 순서대로 실행한다. W4의 CI는 PR CI에서 확인한다.
+- admin 규칙은 `templates/nextjs-admin/AGENTS.md`, 설계는 `docs/superpowers/specs/2026-10-08-nextjs-admin-design.md`를 읽는다. 두 프론트의 공통 의존성 버전은 같아야 한다. admin의 check·build·목 E2E도 순서대로 실행한다.
 - web의 FastAPI E2E는 루트 `pnpm web-e2e fastapi`로 실행한다. 포트를 먼저 검사하고 전용 compose·새 볼륨만 쓴다. 같은 실행 ID의 컨테이너나 볼륨이 있으면 기동·정리를 거부한다. 성공 뒤와 `--down`은 해당 스택·볼륨·정확한 실행 이미지 태그를 정리하며 없는 프로젝트·이미지도 성공이다. 개발 프로젝트 `fastapi`·`joon`은 건드리지 않는다. `pnpm conformance fastapi`는 개발 스택을 사용하므로 이 검증의 대체 명령이 아니다.
 - 실행기의 `ps`·로그 진단은 실패·중단 때만 출력한다. FastAPI access log는 모든 환경에서 쿼리 문자열을 뺀다. POSIX 중단은 소유한 프로세스 그룹에 SIGINT를 보내고 30초 안에 끝나지 않으면 SIGKILL로 종료한다. 정리 중 신호도 종료 코드에 반영한다.
 - 검사를 더하려면 루트 package.json에 `check:<이름>` 스크립트를 추가한다. 워크스페이스 패키지는 자기 `check` 스크립트만 두면 자동으로 포함된다.

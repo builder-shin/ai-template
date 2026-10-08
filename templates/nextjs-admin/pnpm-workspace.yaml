@@ -1,0 +1,10 @@
+packages:
+  - contract/*
+minimumReleaseAge: 1440
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+  lefthook: false
+  "@parcel/watcher": true
+  "@swc/core": true

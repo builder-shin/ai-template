@@ -3,6 +3,7 @@ import { envKeys } from "../envfile.mjs";
 import { isGenerated } from "./files";
 import { loadingCopyProblems } from "./loading-copy";
 import { parseAppConfig } from "../../src/lib/app-config.mjs";
+import { parseGenConfig } from "../gen-config.mjs";
 
 const lineCount = (text: string) => (text ? text.replace(/\n$/, "").split("\n").length : 0);
 
@@ -84,6 +85,32 @@ export function checkHarness(
           `package.json:1 start — app.config.json의 dev 포트로 고친다: next start --port ${config.ports.dev}`,
         );
       const appUrl = files[".env.example"]?.match(/^\s*APP_URL\s*=(.*)$/m)?.[1];
+      const genConfig = parseGenConfig(files["gen.config.json"] ?? "{}");
+      for (const [key, suffix] of [
+        ["API_BASE_URL", "/api/v1"],
+        ["NEXT_PUBLIC_REALTIME_URL", ""],
+      ] as const) {
+        const value = files[".env.example"]?.match(new RegExp(`^\\s*${key}\\s*=(.*)$`, "m"))?.[1];
+        // 백엔드 스펙을 선택한 조합·단독 프로젝트에는 목 주소를 강제하지 않는다.
+        if (value === undefined || genConfig.openapi !== undefined) continue;
+        const expected = `http://localhost:${config.ports.mock}${suffix}`;
+        let matches = false;
+        try {
+          const url = new URL(value.split(" #")[0]?.trim() ?? "");
+          // isStandalone과 같은 loopback 주소만 목 포트 드리프트 검사 대상이다.
+          if (!["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) continue;
+          matches =
+            url.protocol === "http:" &&
+            url.port === String(config.ports.mock) &&
+            (suffix ? /^\/api\/v1\/?$/.test(url.pathname) : url.pathname === "/");
+        } catch {
+          /* URL이 아니어도 같은 수정 안내를 낸다. */
+        }
+        if (!matches)
+          problems.push(
+            `.env.example:1 환경 — ${key}: app.config.json의 mock 포트로 고친다: ${expected}`,
+          );
+      }
       if (appUrl !== undefined) {
         const expectedOrigin = `http://localhost:${config.ports.dev}`;
         let origin = "";

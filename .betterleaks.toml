@@ -11,6 +11,8 @@ filter.matchesAny(attributes["path"], [
   `^contract/typespec/src/.+\.tsp$`,
   `^templates/nextjs/contract/openapi\.yaml$`,
   `^templates/nextjs/contract/typespec/src/.+\.tsp$`,
+  `^templates/nextjs-admin/contract/openapi\.yaml$`,
+  `^templates/nextjs-admin/contract/typespec/src/.+\.tsp$`,
   `^templates/[^/]+/openapi\.json$`,
   `^contract/api-style/dist/lint\.mjs$`,
   `^templates/[^/]+/api-style/lint\.mjs$`,
@@ -21,10 +23,10 @@ filter.matchesAny(attributes["path"], [
 useDefault = true
 
 [[allowlists]]
-description = "생성한 nextjs 잠금 파일의 @inquirer/password 패키지 이름"
+description = "생성한 프런트엔드 잠금 파일의 @inquirer/password 패키지 이름"
 condition = "AND"
 targetRules = ["generic-password"]
-paths = ['''^templates/nextjs/pnpm-lock\.yaml$''']
+paths = ['''^templates/nextjs(?:-admin)?/pnpm-lock\.yaml$''']
 regexTarget = "line"
 regexes = ['''@inquirer/password''']
 

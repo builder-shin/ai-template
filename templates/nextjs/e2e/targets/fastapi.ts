@@ -39,7 +39,7 @@ export function parseFastapiTargetEnv(input: Record<string, string | undefined>)
   }
   const data = result.data;
   return {
-    webOrigin: data.APP_URL,
+    applicationOrigin: data.APP_URL,
     apiBaseUrl: data.API_BASE_URL,
     mailpitOrigin: data.E2E_MAILPIT_URL,
     recentLoginSeconds: data.E2E_RECENT_LOGIN_SECONDS,
@@ -121,7 +121,7 @@ export function fastapiTarget(
               continue;
             }
             if (link.pathname !== path || !link.searchParams.get("token")) continue;
-            if (link.origin !== config.webOrigin || link.username || link.password) {
+            if (link.origin !== config.applicationOrigin || link.username || link.password) {
               throw new Error("메일 링크는 자격 증명 없는 앱 Origin이어야 한다.");
             }
             const ids = previous?.time === time ? previous.ids : new Set<string>();

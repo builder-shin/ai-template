@@ -1,10 +1,10 @@
 # contract/mock
 
-플랫폼 API를 메모리로 구현한 목 서버다(Hono와 Socket.IO, Node 24에서 tsx로 실행). 단독 web의 개발·E2E 백엔드이고 적합성 스위트의 `mock` 대상이다. 설계는 `docs/superpowers/specs/2026-09-30-nextjs-web-design.md` §8이다.
+플랫폼 API를 메모리로 구현한 목 서버다(Hono와 Socket.IO, Node 24에서 tsx로 실행). 단독 프론트의 개발·E2E 백엔드이고 적합성 스위트의 `mock` 대상이다. 계약은 `../openapi.yaml`, 규약은 [JSON:API](../../docs/conventions/jsonapi.md)를 따른다.
 
 ## 원칙
 
-- FastAPI 템플릿(`templates/fastapi/src/app`)과 똑같이 동작한다. 상태, 에러 코드와 우선순위, detail, JSON:API 규칙, 레이트 리밋, 메일, 실시간 이벤트까지 FastAPI 코드를 읽고 맞춘다. 파일 첫 주석에 대응하는 FastAPI 파일과 규칙을 적는다.
+- 플랫폼 API 계약과 백엔드의 동작을 따른다. 상태, 에러 코드와 우선순위, detail, JSON:API 규칙, 레이트 리밋, 메일, 실시간 이벤트까지 실제 HTTP 테스트로 맞춘다. 파일 첫 주석에 구현한 규칙과 비교 근거를 적는다.
 - 요청은 계약(`contract/openapi.yaml`)으로 검증한다. 라우트는 operationId로 경로, 메서드, 인증, 권한, 쿼리 파라미터, 요청 문서를 계약에서 읽는다(`src/jsonapi/operations.ts`, `router.ts`). 계약으로 적을 수 없는 FastAPI 동작(공백 지우기, 짝 없는 서로게이트 등)만 코드로 둔다(`src/jsonapi/validation.ts`).
 - 타입은 계약에서 만든 `src/generated/api.ts`를 쓴다(직접 고치지 않는다). 에러는 `ApiError`와 계약의 에러 코드만 쓴다.
 - 데이터는 프로세스 메모리에 있다. 재시작하면 시드(admin·member 역할, 관리자, 예제 글)만 남는다.

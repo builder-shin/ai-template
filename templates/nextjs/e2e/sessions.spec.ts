@@ -1,7 +1,7 @@
 import { en } from "../src/lib/i18n/catalogs";
 import { randomUUID } from "node:crypto";
 import { test, expect, sessionCookieName, signupAndVerify, login, logout } from "./fixtures";
-import { webOrigin } from "./targets";
+import { applicationOrigin } from "./targets";
 import { observeRealtime } from "./realtime";
 
 test("세션 하나를 폐기하면 다른 컨텍스트는 자동 로그아웃하고 현재 세션은 유지된다", async ({
@@ -12,7 +12,7 @@ test("세션 하나를 폐기하면 다른 컨텍스트는 자동 로그아웃�
 }) => {
   const account = await signupAndVerify(page, target, "en");
   await login(page, account);
-  const peer = await browser.newContext({ baseURL: webOrigin });
+  const peer = await browser.newContext({ baseURL: applicationOrigin });
   try {
     const other = await peer.newPage();
     await login(other, account);
@@ -56,7 +56,7 @@ test("비밀번호 변경은 다른 컨텍스트를 로그아웃하고 새 비�
 }) => {
   const account = await signupAndVerify(page, target, "en");
   await login(page, account);
-  const peer = await browser.newContext({ baseURL: webOrigin });
+  const peer = await browser.newContext({ baseURL: applicationOrigin });
   try {
     const other = await peer.newPage();
     await login(other, account);
