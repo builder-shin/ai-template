@@ -27,6 +27,7 @@ export type ResourceState = FormResult & {
 };
 export type FormAction = (state: ResourceState, data: FormData) => Promise<ResourceState>;
 export type Control = {
+  key: string;
   label: string;
   action: () => Promise<ResourceState>;
   confirmation?: boolean;

@@ -46,6 +46,7 @@ export function RecordControls({
     ...(shown.delete
       ? [
           {
+            key: "delete",
             label: t("resource.delete"),
             confirmation: true,
             destructive: true,
@@ -54,6 +55,7 @@ export function RecordControls({
         ]
       : []),
     ...shown.actions.map((action) => ({
+      key: `action:${action.name}`,
       label: t(`resources.${resource.type}.actions.${action.name}`),
       confirmation: action.confirmation ?? false,
       action: runResourceAction.bind(null, resource.type, action.name, record.id),

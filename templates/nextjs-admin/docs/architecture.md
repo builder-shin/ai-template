@@ -22,6 +22,8 @@
 
 수정 화면은 수정 권한도 확인한다. 권한이 있는 관리자의 최신 레코드가 `edit.visible` 조건과 다르면 409 `resource.conflict`를 같은 화면의 안내로 보인다.
 
+삭제와 동작의 UI 상태는 `delete`·`action:<name>` 키로 묶는다. 새로고침 뒤 동작이 사라져도 대화상자·실패 안내가 다른 동작으로 옮겨가지 않는다.
+
 최상위 fields의 표시 종류·열거값·관계 라벨·override가 목록과 상세에 쓰인다. `resource-messages`는 서버 표식만 이 검사 프로세스에서 풀어 선언을 읽고 제목·필드·필터·정렬·열거값·동작의 ko/en 문구를 검사한다. 전체 check와 빠른 검사에 모두 포함한다.
 
 글 골든은 `src/resources/posts/`에 있다. 목록과 상세에 작성자·표지 이미지를 include하며 상세에서만 표지 이미지의 파일 이름을 표시한다. 목록에는 coverImage 열이 없다. 작성·수정 화면 없이 발행·발행 취소·삭제를 제공한다. 글 동작의 inline Server Action은 관리 권한과 최신 상태를 확인한 뒤 status만 PATCH한다. 이미 목표 상태인 글은 `resource.conflict` 안내로 반환한다.

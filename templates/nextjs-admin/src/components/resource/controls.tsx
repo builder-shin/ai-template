@@ -68,8 +68,8 @@ function ActionButton({ control }: { control: Control }) {
 export function ResourceControls({ controls }: { controls: readonly Control[] }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {controls.map((control, index) => (
-        <ActionButton key={index} control={control} />
+      {controls.map((control) => (
+        <ActionButton key={control.key} control={control} />
       ))}
     </div>
   );

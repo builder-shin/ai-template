@@ -29,6 +29,7 @@ it("삭제는 확인 전 호출하지 않고 실패 문구를 대화상자에 �
     <ResourceControls
       controls={[
         {
+          key: "delete",
           label: "삭제",
           confirmation: true,
           destructive: true,
@@ -56,7 +57,75 @@ it("삭제는 확인 전 호출하지 않고 실패 문구를 대화상자에 �
   expect(calls).toBe(1);
 });
 it("확인 없는 동작은 제출하고 성공하면 화면을 갱신한다", async () => {
-  show(<ResourceControls controls={[{ label: "발행", action: async () => ({ ok: true }) }]} />);
+  show(
+    <ResourceControls
+      controls={[{ key: "action:publish", label: "발행", action: async () => ({ ok: true }) }]}
+    />,
+  );
   await userEvent.setup().click(screen.getByRole("button", { name: "발행" }));
   expect(navigation.refresh).toHaveBeenCalledOnce();
+});
+it("사라진 동작의 열린 대화상자는 다음 동작으로 옮겨가지 않는다", async () => {
+  const user = userEvent.setup();
+  const first = {
+    key: "action:first",
+    label: "첫 동작",
+    confirmation: true,
+    action: async () => ({ ok: true as const }),
+  };
+  const next = {
+    key: "action:next",
+    label: "다음 동작",
+    confirmation: true,
+    action: async () => ({ ok: true as const }),
+  };
+  const result = show(<ResourceControls controls={[first]} />);
+  await user.click(screen.getByRole("button", { name: "첫 동작" }));
+  await screen.findByRole("dialog", { name: "첫 동작" });
+  result.rerender(translated(<ResourceControls controls={[next]} />));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.getByRole("button", { name: "다음 동작" })).toBeDefined();
+});
+it("앞 동작이 사라져도 남은 동작의 열린 대화상자를 유지한다", async () => {
+  const user = userEvent.setup();
+  const first = {
+    key: "action:first",
+    label: "첫 동작",
+    confirmation: true,
+    action: async () => ({ ok: true as const }),
+  };
+  const next = {
+    key: "action:next",
+    label: "다음 동작",
+    confirmation: true,
+    action: async () => ({ ok: true as const }),
+  };
+  const result = show(<ResourceControls controls={[first, next]} />);
+  await user.click(screen.getByRole("button", { name: "다음 동작" }));
+  await screen.findByRole("dialog", { name: "다음 동작" });
+  result.rerender(translated(<ResourceControls controls={[next]} />));
+  expect(await screen.findByRole("dialog", { name: "다음 동작" })).toBeDefined();
+});
+it("사라진 동작의 실패 안내는 다음 동작으로 옮겨가지 않는다", async () => {
+  const result = show(
+    <ResourceControls
+      controls={[
+        {
+          key: "action:first",
+          label: "첫 동작",
+          action: async () => ({ ok: false, formError: "첫 동작 실패", fieldErrors: {} }),
+        },
+      ]}
+    />,
+  );
+  await userEvent.setup().click(screen.getByRole("button", { name: "첫 동작" }));
+  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "첫 동작 실패");
+  result.rerender(
+    translated(
+      <ResourceControls
+        controls={[{ key: "action:next", label: "다음 동작", action: async () => ({ ok: true }) }]}
+      />,
+    ),
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
 });
