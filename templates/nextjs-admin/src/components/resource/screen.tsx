@@ -186,7 +186,9 @@ export function DetailScreen({
         ),
       }))}
     >
-      {resource.realtime && <ResourceRealtime channel={resource.realtime.channel} />}
+      {resource.realtime && (
+        <ResourceRealtime channel={resource.realtime.channel} id={document.data.id} />
+      )}
       <RecordControls context={context} record={document.data} />
     </ResourceDetail>
   );
