@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { createHash, randomUUID } from "node:crypto";
 import { jwtDecrypt, EncryptJWT } from "jose";
 import { JSDOM } from "jsdom";
@@ -85,7 +86,9 @@ async function failed(
   expect(url.searchParams.get("returnTo")).toBe(returnTo);
   const cookies = response.headers.getSetCookie();
   expect(cookies.some((value) => /^oauth=;/.test(value) && /Max-Age=0/i.test(value))).toBe(true);
-  expect(cookies.some((value) => value.startsWith("session="))).toBe(false);
+  expect(cookies.some((value) => value.startsWith(`${appSessionCookieName("development")}=`))).toBe(
+    false,
+  );
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(response.headers.get("referrer-policy")).toBe("no-referrer");
   const page = await fetch(url, { headers });
@@ -126,10 +129,12 @@ describe("실제 목 제공자를 거치는 OAuth HTTP", () => {
       const { data: me } = await mockClient(session.accessToken).GET("/me");
       expect(me!.data.attributes.name).toBe("OAuth member");
       expect(response.headers.get("location")).not.toContain(session.accessToken);
-      const sessionPair = response.headers
+      const sessionHeader = response.headers
         .getSetCookie()
-        .find((value) => value.startsWith("session="))!
-        .split(";", 1)[0]!;
+        .find((value) => value.startsWith(`${appSessionCookieName("development")}=`));
+      if (!sessionHeader) throw new Error("로그인한 세션 쿠키가 없다.");
+      const sessionPair = sessionHeader.split(";", 1)[0];
+      if (!sessionPair) throw new Error("로그인한 세션 쿠키 값이 없다.");
       const page = await fetch(`${base}/me`, { headers: { ...headers, Cookie: sessionPair } });
       expect(page.status).toBe(200);
       expect(await page.text()).toContain("OAuth member");

@@ -2,11 +2,45 @@ import { expect, it } from "vitest";
 import { assembleSteps } from "./steps";
 import { runChecks } from "./runner";
 
+function stepKey(steps: ReturnType<typeof assembleSteps>, name: string) {
+  const step = steps.find((item) => item.name === name);
+  if (!step) throw new Error(`검사 단계가 없다: ${name}`);
+  return step.key;
+}
+
+it("선택한 계약의 검사 경로와 입력을 캐시에 반영한다", () => {
+  const contract = {
+    mock: "../../contract/mock",
+    typespec: "../../contract/typespec",
+    files: { "mock/src/main.ts": "before" },
+  };
+  const steps = assembleSteps({}, false, [], {}, {}, "", contract);
+  expect(steps.find((step) => step.name === "contract-mock")?.args).toEqual([
+    "--dir",
+    contract.mock,
+    "run",
+    "check",
+  ]);
+  expect(steps.find((step) => step.name === "contract-typespec")?.args).toEqual([
+    "--dir",
+    contract.typespec,
+    "run",
+    "check",
+  ]);
+  const changed = assembleSteps({}, false, [], {}, {}, "", {
+    ...contract,
+    files: { "mock/src/main.ts": "after" },
+  });
+  for (const name of ["tests", "generated", "contract-mock", "contract-typespec"])
+    expect(steps.find((step) => step.name === name)?.key).not.toBe(
+      changed.find((step) => step.name === name)?.key,
+    );
+});
+
 it.each(["e2e/fixtures.ts", "e2e/targets/fastapi.ts"])(
   "%s 변경은 전체 테스트 캐시를 무효화한다",
   (path) => {
-    const key = (value: string) =>
-      assembleSteps({ [path]: value }, false, []).find((step) => step.name === "tests")!.key;
+    const key = (value: string) => stepKey(assembleSteps({ [path]: value }, false, []), "tests");
     expect(key("before")).not.toBe(key("after"));
   },
 );
@@ -25,8 +59,7 @@ it.each([false, true])(
   "백엔드 스펙과 입력 설정 변경은 생성물 캐시를 무효화한다 (fast=%s)",
   (fast) => {
     const key = (files: Record<string, string>, openapi = "before") =>
-      assembleSteps(files, fast, [], {}, {}, openapi).find((step) => step.name === "generated")!
-        .key;
+      stepKey(assembleSteps(files, fast, [], {}, {}, openapi), "generated");
     expect(key({}, "before")).not.toBe(key({}, "after"));
     expect(key({ "gen.config.json": "before" })).not.toBe(key({ "gen.config.json": "after" }));
     expect(key({ "gen.config.json": "before" })).not.toBe(key({}));
@@ -38,7 +71,7 @@ it.each([false, true])("hook과 권한 변경은 테스트 캐시를 무효화�
   const name = fast ? "related-tests" : "tests";
   for (const path of [".claude/hooks/pre-tool-use.mjs", ".claude/settings.json"]) {
     const key = (files: Record<string, string>) =>
-      assembleSteps(files, fast, related).find((step) => step.name === name)!.key;
+      stepKey(assembleSteps(files, fast, related), name);
     expect(key({ [path]: "before" })).not.toBe(key({ [path]: "after" }));
     expect(key({ [path]: "before" })).not.toBe(key({}));
   }
@@ -48,7 +81,7 @@ it.each([false, true])(
   "타입 검사 입력과 현재 route 생성물 변경은 캐시를 무효화한다 (fast=%s)",
   (fast) => {
     const key = (files: Record<string, string>, routeTypes: Record<string, string> = {}) =>
-      assembleSteps(files, fast, [], routeTypes).find((step) => step.name === "types")!.key;
+      stepKey(assembleSteps(files, fast, [], routeTypes), "types");
     for (const path of ["src/app/page.tsx", "next.config.ts", "tsconfig.check.json"]) {
       expect(key({ [path]: "before" })).not.toBe(key({ [path]: "after" }));
     }

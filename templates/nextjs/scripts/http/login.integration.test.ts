@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { randomUUID } from "node:crypto";
 import { describe, expect, inject, it } from "vitest";
 import { base, mockClient, postForm, responseSession, serverForm } from "./helpers";
@@ -62,8 +63,10 @@ describe("§13 #8 로케일 경로에서 JS 없이 실제 useActionState 폼 제
     expect(html).toContain('aria-describedby="email-errors"');
     expect(html).toContain("Enter a value in the correct format.");
     expect(html).not.toContain('value="wrong"');
-    expect(response.headers.getSetCookie().some((value) => value.startsWith("session="))).toBe(
-      false,
-    );
+    expect(
+      response.headers
+        .getSetCookie()
+        .some((value) => value.startsWith(`${appSessionCookieName("development")}=`)),
+    ).toBe(false);
   });
 });

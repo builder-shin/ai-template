@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getEnv } from "../env";
 import type { components } from "../api/schema";
 import { deriveSessionKey } from "./key";
+import { appSessionCookieName } from "../app-config.mjs";
 
 const sessionSchema = z.object({
   sessionId: z.string().min(1).optional(),
@@ -50,7 +51,7 @@ export async function unsealSession(
 }
 
 export function sessionCookieName(mode = process.env.NODE_ENV) {
-  return mode === "production" ? "__Host-session" : "session";
+  return appSessionCookieName(mode);
 }
 
 export function sessionCookieOptions(mode = process.env.NODE_ENV) {

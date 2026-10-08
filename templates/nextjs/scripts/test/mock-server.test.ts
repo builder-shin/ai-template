@@ -1,8 +1,9 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, expect, it } from "vitest";
 import { startMock } from "./mock-server";
+import { appConfig } from "../../src/lib/app-config.mjs";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -10,7 +11,7 @@ afterEach(() => {
     rmSync(directory, { recursive: true, force: true });
 });
 function fixture(source: string) {
-  const directory = mkdtempSync(join(tmpdir(), "mock-start-"));
+  const directory = mkdtempSync(join(tmpdir(), "aitpl-mock-start-"));
   directories.push(directory);
   const entry = join(directory, "server.mjs");
   writeFileSync(entry, source);
@@ -59,11 +60,34 @@ it("준비 시간 초과 뒤 시작한 부모와 자식을 모두 종료한다",
 it("실제 목을 빈 포트에 띄우고 종료 뒤 HTTP 연결을 남기지 않는다", async () => {
   const mock = await startMock({ env: {} });
   try {
-    expect([3000, 4010, 3100, 4110]).not.toContain(Number(new URL(mock.base).port));
+    expect(Object.values(appConfig.ports)).not.toContain(Number(new URL(mock.base).port));
     expect((await fetch(`${mock.base}/health/ready`)).ok).toBe(true);
   } finally {
     await mock.stop();
   }
   await expect(fetch(`${mock.base}/health/ready`)).rejects.toThrow();
   await mock.stop();
+});
+
+it("앱 밖의 계약 목을 띄우고 정리한다", async () => {
+  const { directory } = fixture("");
+  const root = join(directory, "apps/web");
+  mkdirSync(root, { recursive: true });
+  mkdirSync(join(directory, "contract/mock/src"), { recursive: true });
+  mkdirSync(join(directory, "contract/typespec"));
+  writeFileSync(join(root, "gen.config.json"), JSON.stringify({ contract: "../../contract" }));
+  writeFileSync(
+    join(directory, "contract/mock/src/main.ts"),
+    `
+    import { createServer } from "node:http";
+    createServer((_, response) => response.end("custom contract")).listen(Number(process.env.PORT), "127.0.0.1");
+  `,
+  );
+  const mock = await startMock({ env: {}, root });
+  try {
+    expect(await (await fetch(`${mock.base}/health/ready`)).text()).toBe("custom contract");
+  } finally {
+    await mock.stop();
+  }
+  await expect(fetch(`${mock.base}/health/ready`)).rejects.toThrow();
 });

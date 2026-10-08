@@ -2,7 +2,9 @@ import type { ChildProcess } from "node:child_process";
 import { once } from "node:events";
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { join } from "node:path";
+import { resolveContractPaths } from "./gen-config.mjs";
 import { mockOrigin, webOrigin, targetName, targetEnvironment } from "../e2e/targets";
 import { mockRecentLoginSeconds } from "../e2e/targets/mock";
 
@@ -17,6 +19,7 @@ export interface ServerDependencies {
 export async function startE2eServers(
   env: Record<string, string | undefined>,
   deps: ServerDependencies,
+  root = fileURLToPath(new URL("../", import.meta.url)),
 ) {
   const target = targetName(env.E2E_TARGET ?? "mock");
   const webEnv = { ...env, ...targetEnvironment(target, env) };
@@ -25,7 +28,11 @@ export async function startE2eServers(
   if (target === "mock") {
     await deps.assertFree(mockOrigin);
     const mock = deps.start(
-      ["--import", pathToFileURL(require.resolve("tsx")).href, "contract/mock/src/main.ts"],
+      [
+        "--import",
+        pathToFileURL(require.resolve("tsx")).href,
+        join(resolveContractPaths(root).mock, "src/main.ts"),
+      ],
       {
         ...webEnv,
         PORT: new URL(mockOrigin).port,

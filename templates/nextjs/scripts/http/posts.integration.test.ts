@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { JSDOM } from "jsdom";
@@ -18,7 +19,7 @@ describe("ko/en 공개 글 HTTP 화면", () => {
   let cookie: string;
   beforeAll(async () => {
     fixture = await postFixture();
-    cookie = `session=${await sealSession(fixture.session, EXAMPLE_SESSION_SECRET)}`;
+    cookie = `${appSessionCookieName("development")}=${await sealSession(fixture.session, EXAMPLE_SESSION_SECRET)}`;
   });
   afterAll(async () => {
     await fixture?.stop();

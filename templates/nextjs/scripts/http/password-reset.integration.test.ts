@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { randomUUID } from "node:crypto";
 import { describe, expect, inject, it } from "vitest";
 import { EXAMPLE_SESSION_SECRET } from "../../src/lib/env";
@@ -81,7 +82,7 @@ describe("Task 9 비밀번호 재설정의 JS 없는 실제 폼", () => {
       form.body.set("password", "reset-http-new-password"); // betterleaks:allow 테스트 비밀번호
       const reset = await postForm(path, form, oldCookie);
       expect(reset.status).toBe(200);
-      expect(reset.headers.get("set-cookie")).toContain("session=;");
+      expect(reset.headers.get("set-cookie")).toContain(`${appSessionCookieName("development")}=;`);
       expect(reset.headers.get("set-cookie")).toContain("Max-Age=0");
       await expect(mockClient(old!.data.attributes.accessToken).GET("/me")).rejects.toMatchObject({
         status: 401,

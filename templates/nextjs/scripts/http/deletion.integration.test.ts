@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { expect, inject, it } from "vitest";
 import { JSDOM } from "jsdom";
 import { deletionFixture } from "../../src/features/me/deletion-fixture";
@@ -19,7 +20,7 @@ it.each(["ko", "en"] as const)(
       const prefix = locale === "ko" ? "" : "/en";
       const path = `${prefix}/me/delete`;
       const headers = {
-        Cookie: `session=${await sealSession(owner.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
+        Cookie: `${appSessionCookieName("development")}=${await sealSession(owner.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
         "Accept-Language": locale,
         Origin: base,
       };
@@ -56,7 +57,11 @@ it.each(["ko", "en"] as const)(
       expect(
         success.headers
           .getSetCookie()
-          .some((cookie) => cookie.startsWith("session=;") && cookie.includes("Max-Age=0")),
+          .some(
+            (cookie) =>
+              cookie.startsWith(`${appSessionCookieName("development")}=;`) &&
+              cookie.includes("Max-Age=0"),
+          ),
       ).toBe(true);
       await expect(owner.client.GET("/me")).rejects.toMatchObject({ status: 401 });
     } finally {

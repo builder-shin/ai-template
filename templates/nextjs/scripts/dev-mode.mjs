@@ -1,3 +1,5 @@
+import { appConfig, appOrigin } from "../src/lib/app-config.mjs";
+
 /** 환경 파일은 런타임 로더만 읽는다. 외부 백엔드 주소에서는 목을 시작하지 않는다. */
 export function isStandalone(apiBaseUrl) {
   if (apiBaseUrl === undefined) return true;
@@ -6,7 +8,7 @@ export function isStandalone(apiBaseUrl) {
     return (
       url.protocol === "http:" &&
       ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) &&
-      url.port === "4010" &&
+      url.port === String(appConfig.ports.mock) &&
       /^\/api\/v1\/?$/.test(url.pathname)
     );
   } catch {
@@ -16,5 +18,5 @@ export function isStandalone(apiBaseUrl) {
 
 /** URL의 IPv6 괄호는 listen의 호스트 인자에서 제거한다. */
 export function mockHost(apiBaseUrl) {
-  return new URL(apiBaseUrl ?? "http://localhost:4010/api/v1").hostname.replace(/^\[|\]$/g, "");
+  return new URL(apiBaseUrl ?? `${appOrigin("mock")}/api/v1`).hostname.replace(/^\[|\]$/g, "");
 }

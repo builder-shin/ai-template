@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { generateMetadata, generateWeb, staleFiles } from "./generate";
 import { readWebOpenapi } from "./gen-input";
+import { resolveContractPaths } from "./gen-config.mjs";
 
 const spec = {
   components: {
@@ -14,7 +15,10 @@ const spec = {
 describe("계약 생성", () => {
   it("선택한 스펙으로 web 생성물을 모두 재현한다", async () => {
     const files = await generateWeb(
-      readWebOpenapi(resolve("."), readFileSync("contract/openapi.yaml", "utf8")),
+      readWebOpenapi(
+        resolve("."),
+        readFileSync(resolveContractPaths(resolve(".")).openapi, "utf8"),
+      ),
     );
     for (const [path, expected] of Object.entries(files)) {
       expect(expected.startsWith("// 직접 수정 금지")).toBe(true);

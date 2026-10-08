@@ -9,6 +9,8 @@ import { readWebOpenapi } from "./gen-input";
 let root: string;
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "aitpl-gen-input-"));
+  mkdirSync(join(root, "contract/mock"), { recursive: true });
+  mkdirSync(join(root, "contract/typespec"), { recursive: true });
 });
 afterEach(() => {
   // 프로젝트가 아닌 이 테스트의 설정·스펙 픽스처만 정리한다.
@@ -36,6 +38,27 @@ const contract = stringify(fixture("contract"));
 const mock = "// TypeSpec 목 타입\n";
 
 describe("web 생성 입력", () => {
+  it.each([{}, { contract: "contract" }])(
+    "선택 키만 있는 설정 %j는 TypeSpec 입력을 쓴다",
+    async (config) => {
+      configure(config);
+      expect(readWebOpenapi(root, contract)).toBe(contract);
+      const files = await generateFiles(root, contract, mock);
+      expect(files["contract/mock/src/generated/api.ts"]).toBe(mock);
+    },
+  );
+
+  it("상위 계약 경로로 계약·목 출력만 옮기고 web 출력은 앱 안에 둔다", async () => {
+    const app = join(root, "apps/web");
+    mkdirSync(app, { recursive: true });
+    writeFileSync(join(app, "gen.config.json"), JSON.stringify({ contract: "../../contract" }));
+    const files = await generateFiles(app, contract, mock);
+    expect(files["../../contract/openapi.yaml"]).toBe(contract);
+    expect(files["../../contract/mock/src/generated/api.ts"]).toBe(mock);
+    expect(files).not.toHaveProperty("contract/openapi.yaml");
+    expect(files["src/lib/api/schema.d.ts"]).toContain("contractPayload:");
+  });
+
   it("설정이 없으면 TypeSpec 입력으로 web과 목을 만든다", async () => {
     const files = await generateFiles(root, contract, mock);
     expect(files["contract/openapi.yaml"]).toBe(contract);
@@ -119,7 +142,6 @@ describe("web 생성 입력", () => {
       null,
       [],
       "backend.json",
-      {},
       { openapi: "backend.json", unknown: true },
       { openapi: null },
       { openapi: 42 },

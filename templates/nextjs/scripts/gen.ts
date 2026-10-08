@@ -4,10 +4,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateFiles, staleFiles } from "./generate";
 import { pnpm } from "./process.mjs";
+import { resolveContractPaths } from "./gen-config.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const check = process.argv.includes("--check");
-const temporary = mkdtempSync(join(tmpdir(), "nextjs-gen-"));
+const temporary = mkdtempSync(join(tmpdir(), "aitpl-nextjs-gen-"));
 
 function run(args: string[], cwd: string) {
   const result = pnpm(args, { cwd, maxBuffer: 16 * 1024 * 1024 });
@@ -16,6 +17,7 @@ function run(args: string[], cwd: string) {
 }
 
 try {
+  const contract = resolveContractPaths(root);
   // 임시 산출물로 비교하므로 검사 실패가 작업 파일을 바꾸지 않는다.
   run(
     [
@@ -26,7 +28,7 @@ try {
       "--option",
       `@typespec/openapi3.emitter-output-dir=${temporary}`,
     ],
-    join(root, "contract/typespec"),
+    contract.typespec,
   );
   const openapi = readFileSync(join(temporary, "openapi.yaml"), "utf8");
   const mockPath = join(temporary, "mock.ts");

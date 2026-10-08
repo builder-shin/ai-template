@@ -1,5 +1,7 @@
 import { fingerprint, type Step } from "./runner";
 
+export type ContractInputs = { mock: string; typespec: string; files: Record<string, string> };
+
 export function assembleSteps(
   files: Record<string, string>,
   fast: boolean,
@@ -7,7 +9,17 @@ export function assembleSteps(
   routeTypes: Record<string, string> = {},
   installedSkills: Record<string, string> = {},
   webOpenapi: string | Error = "",
+  contract: ContractInputs | Error = {
+    mock: "contract/mock",
+    typespec: "contract/typespec",
+    files: {},
+  },
 ): Step[] {
+  const contractKey = fingerprint(
+    contract instanceof Error ? { error: contract.message } : contract.files,
+  );
+  const inputError =
+    webOpenapi instanceof Error ? webOpenapi : contract instanceof Error ? contract : undefined;
   const select = (pattern: RegExp) =>
     Object.fromEntries(
       Object.entries(files).filter(
@@ -34,13 +46,14 @@ export function assembleSteps(
       ],
       key:
         key(/^(src|messages|contract|e2e)\/|^\.claude\/(hooks\/.*\.mjs$|settings\.json$)/) +
-        JSON.stringify(related),
+        JSON.stringify(related) +
+        contractKey,
     },
     {
       name: "generated",
       args: ["tsx", "scripts/gen.ts", "--check"],
-      key: key(/^(src|contract)\//) + fingerprint({ webOpenapi: String(webOpenapi) }),
-      ...(webOpenapi instanceof Error ? { inputError: webOpenapi.message } : {}),
+      key: key(/^(src|contract)\//) + fingerprint({ webOpenapi: String(webOpenapi) }) + contractKey,
+      ...(inputError ? { inputError: inputError.message } : {}),
     },
   ];
   if (!fast) {
@@ -49,11 +62,17 @@ export function assembleSteps(
       args: [],
       key: key(/^messages\/|^src\/lib\/generated\/error-codes/),
     });
-    for (const directory of ["typespec", "mock"]) {
+    for (const directory of ["typespec", "mock"] as const) {
       steps.push({
         name: `contract-${directory}`,
-        args: ["--dir", `contract/${directory}`, "run", "check"],
-        key: key(/^contract\/|^docs\/conventions\/|tsconfig.base|pnpm-workspace/),
+        args: [
+          "--dir",
+          contract instanceof Error ? `contract/${directory}` : contract[directory],
+          "run",
+          "check",
+        ],
+        key: key(/^contract\/|^docs\/conventions\/|tsconfig.base|pnpm-workspace/) + contractKey,
+        ...(contract instanceof Error ? { inputError: contract.message } : {}),
       });
     }
     steps.push({

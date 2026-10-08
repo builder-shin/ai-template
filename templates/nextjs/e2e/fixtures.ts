@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { appSessionCookieName } from "../src/lib/app-config.mjs";
+
 import { test as base, expect, type Page } from "@playwright/test";
 import { createTarget, targetName, type TargetAdapter } from "./targets";
 import ko from "../messages/ko.json" with { type: "json" };
 import en from "../messages/en.json" with { type: "json" };
+
+export const sessionCookieName = appSessionCookieName("production");
 
 export { expect };
 export const test = base.extend<{ target: TargetAdapter }>({

@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { chromium, expect as playwrightExpect, type Page, type WebSocket } from "@playwright/test";
 import { expect, inject, it, vi } from "vitest";
 import { sessionsFixture } from "../../src/features/sessions/test-fixture";
@@ -92,7 +93,7 @@ it("로그아웃 없이 A에서 B로 로그인하면 이전 draft는 받지 않�
     const context = await browser.newContext({ locale: "en-US" });
     await context.addCookies([
       {
-        name: "session",
+        name: appSessionCookieName("development"),
         value: await sealSession({ ...owner.session, sessionId: owner.id }, EXAMPLE_SESSION_SECRET),
         url: inject("httpBaseUrl"),
       },
@@ -148,7 +149,7 @@ it("실제 브라우저의 공개 채널은 목록·상세·404 뒤 안내를 �
     const context = await browser.newContext({ locale: "ko-KR" });
     await context.addCookies([
       {
-        name: "session",
+        name: appSessionCookieName("development"),
         value: await sealSession({ ...owner.session, sessionId: owner.id }, EXAMPLE_SESSION_SECRET),
         url: inject("httpBaseUrl"),
       },
@@ -230,7 +231,7 @@ it("실제 브라우저는 폐기된 세션 쿠키를 지우고 로그인으로 
     const context = await browser.newContext({ locale: "en-US" });
     await context.addCookies([
       {
-        name: "session",
+        name: appSessionCookieName("development"),
         value: await sealSession(owner.session, EXAMPLE_SESSION_SECRET),
         url: inject("httpBaseUrl"),
       },
@@ -243,7 +244,11 @@ it("실제 브라우저는 폐기된 세션 쿠키를 지우고 로그인으로 
     const other = await owner.login();
     await other.client.DELETE("/sessions/{id}", { params: { path: { id: owner.id } } });
     await browserExpect(page).toHaveURL(/\/en\/login\?/);
-    expect((await context.cookies()).some((cookie) => cookie.name === "session")).toBe(false);
+    expect(
+      (await context.cookies()).some(
+        (cookie) => cookie.name === appSessionCookieName("development"),
+      ),
+    ).toBe(false);
   } finally {
     await browser.close();
     await owner.stop();

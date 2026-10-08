@@ -3,6 +3,7 @@
 Next.js App Router의 BFF다. Server Component가 데이터를 읽고 Server Action이 쓴다.
 브라우저는 백엔드 API를 직접 부르지 않는다. W3의 실시간 Socket.IO와 presigned URL 업로드는 직접 연결한다.
 API 계약·목 사본은 이 프로젝트의 `contract/` 안에 두고 자체 workspace로 실행한다.
+앱 이름과 dev·mock·e2e·e2eMock 포트의 설정 파일: `app.config.json`. 기본값: `web`, 3000·4010·3100·4110. 설정 모듈(`src/lib/app-config.mjs`)은 plain Node와 TypeScript가 함께 쓰며 kebab-case 이름과 1024–65535의 서로 다른 정수 포트를 검사한다. 운영 start 포트(`package.json`)와 APP_URL origin(`.env.example`)이 dev 설정과 다르면 check가 고칠 값을 알린다.
 W3까지 비밀번호·소셜 인증, 공개·내 글, 내 정보·비밀번호 변경·탈퇴, 세션 관리, 업로드와 실시간을 구현했다.
 `features/posts`는 `pnpm gen:feature`가 복사하는 골든 기능이다. 같은 E2E 20개가 목과 외부 FastAPI에서 통과하며 standalone 이미지·일곱 레시피·고정 skill을 갖춘다. CI 실행 결과는 PR CI에서 확인한다.
 
@@ -115,7 +116,7 @@ docker run --rm --name ai-template-nextjs-local --publish 127.0.0.1:3000:3000 --
 
 ## 세션 설계
 
-`src/lib/session/cookie.ts`는 `SESSION_SECRET`의 SHA-256 키와 jose의 JWE(dir/A256GCM)로 두 토큰을 함께 암호화한다. 토큰 내용은 해석하지 않는다. `accessTokenExpiresAt`과 `refreshTokenExpiresAt`은 계약 응답에서 가져오며 쿠키·JWE의 수명은 refresh 만료까지다. 쿠키는 httpOnly, SameSite=Lax, Path=/이고 운영에서는 Secure와 `__Host-session` 이름을 쓴다.
+`src/lib/session/cookie.ts`는 `SESSION_SECRET`의 SHA-256 키와 jose의 JWE(dir/A256GCM)로 두 토큰을 함께 암호화한다. 토큰 내용은 해석하지 않는다. `accessTokenExpiresAt`과 `refreshTokenExpiresAt`은 계약 응답에서 가져오며 쿠키·JWE의 수명은 refresh 만료까지다. 쿠키는 httpOnly, SameSite=Lax, Path=/이고 이름은 앱 설정에서 `<app>-session`으로 만들며 운영에서는 Secure와 `__Host-<app>-session`을 쓴다. 기본 web은 `web-session`·`__Host-web-session`이다. 이름 변경 전의 로그인은 한 번 풀린다.
 
 `src/proxy.ts`는 next-intl 라우팅, `/me`·`/my-posts`와 하위 경로의 로그인 검사, 토큰 갱신을 합성한다. next-intl처럼 decodeURI를 한 번만 적용하고 슬래시 정리와 URL의 점 구간 정규화 뒤 로케일 접두사를 제외한다. `/me/100%25` 같은 유효한 퍼센트 경로도 검사하며 디코딩·정규화 오류는 보호 경로로 취급한다. `safeReturnTo`도 같은 정규화한 경로에 원래 쿼리·hash를 붙여 반환한다. 로그인은 그 결과에서 로케일을 제거·재검증하고 계정 로케일을 붙인다. access 만료까지 60초 미만이면 refresh grant를 보내고 새 쿠키를 응답과 같은 요청의 쿠키 헤더에 함께 넣는다. next-intl의 로케일 헤더·rewrite·쿠키를 보존한다. matcher는 페이지로 가는 Server Action POST와 `/me/a.b` 같은 하위 경로도 포함하며 공개 정적 파일은 이름으로 제외한다.
 
@@ -301,13 +302,13 @@ Hook JSON 형식의 기준은 [Claude Code 공식 문서](https://code.claude.co
 
 `pnpm gen`은 TypeSpec을 컴파일하고 API 선언, 실시간 이벤트 이름·payload 매핑, 에러 코드 목록과 목 타입을 다시 만든다. web 루트에 `gen.config.json`이 없으면 모든 타입의 입력은 TypeSpec 계약이다. 조합에서는 생성기가 이 설정에 백엔드의 `gen`이 내보낸 OpenAPI를 연결한다. 조합 루트의 gen이 백엔드 내보내기 뒤 web 생성을 실행한다.
 
-설정은 `openapi` 하나만 받으며 JSON 또는 YAML OpenAPI 파일의 web 루트 기준 상대 경로를 넣는다. 설정이 있으면 web API 선언·실시간 이벤트·에러 코드만 그 스펙에서 만들고, `contract/openapi.yaml`과 목 타입은 TypeSpec에서 계속 만든다. 백엔드 스펙이 없으면 백엔드에서 `gen`을 먼저 실행한다. 목은 프론트 단독 개발과 통합 테스트의 대역이며 백엔드 변경을 자동으로 따라가지 않는다.
+선택 키: `openapi`, `contract`. 백엔드 스펙(`openapi`)에는 JSON 또는 YAML OpenAPI 파일의 앱 루트 기준 상대 경로를 넣는다. 값이 있으면 web API 선언·실시간 이벤트·에러 코드만 그 스펙에서 만든다. 계약 위치(`contract`)에는 계약 폴더의 앱 루트 기준 상대 경로를 넣는다. 생략한 계약 위치: `contract`. 설정 모듈(`scripts/gen-config.mjs`)이 mock·typespec·openapi.yaml 위치를 계산하고 dev·E2E·생성기·테스트 목·check가 함께 쓴다. 계약 OpenAPI와 목 타입은 선택한 계약의 TypeSpec에서 계속 만든다. 다른 키나 빈 값·절대 경로·없는 계약 폴더는 고치는 방법과 함께 거절한다. 백엔드 스펙이 없으면 백엔드에서 gen을 먼저 실행한다. 목은 프론트 단독 개발과 통합 테스트의 대역이며 백엔드 변경을 자동으로 따라가지 않는다.
 
 `pnpm gen --check`도 같은 입력으로 임시 생성 결과를 비교한다. `pnpm check`의 생성물 캐시는 설정과 외부 스펙 변경을 반영하며 계약 두 패키지의 자체 검사도 돌린다. 사본은 원본 포맷을 보존하므로 web 포맷·린트에서 제외한다.
 web 자체 생성물은 첫 줄에 직접 수정 금지 헤더를 둔다. 계약 생성물은 자체 freshness 검사로 확인한다. [계약 확장](recipes/change-contract.md)의 순서로 이 프로젝트의 TypeSpec과 목 수기 소스를 고치고 `pnpm gen`한다.
 `gen.config.json`으로 백엔드 OpenAPI를 선택했다면 이 레시피는 대역을 바꾸는 절차이며, web 타입을 바꾸려면 백엔드 선언을 고쳐 OpenAPI를 먼저 내보낸다.
 
-`pnpm dev`는 Next 환경 로더로 설정을 준비한다. API 주소가 HTTP loopback(localhost·127.0.0.1·[::1])의 4010 `/api/v1`이면 같은 loopback에 목과 web을 함께 시작하며, 외부 백엔드 주소라면 web만 시작한다. 어느 자식이 종료하거나 Ctrl+C를 받으면 자신이 시작한 프로세스 트리를 함께 내린다. dev·HTTP 통합·E2E는 공통 `scripts/process-tree.mjs`를 쓴다. 목은 `node --import tsx`로 직접 실행하고, POSIX에서는 런처 종료 뒤에도 그룹을 정리한다. Windows는 직접 node가 자식을 소유하며 taskkill로 트리를 끝낸다. 종료 확인을 기다리고 한도를 넘으면 강제 종료한다.
+`pnpm dev`는 Next 환경 로더로 설정을 준비한다. API 주소가 HTTP loopback(localhost·127.0.0.1·[::1])에서 앱 설정의 mock 포트(기본 4010)와 `/api/v1`을 쓰면 같은 loopback에 목과 web을 함께 시작하며, 외부 백엔드 주소라면 web만 시작한다. 어느 자식이 종료하거나 Ctrl+C를 받으면 자신이 시작한 프로세스 트리를 함께 내린다. dev·HTTP 통합·E2E는 공통 `scripts/process-tree.mjs`를 쓴다. 목은 `node --import tsx`로 직접 실행하고, POSIX에서는 런처 종료 뒤에도 그룹을 정리한다. Windows는 직접 node가 자식을 소유하며 taskkill로 트리를 끝낸다. 종료 확인을 기다리고 한도를 넘으면 강제 종료한다.
 
 ## HTTP 통합과 E2E
 
@@ -321,7 +322,7 @@ Vitest global setup이 자유 포트의 실제 복사 목 두 개(기본·재인
 
 Playwright `webServer`가 `scripts/e2e-server.ts`를 실행한다. mock 대상만 목 127.0.0.1:4110을 검사·기동하고 `/health/ready`를 기다린다. FastAPI 대상은 외부 API의 `/health/ready`를 기다리며 목을 시작하거나 4110을 검사하지 않는다. 두 대상 모두 web localhost:3100을 검사하고 `next build` → `next start`를 실행한다. 검사할 포트가 사용 중이면 실패하며 기존 서버를 재사용하거나 종료하지 않는다. 개발 서버와 동시에 실행할 수 있는 포트지만 Next 빌드 산출물을 함께 쓰므로 이 프로젝트의 dev·build·check와 E2E는 동시에 실행하지 않는다.
 
-운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. Playwright 설정은 상속한 `NO_COLOR`를 지우고 서버와 테스트 프로세스에 `FORCE_COLOR=1`을 사용해 색상 경고를 막는다. 운영의 Secure·`__Host-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
+운영 start는 예시 비밀을 거절하므로 Playwright 설정이 실행마다 32바이트 무작위 `SESSION_SECRET`을 생성해 서버 프로세스에만 전달한다. 환경 파일을 고치거나 비밀을 출력하지 않는다. Playwright 설정은 상속한 `NO_COLOR`를 지우고 서버와 테스트 프로세스에 `FORCE_COLOR=1`을 사용해 색상 경고를 막는다. 운영의 Secure·`__Host-web-session` 쿠키를 localhost Chromium에서 그대로 검사한다. 성공·실패 모두 Playwright가 서버 트리와 브라우저를 종료하고, 기동 스크립트도 오류·종료 신호에서 자신이 시작한 자식만 정리한다.
 
 `e2e/targets/`는 `E2E_TARGET`의 부수 채널 어댑터다. mock은 실제 `/_test/mail?to=…`를, fastapi는 Mailpit의 수신자·목적·새 메일을 골라 실제 web 링크를 읽는다. 메일함은 비우지 않는다. `expireRecentLogin`은 설정한 창과 여유 시간을 기다린다. 세 제공자의 성공은 username·제공자별 claims 폼과 실제 redirect를, 거부는 현재 state·redirect_uri를 쓴다. BFF의 PKCE를 유지하며 일반 E2E에 대상별 분기·전용 URL을 넣지 않는다. fastapi는 외부 API 준비 뒤 web만 기동하고 목으로 대체하지 않는다.
 

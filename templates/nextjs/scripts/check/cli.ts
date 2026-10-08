@@ -15,8 +15,9 @@ import {
   readOfficialSkillCopies,
 } from "./skills";
 import { runChecks, parseCheckArgs } from "./runner";
-import { assembleSteps } from "./steps";
+import { assembleSteps, type ContractInputs } from "./steps";
 import { readWebOpenapi } from "../gen-input";
+import { resolveContractPaths } from "../gen-config.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 process.chdir(root);
@@ -31,10 +32,14 @@ const readFiles = () => ({
 });
 const files = readFiles();
 let webOpenapi: string | Error;
+let contract: ContractInputs | Error;
 try {
-  webOpenapi = readWebOpenapi(root, files["contract/openapi.yaml"] ?? "");
+  const paths = resolveContractPaths(root);
+  contract = { ...paths, files: readProjectFiles(paths.root) };
+  webOpenapi = readWebOpenapi(root, contract.files["openapi.yaml"] ?? "");
 } catch (error) {
   webOpenapi = error instanceof Error ? error : new Error(String(error));
+  contract = webOpenapi;
 }
 const cachePath = ".cache/check.json";
 let previous: Record<string, string> = {};
@@ -51,6 +56,7 @@ const steps = assembleSteps(
   readRouteTypes(root),
   installedSkills,
   webOpenapi,
+  contract,
 );
 const result = await runChecks(steps, previous, async (step) => {
   if (step.name === "i18n") {
@@ -65,9 +71,10 @@ const result = await runChecks(steps, previous, async (step) => {
     return { ok: !problems.length, output: problems.join("\n") };
   }
   const [command, ...args] = step.args;
+  if (!command) throw new Error(`검사 실행 파일이 없다: ${step.name}`);
   const run = step.name.startsWith("contract-")
     ? pnpm(step.args, { cwd: root, maxBuffer: 16 * 1024 * 1024 })
-    : binary(command!, args, { cwd: root });
+    : binary(command, args, { cwd: root });
   return {
     ok: run.status === 0,
     output: `${run.stdout ?? ""}${run.stderr ?? ""}${run.error?.message ?? ""}`,
@@ -76,14 +83,17 @@ const result = await runChecks(steps, previous, async (step) => {
 if (!existsSync(".cache")) mkdirSync(".cache");
 // typegen이 갱신한 next-env와 route 타입을 성공 캐시에 반영한다.
 if (result.cache.types) {
-  result.cache.types = assembleSteps(
+  const types = assembleSteps(
     readFiles(),
     fast,
     related,
     readRouteTypes(root),
     installedSkills,
     webOpenapi,
-  ).find((step) => step.name === "types")!.key;
+    contract,
+  ).find((step) => step.name === "types");
+  if (!types) throw new Error("타입 검사 단계가 없다.");
+  result.cache.types = types.key;
 }
 writeFileSync(cachePath, JSON.stringify(result.cache));
 console.log(result.output);

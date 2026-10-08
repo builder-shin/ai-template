@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { test, expect, signupAndVerify, login, logout } from "./fixtures";
+import { test, expect, sessionCookieName, signupAndVerify, login, logout } from "./fixtures";
 
 test("한국어 가입과 실제 메일 링크 인증", async ({ page, target }) => {
   await signupAndVerify(page, target, "ko");
@@ -16,10 +16,10 @@ test("/en 로그인과 사용자 메뉴 로그아웃", async ({ page, target, co
   await login(page, account);
   await expect(page).toHaveURL("/en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  const cookie = (await context.cookies()).find((value) => value.name === "__Host-session");
+  const cookie = (await context.cookies()).find((value) => value.name === sessionCookieName);
   expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: "Lax", path: "/" });
   await logout(page, account);
-  expect((await context.cookies()).some((value) => value.name === "__Host-session")).toBe(false);
+  expect((await context.cookies()).some((value) => value.name === sessionCookieName)).toBe(false);
   await page.reload();
   await expect(
     page.getByRole("banner").getByRole("link", { name: "Log in", exact: true }),
@@ -45,7 +45,7 @@ test("/en 재설정 메일과 새 비밀번호 로그인", async ({ page, target
   await expect(page.getByRole("status")).toHaveText(
     "Your password has been reset. Log in with your new password.",
   );
-  expect((await context.cookies()).some((value) => value.name === "__Host-session")).toBe(false);
+  expect((await context.cookies()).some((value) => value.name === sessionCookieName)).toBe(false);
   await login(page, account, false);
   await expect(page.getByRole("main").getByRole("alert")).toHaveText(
     "Check your email or password.",

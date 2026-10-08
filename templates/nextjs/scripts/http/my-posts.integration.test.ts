@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { JSDOM } from "jsdom";
 import { myPostFixture } from "../../src/features/posts/my-post-fixture";
@@ -35,7 +36,7 @@ describe("ko/en 내 글 폼의 JS 없는 HTTP 흐름", () => {
       const fixture = fixtures[locale === "ko" ? 0 : 1]!;
       const prefix = locale === "en" ? "/en" : "";
       const headers = {
-        Cookie: `session=${await sealSession(fixture.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
+        Cookie: `${appSessionCookieName("development")}=${await sealSession(fixture.session, EXAMPLE_SESSION_SECRET)}; NEXT_LOCALE=${locale}`,
         "Accept-Language": locale,
         Origin: base,
       };

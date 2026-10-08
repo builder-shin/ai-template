@@ -4,17 +4,18 @@ import { createServer } from "node:net";
 import { setTimeout } from "node:timers/promises";
 import { EXAMPLE_SESSION_SECRET } from "../../src/lib/env";
 import { startProcessTree, stopProcessTree } from "../process-tree.mjs";
+import { appConfig } from "../../src/lib/app-config.mjs";
 
 export async function reserveHttpBase() {
   const listener = createServer();
   listener.listen(0, "localhost");
   await once(listener, "listening");
   const address = listener.address();
+  await new Promise<void>((resolve) => listener.close(() => resolve()));
   if (!address || typeof address === "string") throw new Error("테스트 포트를 얻지 못했다.");
   const port = address.port;
-  if ([3000, 4010, 3100, 4110].includes(port))
+  if (Object.values(appConfig.ports).includes(port))
     throw new Error("고정 포트를 통합 검사에 쓰지 않는다.");
-  await new Promise<void>((resolve) => listener.close(() => resolve()));
   return `http://localhost:${port}`;
 }
 

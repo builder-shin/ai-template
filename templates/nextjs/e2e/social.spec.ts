@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { test, expect, logout } from "./fixtures";
+import { test, expect, sessionCookieName, logout } from "./fixtures";
 import ko from "../messages/ko.json" with { type: "json" };
 import en from "../messages/en.json" with { type: "json" };
 
@@ -20,7 +20,9 @@ for (const provider of ["google", "kakao", "naver"] as const) {
     await expect(
       page.getByRole("button", { name: ko.layout.userMenu.replace("{name}", name), exact: true }),
     ).toBeVisible();
-    expect((await context.cookies()).some((cookie) => cookie.name === "__Host-session")).toBe(true);
+    expect((await context.cookies()).some((cookie) => cookie.name === sessionCookieName)).toBe(
+      true,
+    );
     expect((await context.cookies()).some((cookie) => cookie.name === "__Host-oauth")).toBe(false);
     await expect(page.getByLabel(ko.me.nameLabel, { exact: true })).toHaveValue(name);
     await logout(page, { name, email: "", password: "", locale: "ko" });
@@ -37,6 +39,6 @@ test("소셜 로그인 거부는 현재 언어의 안내를 보여 주고 시도
   await target.denySocialLogin(page, "google");
   await expect(page).toHaveURL("/en/login?returnTo=%2Fen%2Fme&notice=auth.oauth_denied");
   await expect(page.getByRole("main").getByRole("alert")).toHaveText(en.errors.auth.oauth_denied);
-  expect((await context.cookies()).some((cookie) => cookie.name === "__Host-session")).toBe(false);
+  expect((await context.cookies()).some((cookie) => cookie.name === sessionCookieName)).toBe(false);
   expect((await context.cookies()).some((cookie) => cookie.name === "__Host-oauth")).toBe(false);
 });

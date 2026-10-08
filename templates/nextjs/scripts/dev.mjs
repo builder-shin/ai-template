@@ -4,6 +4,8 @@ import { pathToFileURL } from "node:url";
 import nextEnv from "@next/env";
 import { isStandalone, mockHost } from "./dev-mode.mjs";
 import { startProcessTree, stopProcessTree } from "./process-tree.mjs";
+import { appConfig, appOrigin } from "../src/lib/app-config.mjs";
+import { resolveContractPaths } from "./gen-config.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const require = createRequire(import.meta.url);
@@ -52,12 +54,12 @@ for (const signal of ["SIGINT", "SIGTERM"])
     void stop();
   });
 if (isStandalone(process.env.API_BASE_URL)) {
-  start("tsx", ["src/main.ts"], resolve(root, "contract/mock"), {
+  start("tsx", ["src/main.ts"], resolveContractPaths(root).mock, {
     ...process.env,
-    PORT: "4010",
+    PORT: String(appConfig.ports.mock),
     HOST: mockHost(process.env.API_BASE_URL),
-    API_URL: new URL(process.env.API_BASE_URL ?? "http://localhost:4010/api/v1").origin,
-    FRONTEND_URL: process.env.APP_URL ?? "http://localhost:3000",
+    API_URL: new URL(process.env.API_BASE_URL ?? appOrigin("mock")).origin,
+    FRONTEND_URL: process.env.APP_URL ?? appOrigin("dev"),
   });
 }
-start("next", ["dev", "--port", "3000"]);
+start("next", ["dev", "--port", String(appConfig.ports.dev)]);

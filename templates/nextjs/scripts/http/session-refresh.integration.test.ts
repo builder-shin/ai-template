@@ -1,3 +1,4 @@
+import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_SESSION_SECRET } from "../../src/lib/env";
 import { sealSession } from "../../src/lib/session/cookie";
@@ -83,7 +84,9 @@ describe("§13 #3/#4/#5 실제 페이지·헤더·로그아웃 Action", () => {
     const response = await postForm("/en", form, await sealSession(old, EXAMPLE_SESSION_SECRET));
     expect(response.status).toBe(303);
     expect(new URL(response.headers.get("location")!, base).pathname).toBe("/en");
-    expect(response.headers.get("set-cookie")).toContain("session=;");
+    expect(response.headers.get("set-cookie")).toContain(
+      `${appSessionCookieName("development")}=;`,
+    );
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
     // 옛 토큰으로 DELETE했다면 세션이 살아 있어 이 조회가 성공한다.
     await expect(mockClient(tokens.accessToken).GET("/me")).rejects.toMatchObject({ status: 401 });
@@ -101,7 +104,9 @@ describe("§13 #3/#4/#5 실제 페이지·헤더·로그아웃 Action", () => {
     });
     expect(response.status).toBe(303);
     expect(new URL(response.headers.get("location")!, base).pathname).toBe("/en/login");
-    expect(response.headers.get("set-cookie")).toContain("session=;");
+    expect(response.headers.get("set-cookie")).toContain(
+      `${appSessionCookieName("development")}=;`,
+    );
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
   });
 

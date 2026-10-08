@@ -1,4 +1,4 @@
-import { test, expect, signupAndVerify, login } from "./fixtures";
+import { test, expect, sessionCookieName, signupAndVerify, login } from "./fixtures";
 import ko from "../messages/ko.json" with { type: "json" };
 import en from "../messages/en.json" with { type: "json" };
 
@@ -29,7 +29,7 @@ for (const locale of ["ko", "en"] as const) {
     await expect(page.getByRole("main").getByRole("alert")).toHaveText(
       t.errors.auth.reauthentication_required,
     );
-    expect((await context.cookies()).some((cookie) => cookie.name === "__Host-session")).toBe(
+    expect((await context.cookies()).some((cookie) => cookie.name === sessionCookieName)).toBe(
       false,
     );
     await page.getByRole("textbox", { name: t.auth.email, exact: true }).fill(account.email);
@@ -42,7 +42,7 @@ for (const locale of ["ko", "en"] as const) {
       .getByRole("button", { name: locale === "ko" ? "탈퇴하기" : "Delete account", exact: true })
       .click();
     await expect(page).toHaveURL(prefix || "/");
-    expect((await context.cookies()).some((cookie) => cookie.name === "__Host-session")).toBe(
+    expect((await context.cookies()).some((cookie) => cookie.name === sessionCookieName)).toBe(
       false,
     );
     await expect(

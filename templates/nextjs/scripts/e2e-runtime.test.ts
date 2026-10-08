@@ -1,17 +1,26 @@
+import { appOrigin } from "../src/lib/app-config.mjs";
 import { ChildProcess } from "node:child_process";
-import { describe, expect, it, vi } from "vitest";
-import { targetEnvironment } from "../e2e/targets";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { mockOrigin, webOrigin, targetEnvironment } from "../e2e/targets";
 import { startE2eServers, type ServerDependencies } from "./e2e-runtime";
 
 const env = {
   E2E_TARGET: "fastapi",
-  APP_URL: "http://localhost:3100",
+  APP_URL: webOrigin,
   API_BASE_URL: "http://127.0.0.1:18100/api/v1",
   NEXT_PUBLIC_REALTIME_URL: "http://127.0.0.1:18100",
   E2E_MAILPIT_URL: "http://127.0.0.1:28125",
   E2E_OAUTH_URL: "http://127.0.0.1:28180",
   E2E_RECENT_LOGIN_SECONDS: "10",
 };
+let root: string | undefined;
+afterEach(() => {
+  if (root) rmSync(root, { recursive: true, force: true });
+  root = undefined;
+});
 
 function harness() {
   const events: string[] = [];
@@ -35,6 +44,21 @@ function harness() {
 }
 
 describe("E2E 대상 선택과 기동", () => {
+  it("앱 밖의 계약 경로에서 목을 시작한다", async () => {
+    root = mkdtempSync(join(tmpdir(), "aitpl-e2e-contract-"));
+    const app = join(root, "apps/web");
+    mkdirSync(app, { recursive: true });
+    mkdirSync(join(root, "contract/mock"), { recursive: true });
+    mkdirSync(join(root, "contract/typespec"));
+    writeFileSync(join(app, "gen.config.json"), JSON.stringify({ contract: "../../contract" }));
+    const { deps } = harness();
+    await startE2eServers({}, deps, app);
+    expect(deps.start).toHaveBeenNthCalledWith(
+      1,
+      expect.arrayContaining([join(root, "contract/mock/src/main.ts")]),
+      expect.objectContaining({ PORT: new URL(mockOrigin).port }),
+    );
+  });
   it("외부 FastAPI 설정을 그대로 전달한다", () => {
     expect(targetEnvironment("fastapi", env)).toMatchObject(env);
   });
@@ -50,11 +74,11 @@ describe("E2E 대상 선택과 기동", () => {
     const { deps, events } = harness();
     await startE2eServers(env, deps);
     expect(events).toEqual([
-      "free:http://localhost:3100",
+      `free:${appOrigin("e2e")}`,
       "ready:http://127.0.0.1:18100/health/ready",
       "build",
       "web",
-      "ready:http://localhost:3100",
+      `ready:${appOrigin("e2e")}`,
     ]);
     expect(deps.start).toHaveBeenCalledTimes(2);
     expect(deps.start).toHaveBeenNthCalledWith(
@@ -68,19 +92,19 @@ describe("E2E 대상 선택과 기동", () => {
     const { deps, events } = harness();
     deps.ready = vi.fn().mockRejectedValue(new Error("API not ready"));
     await expect(startE2eServers(env, deps)).rejects.toThrow("API not ready");
-    expect(events).toEqual(["free:http://localhost:3100"]);
+    expect(events).toEqual([`free:${appOrigin("e2e")}`]);
   });
   it("기본 mock은 목을 준비한 뒤 web을 시작한다", async () => {
     const { deps, events } = harness();
     await startE2eServers({ E2E_TARGET: "mock" }, deps);
     expect(events).toEqual([
-      "free:http://localhost:3100",
-      "free:http://127.0.0.1:4110",
+      `free:${appOrigin("e2e")}`,
+      `free:${mockOrigin}`,
       "mock",
-      "ready:http://127.0.0.1:4110/health/ready",
+      `ready:${mockOrigin}/health/ready`,
       "build",
       "web",
-      "ready:http://localhost:3100",
+      `ready:${appOrigin("e2e")}`,
     ]);
   });
 });

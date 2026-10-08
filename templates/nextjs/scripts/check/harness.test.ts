@@ -20,6 +20,57 @@ it("동기화한 계약은 원본 배너를 보존한다", () => {
 });
 
 describe("하네스", () => {
+  it("운영 start 포트가 앱 설정과 다르면 고칠 값을 알린다", () => {
+    const files = {
+      ...base,
+      "app.config.json": JSON.stringify({
+        app: "web",
+        ports: { dev: 3000, mock: 4010, e2e: 3100, e2eMock: 4110 },
+      }),
+      "package.json": JSON.stringify({ scripts: { start: "next start --port 3001" } }),
+    };
+    expect(inspect(files)).toEqual([
+      "package.json:1 start — app.config.json의 dev 포트로 고친다: next start --port 3000",
+    ]);
+    expect(
+      inspect({
+        ...files,
+        "package.json": JSON.stringify({ scripts: { start: "next start --port 3000" } }),
+      }),
+    ).toEqual([]);
+  });
+
+  it(".env.example의 APP_URL이 앱 설정의 dev 포트와 다르면 고칠 값을 알린다", () => {
+    const files = {
+      ...base,
+      "app.config.json": JSON.stringify({
+        app: "web",
+        ports: { dev: 3000, mock: 4010, e2e: 3100, e2eMock: 4110 },
+      }),
+      "package.json": JSON.stringify({ scripts: { start: "next start --port 3000" } }),
+    };
+    const withAppUrl = (url: string) =>
+      checkHarness({ ...files, ".env.example": `A=one\nB=two\nAPP_URL=${url}\n` }, [
+        "A",
+        "B",
+        "APP_URL",
+      ]);
+    expect(withAppUrl("http://localhost:3001")).toEqual([
+      ".env.example:1 환경 — APP_URL을 app.config.json의 dev 포트로 고친다: http://localhost:3000",
+    ]);
+    expect(withAppUrl("http://localhost:3000")).toEqual([]);
+    expect(withAppUrl("  http://localhost:3000/path?key=value  # 개발 주소")).toEqual([]);
+    expect(withAppUrl("잘못된 URL")).toEqual([
+      ".env.example:1 환경 — APP_URL을 app.config.json의 dev 포트로 고친다: http://localhost:3000",
+    ]);
+    expect(
+      checkHarness(
+        { ...files, ".env.example": "A=one\nB=two\nAPP_URL = http://localhost:3000\n" },
+        ["A", "B", "APP_URL"],
+      ),
+    ).toEqual([]);
+  });
+
   it("정상 파일을 통과시킨다", () => expect(inspect(base)).toEqual([]));
   it("양방향 지침 짝과 CLAUDE 내용을 검사한다", () => {
     expect(inspect({ ...base, "src/AGENTS.md": "규칙" }).join()).toMatch(/CLAUDE/);

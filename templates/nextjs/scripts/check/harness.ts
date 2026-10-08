@@ -2,6 +2,7 @@ import ts from "typescript";
 import { envKeys } from "../envfile.mjs";
 import { isGenerated } from "./files";
 import { loadingCopyProblems } from "./loading-copy";
+import { parseAppConfig } from "../../src/lib/app-config.mjs";
 
 const lineCount = (text: string) => (text ? text.replace(/\n$/, "").split("\n").length : 0);
 
@@ -73,6 +74,33 @@ export function checkHarness(
   schemaKeys: readonly string[],
 ): string[] {
   const problems: string[] = [];
+  const appConfigSource = files["app.config.json"];
+  if (appConfigSource !== undefined) {
+    try {
+      const config = parseAppConfig(JSON.parse(appConfigSource));
+      const pkg = JSON.parse(files["package.json"] ?? "{}");
+      if (pkg.scripts?.start !== `next start --port ${config.ports.dev}`)
+        problems.push(
+          `package.json:1 start — app.config.json의 dev 포트로 고친다: next start --port ${config.ports.dev}`,
+        );
+      const appUrl = files[".env.example"]?.match(/^\s*APP_URL\s*=(.*)$/m)?.[1];
+      if (appUrl !== undefined) {
+        const expectedOrigin = `http://localhost:${config.ports.dev}`;
+        let origin = "";
+        try {
+          origin = new URL(appUrl.split(" #")[0]?.trim() ?? "").origin;
+        } catch {
+          /* URL이 아니어도 같은 수정 안내를 낸다. */
+        }
+        if (origin !== expectedOrigin)
+          problems.push(
+            `.env.example:1 환경 — APP_URL을 app.config.json의 dev 포트로 고친다: ${expectedOrigin}`,
+          );
+      }
+    } catch (error) {
+      problems.push(error instanceof Error ? error.message : String(error));
+    }
+  }
   if (!("AGENTS.md" in files)) problems.push("AGENTS.md:1 지침 — 루트 지침을 만든다.");
   for (const [path, content] of Object.entries(files)) {
     problems.push(...loadingCopyProblems(path, content));

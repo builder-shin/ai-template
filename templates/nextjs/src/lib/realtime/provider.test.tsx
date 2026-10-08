@@ -1,3 +1,4 @@
+import { appOrigin } from "../app-config.mjs";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
@@ -29,10 +30,7 @@ afterEach(() => {
 });
 function show(authenticated = true) {
   return render(
-    <RealtimeProvider
-      url="http://localhost:4010"
-      sessionKey={authenticated ? "current-session" : null}
-    >
+    <RealtimeProvider url={appOrigin("mock")} sessionKey={authenticated ? "current-session" : null}>
       <span />
     </RealtimeProvider>,
   );
@@ -45,7 +43,7 @@ async function handshake() {
 it("연결 하나는 WebSocket만 쓰고 연결·서버 재연결마다 새 티켓을 받는다", async () => {
   const view = show();
   expect(io).toHaveBeenCalledWith(
-    "http://localhost:4010",
+    appOrigin("mock"),
     expect.objectContaining({
       transports: ["websocket"],
       autoConnect: false,
@@ -69,7 +67,7 @@ it("익명 연결은 티켓 Action을 호출하지 않고 인증 변경은 연�
   expect(await handshake()).toHaveBeenCalledWith({});
   expect(getRealtimeTicket).not.toHaveBeenCalled();
   view.rerender(
-    <RealtimeProvider url="http://localhost:4010" sessionKey="current-session">
+    <RealtimeProvider url={appOrigin("mock")} sessionKey="current-session">
       <span />
     </RealtimeProvider>,
   );
@@ -159,7 +157,7 @@ function LocalForm({ pending }: { pending: boolean }) {
 }
 it("현재 폼 제출 중의 확인·재인증은 제출 결과가 로그아웃하면 취소한다", async () => {
   const view = render(
-    <RealtimeProvider url="http://localhost:4010" sessionKey="current-session">
+    <RealtimeProvider url={appOrigin("mock")} sessionKey="current-session">
       <LocalForm pending />
     </RealtimeProvider>,
   );
@@ -174,7 +172,7 @@ it("현재 폼 제출 중의 확인·재인증은 제출 결과가 로그아웃�
   expect(router.refresh).not.toHaveBeenCalled();
   await act(async () =>
     view.rerender(
-      <RealtimeProvider url="http://localhost:4010" sessionKey={null}>
+      <RealtimeProvider url={appOrigin("mock")} sessionKey={null}>
         <LocalForm pending={false} />
       </RealtimeProvider>,
     ),
@@ -185,7 +183,7 @@ it("현재 폼 제출 중의 확인·재인증은 제출 결과가 로그아웃�
 });
 it("현재 폼이 끝나고 로그인이 유지되면 대기한 확인을 한 번 실행한다", async () => {
   const view = render(
-    <RealtimeProvider url="http://localhost:4010" sessionKey="current-session">
+    <RealtimeProvider url={appOrigin("mock")} sessionKey="current-session">
       <LocalForm pending />
     </RealtimeProvider>,
   );
@@ -196,7 +194,7 @@ it("현재 폼이 끝나고 로그인이 유지되면 대기한 확인을 한 �
   expect(checkRealtimeSession).not.toHaveBeenCalled();
   await act(async () =>
     view.rerender(
-      <RealtimeProvider url="http://localhost:4010" sessionKey="current-session">
+      <RealtimeProvider url={appOrigin("mock")} sessionKey="current-session">
         <LocalForm pending={false} />
       </RealtimeProvider>,
     ),
@@ -218,7 +216,7 @@ function deferred<T>() {
 
 function identity(sessionKey: string | null) {
   return (
-    <RealtimeProvider url="http://localhost:4010" sessionKey={sessionKey}>
+    <RealtimeProvider url={appOrigin("mock")} sessionKey={sessionKey}>
       <span />
     </RealtimeProvider>
   );
@@ -267,7 +265,7 @@ it.each([
 
 it("로그인 교체는 폼 뒤에 대기한 이전 티켓·세션 확인·화면 갱신도 취소한다", async () => {
   const form = (sessionKey: string, pending: boolean) => (
-    <RealtimeProvider url="http://localhost:4010" sessionKey={sessionKey}>
+    <RealtimeProvider url={appOrigin("mock")} sessionKey={sessionKey}>
       <LocalForm pending={pending} />
     </RealtimeProvider>
   );
@@ -303,10 +301,7 @@ it("토큰 갱신 뒤에도 같은 세션 키는 연결과 진행 중인 인증�
 
 function form(pending: boolean, authenticated = true) {
   return (
-    <RealtimeProvider
-      url="http://localhost:4010"
-      sessionKey={authenticated ? "current-session" : null}
-    >
+    <RealtimeProvider url={appOrigin("mock")} sessionKey={authenticated ? "current-session" : null}>
       <LocalForm pending={pending} />
     </RealtimeProvider>
   );
