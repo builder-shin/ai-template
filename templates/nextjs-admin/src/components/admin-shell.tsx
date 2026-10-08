@@ -41,7 +41,11 @@ export function AdminShell({
                 </SheetHeader>
                 <nav aria-label={t("menu")} className="flex flex-col gap-3 p-4">
                   {menu.map((item) => (
-                    <SheetClose key={item.href} render={<Link href={item.href} />}>
+                    <SheetClose
+                      key={item.href}
+                      nativeButton={false}
+                      render={<Link href={item.href} role="link" />}
+                    >
                       {item.label}
                     </SheetClose>
                   ))}

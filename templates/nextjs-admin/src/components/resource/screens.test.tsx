@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { ResourceList, TableSkeleton } from "./list";
@@ -11,6 +11,7 @@ import { ResourceControls } from "./controls";
 import { ResourceDetail } from "./detail";
 import ko from "../../../messages/ko.json";
 import shared from "../../../messages/shared/ko.json";
+import { intlFixture } from "../../../scripts/test/intl-fixture";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 vi.mock("../../lib/i18n/navigation", () => ({
@@ -23,9 +24,7 @@ afterEach(() => {
 });
 function show(node: React.ReactNode) {
   return render(
-    <NextIntlClientProvider locale="ko" messages={{ ...shared, ...ko }}>
-      {node}
-    </NextIntlClientProvider>,
+    <NextIntlClientProvider {...intlFixture({ ...shared, ...ko })}>{node}</NextIntlClientProvider>,
   );
 }
 
@@ -89,7 +88,7 @@ it("필터 적용은 URL의 정렬을 보존하고 페이지를 1로 돌린다",
   );
   await user.type(screen.getByRole("searchbox", { name: "검색" }), "테스트");
   await user.click(screen.getByRole("combobox", { name: "상태" }));
-  await user.click(screen.getByRole("option", { name: "초안" }));
+  await user.click(await screen.findByRole("option", { name: "초안" }));
   await user.click(screen.getByRole("button", { name: "적용" }));
   const url = new URL(navigation.push.mock.calls[0]![0], "http://localhost");
   expect(url.searchParams.get("filter[q]")).toBe("테스트");
@@ -194,7 +193,7 @@ it("체크박스·여러 줄·열거값·다중 관계 입력이 폼으로 제�
     </ResourceForm>,
   );
   await user.click(screen.getByRole("combobox", { name: "역할" }));
-  await user.click(screen.getByRole("option", { name: "B" }));
+  await user.click(await screen.findByRole("option", { name: "B" }));
   await user.keyboard("{Escape}");
   await user.click(screen.getByRole("button", { name: "저장" }));
   expect(submitted?.getAll("roles")).toEqual(["a", "b"]);
@@ -221,11 +220,13 @@ it("삭제는 확인 전 호출하지 않고 실패 문구를 대화상자에 �
   );
   await user.click(screen.getByRole("button", { name: "삭제" }));
   expect(calls).toBe(0);
-  const dialog = screen.getByRole("dialog", { name: "삭제" });
+  const dialog = await screen.findByRole("dialog", { name: "삭제" });
   await user.click(within(dialog).getByRole("button", { name: "취소" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(calls).toBe(0);
   await user.click(screen.getByRole("button", { name: "삭제" }));
-  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "확인" }));
+  const reopened = await screen.findByRole("dialog", { name: "삭제" });
+  await user.click(within(reopened).getByRole("button", { name: "확인" }));
   expect(await screen.findByRole("alert")).toHaveProperty(
     "textContent",
     "시스템 역할은 삭제할 수 없습니다.",

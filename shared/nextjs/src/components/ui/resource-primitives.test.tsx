@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "./dialog";
@@ -29,8 +29,8 @@ it.each(["ko", "en"] as const)("대화상자의 닫기 이름을 번역한다: %
     </NextIntlClientProvider>,
   );
   await user.click(screen.getByRole("button", { name: "열기" }));
-  await user.click(screen.getByRole("button", { name: locale === "ko" ? "닫기" : "Close" }));
-  expect(screen.queryByRole("dialog")).toBeNull();
+  await user.click(await screen.findByRole("button", { name: locale === "ko" ? "닫기" : "Close" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 it("선택 부품은 여러 값과 폼 이름을 보존한다", async () => {
   const user = userEvent.setup();
@@ -50,7 +50,7 @@ it("선택 부품은 여러 값과 폼 이름을 보존한다", async () => {
     </form>,
   );
   await user.click(screen.getByRole("combobox", { name: "역할" }));
-  await user.click(screen.getByRole("option", { name: "B" }));
+  await user.click(await screen.findByRole("option", { name: "B" }));
   expect(new FormData(screen.getByRole("form") as HTMLFormElement).getAll("roles")).toEqual([
     "a",
     "b",

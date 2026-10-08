@@ -11,6 +11,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ko from "../messages/ko.json";
 import shared from "../messages/shared/ko.json";
 import Home from "../src/app/[locale]/(admin)/page";
+import { intlFixture } from "./test/intl-fixture";
 const messages = {
   ...shared,
   ...ko,
@@ -31,7 +32,7 @@ const messages = {
     },
   },
 };
-const translate = createTranslator({ locale: "ko", messages });
+const translate = createTranslator(intlFixture(messages));
 const context = vi.hoisted(() => ({ locale: "ko", jar: new Map<string, { value: string }>() }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => context.jar.get(name) }),
@@ -112,9 +113,7 @@ it("실제 목 목록을 서버에서 읽고 관계·필터·페이지를 HTML�
     searchParams: { "filter[q]": member.account.email },
   });
   const html = renderToStaticMarkup(
-    <NextIntlClientProvider locale="ko" messages={messages}>
-      {result}
-    </NextIntlClientProvider>,
+    <NextIntlClientProvider {...intlFixture(messages)}>{result}</NextIntlClientProvider>,
   );
   expect(html).toContain(member.account.email);
   expect(html).toContain("관리 테스트");
@@ -145,9 +144,7 @@ it("작성자 목록 권한이 없어도 글 목록은 표시하고 필터에 �
   const result = await ResourcePage({ registry: [resource], type: "posts", screen: "list" });
   expect(result.type.name).not.toBe("RequestNotice");
   const html = renderToStaticMarkup(
-    <NextIntlClientProvider locale="ko" messages={messages}>
-      {result}
-    </NextIntlClientProvider>,
+    <NextIntlClientProvider {...intlFixture(messages)}>{result}</NextIntlClientProvider>,
   );
   expect(html).toContain("<table");
   expect(html).toContain('role="alert"');
