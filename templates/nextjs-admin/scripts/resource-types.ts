@@ -1,17 +1,21 @@
-import { defineResource } from "../src/lib/resources/definition";
+import { defineResource, type Permission } from "../src/lib/resources/definition";
 import { createResourceData } from "../src/lib/resources/data";
 import type { createApiClient } from "../src/lib/api/client";
 import { resources } from "../src/resources";
 
 // 실행하지 않는다. types 단계의 tsc가 오류 주석과 실제 진단을 함께 검사한다.
 export function resourceTypeChecks(client: ReturnType<typeof createApiClient>) {
+  const permission: Permission = "posts:manage";
+  // @ts-expect-error 사유: 내보낸 권한 타입도 계약에 없는 코드를 거절해야 한다.
+  const invalidPermission: Permission = "unknown";
+  void invalidPermission;
   const data = createResourceData(client);
   for (const resource of resources) {
     data.list(resource, {});
   }
   defineResource({
     type: "posts",
-    permission: "posts:manage",
+    permission,
     list: {
       columns: ["title", "author"],
       filters: { "filter[q]": "text", "filter[status]": "enum" },
@@ -107,6 +111,6 @@ export function resourceTypeChecks(client: ReturnType<typeof createApiClient>) {
   });
   // @ts-expect-error 사유: 요청 값도 계약의 열거값에 맞아야 한다.
   data.update(posts, "id", { status: "invalid" });
-  // @ts-expect-error 사유: 다중 관계의 대상 type도 계약에서 추출한다.
+  // @ts-expect-error 사유: 단일 관계의 대상 type도 계약에서 추출한다.
   data.update(posts, "id", { coverImage: { type: "users", id: "id" } });
 }

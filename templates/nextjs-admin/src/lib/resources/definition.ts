@@ -16,7 +16,7 @@ import type {
   WriteRelationshipKey,
 } from "./contract";
 
-type Permission = components["schemas"]["PermissionCode"];
+export type Permission = components["schemas"]["PermissionCode"];
 export type InputKind = "text" | "textarea" | "enum" | "boolean";
 export type FilterKind = "text" | "enum" | "relation" | "date";
 export type DisplayKind =
