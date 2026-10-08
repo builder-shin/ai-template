@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { afterEach, expect, it } from "vitest";
@@ -41,8 +41,8 @@ function fixture(files: Record<string, string>): { source: string; template: str
     writeFileSync(file, content);
   }
   return {
-    source: relative(root, join(repo, "shared/nextjs")),
-    template: relative(root, join(repo, "templates/nextjs")),
+    source: resolve(repo, "shared/nextjs"),
+    template: resolve(repo, "templates/nextjs"),
   };
 }
 
@@ -61,8 +61,8 @@ function resolveFile(path: string): string | undefined {
 }
 
 function importedAppFiles(source: string, template: string): string[] {
-  const sourceRoot = join(root, source);
-  const templateRoot = join(root, template);
+  const sourceRoot = resolve(source);
+  const templateRoot = resolve(template);
   const imports = new Set<string>();
   for (const file of sourceFiles(sourceRoot)) {
     for (const { fileName } of ts.preProcessFile(readFileSync(file, "utf8"), true, true)
@@ -89,7 +89,10 @@ it("공유 원본이 가져오는 앱 파일은 고정 목록뿐이다", () => {
   if (!asset) throw new Error("공유 원본 항목이 없다 — shared/nextjs 동기화 항목을 복원한다.");
   for (const target of asset.targets) {
     expect(
-      importedAppFiles(asset.source, join("templates", target.template, target.path)),
+      importedAppFiles(
+        resolve(root, asset.source),
+        resolve(root, "templates", target.template, target.path),
+      ),
       "공유 원본이 고정 목록 밖의 앱 파일을 가져온다 — 두 앱에 같은 경로의 앱 파일을 두고 이 목록을 함께 고친다",
     ).toEqual(appFiles);
   }
@@ -120,5 +123,17 @@ it("대상에서 풀리지 않는 별칭·상대 경로는 경로로 알린다",
     "src/lib/absent",
     "src/lib/missing",
     "src/lib/only-source",
+  ]);
+});
+
+it("저장소 밖 fixture의 절대 경로를 루트와 다시 합치지 않는다", () => {
+  const { source, template } = fixture({
+    "shared/nextjs/src/lib/imports.ts": 'import "@/lib/app-only"; import "./common";',
+    "shared/nextjs/src/lib/common.ts": "export {};",
+    "templates/nextjs/src/lib/app-only.ts": "export {};",
+    "templates/nextjs/src/lib/common.ts": "export {};",
+  });
+  expect(importedAppFiles(resolve(root, source), resolve(root, template))).toEqual([
+    "src/lib/app-only.ts",
   ]);
 });

@@ -16,6 +16,7 @@
     "check:templates": "tsx scripts/src/verify-templates/cli.ts",
     "check:workflows": "tsx scripts/src/workflows/cli.ts",
     "fix": "prettier --write . && eslint --fix .",
+    "fix:shared": "node scripts/src/sync/fix-nextjs.mjs",
     "test": "pnpm -r run test",
     "gen": "pnpm -r run gen",
     "tool": "tsx scripts/src/tools/cli.ts",

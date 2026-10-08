@@ -1,6 +1,8 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { listFiles, sameFile } from "./files.ts";
+import { gitEnvironment } from "../files/git-environment.ts";
 
 /** 템플릿 루트의 template.json. verify-templates가 템플릿 종류에 맞게 검사하는 데 쓴다. */
 export interface TemplateManifest {
@@ -19,7 +21,14 @@ export interface SharedAsset {
   readonly mode?: "overlay";
   /** pnpm sync가 누적하는 원본 파일 경로. 지운 파일도 남겨 낡은 사본을 찾는다. */
   readonly managedFiles?: readonly string[];
-  readonly targets: readonly { readonly template: string; readonly path: string }[];
+  readonly targets: readonly SharedAssetTarget[];
+}
+
+export interface SharedAssetTarget {
+  readonly template: string;
+  readonly path: string;
+  /** 이 대상에 복사한 경로만 누적한다. 다른 대상의 삭제 기록은 물려받지 않는다. */
+  readonly managedFiles?: readonly string[];
 }
 
 export interface SharedAssetsManifest {
@@ -111,6 +120,8 @@ function sourceProblems(repoRoot: string, source: unknown, at: string): string[]
 
 function targetProblems(repoRoot: string, target: unknown, at: string, overlay: boolean): string[] {
   if (!isRecord(target)) return [`${at}: { "template", "path" } 꼴의 객체여야 한다.`];
+  const historyProblems = managedFileProblems(target.managedFiles, `${at}.managedFiles`, overlay);
+  if (historyProblems.length > 0) return historyProblems;
   const { template, path } = target;
   if (typeof template !== "string" || !isTemplateName(template)) {
     return [
@@ -143,20 +154,9 @@ function assetProblems(repoRoot: string, asset: unknown, at: string): string[] {
       problems.push(`${at}.source: ${asset.source} 원본 경로에 링크가 있다 — 일반 폴더를 적는다.`);
     }
   }
-  if (asset.managedFiles !== undefined) {
-    if (asset.mode !== "overlay" || !Array.isArray(asset.managedFiles)) {
-      problems.push(
-        `${at}.managedFiles: 삭제 기록 형식이 틀렸다 — overlay 항목에 파일 경로 배열을 적는다.`,
-      );
-    } else {
-      for (const [index, file] of (asset.managedFiles as unknown[]).entries()) {
-        if (!isManagedFile(file))
-          problems.push(
-            `${at}.managedFiles[${String(index)}]: 안전한 파일 경로가 아니다 — node_modules를 뺀 슬래시 구분 상대 파일 경로를 적는다.`,
-          );
-      }
-    }
-  }
+  problems.push(
+    ...managedFileProblems(asset.managedFiles, `${at}.managedFiles`, asset.mode === "overlay"),
+  );
   if (!Array.isArray(asset.targets)) return [...problems, `${at}.targets: 배열이어야 한다.`];
   return [
     ...problems,
@@ -190,14 +190,50 @@ function isManagedFile(file: unknown): file is string {
   );
 }
 
-/** 덮어 놓기는 캐시를 포함해 모든 원본 파일을 복사한다. 설치물만 뺀다. */
+function managedFileProblems(value: unknown, at: string, overlay: boolean): string[] {
+  if (value === undefined) return [];
+  if (!overlay || !Array.isArray(value))
+    return [`${at}: 삭제 기록 형식이 틀렸다 — overlay 항목에 파일 경로 배열을 적는다.`];
+  return (value as unknown[]).flatMap((file, index) =>
+    isManagedFile(file)
+      ? []
+      : [
+          `${at}[${String(index)}]: 안전한 파일 경로가 아니다 — node_modules를 뺀 슬래시 구분 상대 파일 경로를 적는다.`,
+        ],
+  );
+}
+
+/** git 인덱스에 있고 디스크에 남아 있는 원본만 복사한다. 새 파일은 먼저 git add한다. */
 export function overlayFiles(repoRoot: string, asset: SharedAsset): string[] {
-  return listFiles(join(repoRoot, asset.source), new Set(["node_modules"]));
+  const source = join(repoRoot, asset.source);
+  const tracked = execFileSync("git", ["ls-files", "--cached", "-z", "--", "."], {
+    cwd: source,
+    env: gitEnvironment(),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return [...new Set(tracked.split("\0"))]
+    .filter((file) => isManagedFile(file) && existsSync(join(source, file)))
+    .sort();
 }
 
 /** 원본 파일과 삭제 기록을 합친 관리 범위. 기록은 템플릿에 복사하지 않는다. */
 export function managedFiles(repoRoot: string, asset: SharedAsset): string[] {
   return [...new Set([...overlayFiles(repoRoot, asset), ...(asset.managedFiles ?? [])])].sort();
+}
+
+/** 항목의 관리 범위 안에서 이 대상이 받은 경로만 누적한다. */
+export function targetManagedFiles(
+  repoRoot: string,
+  asset: SharedAsset,
+  target: SharedAssetTarget,
+): string[] {
+  return [
+    ...new Set([
+      ...overlayFiles(repoRoot, asset),
+      ...(target.managedFiles ?? []).filter((file) => asset.managedFiles?.includes(file)),
+    ]),
+  ].sort();
 }
 
 function linkedPath(repoRoot: string, location: string): string | undefined {
@@ -250,7 +286,6 @@ function writeProblems(repoRoot: string, manifest: SharedAssetsManifest): string
   for (const [index, asset] of manifest.assets.entries()) {
     const files = asset.mode === "overlay" ? managedFiles(repoRoot, asset) : [""];
     const current = new Set(asset.mode === "overlay" ? overlayFiles(repoRoot, asset) : []);
-    const recorded = new Set(asset.managedFiles ?? []);
     const byCase = new Map<string, string>();
     for (const file of files) {
       const previous = byCase.get(file.toLowerCase());
@@ -262,7 +297,9 @@ function writeProblems(repoRoot: string, manifest: SharedAssetsManifest): string
       byCase.set(file.toLowerCase(), file);
     }
     if (byCase.size !== files.length) continue;
-    for (const file of current) {
+    for (const file of asset.mode === "overlay"
+      ? listFiles(join(repoRoot, asset.source), new Set(["node_modules"]))
+      : []) {
       const source = join(repoRoot, asset.source, file);
       if (lstatSync(source).isSymbolicLink())
         problems.push(
@@ -276,7 +313,12 @@ function writeProblems(repoRoot: string, manifest: SharedAssetsManifest): string
       if (asset.mode === "overlay") {
         problems.push(...overlayDestinationProblems(repoRoot, base, false, asset.source));
       }
-      for (const file of files) {
+      const recorded = new Set(
+        (target.managedFiles ?? []).filter((file) => asset.managedFiles?.includes(file)),
+      );
+      for (const file of asset.mode === "overlay"
+        ? targetManagedFiles(repoRoot, asset, target)
+        : files) {
         const path = resolve(base, file);
         for (const previous of writes) {
           if (

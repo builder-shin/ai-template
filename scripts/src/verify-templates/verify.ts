@@ -4,7 +4,7 @@ import { checkAgentsMd } from "../agents-md/check.ts";
 import { diffDirs, listFiles, sameFile } from "./files.ts";
 import {
   isRecord,
-  managedFiles,
+  targetManagedFiles,
   overlayFiles,
   readTemplateManifest,
   requiredCommands,
@@ -114,7 +114,7 @@ function sharedAssetProblems(
         const copy = join(repoRoot, "templates", templateName, target.path);
         if (asset.mode === "overlay") {
           const files = new Set(overlayFiles(repoRoot, asset));
-          return managedFiles(repoRoot, asset).flatMap((file) => {
+          return targetManagedFiles(repoRoot, asset, target).flatMap((file) => {
             const destination = join(copy, file);
             const differs = files.has(file)
               ? !sameFile(join(source, file), destination)
