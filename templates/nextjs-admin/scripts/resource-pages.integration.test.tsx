@@ -13,6 +13,9 @@ import ko from "../messages/ko.json";
 import shared from "../messages/shared/ko.json";
 import Home from "../src/app/[locale]/(admin)/page";
 import { intlFixture } from "./test/intl-fixture";
+import { ResourceFilters } from "../src/components/resource/filters";
+import { ResourcePagination } from "../src/components/resource/pagination";
+import { Children, isValidElement } from "react";
 const messages = {
   ...shared,
   ...ko,
@@ -149,6 +152,31 @@ it("작성자 목록 권한이 없어도 글 목록은 표시하고 필터에 �
   );
   expect(html).toContain("<table");
   expect(html).toContain('role="alert"');
+});
+it("선언의 include는 API 조회에만 쓰고 필터·페이지 쿼리에서 뺀다", async () => {
+  await session(await seedFixture(inject("mockBaseUrl")));
+  const result = await ResourcePage({
+    registry: [postsFixture],
+    type: "posts",
+    screen: "list",
+    searchParams: { "filter[q]": "URL 검색", sort: "title", "page[number]": "2" },
+  });
+  const controls = Children.toArray(result.props.children).filter(
+    (child) =>
+      isValidElement<{ query: Record<string, string> }>(child) &&
+      (child.type === ResourceFilters || child.type === ResourcePagination),
+  );
+  expect(controls).toHaveLength(2);
+  for (const control of controls) {
+    if (!isValidElement<{ query: Record<string, string> }>(control))
+      throw new Error("필터·페이지 부품 없음");
+    expect.soft(control.props.query).not.toHaveProperty("include");
+    expect(control.props.query).toMatchObject({
+      "filter[q]": "URL 검색",
+      sort: "title",
+      "page[number]": "2",
+    });
+  }
 });
 
 it("URL의 잘못된 필터 값은 오류 경계 대신 그 자리의 안내로 보인다", async () => {

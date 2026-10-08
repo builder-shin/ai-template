@@ -57,7 +57,9 @@ export async function ResourcePage({
       const document = await data.list(resource, searchParams);
       const normalized = resourceQuery(resource, searchParams) as Record<string, string | number>;
       const query = Object.fromEntries(
-        Object.entries(normalized).map(([key, value]) => [key, String(value)]),
+        Object.entries(normalized)
+          .filter(([key]) => key !== "include")
+          .map(([key, value]) => [key, String(value)]),
       );
       for (const [key, kind] of Object.entries(resource.list.filters ?? {}))
         if (kind === "date" && typeof searchParams[key] === "string") {
