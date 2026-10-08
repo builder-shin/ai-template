@@ -4,7 +4,7 @@
 
 1. `contract/typespec/src/`에서 JSON:API type·목록 GET·쿼리·쓰기 operation을 확인한다. 계약을 늘리면 [계약 확장](change-contract.md)을 먼저 따른다. `src/lib/api/schema.d.ts`는 직접 고치지 않는다.
 2. `pnpm gen:resource <type>`을 실행한다. type은 50자 이하 소문자 kebab-case다. 기본 입력은 `contract/openapi.yaml`이며 `gen.config.json`의 contract·openapi 설정을 따른다. `openapi`가 있으면 API 타입 생성과 같은 백엔드 스펙을 읽는다.
-3. 출력은 `src/resources/<type>/resource.ts`, `messages/{ko,en}.json`, `src/resources/index.ts`다. 기존 등록 순서를 보존하고 마지막에 추가한다. 목록 없는 type·기존 리소스 폴더·문구 namespace·등록·링크 경로·잘못된 입력은 쓰기 전에 거절한다. 덮어쓰기 옵션은 없다.
+3. 출력은 `src/resources/<type>/resource.ts`, `messages/{ko,en}.json`, `src/resources/index.ts`다. 반환값과 CLI 성공 출력의 파일 경로는 앱 기준 상대 경로이며 Windows에서도 `/`로 구분한다. 기존 등록 순서를 보존하고 마지막에 추가한다. 목록 없는 type·기존 리소스 폴더·문구 namespace·등록·링크 경로·잘못된 입력은 쓰기 전에 거절한다. 덮어쓰기 옵션은 없다.
 4. 선언을 검토한다. 열·상세는 응답의 attributes·relationships, create·edit 입력은 요청 스키마와 응답 필드의 교집합이다. GET 상세·POST·PATCH·DELETE가 있는 화면만 만든다. 생성 초안은 수정 가능한 수기 파일이며 `pnpm gen`이 다시 만들지 않는다.
 5. 목록의 `filter[...]` 쿼리를 검토한다. enum은 values, 날짜는 date, 이름이 같은 관계는 relation이며 나머지는 text다. `filter[role]`처럼 관계 이름과 다른 쿼리는 text 초안으로 남으므로 범용 화면이 지원하는 메타데이터에 맞춰 검토한다. 페이지 크기는 20이다.
 6. sort는 `x-jsonapi-sort`, 쿼리 enum, 속성 키 순서로 후보를 뽑는다. `sort` 쿼리가 없으면 생략한다. 현재 선언 타입이 속성 키만 받으므로 `id` 같은 속성 밖 후보는 제외한다. 서버가 실제 허용하는 필드만 남긴다. include는 쿼리가 있을 때 관계 키와 계약 확장의 교집합을 쓴다.

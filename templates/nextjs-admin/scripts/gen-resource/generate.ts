@@ -1,5 +1,5 @@
 import { lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { format } from "prettier";
 import ts from "typescript";
 import { parse } from "yaml";
@@ -126,6 +126,6 @@ export async function generateResource(appRoot: string, type: string) {
   for (const message of messages) writeFileSync(message.path, message.source);
   writeFileSync(registryPath, registry);
   return [declarationPath, ...messages.map(({ path }) => path), registryPath].map((path) =>
-    path.slice(root.length + sep.length),
+    relative(root, path).replaceAll("\\", "/"),
   );
 }

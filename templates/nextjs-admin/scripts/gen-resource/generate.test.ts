@@ -221,7 +221,12 @@ afterEach(() => {
 });
 
 it("기존 등록 순서와 문구를 보존하며 새 초안을 함께 등록한다", async () => {
-  await generateResource(root, "articles");
+  expect(await generateResource(root, "articles")).toEqual([
+    "src/resources/articles/resource.ts",
+    "messages/ko.json",
+    "messages/en.json",
+    "src/resources/index.ts",
+  ]);
   const registry = readFileSync(join(root, "src/resources/index.ts"), "utf8");
   expect(registry).toContain('from "./articles/resource"');
   expect(registry).toMatch(/\[posts, articlesResource\]/);
