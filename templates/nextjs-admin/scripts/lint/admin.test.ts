@@ -5,8 +5,9 @@ import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { appArchitectureConfig } from "./app.mjs";
-const root = mkdtempSync(join(tmpdir(), "aitpl-admin-boundaries-"));
+let root: string;
 beforeAll(() => {
+  root = mkdtempSync(join(tmpdir(), "aitpl-admin-boundaries-"));
   writeFileSync(
     join(root, "tsconfig.json"),
     JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
