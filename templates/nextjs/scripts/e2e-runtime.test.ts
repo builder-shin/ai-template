@@ -1,6 +1,6 @@
 import { appOrigin } from "../src/lib/app-config.mjs";
 import { ChildProcess } from "node:child_process";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -45,6 +45,9 @@ function harness() {
 }
 
 describe("E2E 대상 선택과 기동", () => {
+  it("앱의 추가 환경은 문자열 키·값 계약을 따른다", () => {
+    expectTypeOf(extraE2eEnv).toEqualTypeOf<Record<string, string>>();
+  });
   it("mock 대상에도 앱의 추가 환경을 전달한다", async () => {
     vi.resetModules();
     vi.doMock("../e2e/targets/app", async (importOriginal) => ({
