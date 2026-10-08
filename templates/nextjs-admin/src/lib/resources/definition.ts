@@ -70,7 +70,7 @@ export type ResourceDefinition<T extends ResourceType> = {
     ? never
     : { permission: Permission; visible?: (record: ResourceRecord<T>) => boolean };
   actions?: readonly ResourceAction<T>[];
-  realtime?: { channel: string };
+  realtime?: { channel: components["schemas"]["RealtimeChannel"] };
 };
 export type AnyResource = { [T in ResourceType]: ResourceDefinition<T> }[ResourceType];
 

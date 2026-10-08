@@ -27,7 +27,23 @@
     "no": "No",
     "retryAfter": "Try again in {seconds} seconds."
   },
-  "resources": {},
+  "resources": {
+    "posts": {
+      "title": "Posts",
+      "fields": {
+        "title": "Title",
+        "author": "Author",
+        "status": "Status",
+        "publishedAt": "Published at",
+        "createdAt": "Created at",
+        "body": "Body",
+        "coverImage": "Cover image",
+        "q": "Search"
+      },
+      "enums": { "status": { "draft": "Draft", "published": "Published" } },
+      "actions": { "publish": "Publish", "unpublish": "Unpublish" }
+    }
+  },
   "home": {
     "title": "Admin",
     "description": "Manage your service.",

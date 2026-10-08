@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { registerTestAccount, loginSeedAccount } from "../../src/lib/testing/account";
+import type { components } from "../../src/lib/api/schema";
 
 export async function memberFixture(origin: string, locale: "ko" | "en" = "ko") {
   const account = {
@@ -24,7 +25,11 @@ export async function seedFixture(origin: string) {
   });
 }
 
-export async function partialAdminFixture(origin: string, locale: "ko" | "en" = "ko") {
+export async function partialAdminFixture(
+  origin: string,
+  locale: "ko" | "en" = "ko",
+  permissions: readonly components["schemas"]["PermissionCode"][] = ["admin:access"],
+) {
   const member = await memberFixture(origin, locale);
   const seed = await seedFixture(origin);
   const { data: role } = await seed.client.POST("/roles", {
@@ -33,7 +38,7 @@ export async function partialAdminFixture(origin: string, locale: "ko" | "en" = 
         type: "roles",
         attributes: {
           name: `partial-${randomUUID()}`,
-          permissions: ["admin:access"],
+          permissions: [...permissions],
         },
       },
     },
