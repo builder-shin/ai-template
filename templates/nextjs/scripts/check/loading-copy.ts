@@ -9,7 +9,7 @@ export function loadingCopyProblems(path: string, source: string): string[] {
     if (forbidden.test(text))
       problems.push(`${path}:${line} 로딩 문구 — 스피너나 스켈레톤을 쓴다.`);
   };
-  if (/^messages\/[^/]+\.json$/.test(path)) {
+  if (/^messages\/(?:shared\/)?[^/]+\.json$/.test(path)) {
     const visit = (value: unknown, keys: string[]) => {
       if (typeof value === "string") {
         if (keys.join(".") !== "accessibility.spinner") report(value, 1);

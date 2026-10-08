@@ -1,9 +1,8 @@
+import { ko, en } from "../src/lib/i18n/catalogs";
 import { randomUUID } from "node:crypto";
 import { test, expect, signupAndVerify, login, waitForServerAction } from "./fixtures";
 import { webOrigin } from "./targets";
 import { observeRealtime } from "./realtime";
-import ko from "../messages/ko.json" with { type: "json" };
-import en from "../messages/en.json" with { type: "json" };
 
 for (const locale of ["ko", "en"] as const) {
   const t = locale === "ko" ? ko : en;

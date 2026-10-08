@@ -1,7 +1,6 @@
+import { ko, en } from "../src/lib/i18n/catalogs";
 import { randomUUID } from "node:crypto";
 import { test, expect, sessionCookieName, logout } from "./fixtures";
-import ko from "../messages/ko.json" with { type: "json" };
-import en from "../messages/en.json" with { type: "json" };
 
 for (const provider of ["google", "kakao", "naver"] as const) {
   test(`${provider} 소셜 로그인은 PKCE 콜백 뒤 returnTo로 돌아오고 로그아웃된다`, async ({

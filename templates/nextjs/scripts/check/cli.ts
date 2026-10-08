@@ -5,6 +5,8 @@ import { binary, pnpm } from "../process.mjs";
 import { readProjectFiles, readRouteTypes } from "./files";
 import ko from "../../messages/ko.json";
 import en from "../../messages/en.json";
+import sharedKo from "../../messages/shared/ko.json";
+import sharedEn from "../../messages/shared/en.json";
 import { errorCodes } from "../../src/lib/generated/error-codes";
 import { checkI18n } from "./i18n";
 import { checkHarness } from "./harness";
@@ -60,7 +62,7 @@ const steps = assembleSteps(
 );
 const result = await runChecks(steps, previous, async (step) => {
   if (step.name === "i18n") {
-    const problems = checkI18n({ ko, en }, errorCodes);
+    const problems = checkI18n({ ko, en }, errorCodes, { ko: sharedKo, en: sharedEn });
     return { ok: !problems.length, output: problems.join("\n") };
   }
   if (step.name === "harness") {

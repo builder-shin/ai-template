@@ -1,6 +1,5 @@
+import { ko, en } from "../src/lib/i18n/catalogs";
 import { test, expect, sessionCookieName, signupAndVerify, login } from "./fixtures";
-import ko from "../messages/ko.json" with { type: "json" };
-import en from "../messages/en.json" with { type: "json" };
 
 for (const locale of ["ko", "en"] as const) {
   test(`${locale} 탈퇴 재인증 후 확인 화면으로 돌아와 계정을 지운다`, async ({

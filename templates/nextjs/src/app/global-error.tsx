@@ -2,8 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
-import ko from "../../messages/ko.json";
-import en from "../../messages/en.json";
+import { ko, en } from "../lib/i18n/catalogs";
 import { ErrorBoundary } from "../components/error-boundary";
 import "./globals.css";
 

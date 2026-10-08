@@ -175,7 +175,9 @@ mock E2E 기동기는 `http://localhost:3100/oauth/callback`을 허용 목록에
 
 `src/lib/i18n/request.ts`는 선택한 카탈로그와 `TIME_ZONE`을 반환한다. 레이아웃은 같은 메시지와 시간대를 `NextIntlClientProvider`에 전달한다. 서버의 `getFormatter`와 클라이언트의 `useFormatter`를 써서 호스트 시간대 차이에 따른 날짜 불일치를 막는다. 기본 시간대는 `Asia/Seoul`이다.
 
-`AppConfig`의 메시지 타입은 `messages/ko.json`에서 파생한다. 없는 번역 키는 컴파일 오류이며, check의 i18n 단계는 ko/en의 키와 생성된 모든 ErrorCode의 번역을 검사한다. 에러 코드는 `errors` 아래 영역별 객체로 두고 코드와 `meta.params`를 넘겨 ICU 값을 치환한다.
+메시지는 공통 문구·에러 코드의 `messages/shared/{ko,en}.json`과 앱 화면 문구의 `messages/{ko,en}.json`으로 나눈다. 요청 설정은 선택한 언어의 두 카탈로그를 병합하고, 요청 밖의 오류 화면·테스트는 `src/lib/i18n/catalogs.ts`의 병합 결과를 쓴다. 같은 namespace의 서로 다른 하위 키는 함께 둘 수 있지만 중복 키나 문자열·객체 충돌은 거절한다.
+
+`AppConfig`의 메시지 타입은 두 ko 카탈로그의 병합 결과에서 파생한다. 없는 번역 키는 컴파일 오류이며, check의 i18n 단계는 공통·앱 각각의 ko/en 키·빈 값, 두 카탈로그의 중복 키, 공통 카탈로그의 모든 ErrorCode 번역을 검사한다. 에러 코드는 `errors` 아래 영역별 객체로 두고 코드와 `meta.params`를 넘겨 ICU 값을 치환한다.
 
 ## 로그인 폼과 로그아웃
 

@@ -12,10 +12,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { generateFeature } from "./generate";
 import { GenerateError } from "./names";
 
-const cache = resolve(import.meta.dirname, "../../.cache");
+const temporaryRoot = tmpdir();
 let temporary: string;
 let project: string;
 
@@ -26,8 +27,7 @@ function write(path: string, content: string | Buffer) {
 }
 
 beforeEach(() => {
-  mkdirSync(cache, { recursive: true });
-  temporary = mkdtempSync(join(cache, "gen-feature-inputs-"));
+  temporary = mkdtempSync(join(temporaryRoot, "aitpl-gen-feature-inputs-"));
   project = join(temporary, "project");
   for (const path of [
     "src/features/posts/index.ts",
@@ -48,8 +48,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // 이 테스트가 만든 cache 바로 아래의 임시 트리만 지운다.
-  if (dirname(temporary) === cache && basename(temporary).startsWith("gen-feature-inputs-"))
+  // 이 테스트가 만든 OS 임시 폴더 바로 아래의 트리만 지운다.
+  if (
+    dirname(temporary) === temporaryRoot &&
+    basename(temporary).startsWith("aitpl-gen-feature-inputs-")
+  )
     rmSync(temporary, { recursive: true, force: true });
 });
 
@@ -162,4 +165,10 @@ it("대소문자만 다른 출력 충돌에도 두 원본 경로를 알리고 �
   write(first, "export const first = true;\n");
   write(second, "export const second = true;\n");
   await rejectWithoutWriting(first, second);
+});
+
+it.each(["ko", "en"])("%s 공유 namespace와 겹치면 어떤 파일도 쓰지 않는다", async (locale) => {
+  const path = `messages/shared/${locale}.json`;
+  write(path, JSON.stringify({ comments: { title: "댓글" } }));
+  await rejectWithoutWriting(`${path}: comments 키가 이미 있다 — 다른 이름을 쓴다.`);
 });

@@ -1,7 +1,7 @@
 import "server-only";
 import { createTranslator } from "next-intl";
-import ko from "../../../messages/ko.json";
-import en from "../../../messages/en.json";
+import ko from "../../../messages/shared/ko.json";
+import en from "../../../messages/shared/en.json";
 import { errorCodes, type ErrorCode } from "../generated/error-codes";
 import type { routing } from "../i18n/routing";
 import type { components } from "./schema";

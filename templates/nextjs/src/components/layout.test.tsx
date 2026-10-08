@@ -1,11 +1,10 @@
+import { ko, en } from "../lib/i18n/catalogs";
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { act, type ReactNode } from "react";
-import ko from "../../messages/ko.json";
-import en from "../../messages/en.json";
 import { Header } from "./header";
 import { LocaleSwitcher } from "./locale-switcher";
 import { Spinner } from "./spinner";
