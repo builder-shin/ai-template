@@ -5,7 +5,8 @@
     "en": "English"
   },
   "accessibility": {
-    "spinner": "In progress"
+    "spinner": "In progress",
+    "close": "Close"
   },
   "errorPage": {
     "title": "Something went wrong",
