@@ -51,6 +51,21 @@ export function ResourceSelect({
     setSearchResult(undefined);
     setError(false);
   }
+  function runSearch() {
+    if (!search || pending) return;
+    const version = ++searchVersion.current;
+    start(async () => {
+      try {
+        const result = await search(term);
+        if (version === searchVersion.current) {
+          setSearchResult(result);
+          setError(false);
+        }
+      } catch {
+        if (version === searchVersion.current) setError(true);
+      }
+    });
+  }
   const [value, setValue] = useState<string | string[] | null>(
     multiple
       ? Array.isArray(defaultValue)
@@ -124,7 +139,10 @@ export function ResourceSelect({
                 setTerm(event.target.value);
               }}
               onKeyDown={(event) => {
-                if (event.key === "Enter") event.preventDefault();
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  runSearch();
+                }
                 if (
                   event.key === "Enter" ||
                   event.key.length === 1 ||
@@ -135,25 +153,7 @@ export function ResourceSelect({
                   event.stopPropagation();
               }}
             />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => {
-                const version = ++searchVersion.current;
-                start(async () => {
-                  try {
-                    const result = await search(term);
-                    if (version === searchVersion.current) {
-                      setSearchResult(result);
-                      setError(false);
-                    }
-                  } catch {
-                    if (version === searchVersion.current) setError(true);
-                  }
-                });
-              }}
-            >
+            <Button type="button" variant="outline" disabled={pending} onClick={runSearch}>
               {pending ? <Spinner /> : t("search")}
             </Button>
           </div>

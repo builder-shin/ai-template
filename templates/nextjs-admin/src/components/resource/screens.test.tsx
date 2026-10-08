@@ -414,6 +414,19 @@ it("다중 관계의 검색 선택은 팝업을 닫아도 값과 라벨을 유�
   expect.soft(new FormData(form).getAll("roles")).toEqual(["s"]);
   expect.soft(trigger.textContent).toContain("검색 역할");
 });
+it("관계 검색 입력의 Enter는 검색 버튼처럼 대상을 찾는다", async () => {
+  const user = userEvent.setup();
+  show(
+    relationBar([], async (query) =>
+      query === "이름" ? [{ value: "s", label: "Enter 작성자" }] : [],
+    ),
+  );
+  await user.click(screen.getByRole("combobox", { name: "작성자" }));
+  const input = await screen.findByRole("textbox", { name: "대상 검색" });
+  await user.type(input, "이름{Enter}");
+  expect(await screen.findByRole("option", { name: "Enter 작성자" })).toBeDefined();
+  expect(navigation.push).not.toHaveBeenCalled();
+});
 it.each([false, true])(
   "관계 검색 결과에 없는 기존 선택을 보존한다 (다중 선택: %s)",
   async (multiple) => {
