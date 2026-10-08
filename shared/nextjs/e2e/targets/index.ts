@@ -27,6 +27,7 @@ export function targetEnvironment(
       APP_URL: webOrigin,
       API_BASE_URL: `${mockOrigin}/api/v1`,
       NEXT_PUBLIC_REALTIME_URL: mockOrigin,
+      ...appEnvironment(name, input),
     };
   const config = parseFastapiTargetEnv(input);
   if (config.webOrigin !== webOrigin)

@@ -8,6 +8,7 @@
 - 세션 폐기·비밀번호 변경은 두 컨텍스트의 실제 session.revoked를 확인하고 현재 세션은 유지되는지 본다. 공개 목록은 posts 구독 ack 뒤 변경하며 문서 이동 없이 반영되는지 본다.
 - `targets`가 메일·재인증 창·가짜 제공자의 username/claims 폼을 처리한다. 일반 흐름에는 대상별 분기나 목 전용 URL을 넣지 않는다. FastAPI는 같은 인터페이스에 Mailpit·모의 OAuth 서버를 연결한다.
 - 대상은 `E2E_TARGET`으로 고른다(기본 mock). mock만 목 4110을 검사·기동한다. fastapi는 미리 준비한 외부 API의 `/health/ready`를 기다린 뒤 web만 빌드·기동한다. Docker와 목은 실행하지 않는다.
+- 두 대상 모두 `targets/app.ts`의 `appEnvironment`로 앱의 추가 환경을 공통 환경에 더한다. web의 mock 대상은 추가 값이 없다.
 - fastapi에는 `APP_URL=http://localhost:3100`, `API_BASE_URL`, `NEXT_PUBLIC_REALTIME_URL`, `E2E_MAILPIT_URL`, `E2E_OAUTH_URL`, `E2E_RECENT_LOGIN_SECONDS`를 명시한다. 빠진 설정과 URL의 `?`·`#`는 기동 전에 실패한다. 외부 스택의 기동·정리는 호출자가 맡는다.
 - 외부 주소는 아래 행렬처럼 전달한다. Mailpit·OAuth·APP·실시간은 http(s) Origin이며 API는 `/api/v1`까지 포함한다. URL에는 값이 없는 `?`·`#` 구분 문자도 허용하지 않는다. 최근 로그인 창은 양의 정수이고 백엔드의 `RECENT_LOGIN_SECONDS`와 맞춘다.
 

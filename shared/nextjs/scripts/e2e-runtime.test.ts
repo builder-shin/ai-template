@@ -45,6 +45,24 @@ function harness() {
 }
 
 describe("E2E 대상 선택과 기동", () => {
+  it("mock 대상에도 앱의 추가 환경을 전달한다", async () => {
+    vi.resetModules();
+    vi.doMock("../e2e/targets/app", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("../e2e/targets/app")>()),
+      appEnvironment: (name: string, input: Record<string, string | undefined>) =>
+        name === "mock" ? { E2E_APP_MARKER: input.E2E_APP_MARKER ?? "missing" } : {},
+    }));
+    try {
+      const { targetEnvironment } = await import("../e2e/targets");
+      expect(targetEnvironment("mock", { E2E_APP_MARKER: "mock-app" })).toMatchObject({
+        E2E_TARGET: "mock",
+        E2E_APP_MARKER: "mock-app",
+      });
+    } finally {
+      vi.doUnmock("../e2e/targets/app");
+      vi.resetModules();
+    }
+  });
   it("앱 밖의 계약 경로에서 목을 시작한다", async () => {
     root = mkdtempSync(join(tmpdir(), "aitpl-e2e-contract-"));
     const app = join(root, "apps/web");
