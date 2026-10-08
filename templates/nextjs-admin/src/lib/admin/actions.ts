@@ -20,7 +20,11 @@ function text(data: FormData, name: string) {
   return typeof value === "string" ? value : "";
 }
 
-export async function loginAction(_state: LoginState, data: FormData): Promise<LoginState> {
+export async function loginAction(
+  returnTo: string,
+  _state: LoginState,
+  data: FormData,
+): Promise<LoginState> {
   const locale = await getLocale();
   const email = text(data, "email");
   const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
@@ -61,7 +65,7 @@ export async function loginAction(_state: LoginState, data: FormData): Promise<L
       path: "/",
       sameSite: "lax",
     });
-    target = loginDestination("/", accountLocale);
+    target = loginDestination(returnTo, accountLocale);
     issued = undefined;
   } catch (error) {
     // 권한 확인에 실패한 발급 세션도 브라우저에 남기지 않는다.

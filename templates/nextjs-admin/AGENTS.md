@@ -36,6 +36,7 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 - 먼저 [설치 버전 문서](docs/stack.md)를 읽는다. Next.js 문서는 `node_modules/next/dist/docs`다. `agentRules: false`를 유지한다.
 - 브라우저는 백엔드 API를 직접 부르지 않는다. 토큰은 서버의 암호화 쿠키에만 둔다. 개발 `admin-session`, 운영 `__Host-admin-session`이다.
 - 로그인은 password grant다. `/me`의 `meta.permissions`에 `admin:access`가 없으면 발급한 세션을 끝내고 세션·`NEXT_LOCALE` 쿠키를 쓰지 않는다. 발급 뒤 실패한 세션도 끝낸다.
+- 로그인은 안전한 `returnTo` 경로·쿼리를 보존하고 성공 뒤 계정 언어로 복귀한다. 외부·모호한 경로와 중복 쿼리값은 `/`로 돌아간다. 실패·회원 거절과 JS 없는 제출은 같은 복귀 쿼리의 로그인 URL을 유지한다.
 - `/login` 외의 모든 화면은 로그인이 필요하다. `(admin)` 레이아웃은 문서 요청마다, 관리 홈·리소스 화면과 Action은 요청마다 권한을 확인한다. 클라이언트 이동은 레이아웃을 다시 실행하지 않는다. 권한 상실은 `/forbidden`, 401은 쿠키 정리 뒤 로그인으로 보낸다. `/forbidden`은 계정만 읽고 관리 권한을 요구하지 않는다.
 - 소셜로만 가입해 비밀번호가 없는 계정은 로그인할 수 없다. web의 비밀번호 재설정으로 비밀번호를 정하거나 다른 관리자 계정을 쓴다. 이 앱에는 소셜 로그인·가입·메일 인증·재설정 화면이 없다.
 - 로그아웃은 현재 API 세션을 끝내고 쿠키를 지운 뒤 같은 언어의 `/login`으로 간다. API 실패에도 브라우저 쿠키를 지운다.
