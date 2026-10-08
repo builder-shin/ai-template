@@ -3,8 +3,8 @@
  *
  * - 없거나 비어 있는 변수는 기본값을 쓴다. 목은 설정 없이도 뜬다.
  * - 변수를 더할 때는 MockConfig, DEFAULT_CONFIG, loadConfig에 함께 더한다.
- * - 이름은 FastAPI 템플릿과 같은 뜻이면 같은 이름을 쓴다(예: SEED_ADMIN_EMAIL). 기본값은 FastAPI
- *   템플릿 .env.example의 개발용 값과 같다.
+ * - 변수 이름은 같은 뜻의 백엔드 설정과 맞춘다(예: SEED_ADMIN_EMAIL).
+ * - 기본값은 개발용이며 스토리지·실시간 Origin은 로컬 web과 admin을 허용한다.
  */
 
 export interface SeedAdmin {

@@ -32,17 +32,16 @@
 
 ## 명령
 
-| 명령                                    | 하는 일                                                                               |
-| --------------------------------------- | ------------------------------------------------------------------------------------- |
-| `pnpm --filter @ai-template/mock start` | 목을 띄운다(기본 http://localhost:4010)                                               |
-| `pnpm --filter @ai-template/mock test`  | 단위 테스트                                                                           |
-| `pnpm --filter @ai-template/mock check` | 생성물 최신 여부, 타입, 단위 테스트. 루트 `pnpm check`에 들어 있다                    |
-| `pnpm --filter @ai-template/mock gen`   | 계약에서 타입을 다시 만든다. 루트 `pnpm gen`도 한다                                   |
-| `pnpm conformance mock [흐름 파일...]`  | 목을 띄우고 적합성 흐름을 돌린 뒤 내린다. Docker가 필요 없다(CI의 `conformance-mock`) |
+| 명령                                    | 하는 일                                                            |
+| --------------------------------------- | ------------------------------------------------------------------ |
+| `pnpm --filter @ai-template/mock start` | 목을 띄운다(기본 http://localhost:4010)                            |
+| `pnpm --filter @ai-template/mock test`  | 단위 테스트                                                        |
+| `pnpm --filter @ai-template/mock check` | 생성물 최신 여부, 타입, 단위 테스트. 루트 `pnpm check`에 들어 있다 |
+| `pnpm --filter @ai-template/mock gen`   | 계약에서 타입을 다시 만든다. 루트 `pnpm gen`도 한다                |
 
 ## 설정
 
-없거나 빈 변수는 FastAPI 템플릿 `.env.example`의 개발용 값을 쓰고, 틀린 변수는 한 줄씩 알리고 멈춘다(`src/config.ts`).
+없거나 빈 변수는 목의 개발용 기본값을 쓰고, 틀린 변수는 한 줄씩 알리고 멈춘다(`src/config.ts`). 스토리지·실시간 Origin은 로컬 web(`http://localhost:3000`)과 admin(`http://localhost:3001`)을 허용한다.
 
 | 변수                                                     | 뜻                                                                                    |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -74,7 +73,6 @@
 4. 다른 모듈과 얽히는 처리(계정 닫기, 파일 읽기 규칙과 참조 확인, 역할 변경)는 등록 지점에 걸고 `src/modules/registry.ts`에서 잇는다.
 5. 알림(`realtime.publish`)과 재검사(`realtime.recheck`)는 그 상태를 바꾼 뒤에 보낸다. 한 처리가 여러 곳을 바꾸며 알리면 `state.realtime.batch`로 전체를 감싸 재검사가 이미 바뀐 상태를 보게 한다(FastAPI의 commit 뒤 발행과 같다. 예: `modules/roles/management.ts`의 `deleteRole`).
 6. `test/`에 단위 테스트를 둔다. 기대값은 FastAPI에 같은 요청을 보내 얻은 응답이다.
-7. 적합성 흐름(`contract/conformance/test/flows/`)을 더해 `pnpm conformance mock`과 `pnpm conformance fastapi`에서 통과시킨다.
 
 ## FastAPI와 다른 점
 
