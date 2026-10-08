@@ -1,0 +1,8 @@
+{
+  "session_id": "fixture-session",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Edit",
+  "tool_input": { "file_path": "src/sample.ts" },
+  "tool_response": { "success": true },
+  "tool_use_id": "fixture-tool"
+}

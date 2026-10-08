@@ -16,6 +16,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `templates/`            | 템플릿. 각 폴더는 그대로 복사하면 동작하는 독립 프로젝트다                                |
 | `templates/fastapi/`    | FastAPI 백엔드 템플릿                                                                     |
 | `templates/nextjs/`     | Next.js BFF web. 자체 workspace의 계약·목과 인증·글·내 정보·세션·업로드·실시간 기능       |
+| `shared/nextjs/`        | Next.js 앱 공통 코드·테스트·하네스 원본. sync가 템플릿의 같은 경로에 복사한다             |
 | `create/`               | git 추적 템플릿 파일로 단독·FastAPI+web 조합 프로젝트를 만드는 CLI                        |
 | `create/assets/combo/`  | 조합 루트 실행기·하네스·CI와 조합용 web 이미지의 원본                                     |
 | `scripts/`              | check 실행기, 도구 설치기, 구조 비교, 지침·템플릿 검사, 동기화                            |
@@ -38,7 +39,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `pnpm --dir templates/nextjs test:e2e`            | 목(4110)과 운영 web(3100)에 붙는 Chromium E2E 20개. 기본 대상은 mock이며 FastAPI는 준비된 외부 주소·설정을 받는다                                                                                                                                                                                 |
 | `pnpm web-e2e fastapi`                            | 전용 `ai-template-web-e2e-<ID>` 스택과 web(3100)에서 같은 E2E 20개를 실행한 뒤 그 스택·볼륨과 실행 이미지 `ai-template-web-e2e-fastapi:<ID>`를 정리한다. `--smoke`, `--print`, `--keep`, `--run-id <ID>`, `--down`은 [실행기 문서](scripts/src/web-e2e/README.md)를 따른다                        |
 | `pnpm --dir templates/nextjs gen:feature <이름>`  | 골든 posts와 화면·번역·테스트를 복사하고 로그인 보호 경로를 등록한다                                                                                                                                                                                                                              |
-| `pnpm --dir templates/nextjs gen`                 | TypeSpec 계약·목 타입과 web API·실시간·에러 타입 생성. web 타입은 선택한 `gen.config.json` 스펙을 사용한다                                                                                                                                                                                        |
+| `pnpm --dir templates/nextjs gen`                 | TypeSpec 계약·목 타입과 web API·실시간·에러 타입 생성. web 타입은 선택한 `gen.config.json` 스펙을 사용한다. 저장소의 공유 생성물은 [web 계약 동기화](docs/conventions/web-contract.md)의 helper로 원본에 만든다                                                                                   |
 | `pnpm tool <oasdiff\|betterleaks\|actionlint>`    | 버전을 고정한 바이너리를 받아 실행한다                                                                                                                                                                                                                                                            |
 | `pnpm spec-compare [--subset] <계약> <구현>`      | 백엔드 스펙이 계약과 이름·경로·operation별 응답 상태·실시간 선언이 같고 계약을 깨지 않는지 본다. `--subset`은 구현 도중에 구현한 operation만 비교한다                                                                                                                                             |
 | `pnpm conformance <대상> [--keep] [흐름 파일...]` | 대상을 띄우고 적합성 흐름 테스트를 돌린 뒤 내린다. `fastapi`는 compose로 띄우고(Docker 필요) 템플릿의 개발 인프라와 같은 compose 프로젝트를 써서 개발 DB에 마이그레이션과 시드를 실행한다(끝나면 개발 인프라도 내려간다). `mock`은 목 서버를 로컬 프로세스로 띄운다. 흐름 파일을 주면 그것만 돈다 |
@@ -59,6 +60,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 - 계약은 `contract/typespec/src/`만 고치고 `pnpm gen`으로 생성물을 만든다. `contract/openapi.yaml`과 `**/generated/**`는 직접 고치지 않는다.
 - API 규약은 `docs/conventions/jsonapi.md`, 에러 코드는 `docs/conventions/error-codes.md`를 따른다.
 - 템플릿은 저장소의 다른 폴더를 참조하지 않는다. 공유 자산은 원본을 고친 뒤 `pnpm sync`한다.
+- Next.js 공유 사본은 `scripts/shared-assets.json`이 정한다. `shared/nextjs/` 원본만 고치고 `pnpm sync`한다. 원본은 템플릿 사본의 check로 검사하며 독립 프로젝트가 아니다.
 - web 계약의 원본·사본 편집 순서는 [web 계약 동기화](docs/conventions/web-contract.md)를 따른다. 템플릿 레시피는 독립 프로젝트의 절차다.
 - 템플릿은 `docs/harness/standard.md`를 지킨다. `pnpm check`가 `templates/`를 검사한다.
 - web 규칙은 `templates/nextjs/AGENTS.md`, W1~W4 구현·검증 기록은 `docs/superpowers/specs/2026-09-30-nextjs-web-design.md`를 읽는다. web의 check·build·mock E2E·FastAPI E2E는 빌드 산출물을 함께 쓰므로 순서대로 실행한다. W4의 CI는 PR CI에서 확인한다.
