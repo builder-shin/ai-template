@@ -12,7 +12,7 @@
 
 ### 1.1 산출물
 
-현재 단계는 A2 구현, PR CI·병합 뒤 A3다. A2 제품 등록은 글 하나이며 나머지 리소스·FastAPI E2E·create CLI 확장은 A3다.
+A2 제품 등록은 글 하나이며 나머지 리소스·FastAPI E2E·create CLI 확장은 A3다.
 
 1. `shared/nextjs/`: web과 admin이 같이 쓰는 코드의 원본. `pnpm sync`가 두 템플릿에 같은 바이트로 복사한다(§3).
 2. 계약 위치 설정: 템플릿이 목 서버와 TypeSpec의 위치를 `gen.config.json`에서 읽는다. 조합은 루트 `contract/` 하나를 공유한다(§3.5, §9).
@@ -575,7 +575,8 @@ SDD 리뷰에서 바꾼 내용은 다음과 같다.
 - 실시간 갱신은 1초 고정 창이며 상세는 자기 레코드만, 숨은 탭은 복귀 때 한 번 갱신한다.
 - 로그인 뒤 복귀 경로 보존은 A3로 남긴다. 쿼리 키: `returnTo`.
 - 실시간 provider의 key는 세션 id를 유지한다. 컴포넌트: `RealtimeProvider`.
+- 최종 수정 묶음(Ruling 20): 옵션 밖 URL 관계 값은 `included` 라벨 또는 id로 보충해 검색 뒤에도 보존한다. 폼과 같은 보충 helper를 쓴다. 동작 UI는 안정 키로 묶고 관계 검색은 Enter도 받으며 URL에서 API용 `include`를 뺀다. 골든 오류 문구·직접 호출 충돌 검사, 활성 린트 테스트만 임시 폴더 생성, `Permission` 내보내기를 고정했다. 목 적합성 흐름·admin 스택·생성기 include·E2E 문서와 이 계획의 우선순위 안내도 맞췄다.
 
-Base UI 팝업의 열림은 findByRole, 닫힘은 waitFor로 기다린다. 번역 테스트는 intlFixture로 환경 스키마의 TIME_ZONE을 고정한다. Next 스트리밍 404는 응답 시작 뒤 HTTP 200일 수 있어 화면과 head의 noindex를 함께 확인했다. 빠른 메뉴 이동에서 Next의 The destination stream closed early 진단을 관찰했으며 UI/API assertion 통과와 별도로 기록했다. 원인은 확정하지 않았다.
+Base UI 팝업의 열림은 findByRole, 닫힘은 waitFor로 기다린다. 번역 테스트는 intlFixture로 환경 스키마의 TIME_ZONE을 고정한다. Next 스트리밍 404는 응답 시작 뒤 HTTP 200일 수 있어 화면과 head의 noindex를 함께 확인했다. 빠른 메뉴 이동에서 Next의 `The destination stream closed early` 진단을 관찰했으며 UI/API assertion 통과와 별도로 기록했다. 원인은 확정하지 않았다.
 
 A2는 PR CI의 check·fastapi·nextjs·nextjs-admin·nextjs-e2e-fastapi·conformance-fastapi·conformance-mock·create-combo·create-standalone 아홉 작업과 검토·병합을 남긴다. 사용자·역할·권한·감사 로그의 제품 등록, admin FastAPI E2E와 가입·Mailpit 준비, create CLI의 admin 지원은 A3다.
