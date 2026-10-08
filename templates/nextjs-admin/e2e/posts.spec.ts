@@ -99,18 +99,25 @@ test("다른 세션의 초안 생성은 posts:all 이벤트 뒤 목록에 나타
   const author = await member();
   const title = `실시간-${randomUUID()}`;
   const socket = realtime(page);
+  const loginSubscriptions = socket.subscriptionCount("posts:all");
   await login(page, account);
   await expect(page).toHaveURL("/posts");
+  await expect
+    .poll(() => socket.subscriptionCount("posts:all"))
+    .toBeGreaterThan(loginSubscriptions);
+  const listSubscriptions = socket.subscriptionCount("posts:all");
   await page.goto(`/posts?${new URLSearchParams({ "filter[q]": title })}`);
   await expect(page.getByText("결과가 없습니다.")).toBeVisible();
-  await expect.poll(() => socket.subscribed("posts:all")).toBe(true);
+  await expect.poll(() => socket.subscriptionCount("posts:all")).toBeGreaterThan(listSubscriptions);
   const record = await post(author.owner, title);
   await expect.poll(() => socket.received("post.created")).toBe(true);
   await expect(page.getByRole("row", { name: new RegExp(title) })).toBeVisible();
-  const subscribed = socket.subscriptionCount("posts:all");
+  const detailSubscriptions = socket.subscriptionCount("posts:all");
   await page.getByRole("row", { name: new RegExp(title) }).click();
   await expect(page).toHaveURL(`/posts/${record.id}`);
-  await expect.poll(() => socket.subscriptionCount("posts:all")).toBeGreaterThan(subscribed);
+  await expect
+    .poll(() => socket.subscriptionCount("posts:all"))
+    .toBeGreaterThan(detailSubscriptions);
   const changed = `${title}-변경`;
   await author.owner.client.PATCH("/posts/{id}", {
     params: { path: { id: record.id } },
