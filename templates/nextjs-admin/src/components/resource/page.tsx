@@ -83,7 +83,11 @@ export async function ResourcePage({
     );
     if (screen === "detail") return DetailScreen({ context, document });
     if (!controlsFor(resource, account.permissions, document.data).edit)
-      redirect(locale === "en" ? "/en/forbidden" : "/forbidden");
+      throw new ApiError({
+        status: 409,
+        errors: [{ code: "resource.conflict", params: {} }],
+        traceId: "",
+      });
     return await FormScreen({ context, mode: "edit", record: document.data });
   } catch (error) {
     redirectOnUnauthorized(error, locale === "en" ? "/en" : "/");

@@ -164,6 +164,34 @@ it("URL의 잘못된 필터 값은 오류 경계 대신 그 자리의 안내로 
   expect(html).toContain('role="alert"');
   expect(html).toContain("조회 조건이 올바르지 않습니다.");
 });
+it("권한 있는 관리자의 최신 레코드가 수정 조건과 다르면 그 자리의 충돌 안내로 보인다", async () => {
+  const seed = await seedFixture(inject("mockBaseUrl"));
+  await session(seed);
+  const member = await memberFixture(inject("mockBaseUrl"));
+  const document = await createResourceData(member.owner.client).create(postsFixture, {
+    title: "수정 조건 테스트",
+    body: "본문",
+    status: "published",
+  });
+  const resource = {
+    ...postsFixture,
+    edit: {
+      ...postsFixture.edit!,
+      visible: (record: { attributes: { status: string } }) => record.attributes.status === "draft",
+    },
+  };
+  const result = await ResourcePage({
+    registry: [resource],
+    type: "posts",
+    screen: "edit",
+    id: document.data.id,
+  });
+  expect(result.type).toBe(RequestNotice);
+  expect(result.props.error).toMatchObject({ status: 409, code: "resource.conflict" });
+  const html = renderToStaticMarkup(await RequestNotice(result.props));
+  expect(html).toContain('role="alert"');
+  expect(html).toContain("현재 상태에서는 요청을 처리할 수 없습니다.");
+});
 it("관리 권한을 잃은 뒤의 화면 요청은 레이아웃 없이도 forbidden으로 간다", async () => {
   const partial = await partialAdminFixture(inject("mockBaseUrl"), "ko", [
     "admin:access",
