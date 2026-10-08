@@ -1,9 +1,8 @@
+import { ko, en } from "../../lib/i18n/catalogs";
 import { setTimeout } from "node:timers/promises";
 import { afterEach, beforeAll, beforeEach, expect, inject, it, vi } from "vitest";
 import { revalidatePath } from "next/cache";
 import { createTranslator } from "next-intl";
-import ko from "../../../messages/ko.json";
-import en from "../../../messages/en.json";
 import { EXAMPLE_SESSION_SECRET } from "../../lib/env";
 import { createApiClient } from "../../lib/api/client";
 import { readSession } from "../../lib/session/request";

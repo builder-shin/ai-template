@@ -1,11 +1,10 @@
+import { ko, en } from "../../lib/i18n/catalogs";
 // @vitest-environment jsdom
 import { act, type ReactNode } from "react";
 import { afterEach, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
-import ko from "../../../messages/ko.json";
-import en from "../../../messages/en.json";
 import { ProfileForm, PasswordChangeForm } from "./forms";
 import type { ProfileResult, PasswordResult } from "./state";
 

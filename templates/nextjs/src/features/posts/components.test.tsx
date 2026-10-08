@@ -1,10 +1,9 @@
+import { ko, en } from "../../lib/i18n/catalogs";
 // @vitest-environment jsdom
 import { afterEach, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
-import ko from "../../../messages/ko.json";
-import en from "../../../messages/en.json";
 import {
   PostDetail,
   PostList,

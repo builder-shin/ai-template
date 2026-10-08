@@ -1,8 +1,8 @@
+import { en } from "../src/lib/i18n/catalogs";
 import { randomUUID } from "node:crypto";
 import { test, expect, sessionCookieName, signupAndVerify, login, logout } from "./fixtures";
 import { webOrigin } from "./targets";
 import { observeRealtime } from "./realtime";
-import en from "../messages/en.json" with { type: "json" };
 
 test("세션 하나를 폐기하면 다른 컨텍스트는 자동 로그아웃하고 현재 세션은 유지된다", async ({
   page,

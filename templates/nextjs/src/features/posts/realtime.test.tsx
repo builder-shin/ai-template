@@ -1,9 +1,8 @@
+import { ko, en } from "../../lib/i18n/catalogs";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import ko from "../../../messages/ko.json";
-import en from "../../../messages/en.json";
 import { PostsRealtime, PostRealtime } from "./realtime";
 import { useChannel } from "../../lib/realtime";
 

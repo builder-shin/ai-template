@@ -163,3 +163,9 @@ it("대소문자만 다른 출력 충돌에도 두 원본 경로를 알리고 �
   write(second, "export const second = true;\n");
   await rejectWithoutWriting(first, second);
 });
+
+it.each(["ko", "en"])("%s 공유 namespace와 겹치면 어떤 파일도 쓰지 않는다", async (locale) => {
+  const path = `messages/shared/${locale}.json`;
+  write(path, JSON.stringify({ comments: { title: "댓글" } }));
+  await rejectWithoutWriting(path, "comments");
+});

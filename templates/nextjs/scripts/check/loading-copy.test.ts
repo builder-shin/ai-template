@@ -14,6 +14,8 @@ it.each([
   ["src/app/a.tsx", 'const copy = {"status": "Loading"};'],
   ["messages/en.json", '{"submit":{"pending":"Loading…"}}'],
   ["messages/ko.json", '{"page":{"pending":"불러오는 중..."}}'],
+  ["messages/shared/en.json", '{"submit":{"pending":"Loading…"}}'],
+  ["messages/shared/ko.json", '{"page":{"pending":"불러오는 중..."}}'],
 ] as const)("%s의 로딩 문구를 막는다", (path, content) => {
   expect(checkHarness({ ...base, [path]: content }, []).join()).toMatch(/로딩 문구/);
 });
@@ -31,6 +33,7 @@ it("aria-label만 접근성 예외로 두고 URL 속성·속성 이름·식별�
           'export default () => <a href={"/loading"}><img src={`/loading/${n}`} /></a>;',
         "contract/mock/a.tsx": 'const fixture = "Loading...";',
         "messages/en.json": '{"accessibility":{"spinner":"Loading"},"page":{"title":"Home"}}',
+        "messages/shared/en.json": '{"accessibility":{"spinner":"Loading"}}',
       },
       [],
     ),

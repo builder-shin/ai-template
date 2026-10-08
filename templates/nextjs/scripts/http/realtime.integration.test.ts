@@ -1,10 +1,10 @@
+import { en } from "../../src/lib/i18n/catalogs";
 import { appSessionCookieName } from "../../src/lib/app-config.mjs";
 import { chromium, expect as playwrightExpect, type Page, type WebSocket } from "@playwright/test";
 import { expect, inject, it, vi } from "vitest";
 import { sessionsFixture } from "../../src/features/sessions/test-fixture";
 import { sealSession } from "../../src/lib/session/cookie";
 import { EXAMPLE_SESSION_SECRET } from "../../src/lib/env";
-import en from "../../messages/en.json";
 
 vi.setConfig({ testTimeout: 60000 });
 const browserExpect = playwrightExpect.configure({ timeout: 30000 });

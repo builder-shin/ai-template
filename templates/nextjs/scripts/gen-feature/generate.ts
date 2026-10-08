@@ -87,6 +87,12 @@ export async function generateFeature(root: string, name: string, singular?: str
     const catalog = JSON.parse(read(root, path)) as Catalog;
     if (Object.hasOwn(catalog, names.camel))
       throw new GenerateError(`${path}: ${names.camel} 키가 이미 있다. 다른 이름을 쓴다.`);
+    const sharedPath = `messages/shared/${locale}.json`;
+    if (
+      existsSync(join(root, sharedPath)) &&
+      Object.hasOwn(JSON.parse(read(root, sharedPath)) as Catalog, names.camel)
+    )
+      throw new GenerateError(`${sharedPath}: ${names.camel} 키가 이미 있다 — 다른 이름을 쓴다.`);
     if (!catalog.posts || typeof catalog.posts === "string")
       throw new GenerateError(`${path}: posts 번역을 복원한다.`);
     catalog[names.camel] = catalogCopy(catalog.posts, names);
