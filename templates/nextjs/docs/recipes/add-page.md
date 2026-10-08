@@ -27,7 +27,7 @@ export default async function AboutPage() {
 4. 기능 데이터가 필요하면 `src/features/<기능>/queries.ts`·`index.ts`를 먼저 맞추고 페이지에서 공개 인터페이스를 가져온다. queries는 `import "server-only"`를 둔다. 클라이언트에서 백엔드를 직접 부르거나 데이터 캐시를 만들지 않는다.
 5. 로딩 경계가 필요하면 `loading.tsx`에 스켈레톤만 둔다. 로딩 문구는 적지 않는다.
 6. 날짜는 `getFormatter`(서버)나 `useFormatter`(클라이언트)로 표시해 요청의 `TIME_ZONE`을 따른다.
-7. `src/components/header.tsx`나 `src/app/[locale]/page.tsx`에 `lib/i18n/navigation`의 `Link`로 진입 링크를 더한다. 링크 이름도 카탈로그에서 가져온다. 로그인 필수 페이지라면 `src/lib/session/redirect.ts`의 `requiresLogin` 안 배열에 경로를 더한다. [proxy 단위 검사](../../scripts/session-proxy.test.ts)·[보호 경로 HTTP 검사](../../scripts/http/protected-path.integration.test.ts)·[인증 E2E](../../e2e/auth.spec.ts)를 모델로 직접 접근·하위 경로·returnTo를 검사한다.
+7. `src/components/header.tsx`나 `src/app/[locale]/page.tsx`에 `lib/i18n/navigation`의 `Link`로 진입 링크를 더한다. 링크 이름도 카탈로그에서 가져온다. 로그인 필수 페이지라면 `src/lib/session/routes.ts`의 `isProtectedPath` 안 배열에 경로를 더한다. [proxy 단위 검사](../../scripts/session-proxy.test.ts)·[보호 경로 HTTP 검사](../../scripts/http/protected-path.integration.test.ts)·[인증 E2E](../../e2e/auth.spec.ts)를 모델로 직접 접근·하위 경로·returnTo를 검사한다.
 
 ## 규칙
 

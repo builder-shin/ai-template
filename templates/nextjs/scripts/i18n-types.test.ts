@@ -10,7 +10,7 @@ it("ko에서 파생한 타입은 정상 키만 허용하고 없는 키는 컴파
   const compile = (key: string) => {
     writeFileSync(
       file,
-      `import { useTranslations } from "next-intl";\nfunction Probe() { return useTranslations("home")(${JSON.stringify(key)}); }\n`,
+      `import { useTranslations } from "next-intl";\nfunction Probe() { return useTranslations("errorPage")(${JSON.stringify(key)}); }\n`,
     );
     return binary(
       "tsc",

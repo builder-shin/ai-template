@@ -1,4 +1,5 @@
-import type { APIRequestContext, Page } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
+import { appEnvironment, extendTarget } from "./app";
 import { mockTarget } from "./mock";
 import { fastapiTarget, parseFastapiTargetEnv } from "./fastapi";
 import { appOrigin } from "../../src/lib/app-config.mjs";
@@ -6,20 +7,9 @@ import { appOrigin } from "../../src/lib/app-config.mjs";
 export const webOrigin = appOrigin("e2e");
 export const mockOrigin = appOrigin("e2eMock", "127.0.0.1");
 export type TargetName = "mock" | "fastapi";
-export type SocialProvider = "google" | "kakao" | "naver";
-export interface SocialIdentity {
-  username: string;
-  name: string;
-}
 export interface TargetAdapter {
   mailLink(email: string, purpose: "verification" | "reset"): Promise<string>;
   expireRecentLogin(): Promise<void>;
-  completeSocialLogin(
-    page: Page,
-    provider: SocialProvider,
-    identity: SocialIdentity,
-  ): Promise<void>;
-  denySocialLogin(page: Page, provider: SocialProvider): Promise<void>;
 }
 
 export function targetName(value = process.env.E2E_TARGET ?? "mock"): TargetName {
@@ -61,11 +51,12 @@ export function targetEnvironment(
     API_BASE_URL: config.apiBaseUrl,
     NEXT_PUBLIC_REALTIME_URL: realtime.origin,
     E2E_MAILPIT_URL: config.mailpitOrigin,
-    E2E_OAUTH_URL: config.oauthOrigin,
     E2E_RECENT_LOGIN_SECONDS: String(config.recentLoginSeconds),
+    ...appEnvironment(name, input),
   };
 }
 
-export function createTarget(name: TargetName, request: APIRequestContext): TargetAdapter {
-  return name === "fastapi" ? fastapiTarget(request) : mockTarget(request, mockOrigin);
+export function createTarget(name: TargetName, request: APIRequestContext) {
+  const target = name === "fastapi" ? fastapiTarget(request) : mockTarget(request, mockOrigin);
+  return extendTarget(name, request, target, mockOrigin);
 }

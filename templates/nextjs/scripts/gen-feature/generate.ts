@@ -98,11 +98,11 @@ export async function generateFeature(root: string, name: string, singular?: str
     catalog[names.camel] = catalogCopy(catalog.posts, names);
     register(path, path, JSON.stringify(catalog, null, 2) + "\n");
   }
-  const protectedFile = "src/lib/session/redirect.ts";
+  const protectedFile = "src/lib/session/routes.ts";
   const protectedSource = read(root, protectedFile);
   const protectedList = /(\[[^\]]*"\/my-posts"[^\]]*)(\]\.some)/;
   if (!protectedList.test(protectedSource))
-    throw new GenerateError(`${protectedFile}: requiresLogin의 보호 경로 목록을 복원한다.`);
+    throw new GenerateError(`${protectedFile}: isProtectedPath의 보호 경로 목록을 복원한다.`);
   register(
     protectedFile,
     protectedFile,

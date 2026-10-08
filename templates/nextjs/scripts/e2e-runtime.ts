@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { join } from "node:path";
 import { resolveContractPaths } from "./gen-config.mjs";
 import { mockOrigin, webOrigin, targetName, targetEnvironment } from "../e2e/targets";
+import { mockEnvironment } from "../e2e/targets/app";
 import { mockRecentLoginSeconds } from "../e2e/targets/mock";
 
 export interface ServerDependencies {
@@ -39,7 +40,7 @@ export async function startE2eServers(
         HOST: new URL(mockOrigin).hostname,
         API_URL: mockOrigin,
         FRONTEND_URL: webOrigin,
-        OAUTH_REDIRECT_URIS: `${webOrigin}/oauth/callback`,
+        ...mockEnvironment(webOrigin),
         STORAGE_ALLOWED_ORIGINS: webOrigin,
         REALTIME_ALLOWED_ORIGINS: webOrigin,
         MOCK_TEST_ENDPOINTS: "true",

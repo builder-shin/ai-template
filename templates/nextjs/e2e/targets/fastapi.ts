@@ -1,6 +1,6 @@
-import type { APIRequestContext, Page } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 import { z } from "zod";
-import type { SocialProvider, TargetAdapter } from "./index";
+import type { TargetAdapter } from "./index";
 
 const httpAddress = z.url({ protocol: /^https?$/ }).pipe(
   z.string().refine((value) => {
@@ -14,14 +14,13 @@ const httpAddress = z.url({ protocol: /^https?$/ }).pipe(
     );
   }),
 );
-const origin = httpAddress
+export const httpOrigin = httpAddress
   .pipe(z.string().refine((value) => new URL(value).pathname === "/"))
   .transform((value) => new URL(value).origin);
 const settings = z.object({
-  APP_URL: origin,
+  APP_URL: httpOrigin,
   API_BASE_URL: httpAddress.transform((value) => value.replace(/\/+$/, "")),
-  E2E_MAILPIT_URL: origin,
-  E2E_OAUTH_URL: origin,
+  E2E_MAILPIT_URL: httpOrigin,
   E2E_RECENT_LOGIN_SECONDS: z
     .string()
     .regex(/^[1-9]\d*$/)
@@ -43,7 +42,6 @@ export function parseFastapiTargetEnv(input: Record<string, string | undefined>)
     webOrigin: data.APP_URL,
     apiBaseUrl: data.API_BASE_URL,
     mailpitOrigin: data.E2E_MAILPIT_URL,
-    oauthOrigin: data.E2E_OAUTH_URL,
     recentLoginSeconds: data.E2E_RECENT_LOGIN_SECONDS,
   };
 }
@@ -92,20 +90,6 @@ export function fastapiTarget(
     }
   }
 
-  async function providerPage(page: Page, provider: SocialProvider) {
-    await page.waitForURL(
-      (url) => url.origin === config.oauthOrigin && url.pathname === `/${provider}/authorize`,
-    );
-    const current = new URL(page.url());
-    const states = current.searchParams.getAll("state");
-    const redirects = current.searchParams.getAll("redirect_uri");
-    const callback = `${config.apiBaseUrl}/oauth/${provider}/callback`;
-    if (states.length !== 1 || !states[0] || redirects.length !== 1 || redirects[0] !== callback) {
-      throw new Error("제공자 페이지의 state·redirect_uri가 현재 FastAPI 시도와 맞지 않는다.");
-    }
-    return { state: states[0], callback: new URL(redirects[0]) };
-  }
-
   return {
     async mailLink(email, purpose) {
       const path = purpose === "verification" ? "/verify-email" : "/reset-password";
@@ -138,7 +122,7 @@ export function fastapiTarget(
             }
             if (link.pathname !== path || !link.searchParams.get("token")) continue;
             if (link.origin !== config.webOrigin || link.username || link.password) {
-              throw new Error("메일 링크는 자격 증명 없는 web Origin이어야 한다.");
+              throw new Error("메일 링크는 자격 증명 없는 앱 Origin이어야 한다.");
             }
             const ids = previous?.time === time ? previous.ids : new Set<string>();
             ids.add(summary.ID);
@@ -150,30 +134,6 @@ export function fastapiTarget(
         if (remaining <= 0) throw timedOut();
         await sleep(Math.min(mailPollMs, remaining));
       }
-    },
-    async completeSocialLogin(page, provider, { username, name }) {
-      await providerPage(page, provider);
-      const claims = {
-        google: { sub: username, name },
-        kakao: { id: username, kakao_account: { profile: { nickname: name } } },
-        naver: { response: { id: username, name } },
-      }[provider];
-      const form = page.locator("form").filter({ has: page.locator('input[name="username"]') });
-      await form.locator('input[name="username"]').fill(username);
-      const claimsField = form.locator('textarea[name="claims"]');
-      if (!(await claimsField.isVisible())) await form.locator("details > summary").click();
-      await claimsField.fill(JSON.stringify(claims));
-      // 폼 제출·제공자→FastAPI→web 리다이렉트를 따른다. BFF의 PKCE 쿠키는 그대로 둔다.
-      await form.locator('input[type="submit"]').click();
-      await page.waitForURL((url) => url.origin === config.webOrigin);
-    },
-    async denySocialLogin(page, provider) {
-      const { state, callback } = await providerPage(page, provider);
-      // navikt에는 거부 버튼이 없다. 현재 시도만 FastAPI 콜백에 돌려준다.
-      callback.searchParams.set("state", state);
-      callback.searchParams.set("error", "access_denied");
-      await page.goto(callback.href);
-      await page.waitForURL((url) => url.origin === config.webOrigin);
     },
     async expireRecentLogin() {
       await sleep(config.recentLoginSeconds * 1000 + 100);

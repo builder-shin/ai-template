@@ -2,7 +2,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import { fixupConfigRules } from "@eslint/compat";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import tseslint from "typescript-eslint";
-import { architectureConfig } from "./scripts/lint/boundaries.mjs";
+import { appArchitectureConfig } from "./scripts/lint/app.mjs";
 
 export default defineConfig(
   globalIgnores([
@@ -26,5 +26,5 @@ export default defineConfig(
       ],
     },
   },
-  architectureConfig(import.meta.dirname),
+  appArchitectureConfig(import.meta.dirname),
 );

@@ -32,7 +32,7 @@ describe("요청 메시지와 시간대", () => {
   it.each([undefined, "fr"])("로케일이 없거나 지원하지 않으면 ko를 쓴다", async (locale) => {
     const config = await resolveRequestConfig(Promise.resolve(locale));
     expect(config.locale).toBe("ko");
-    expect(config.messages.home.title).toBe("Web 템플릿");
+    expect(config.messages.errorPage.title).toBe("오류가 발생했습니다");
   });
 
   it.each(["Asia/Seoul", "America/New_York"])(

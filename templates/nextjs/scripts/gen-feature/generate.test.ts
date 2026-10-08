@@ -40,8 +40,8 @@ beforeEach(() => {
   for (const locale of ["ko", "en"])
     write(`messages/${locale}.json`, JSON.stringify({ posts: { title: "글" } }));
   write(
-    "src/lib/session/redirect.ts",
-    'export const requiresLogin = (path: string) => ["/my-posts"].some((value) => path.startsWith(value));\n',
+    "src/lib/session/routes.ts",
+    'export const isProtectedPath = (path: string) => ["/my-posts"].some((value) => path.startsWith(value));\n',
   );
   write("package.json", "{}\n");
   write(".prettierrc.json", "{}\n");

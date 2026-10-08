@@ -139,7 +139,7 @@ describe("i18n 검사 단계", () => {
   });
 
   it("한국어가 보존되고 로딩 문구는 카탈로그에 없다", () => {
-    expect(ko.home.title).toBe("Web 템플릿");
+    expect(sharedKo.errorPage.title).toBe("오류가 발생했습니다");
     expect(JSON.stringify({ ko, en, sharedKo, sharedEn })).not.toMatch(/loading|로딩|불러오는 중/i);
   });
 });

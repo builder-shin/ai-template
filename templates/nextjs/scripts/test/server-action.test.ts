@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import type { Page, Response } from "@playwright/test";
-import { waitForServerAction } from "../../e2e/fixtures";
+import { waitForServerAction } from "./server-action";
 
 it("일반 POST·GET·업로드 응답을 건너뛰고 Server Action POST 응답을 돌려준다", async () => {
   const responses = [

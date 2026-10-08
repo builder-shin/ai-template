@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateFiles, staleFiles } from "./generate";
+import { appConfig } from "../src/lib/app-config.mjs";
 import { pnpm } from "./process.mjs";
 import { resolveContractPaths } from "./gen-config.mjs";
 
@@ -52,7 +53,7 @@ try {
       writeFileSync(join(root, path), content);
     }
   }
-  console.log(check ? "생성물 최신 여부 통과" : "계약·web·목 타입 생성 완료");
+  console.log(check ? "생성물 최신 여부 통과" : `계약·${appConfig.app}·목 타입 생성 완료`);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mockOrigin, webOrigin, targetEnvironment } from "../e2e/targets";
 import { startE2eServers, type ServerDependencies } from "./e2e-runtime";
+import { extraE2eEnv } from "./test/e2e-app";
 
 const env = {
   E2E_TARGET: "fastapi",
@@ -13,7 +14,7 @@ const env = {
   API_BASE_URL: "http://127.0.0.1:18100/api/v1",
   NEXT_PUBLIC_REALTIME_URL: "http://127.0.0.1:18100",
   E2E_MAILPIT_URL: "http://127.0.0.1:28125",
-  E2E_OAUTH_URL: "http://127.0.0.1:28180",
+  ...extraE2eEnv,
   E2E_RECENT_LOGIN_SECONDS: "10",
 };
 let root: string | undefined;
@@ -62,14 +63,13 @@ describe("E2E 대상 선택과 기동", () => {
   it("외부 FastAPI 설정을 그대로 전달한다", () => {
     expect(targetEnvironment("fastapi", env)).toMatchObject(env);
   });
-  it.each(Object.keys(env).filter((key) => key !== "E2E_TARGET"))(
-    "%s 누락은 기동 전에 실패한다",
-    async (key) => {
-      const { deps, events } = harness();
-      await expect(startE2eServers({ ...env, [key]: undefined }, deps)).rejects.toThrow(key);
-      expect(events).toEqual([]);
-    },
-  );
+  it.each(
+    Object.keys(env).filter((key) => key !== "E2E_TARGET" && !Object.hasOwn(extraE2eEnv, key)),
+  )("%s 누락은 기동 전에 실패한다", async (key) => {
+    const { deps, events } = harness();
+    await expect(startE2eServers({ ...env, [key]: undefined }, deps)).rejects.toThrow(key);
+    expect(events).toEqual([]);
+  });
   it("FastAPI가 준비된 뒤 web만 빌드·기동한다", async () => {
     const { deps, events } = harness();
     await startE2eServers(env, deps);
