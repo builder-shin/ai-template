@@ -151,6 +151,50 @@ function relationForm(multiple: boolean, defaultValue?: string | string[]) {
   );
 }
 
+it("다중 열거값 입력은 여러 값과 빈 선택의 존재 표식을 제출한다", async () => {
+  const user = userEvent.setup();
+  let submitted: FormData | undefined;
+  show(
+    <ResourceForm
+      title="수정"
+      action={async (_state, data) => {
+        submitted = data;
+        return { ok: true };
+      }}
+      permalink="/roles/r/edit"
+      cancelHref="/roles/r"
+    >
+      <ResourceInput
+        name="permissions"
+        label="권한"
+        kind="enum-many"
+        defaultValue={["posts:create"]}
+        options={[
+          { value: "posts:create", label: "글 작성" },
+          { value: "posts:manage", label: "글 관리" },
+        ]}
+      />
+    </ResourceForm>,
+  );
+  const trigger = screen.getByRole("combobox", { name: "권한" });
+  await user.click(trigger);
+  await user.click(await screen.findByRole("option", { name: "글 관리" }));
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  await user.click(screen.getByRole("button", { name: "저장" }));
+  await waitFor(() =>
+    expect(submitted?.getAll("permissions")).toEqual(["posts:create", "posts:manage"]),
+  );
+  await user.click(trigger);
+  await user.click(await screen.findByRole("option", { name: "글 작성" }));
+  await user.click(await screen.findByRole("option", { name: "글 관리" }));
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  await user.click(screen.getByRole("button", { name: "저장" }));
+  await waitFor(() => expect(submitted?.getAll("permissions")).toEqual([]));
+  expect(submitted?.get("__present_permissions")).toBe("1");
+});
+
 it("다중 관계의 검색 선택은 팝업을 닫아도 값과 라벨을 유지한다", async () => {
   const user = userEvent.setup();
   show(relationForm(true));

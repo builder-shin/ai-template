@@ -37,11 +37,11 @@ export function missingResourceMessages(
     const fields = new Set<string>();
     for (const form of [resource.create, resource.edit])
       for (const [name, kind] of Object.entries(form?.fields ?? {}))
-        if (kind === "enum") fields.add(name);
+        if (kind === "enum" || kind === "enum-many") fields.add(name);
     for (const [key, kind] of Object.entries(resource.list.filters ?? {}))
       if (kind === "enum") fields.add(key.slice(7, -1));
     for (const [name, field] of Object.entries(resource.fields ?? {}))
-      if (field.kind === "enum") fields.add(name);
+      if (field.kind === "enum" || field.kind === "enum-many") fields.add(name);
     const metadata = resource.fields as Record<string, { values?: readonly string[] }> | undefined;
     const inputErrors = Object.entries(resource.fields ?? {}).flatMap(([name, field]) =>
       (field.inputValues ?? [])

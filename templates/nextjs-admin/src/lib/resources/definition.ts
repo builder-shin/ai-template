@@ -1,5 +1,6 @@
 import "server-only";
 import type { ComponentType } from "react";
+import type { createApiClient } from "../api/client";
 import type { DisplayProps, InputProps } from "../../components/resource/types";
 import type { FormResult } from "../api/errors";
 import type { components } from "../api/schema";
@@ -20,14 +21,23 @@ import type {
 } from "./contract";
 
 export type Permission = components["schemas"]["PermissionCode"];
-export type InputKind = "text" | "textarea" | "enum" | "boolean";
+export type InputKind = "text" | "textarea" | "enum" | "enum-many" | "boolean";
 export type FilterKind = "text" | "enum" | "relation" | "date";
 export type DisplayKind =
-  "text" | "textarea" | "date" | "enum" | "boolean" | "relation" | "relation-many" | "file";
+  | "text"
+  | "textarea"
+  | "date"
+  | "enum"
+  | "enum-many"
+  | "boolean"
+  | "relation"
+  | "relation-many"
+  | "file";
 export type FieldPresentation = {
   kind?: DisplayKind;
   values?: readonly string[];
   inputValues?: readonly string[];
+  loadValues?: (client: ReturnType<typeof createApiClient>) => Promise<readonly string[]>;
   relation?: { type: string; label: string; search?: boolean };
   display?: ComponentType<DisplayProps>;
   input?: ComponentType<InputProps>;

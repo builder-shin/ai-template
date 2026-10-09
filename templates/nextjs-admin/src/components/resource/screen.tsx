@@ -72,12 +72,19 @@ export function RecordControls({
     </div>
   );
 }
-function optionValues(context: ScreenContext, name: string, input = false) {
+function optionValues(
+  context: ScreenContext,
+  name: string,
+  input = false,
+  available?: readonly string[],
+) {
   const field = presentation(context.resource, name);
-  return ((input ? field.inputValues : undefined) ?? field.values ?? []).map((value) => ({
-    value,
-    label: context.translate(`resources.${context.resource.type}.enums.${name}.${value}`),
-  }));
+  return ((input ? field.inputValues : undefined) ?? field.values ?? [])
+    .filter((value) => !available || available.includes(value))
+    .map((value) => ({
+      value,
+      label: context.translate(`resources.${context.resource.type}.enums.${name}.${value}`),
+    }));
 }
 export async function ListScreen({
   context,
@@ -257,7 +264,9 @@ export async function FormScreen({
           included,
           t("layout.unnamedUser"),
         );
-      } else if (kind === "enum") options = optionValues(context, name, true);
+      } else if (kind === "enum" || kind === "enum-many") {
+        options = optionValues(context, name, true, await field.loadValues?.(context.client));
+      }
       const props: InputProps = {
         name,
         kind,

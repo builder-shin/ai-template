@@ -89,6 +89,8 @@ export async function draftResource(spec: unknown, type: string) {
     const value = read(schema);
     const values = strings(value.enum);
     if (values.length) return { kind: "enum", values };
+    const items = strings(read(value.items).enum);
+    if (value.type === "array" && items.length) return { kind: "enum-many", values: items };
     if (value.type === "boolean") return { kind: "boolean" };
     if (["date", "date-time"].includes(String(value.format))) return { kind: "date" };
     return { kind: "text" };
@@ -187,7 +189,9 @@ export async function draftResource(spec: unknown, type: string) {
       if (!(name in attributes)) continue;
       const display = presentation(value);
       if (display.values) fields[name] = display;
-      inputs[name] = ["enum", "boolean"].includes(display.kind) ? display.kind : "text";
+      inputs[name] = ["enum", "enum-many", "boolean"].includes(display.kind)
+        ? display.kind
+        : "text";
     }
     for (const [name, value] of Object.entries(properties(property(writeData, "relationships"))))
       if (name in relationships)

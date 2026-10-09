@@ -11,6 +11,13 @@ it("현재 플랫폼 계약의 초안 다섯 개가 선언 타입과 문구 검�
   const spec = parse(readFileSync("contract/openapi.yaml", "utf8"));
   const types = ["posts", "users", "roles", "permissions", "audit-logs"];
   const drafts = await Promise.all(types.map((type) => draftResource(spec, type)));
+  const role = drafts.find((draft) => draft.definition.type === "roles")!;
+  expect(role.definition.fields.permissions).toMatchObject({
+    kind: "enum-many",
+    values: expect.arrayContaining(["roles:read", "posts:manage"]),
+  });
+  expect(role.definition.create?.fields.permissions).toBe("enum-many");
+  expect(role.definition.edit?.fields.permissions).toBe("enum-many");
   expect(
     drafts.find((draft) => draft.definition.type === "users")?.definition.fields.avatar,
   ).toEqual({ kind: "file", relation: { type: "files", label: "filename" } });

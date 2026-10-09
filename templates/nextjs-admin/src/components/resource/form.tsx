@@ -94,12 +94,12 @@ export function ResourceInput({
           />
         ) : kind === "boolean" ? (
           <Checkbox {...props} value="true" checked={value === true} onCheckedChange={setValue} />
-        ) : ["enum", "relation", "relation-many"].includes(kind) ? (
+        ) : ["enum", "enum-many", "relation", "relation-many"].includes(kind) ? (
           <ResourceSelect
             name={name}
             label={label}
             defaultValue={value}
-            multiple={kind === "relation-many"}
+            multiple={kind === "relation-many" || kind === "enum-many"}
             {...(options ? { options } : {})}
             {...(search ? { search } : {})}
             invalid={invalid}

@@ -71,7 +71,7 @@ function statusForm(status = "deactivated") {
   return data;
 }
 it("사용자 선언은 메뉴 두 번째에 있고 읽기·수정 범위와 선택지를 제한한다", () => {
-  expect(resources.map((resource) => resource.type)).toEqual(["posts", "users"]);
+  expect(resources.slice(0, 2).map((resource) => resource.type)).toEqual(["posts", "users"]);
   expect(users).toMatchObject({
     permission: "users:read",
     list: {

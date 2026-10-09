@@ -164,3 +164,31 @@ it("상세 없는 수정 폼의 취소는 목록으로 돌아간다", async () =
   show(await FormScreen({ context: context(users, seed.client), mode: "edit", record }));
   expect(screen.getByRole("link", { name: "취소" }).getAttribute("href")).toBe("/users");
 });
+it("다중 열거값의 서버 옵션은 실제 API에서 읽고 카탈로그 라벨을 쓴다", async () => {
+  function Options({ options }: InputProps) {
+    return (
+      <output aria-label="서버 옵션">{options?.map((option) => option.label).join(",")}</output>
+    );
+  }
+  const resource = defineResource({
+    type: "roles",
+    permission: "roles:read",
+    list: { columns: ["name"] },
+    fields: {
+      permissions: {
+        kind: "enum-many",
+        values: ["roles:read"],
+        input: Options,
+        loadValues: async (client) =>
+          (await client.GET("/permissions")).data!.data.map((item) => item.id),
+      },
+    },
+    create: { permission: "roles:manage", fields: { permissions: "enum-many" } },
+  });
+  const seed = await seedFixture(inject("mockBaseUrl"));
+  const ctx = context(resource, seed.client);
+  ctx.translate = (key) =>
+    key === "resources.roles.enums.permissions.roles:read" ? "역할과 권한 조회" : key;
+  show(await FormScreen({ context: ctx, mode: "create" }));
+  expect(screen.getByLabelText("서버 옵션").textContent).toBe("역할과 권한 조회");
+});
