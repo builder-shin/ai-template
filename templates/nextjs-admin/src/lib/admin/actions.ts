@@ -11,6 +11,7 @@ import { getEnv } from "../env";
 import { expiredSessionCookie, sessionFromTokens } from "../session/cookie";
 import { readSession, writeSession, redirectOnUnauthorized } from "../session/request";
 import { loginDestination } from "../session/redirect";
+import { safeLoginReturnTo } from "./redirect";
 import ko from "../../../messages/ko.json";
 import en from "../../../messages/en.json";
 import type { LoginState, LocaleState } from "./state";
@@ -65,7 +66,7 @@ export async function loginAction(
       path: "/",
       sameSite: "lax",
     });
-    target = loginDestination(returnTo, accountLocale);
+    target = loginDestination(safeLoginReturnTo(returnTo), accountLocale);
     issued = undefined;
   } catch (error) {
     // 권한 확인에 실패한 발급 세션도 브라우저에 남기지 않는다.

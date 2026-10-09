@@ -2,7 +2,8 @@ import { getLocale } from "next-intl/server";
 import { LoginForm } from "../../../components/login-form";
 import { LocaleSwitcher } from "../../../components/locale-switcher";
 import { loginAction } from "../../../lib/admin/actions";
-import { loginPath, safeReturnTo } from "../../../lib/session/redirect";
+import { safeLoginReturnTo } from "../../../lib/admin/redirect";
+import { loginPath } from "../../../lib/session/redirect";
 
 export default async function LoginPage({
   searchParams,
@@ -10,7 +11,9 @@ export default async function LoginPage({
   searchParams: Promise<{ returnTo?: string | string[] }>;
 }) {
   const params = await searchParams;
-  const returnTo = safeReturnTo(typeof params.returnTo === "string" ? params.returnTo : undefined);
+  const returnTo = safeLoginReturnTo(
+    typeof params.returnTo === "string" ? params.returnTo : undefined,
+  );
   const locale = await getLocale();
   return (
     <main id="main" className="mx-auto max-w-5xl space-y-8 px-4 py-8">

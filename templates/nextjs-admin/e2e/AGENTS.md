@@ -5,6 +5,7 @@
 - API Origin은 대상 환경의 API_BASE_URL에서 읽는다. 가입과 메일 인증은 API로 준비하고 대상 어댑터의 mailLink(email, "verification")로 링크를 읽는다. 목은 테스트 메일 통로, FastAPI는 Mailpit을 쓴다. FastAPI의 FRONTEND_URL은 admin E2E Origin(http://localhost:3101)이어야 한다. 일반 회원은 관리 로그인에서 거절되며 쿠키·새 세션이 남지 않아야 한다.
 - 일부 권한 관리자는 시드 관리자가 API로 역할을 만들어 부여한다. `admin()`의 기본 권한은 `admin:access`·`posts:manage`·`users:read`이며 인자로 바꿀 수 있다. 권한 회수 검사는 로그인한 실제 연결을 확인하고 `me.updated` 뒤 `/forbidden`을 확인한다.
 - 새 계정과 브라우저 컨텍스트를 시나리오마다 쓴다. 시드 관리자는 API 역할 준비만 맡으며 브라우저에 로그인하지 않는다. 목은 기본 시드 계정, FastAPI는 필수 E2E_SEED_ADMIN_EMAIL·E2E_SEED_ADMIN_PASSWORD를 쓴다. 값이 없거나 비면 기동 전에 변수 이름만 알리고 실패한다.
+- 로그아웃 클릭 뒤 현재 언어의 로그인 URL 도착을 확인하고 다음 로그인이나 이동을 시작한다.
 - 감사 로그는 시드의 API 역할 생성 뒤 role.created와 오늘의 시작·종료 날짜로 거르고 상세의 역할 이름 메타데이터를 확인한다. 오늘은 CI 호스트 시간대와 무관하게 E2E의 Asia/Seoul로 계산한다. 감사 로그만 읽는 계정은 행위자 옵션의 403 안내를 보고 대상 상세 링크 없이 id를 본다.
 - 인증·글·사용자·역할·권한·감사 로그·언어 시나리오 18개로 로그인·일반 회원 거절·로그아웃·권한 상실·계정 언어 전환과 글 목록·동작·삭제·실시간·사용자 필터·역할 부여·비활성화·역할 생성·수정·dialog 삭제·시스템 역할 보호·권한 목록·중복 이름의 입력 보존·리소스 권한·404를 검사한다. 역할 시나리오의 주체는 admin:access·roles:read·roles:manage·posts:create를 가지며 만드는 역할의 권한은 그 안에 둔다. 작성자·역할 옵션은 고유 이름으로 대상 검색을 실행한 뒤 고른다. 사용자 수정의 주체는 admin:access·users:read·users:manage·roles:read·posts:create를 가지며 부여할 역할과 대상 회원의 권한이 그 안에 있어야 한다. 메뉴 시트도 접근 가능한 dialog로 확인한다. 언어 전환은 계정·`NEXT_LOCALE`·URL과 다음 로그인을 함께 확인한다.
 - 계정 fixture를 가져올 때만 `registerHooks`로 `server-only` 표식을 비우고 JSON import 속성을 지정하며 가져온 뒤 해제한다. 실시간 검사는 연결 여부·이벤트 이름·성공한 subscribe ACK의 채널과 횟수만 기억하고 티켓·본문을 저장하지 않는다.

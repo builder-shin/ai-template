@@ -12,6 +12,8 @@ import ko from "../messages/ko.json";
 import { Children, isValidElement, type ComponentProps } from "react";
 import LoginPage from "../src/app/[locale]/login/page";
 import { LoginForm } from "../src/components/login-form";
+import { NextRequest } from "next/server";
+import proxy from "../src/proxy";
 
 const context = vi.hoisted(() => ({
   locale: "ko",
@@ -66,6 +68,14 @@ it.each([
   ["ko", "https://evil.example/posts", "/"],
   ["ko", "//evil.example/posts", "/"],
   ["en", "/en/posts?sort=title", "/en/posts?sort=title"],
+  ["ko", "/login?returnTo=%2Fposts", "/"],
+  ["en", "/login", "/en"],
+  ["ko", "/en/login?view=all", "/"],
+  ["en", "/ko/login#form", "/en"],
+  ["ko", "/session/clear?returnTo=%2Fposts", "/"],
+  ["en", "/session/clear", "/en"],
+  ["ko", "/login/extra?view=all", "/login/extra?view=all"],
+  ["en", "/forbidden?view=all", "/en/forbidden?view=all"],
 ] as const)("로그인 복귀: 계정 언어 %s, 경로 %s", async (locale, returnTo, target) => {
   const { account } = await partialAdminFixture(inject("mockBaseUrl"), locale);
   const props = await loginPage(returnTo);
@@ -93,12 +103,66 @@ it.each(["ko", "en"] as const)("%s 로그인 permalink는 복귀 쿼리를 보�
 });
 
 it.each(
-  [undefined, ["/posts", "/forbidden"], "https://evil.example", "//evil.example"].map(
-    (returnTo) => ({ returnTo }),
-  ),
+  [
+    undefined,
+    ["/posts", "/forbidden"],
+    "https://evil.example",
+    "//evil.example",
+    "/login",
+    "/login?returnTo=%2Fposts",
+    "/en/login?view=all#form",
+    "/ko/login",
+    "/EN/login/",
+    "/session/clear?returnTo=%2Fposts",
+    "/session/clear/",
+    "/posts/../login",
+    "/%6cogin",
+    "/%256cogin",
+    "/en%2Flogin",
+    "/en%252Flogin",
+    "/session%2Fclear",
+  ].map((returnTo) => ({ returnTo })),
 )("로그인 복귀값 $returnTo: 없거나 모호하면 기본 경로 permalink를 쓴다", async ({ returnTo }) =>
   expect((await loginPage(returnTo)).permalink).toBe("/login?returnTo=%2F"),
 );
+
+it.each(["ko", "en"] as const)(
+  "%s 로그인 Action 직접 호출도 로그인·세션 정리 목적지를 거절한다",
+  async (locale) => {
+    const { account } = await partialAdminFixture(inject("mockBaseUrl"), locale);
+    for (const returnTo of ["/login?next=posts", "/en/login", "/ko/login", "/session/clear?x=1"])
+      await expect(loginAction(returnTo, { ok: true }, form(account))).rejects.toMatchObject({
+        digest: `NEXT_REDIRECT;replace;${locale === "ko" ? "/" : "/en"};307;`,
+      });
+  },
+);
+
+it("로그아웃과 겹친 로그인 요청의 폐기 쿠키도 다음 로그인을 로그인 화면으로 돌리지 않는다", async () => {
+  const { owner } = await partialAdminFixture(inject("mockBaseUrl"));
+  const staleCookie = await sealSession({
+    ...sessionFromTokens(owner.session, owner.id),
+    accessTokenExpiresAt: new Date(Date.now() + 1000).toISOString(),
+  });
+  context.jar.set(cookie, { value: staleCookie });
+  await expect(logoutAction()).rejects.toMatchObject({
+    digest: "NEXT_REDIRECT;replace;/login;307;",
+  });
+  const response = await proxy(
+    new NextRequest(`${appOrigin("dev")}/login`, {
+      headers: { Cookie: `${cookie}=${staleCookie}; NEXT_LOCALE=ko` },
+    }),
+  );
+  expect(response.status).toBe(303);
+  expect(response.cookies.get(cookie)).toMatchObject({ value: "", maxAge: 0 });
+  const target = new URL(response.headers.get("location")!);
+  expect(target.pathname).toBe("/login");
+  expect(target.searchParams.get("returnTo")).toBe("/login");
+  const props = await loginPage(target.searchParams.get("returnTo")!);
+  const { account } = await partialAdminFixture(inject("mockBaseUrl"));
+  await expect(props.loginAction({ ok: true }, form(account))).rejects.toMatchObject({
+    digest: "NEXT_REDIRECT;replace;/;307;",
+  });
+});
 
 it.each(["ko", "en"] as const)(
   "일반 회원은 %s 안내를 받고 새 세션도 쿠키도 남지 않는다",

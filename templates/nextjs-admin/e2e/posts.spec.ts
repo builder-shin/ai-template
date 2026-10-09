@@ -142,6 +142,7 @@ test("일부 권한 관리자의 메뉴와 화면은 리소스 권한을 따른�
   await page.goto("/posts");
   await expect(page).toHaveURL("/forbidden");
   await page.getByRole("main").getByRole("button", { name: "로그아웃", exact: true }).click();
+  await expect(page).toHaveURL("/login");
   const postsOnly = await admin(request, "ko", ["admin:access", "posts:manage"]);
   await login(page, postsOnly.account);
   await expect(page).toHaveURL("/posts");
