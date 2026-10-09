@@ -2,7 +2,7 @@
 
 먼저 `src/lib/resources/definition.ts`와 `src/components/resource/types.ts`를 읽는다. 기존 text·textarea·date·enum·enum-many·boolean·relation·relation-many·file로 표현되는지 확인한다. 필터는 text·enum·relation·date, 입력은 text·textarea·enum·enum-many·boolean·relation·relation-many다.
 
-1. 리소스 하나만 필요한 표시는 그 폴더의 컴포넌트를 최상위 `fields.<name>.display`에 둔다. 입력은 `input`에 둔다. `DisplayProps`는 name·value·record·included·locale·timeZone, `InputProps`는 name·label·kind·defaultValue·options·search·disabled·error를 받는다. options는 관계·열거값 입력에만 있고 search는 관계 입력에만 있다.
+1. 리소스 하나만 필요한 표시는 그 폴더의 컴포넌트를 최상위 `fields.<name>.display`에 둔다. 입력은 `input`에 둔다. `DisplayProps`는 name·value·record·included·locale·timeZone·linkable, `InputProps`는 name·label·kind·defaultValue·options·search·disabled·error를 받는다. linkable(type)은 등록한 상세와 현재 보기 권한을 함께 확인한다. options는 관계·열거값 입력에만 있고 search는 관계 입력에만 있다.
 2. 입력은 같은 name으로 제출하고 `useResourceField(name)`으로 오류·접근성 속성을 읽는다. 비운 관계·체크박스는 `__present_<name>`을 제출한다. 비활성 입력은 둘 다 제출하지 않는다. 범용 fieldset이 입력 override도 비활성화하며 사용자 정의 선택 부품에도 disabled를 전달한다. Server Action과 `useActionState`를 유지한다. 일반 컴포넌트 함수를 클라이언트 props로 넘기지 않는다.
 3. 공통 종류가 필요하면 definition의 DisplayKind·InputKind·FilterKind와 화면 types를 함께 늘린다. display.tsx·form.tsx·filters.tsx·screen.tsx의 실제 소비자를 맞춘다. 모든 종류를 세 위치에 무조건 추가하지 않는다.
 4. 쓰기 종류는 `src/lib/resources/values.ts`의 FormData 해석과 data.ts의 JSON:API attributes·relationships 분류도 맞춘다. 이름만 추가하면 문서가 달라지므로 실제 목의 요청·응답과 source.pointer를 검사한다.
@@ -22,3 +22,5 @@
 서버에서 열거값 옵션을 읽어야 하면 fields.<name>.loadValues(client)에 코드 배열을 돌려주는 서버 함수를 둔다. 폼은 API 결과와 inputValues 또는 values의 교집합을 카탈로그 라벨로 전달한다. API 오류는 화면의 RequestNotice로 전달한다. 역할의 options.ts는 GET /permissions의 모든 페이지를 읽고 permission-picker.tsx는 코드 접두사별 체크박스를 그린다. API의 영어 설명은 선택기에 표시하지 않는다.
 
 목록 columns와 상세 fields는 id를 선언할 수 있다. fields.id 표시 설정도 허용하며 resources.<type>.fields.id 문구가 필요하다. 값은 attributes가 아닌 레코드 id에서 읽는다. 쓰기 필드와 관계 라벨·정렬의 계약 범위는 유지한다. 권한 목록은 columns: ["id", "group", "description"]이며 상세·필터·정렬·쓰기를 선언하지 않는다.
+
+감사 로그의 metadata.tsx는 임의 JSON 객체를 키·값 목록으로, 배열·중첩 객체는 들여쓴 JSON으로 표시한다. 빈 객체는 범용 빈 값이다. target.tsx는 record.attributes.targetType과 value의 id로 상세 링크를 만들되 linkable(type)이 true일 때만 표시한다. 나머지는 id만, null은 빈 값으로 보인다. 일반 관계 표시는 included의 공개 이름과 기존 이름 대체값을 쓰므로 별도 override가 필요 없다.

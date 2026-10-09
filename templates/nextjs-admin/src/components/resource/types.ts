@@ -48,4 +48,5 @@ export type DisplayProps = {
   included: readonly ScreenRecord[];
   locale: "ko" | "en";
   timeZone: string;
+  linkable: (type: string) => boolean;
 };

@@ -42,17 +42,21 @@
 
 목록 갱신 한 번은 `/me`, 목록, 검색 가능한 각 관계 필터의 첫 페이지를 읽는다.
 
-현재 제품 등록은 posts, users, roles, permissions 순서다. 사용자는 users:read로 목록·상세를 보고 users:manage로 상태·역할을 수정한다. 목록은 이름·이메일·상태·역할·생성 시각과 검색·상태·역할 필터, 기본 -createdAt 정렬을 제공한다. roles만 include하며 아바타는 제외한다. 상세에는 언어·이메일 인증 시각·수정 시각도 표시한다. 상태 입력은 active·deactivated만 제공하고 표시·필터는 deleted도 포함한다. 탈퇴한 사용자 수정은 숨기며 수정 화면·저장 Action은 최신 상태를 확인해 409를 보인다. 자기 자신·상위 권한 대상의 수정은 API의 403을 폼 배너로 알린다.
+현재 제품 등록은 posts, users, roles, permissions, audit-logs 순서다. 사용자는 users:read로 목록·상세를 보고 users:manage로 상태·역할을 수정한다. 목록은 이름·이메일·상태·역할·생성 시각과 검색·상태·역할 필터, 기본 -createdAt 정렬을 제공한다. roles만 include하며 아바타는 제외한다. 상세에는 언어·이메일 인증 시각·수정 시각도 표시한다. 상태 입력은 active·deactivated만 제공하고 표시·필터는 deleted도 포함한다. 탈퇴한 사용자 수정은 숨기며 수정 화면·저장 Action은 최신 상태를 확인해 409를 보인다. 자기 자신·상위 권한 대상의 수정은 API의 403을 폼 배너로 알린다.
 
-`pnpm gen:resource <type>`은 API 타입 생성과 같은 `gen.config.json` 입력으로 선언·ko/en 자리표시자·등록 초안을 만들고 기존 자료는 덮지 않는다. operation의 `x-permission`이 없으면 `admin:access`를 넣으므로 권한·필드·문구를 검토한다. [리소스](recipes/add-resource.md)·[필드 종류](recipes/add-field-kind.md)·[동작](recipes/add-action.md) 레시피를 따른다. 감사 로그의 제품 화면과 FastAPI 대상 확장은 후속 범위다.
+`pnpm gen:resource <type>`은 API 타입 생성과 같은 `gen.config.json` 입력으로 선언·ko/en 자리표시자·등록 초안을 만들고 기존 자료는 덮지 않는다. operation의 `x-permission`이 없으면 `admin:access`를 넣으므로 권한·필드·문구를 검토한다. [리소스](recipes/add-resource.md)·[필드 종류](recipes/add-field-kind.md)·[동작](recipes/add-action.md) 레시피를 따른다. FastAPI 대상 확장은 후속 범위다.
 
 역할은 roles:read로 목록·상세를, roles:manage로 이름·설명·권한 배열의 생성·수정과 삭제를 제공한다. 설명은 선택 사항인 textarea다. permissions는 관계가 아닌 enum-many 속성이며 FormData의 같은 이름으로 여러 값을 제출하고 빈 선택은 []를 attributes에 보낸다. 표시와 선택기 이름은 resources.roles.enums.permissions의 ko/en 번역이다. 서버의 loadValues는 /permissions의 모든 페이지를 읽고 선언한 values 안의 코드를 제공한다. 선택기는 코드 접두사로 그룹을 나누고 영어 API 설명은 쓰지 않는다. 시스템 역할의 삭제 버튼은 숨기며 직접 Action 호출은 최신 상태를 읽어 409로 막는다. 시스템 이름 변경·admin 권한 변경의 API 422는 번역 배너, 중복 이름의 pointer는 이름 아래 오류로 보인다. API의 권한 범위 거부는 403 배너다.
 
 권한은 roles:read의 읽기 전용 목록이다. id·group·description을 표시하며 상세·필터·정렬·쓰기는 없다. id 열은 레코드 식별자를 읽고 fields.id 문구를 쓴다. 상세도 id 표시를 선언할 수 있지만 쓰기 계약·관계 라벨·정렬 범위는 유지한다.
 
+감사 로그는 audit-logs:read의 읽기 전용 목록·상세다. 행위자·13개 행위·대상 종류·기간으로 거르며 기본 정렬은 -createdAt이다. actor는 공개 표현의 이름만 표시하고 users:read가 있을 때만 사용자 상세로 링크한다. 없는 계정의 로그인 실패에는 행위자가 없다. users:read가 없으면 행위자 옵션의 403은 해당 필터만 비활성화한다. metadata.tsx는 임의 JSON 객체의 키·값을 표시하고 배열·중첩 객체를 들여쓴 JSON으로 보인다. target.tsx는 DisplayProps.linkable(type)으로 등록된 상세와 현재 권한을 확인해 대상 링크 또는 id만 표시한다. null은 범용 빈 값이다.
+
+기간의 종료 날짜는 포함한다. API의 createdTo는 배타적이므로 date.ts의 calendarDateFilter는 설정 시간대의 다음 날 0시를 보내며 1ms를 빼지 않는다. filterCalendarDate는 ISO 종료 경계의 직전 시각이 속한 날짜로 입력을 되돌린다. 시작은 당일 0시이며 서머타임의 23·25시간 날짜도 다음 날 경계를 따른다.
+
 ## 테스트
 
-Vitest global setup이 실제 목 프로세스를 시작하고 `mockBaseUrl`을 제공한다. 요청 저장소를 대체한 Action 검사도 실제 HTTP API로 로그인·권한·폐기를 확인한다. 앱 번역 테스트는 `scripts/test/intl-fixture.ts`로 환경 스키마의 시간대를 고정한다. E2E 17개는 목(4111), 운영 admin(3101), 두 Chromium worker로 인증·글·사용자·역할·권한·언어를 확인하며 실행기가 시작한 자원을 종료한다. 작성자·역할 필터는 대상 검색으로 고르고 실시간 검사는 화면마다 새 subscribe ACK를 확인한 뒤 다른 세션에서 변경한다. 기존 포트의 서버는 재사용하거나 종료하지 않는다. 영상·스크린샷·trace는 저장하지 않는다.
+Vitest global setup이 실제 목 프로세스를 시작하고 `mockBaseUrl`을 제공한다. 요청 저장소를 대체한 Action 검사도 실제 HTTP API로 로그인·권한·폐기를 확인한다. 앱 번역 테스트는 `scripts/test/intl-fixture.ts`로 환경 스키마의 시간대를 고정한다. E2E 18개는 목(4111), 운영 admin(3101), 두 Chromium worker로 인증·글·사용자·역할·권한·감사 로그·언어를 확인하며 실행기가 시작한 자원을 종료한다. 작성자·역할 필터는 대상 검색으로 고르고 실시간 검사는 화면마다 새 subscribe ACK를 확인한 뒤 다른 세션에서 변경한다. 기존 포트의 서버는 재사용하거나 종료하지 않는다. 영상·스크린샷·trace는 저장하지 않는다.
 
 ## 실행과 이미지
 

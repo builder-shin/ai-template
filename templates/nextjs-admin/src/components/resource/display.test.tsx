@@ -118,6 +118,23 @@ it("등록되지 않았거나 볼 수 없는 대상의 관계는 링크 없이 �
   expect(screen.queryByRole("link")).toBeNull();
   expect(screen.getByText("작성자")).toBeDefined();
 });
+it("표시 override도 요청의 대상 상세 접근 판정을 따른다", () => {
+  render(
+    <FieldDisplay
+      name="status"
+      field={{
+        display: ({ linkable }) => <span>{linkable?.("users") ? "상세 허용" : "상세 없음"}</span>,
+      }}
+      record={record}
+      included={included}
+      locale="ko"
+      timeZone="Asia/Seoul"
+      translate={translate}
+      linkable={(type) => type === "users"}
+    />,
+  );
+  expect(screen.getByText("상세 허용")).toBeDefined();
+});
 
 it.each(["ko", "en"] as const)(
   "이름 없는 사용자는 직접 표시와 관계 라벨에 번역한 대체값을 쓴다: %s",

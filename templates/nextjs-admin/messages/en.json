@@ -71,16 +71,8 @@
         "coverImage": "Cover image",
         "q": "Search"
       },
-      "enums": {
-        "status": {
-          "draft": "Draft",
-          "published": "Published"
-        }
-      },
-      "actions": {
-        "publish": "Publish",
-        "unpublish": "Unpublish"
-      }
+      "enums": { "status": { "draft": "Draft", "published": "Published" } },
+      "actions": { "publish": "Publish", "unpublish": "Unpublish" }
     },
     "users": {
       "title": "Users",
@@ -97,15 +89,8 @@
         "role": "Role"
       },
       "enums": {
-        "locale": {
-          "ko": "Korean",
-          "en": "English"
-        },
-        "status": {
-          "active": "Active",
-          "deactivated": "Deactivated",
-          "deleted": "Deleted"
-        }
+        "locale": { "ko": "Korean", "en": "English" },
+        "status": { "active": "Active", "deactivated": "Deactivated", "deleted": "Deleted" }
       }
     },
     "roles": {
@@ -134,10 +119,44 @@
     },
     "permissions": {
       "title": "Permissions",
+      "fields": { "id": "Code", "group": "Group", "description": "Description" }
+    },
+    "audit-logs": {
+      "title": "Audit logs",
       "fields": {
-        "id": "Code",
-        "group": "Group",
-        "description": "Description"
+        "action": "Action",
+        "targetType": "Target type",
+        "targetId": "Target ID",
+        "metadata": "Metadata",
+        "ipAddress": "IP address",
+        "createdAt": "Recorded at",
+        "actor": "Actor",
+        "createdFrom": "Start date",
+        "createdTo": "End date"
+      },
+      "enums": {
+        "action": {
+          "session": {
+            "login_succeeded": "Login succeeded",
+            "login_failed": "Login failed",
+            "all_revoked": "All sessions revoked"
+          },
+          "user": {
+            "password_changed": "Password changed",
+            "password_reset": "Password reset",
+            "roles_changed": "User roles changed",
+            "deactivated": "User deactivated",
+            "reactivated": "User reactivated",
+            "deleted": "User deleted"
+          },
+          "role": {
+            "created": "Role created",
+            "updated": "Role updated",
+            "deleted": "Role deleted"
+          },
+          "post": { "deleted_by_admin": "Post deleted by admin" }
+        },
+        "targetType": { "users": "Users", "roles": "Roles", "posts": "Posts" }
       }
     }
   }

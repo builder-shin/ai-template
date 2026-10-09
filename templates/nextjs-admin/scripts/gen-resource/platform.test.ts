@@ -6,6 +6,9 @@ import ts from "typescript";
 import { draftResource } from "./generate";
 import { missingResourceMessages } from "../../src/lib/resources/messages";
 import type { AnyResource } from "../../src/lib/resources/definition";
+import { resources as productResources } from "../../src/resources";
+import ko from "../../messages/ko.json";
+import en from "../../messages/en.json";
 
 it("현재 플랫폼 계약의 초안 다섯 개가 선언 타입과 문구 검사를 통과한다", async () => {
   const spec = parse(readFileSync("contract/openapi.yaml", "utf8"));
@@ -58,6 +61,17 @@ it("현재 플랫폼 계약의 초안 다섯 개가 선언 타입과 문구 검�
     resources: Object.fromEntries(drafts.map((draft) => [draft.definition.type, draft.messages])),
   };
   expect(missingResourceMessages(resources, { ko: catalog, en: catalog })).toEqual([]);
-  // 초안 검사는 아직 제품에 등록하지 않은 리소스도 포함한다.
+  // 세션은 관리 리소스로 등록하지 않는다.
   expect(readFileSync("src/resources/index.ts", "utf8")).not.toContain("./sessions/resource");
 }, 15000);
+
+it("제품 리소스 다섯 개는 등록 순서와 양쪽 카탈로그 문구를 갖춘다", () => {
+  expect(productResources.map((resource) => resource.type)).toEqual([
+    "posts",
+    "users",
+    "roles",
+    "permissions",
+    "audit-logs",
+  ]);
+  expect(missingResourceMessages(productResources, { ko, en })).toEqual([]);
+});

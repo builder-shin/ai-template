@@ -101,7 +101,7 @@ async function system(account: Awaited<ReturnType<typeof actor>>, name = "member
 }
 
 it("역할·권한 메뉴는 사용자 뒤에 등록하고 권한 목록은 읽기만 허용한다", () => {
-  expect(resources.map((resource) => resource.type)).toEqual([
+  expect(resources.slice(0, 4).map((resource) => resource.type)).toEqual([
     "posts",
     "users",
     "roles",

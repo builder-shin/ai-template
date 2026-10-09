@@ -30,6 +30,7 @@ export function FieldDisplay({
         included={included}
         locale={locale}
         timeZone={timeZone}
+        linkable={linkable}
       />
     );
   if (value === null || value === undefined)
