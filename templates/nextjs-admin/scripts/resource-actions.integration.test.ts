@@ -11,6 +11,9 @@ import { seedFixture, partialAdminFixture, memberFixture } from "./test/admin-fi
 import { EXAMPLE_SESSION_SECRET } from "../src/lib/env";
 import { appOrigin, appSessionCookieName } from "../src/lib/app-config.mjs";
 import { sealSession, sessionFromTokens } from "../src/lib/session/cookie";
+import { createTranslator } from "next-intl";
+import { ko, en } from "../src/lib/i18n/catalogs";
+import { intlFixture } from "./test/intl-fixture";
 
 const context = vi.hoisted(() => ({
   locale: "ko",
@@ -21,7 +24,10 @@ const context = vi.hoisted(() => ({
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => context.jar.get(name) }),
 }));
-vi.mock("next-intl/server", () => ({ getLocale: async () => context.locale }));
+vi.mock("next-intl/server", () => ({
+  getLocale: async () => context.locale,
+  getTranslations: async () => createTranslator(intlFixture(context.locale === "ko" ? ko : en)),
+}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("../src/resources/index", async () => {
   const { postsFixture } = await import("./test/resource-fixture");

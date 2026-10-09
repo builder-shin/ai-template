@@ -27,6 +27,7 @@ export type DisplayKind =
 export type FieldPresentation = {
   kind?: DisplayKind;
   values?: readonly string[];
+  inputValues?: readonly string[];
   relation?: { type: string; label: string; search?: boolean };
   display?: ComponentType<DisplayProps>;
   input?: ComponentType<InputProps>;
@@ -34,6 +35,7 @@ export type FieldPresentation = {
 type Relation<T extends string> = {
   [Target in T]: { type: Target; label: TargetAttributeKey<Target>; search?: boolean };
 }[T];
+export type FilterDeclaration = FilterKind | { kind: "relation"; relation: Relation<ResourceType> };
 type ContractField<T extends ResourceType, K extends FieldKey<T>> = Omit<
   FieldPresentation,
   "relation"
@@ -64,7 +66,9 @@ export type ResourceDefinition<T extends ResourceType> = {
   fields?: { readonly [K in FieldKey<T>]?: ContractField<T, K> };
   list: {
     columns: readonly FieldKey<T>[];
-    filters?: [FilterKey<T>] extends [never] ? never : Partial<Record<FilterKey<T>, FilterKind>>;
+    filters?: [FilterKey<T>] extends [never]
+      ? never
+      : Partial<Record<FilterKey<T>, FilterDeclaration>>;
     sort?: "sort" extends keyof ListQuery<T>
       ? {
           fields: readonly SortKey<T>[];

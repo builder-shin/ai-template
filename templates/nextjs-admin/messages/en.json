@@ -71,8 +71,42 @@
         "coverImage": "Cover image",
         "q": "Search"
       },
-      "enums": { "status": { "draft": "Draft", "published": "Published" } },
-      "actions": { "publish": "Publish", "unpublish": "Unpublish" }
+      "enums": {
+        "status": {
+          "draft": "Draft",
+          "published": "Published"
+        }
+      },
+      "actions": {
+        "publish": "Publish",
+        "unpublish": "Unpublish"
+      }
+    },
+    "users": {
+      "title": "Users",
+      "fields": {
+        "name": "Name",
+        "email": "Email",
+        "locale": "Language",
+        "status": "Status",
+        "emailVerifiedAt": "Email verified at",
+        "roles": "Roles",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "q": "Search",
+        "role": "Role"
+      },
+      "enums": {
+        "locale": {
+          "ko": "Korean",
+          "en": "English"
+        },
+        "status": {
+          "active": "Active",
+          "deactivated": "Deactivated",
+          "deleted": "Deleted"
+        }
+      }
     }
   }
 }

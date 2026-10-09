@@ -15,6 +15,41 @@ export function resourceTypeChecks(client: ReturnType<typeof createApiClient>) {
   void unknownLabel;
   const data = createResourceData(client);
   defineResource({
+    type: "users",
+    permission: "users:read",
+    list: {
+      columns: ["name"],
+      filters: {
+        "filter[role]": {
+          kind: "relation",
+          relation: { type: "roles", label: "name", search: true },
+        },
+      },
+    },
+  });
+  defineResource({
+    type: "users",
+    permission: "users:read",
+    list: {
+      columns: ["name"],
+      filters: {
+        // @ts-expect-error 사유: 필터의 관계 대상도 계약의 목록 type이어야 한다.
+        "filter[role]": { kind: "relation", relation: { type: "typo", label: "name" } },
+      },
+    },
+  });
+  defineResource({
+    type: "users",
+    permission: "users:read",
+    list: {
+      columns: ["name"],
+      filters: {
+        // @ts-expect-error 사유: 필터의 관계 라벨은 그 대상의 속성 키여야 한다.
+        "filter[role]": { kind: "relation", relation: { type: "roles", label: "email" } },
+      },
+    },
+  });
+  defineResource({
     type: "posts",
     permission,
     list: { columns: ["title"] },

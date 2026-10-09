@@ -105,3 +105,32 @@ it("등록되지 않았거나 볼 수 없는 대상의 관계는 링크 없이 �
   expect(screen.queryByRole("link")).toBeNull();
   expect(screen.getByText("작성자")).toBeDefined();
 });
+
+it.each(["ko", "en"] as const)(
+  "이름 없는 사용자는 직접 표시와 관계 라벨에 번역한 대체값을 쓴다: %s",
+  (locale) => {
+    const unnamed = locale === "ko" ? "사용자" : "User";
+    const user = { type: "users", id: "u", attributes: { name: null } };
+    const props = {
+      included: [user],
+      locale,
+      timeZone: "Asia/Seoul",
+      translate: (key: string) => (key === "layout.unnamedUser" ? unnamed : key),
+      linkable: () => false,
+    };
+    render(
+      <>
+        <FieldDisplay {...props} name="name" field={{}} record={user} />
+        <FieldDisplay
+          {...props}
+          name="author"
+          field={{ kind: "relation", relation: { type: "users", label: "name" } }}
+          record={record}
+        />
+      </>,
+    );
+    expect(screen.getAllByText(unnamed)).toHaveLength(2);
+    expect(screen.queryByText("—")).toBeNull();
+    expect(screen.queryByText("u")).toBeNull();
+  },
+);

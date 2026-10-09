@@ -1,6 +1,18 @@
 import { expect, it } from "vitest";
 import { withCurrentOptions } from "./current-options";
 
+it("included의 이름 없는 사용자도 현재 선택의 번역 라벨을 유지한다", () => {
+  expect(
+    withCurrentOptions(
+      [],
+      "u",
+      { type: "users", label: "name" },
+      [{ type: "users", id: "u", attributes: { name: null } }],
+      "사용자",
+    ),
+  ).toEqual([{ value: "u", label: "사용자" }]);
+});
+
 const relation = { type: "users", label: "name" };
 const options = [{ value: "a", label: "기본 이름" }];
 const included = [

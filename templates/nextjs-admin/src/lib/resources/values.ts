@@ -6,6 +6,14 @@ import type { WriteValues } from "./contract";
 export function presentation(resource: AnyResource, name: string): FieldPresentation {
   return (resource.fields as Record<string, FieldPresentation> | undefined)?.[name] ?? {};
 }
+export function filterPresentation(resource: AnyResource, name: string): FieldPresentation {
+  const filter = (resource.list.filters as Record<string, unknown> | undefined)?.[
+    `filter[${name}]`
+  ];
+  return typeof filter === "object" && filter !== null
+    ? (filter as FieldPresentation)
+    : presentation(resource, name);
+}
 export function fieldValue(record: ScreenRecord, name: string) {
   return record.relationships?.[name]?.data ?? record.attributes[name];
 }

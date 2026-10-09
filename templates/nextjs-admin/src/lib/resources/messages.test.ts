@@ -36,3 +36,19 @@ it("열거값을 쓰는 선언에 값 목록이 없으면 검사를 거절한다
     "posts.status: 열거값 목록 없음 — fields의 values를 선언한다.",
   );
 });
+it("입력 전용 열거값도 문구 검사에 포함하고 표시 값 밖 선택지를 거절한다", () => {
+  const resource = {
+    ...postsFixture,
+    fields: {
+      status: {
+        kind: "enum" as const,
+        values: ["draft", "published"],
+        inputValues: ["unknown"],
+      },
+    },
+  };
+  expect(resourceMessageKeys([resource])).toContain("resources.posts.enums.status.unknown");
+  expect(missingResourceMessages([resource], {})).toContain(
+    "posts.status: 입력 열거값이 표시 목록에 없다 (unknown) — inputValues를 values의 일부로 선언한다.",
+  );
+});

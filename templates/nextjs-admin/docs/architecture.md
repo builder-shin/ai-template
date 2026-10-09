@@ -28,6 +28,10 @@
 
 폼의 옵션은 관계·열거값 입력에만 준다. 관계의 현재값은 단건 응답의 included 라벨이나 id로 보충하고 추가 요청은 하지 않는다. 대상 목록의 403은 해당 입력만 비활성화하고 옆에 번역 안내를 보인다. 비활성 입력과 존재 표식은 제출하지 않으며 다른 입력과 저장은 유지한다. 단일 관계의 빈 옵션은 선택 안 함(None), 필터는 전체(All)다. 저장과 취소는 상세가 있으면 상세로, 없으면 목록으로 간다.
 
+필드 이름과 다른 관계 필터는 list.filters의 값에 `{ kind: "relation", relation: { type, label, search? } }`를 둔다. 계약의 목록 type과 대상 속성으로 검사하며 fields에 가짜 키를 더하지 않는다. 기존 문자열 필터는 같은 이름의 fields 표시를 따른다. 폼 열거값은 fields의 inputValues를 우선하고, 목록·상세·필터는 values를 유지한다. resource-messages는 inputValues가 values의 일부인지와 두 목록의 번역을 확인한다.
+
+이름 없는 사용자는 layout.unnamedUser(사용자/User)로 표시한다. 사용자 목록·상세와 included 관계, 관계 기본 옵션·현재 선택·검색 결과에 같은 규칙을 적용한다. include하지 않은 관계는 id 대체를 유지하며 추가 API 요청은 하지 않는다.
+
 삭제와 동작의 UI 상태는 `delete`·`action:<name>` 키로 묶는다. 새로고침 뒤 동작이 사라져도 대화상자·실패 안내가 다른 동작으로 옮겨가지 않는다.
 
 최상위 fields의 표시 종류·열거값·관계 라벨·override가 목록과 상세에 쓰인다. `resource-messages`는 서버 표식만 이 검사 프로세스에서 풀어 선언을 읽고 제목·필드·필터·정렬·열거값·동작의 ko/en 문구를 검사한다. 전체 check와 빠른 검사에 모두 포함한다.
@@ -38,11 +42,13 @@
 
 목록 갱신 한 번은 `/me`, 목록, 검색 가능한 각 관계 필터의 첫 페이지를 읽는다.
 
-현재 제품 등록은 posts 하나다. `pnpm gen:resource <type>`은 API 타입 생성과 같은 `gen.config.json` 입력으로 선언·ko/en 자리표시자·등록 초안을 만들고 기존 자료는 덮지 않는다. operation의 `x-permission`이 없으면 `admin:access`를 넣으므로 권한·필드·문구를 검토한다. [리소스](recipes/add-resource.md)·[필드 종류](recipes/add-field-kind.md)·[동작](recipes/add-action.md) 레시피를 따른다. 사용자·역할·권한·감사 로그의 제품 화면과 FastAPI 대상 확장은 후속 범위다.
+현재 제품 등록은 posts, users 순서다. 사용자는 users:read로 목록·상세를 보고 users:manage로 상태·역할을 수정한다. 목록은 이름·이메일·상태·역할·생성 시각과 검색·상태·역할 필터, 기본 -createdAt 정렬을 제공한다. roles만 include하며 아바타는 제외한다. 상세에는 언어·이메일 인증 시각·수정 시각도 표시한다. 상태 입력은 active·deactivated만 제공하고 표시·필터는 deleted도 포함한다. 탈퇴한 사용자 수정은 숨기며 수정 화면·저장 Action은 최신 상태를 확인해 409를 보인다. 자기 자신·상위 권한 대상의 수정은 API의 403을 폼 배너로 알린다.
+
+`pnpm gen:resource <type>`은 API 타입 생성과 같은 `gen.config.json` 입력으로 선언·ko/en 자리표시자·등록 초안을 만들고 기존 자료는 덮지 않는다. operation의 `x-permission`이 없으면 `admin:access`를 넣으므로 권한·필드·문구를 검토한다. [리소스](recipes/add-resource.md)·[필드 종류](recipes/add-field-kind.md)·[동작](recipes/add-action.md) 레시피를 따른다. 역할·권한·감사 로그의 제품 화면과 FastAPI 대상 확장은 후속 범위다.
 
 ## 테스트
 
-Vitest global setup이 실제 목 프로세스를 시작하고 `mockBaseUrl`을 제공한다. 요청 저장소를 대체한 Action 검사도 실제 HTTP API로 로그인·권한·폐기를 확인한다. 앱 번역 테스트는 `scripts/test/intl-fixture.ts`로 환경 스키마의 시간대를 고정한다. E2E 11개는 목(4111), 운영 admin(3101), 두 Chromium worker로 인증·글·권한·언어를 확인하며 실행기가 시작한 자원을 종료한다. 작성자 필터는 대상 검색으로 고르고 실시간 검사는 화면마다 새 subscribe ACK를 확인한 뒤 다른 세션에서 변경한다. 기존 포트의 서버는 재사용하거나 종료하지 않는다. 영상·스크린샷·trace는 저장하지 않는다.
+Vitest global setup이 실제 목 프로세스를 시작하고 `mockBaseUrl`을 제공한다. 요청 저장소를 대체한 Action 검사도 실제 HTTP API로 로그인·권한·폐기를 확인한다. 앱 번역 테스트는 `scripts/test/intl-fixture.ts`로 환경 스키마의 시간대를 고정한다. E2E 13개는 목(4111), 운영 admin(3101), 두 Chromium worker로 인증·글·사용자·권한·언어를 확인하며 실행기가 시작한 자원을 종료한다. 작성자·역할 필터는 대상 검색으로 고르고 실시간 검사는 화면마다 새 subscribe ACK를 확인한 뒤 다른 세션에서 변경한다. 기존 포트의 서버는 재사용하거나 종료하지 않는다. 영상·스크린샷·trace는 저장하지 않는다.
 
 ## 실행과 이미지
 

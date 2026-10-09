@@ -10,3 +10,7 @@
 6. 날짜는 TIME_ZONE, enum은 번역한 배지, 관계는 included의 이름·id 대체를 유지한다. 관계 키의 relation.type은 계약의 대상, 그 밖의 필드는 목록이 있는 ResourceType이며 label은 대상의 속성 키다. 파일은 목록 없이 단건 응답의 속성(예: filename)으로 검사하며 id는 라벨 선언으로 쓰지 않는다. 쓰기 계약의 단일 관계는 relation, 다중 관계는 relation-many만 받는다.
 7. 관계 현재값은 단건 included로 보충하고 추가 조회하지 않는다. 옵션 목록의 403은 해당 입력만 비활성화하고 번역 안내를 옆에 보인다. 다른 오류는 기존 오류 경계로 던진다. 폼의 빈 단일 관계는 resource.none(선택 안 함/None), 필터는 resource.all(전체/All)이다. 관계 검색의 Enter 뒤에도 입력 포커스를 유지한다. DOM에서 값·오류·비운 값·접근성과 다른 필드의 저장을 확인한다. UI 부품은 고정 `pnpm exec shadcn add <부품>`을 쓴다.
 8. `pnpm check`, `pnpm build`, `pnpm test:e2e`를 차례로 통과시키고 시작한 서버를 종료한다. 로딩은 스피너·스켈레톤만 쓴다.
+
+열거값 입력을 좁힐 때 새 종류를 만들지 않는다. 최상위 fields의 values는 표시·필터, inputValues는 폼 옵션이다. inputValues는 values의 일부이며 생략하면 같은 목록을 쓴다. resource-messages는 두 목록의 번역과 포함 관계를 확인한다. 이름이 필드와 다른 관계 필터는 `{ kind: "relation", relation: { type, label, search? } }`로 대상 표시를 직접 선언한다. fields에는 계약의 필드만 남긴다.
+
+이름 없는 사용자는 layout.unnamedUser(사용자/User)를 직접 표시와 관계 기본 옵션·현재 선택·검색 결과에 쓴다. included가 없는 관계의 id 대체와 다른 리소스의 빈 값 표시는 유지한다.

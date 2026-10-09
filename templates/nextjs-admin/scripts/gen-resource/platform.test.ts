@@ -51,6 +51,6 @@ it("현재 플랫폼 계약의 초안 다섯 개가 선언 타입과 문구 검�
     resources: Object.fromEntries(drafts.map((draft) => [draft.definition.type, draft.messages])),
   };
   expect(missingResourceMessages(resources, { ko: catalog, en: catalog })).toEqual([]);
-  // 사용자·역할·권한·감사 로그는 제품 registry에 등록하지 않는다.
-  expect(readFileSync("src/resources/index.ts", "utf8")).not.toContain("./users/resource");
+  // 초안 검사는 아직 제품에 등록하지 않은 리소스도 포함한다.
+  expect(readFileSync("src/resources/index.ts", "utf8")).not.toContain("./sessions/resource");
 }, 15000);

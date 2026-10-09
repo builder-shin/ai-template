@@ -157,7 +157,11 @@ test("등록하지 않은 리소스와 글 작성·수정 화면은 404다", asy
   const { account } = await admin();
   await login(page, account);
   await expect(page).toHaveURL("/posts");
-  for (const path of ["/users", "/posts/new", "/posts/01900000-0000-7000-8000-000000000000/edit"]) {
+  for (const path of [
+    "/sessions",
+    "/posts/new",
+    "/posts/01900000-0000-7000-8000-000000000000/edit",
+  ]) {
     const response = await page.goto(path);
     await expect(page.getByRole("heading", { name: "화면을 찾을 수 없습니다" })).toBeVisible();
     // 스트리밍이 시작된 not-found는 HTTP 200일 수 있다. 오류 화면과 색인 금지로 확인한다.

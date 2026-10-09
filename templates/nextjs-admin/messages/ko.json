@@ -71,8 +71,42 @@
         "coverImage": "표지 이미지",
         "q": "검색"
       },
-      "enums": { "status": { "draft": "초안", "published": "발행됨" } },
-      "actions": { "publish": "발행", "unpublish": "발행 취소" }
+      "enums": {
+        "status": {
+          "draft": "초안",
+          "published": "발행됨"
+        }
+      },
+      "actions": {
+        "publish": "발행",
+        "unpublish": "발행 취소"
+      }
+    },
+    "users": {
+      "title": "사용자",
+      "fields": {
+        "name": "이름",
+        "email": "이메일",
+        "locale": "언어",
+        "status": "상태",
+        "emailVerifiedAt": "이메일 인증 시각",
+        "roles": "역할",
+        "createdAt": "생성 시각",
+        "updatedAt": "수정 시각",
+        "q": "검색",
+        "role": "역할"
+      },
+      "enums": {
+        "locale": {
+          "ko": "한국어",
+          "en": "영어"
+        },
+        "status": {
+          "active": "활성",
+          "deactivated": "비활성",
+          "deleted": "탈퇴"
+        }
+      }
     }
   }
 }
