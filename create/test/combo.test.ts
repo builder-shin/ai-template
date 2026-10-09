@@ -29,13 +29,17 @@ it("pnpm 12의 두 문서 중 web importer만 옮기고 버전 변경을 거절�
   expect(docs[1]?.getIn(["importers", "apps/web", "dependencies", "react", "version"])).toBe(
     "19.3.0",
   );
-  expect(docs[1]?.getIn(["importers", "apps/web/contract/mock"])).toBeDefined();
+  expect(docs[1]?.getIn(["importers", "contract/mock"])).toBeDefined();
+  expect(docs[1]?.getIn(["importers", "apps/web/contract/mock"])).toBeUndefined();
   expect(() => {
     verifyWebResolutions(lock, rewritten);
   }).not.toThrow();
   expect(() => {
     verifyWebResolutions(lock, rewritten.replace("version: 19.3.0", "version: 19.3.1"));
   }).toThrow(/해석/);
+  expect(() => {
+    verifyWebResolutions(lock, rewritten.replace("version: 4.0.0", "version: 4.0.1"));
+  }).toThrow(/contract\/mock.*해석/);
   expect(() => {
     verifyWebResolutions(
       lock,
@@ -72,7 +76,14 @@ function comboFixture() {
     JSON.stringify({
       name: "nextjs-template",
       engines: { node: ">=24 <25" },
-      devDependencies: { lefthook: "2.1.14", prettier: "3.9.9", typescript: "6.0.3" },
+      devDependencies: {
+        lefthook: "2.1.14",
+        prettier: "3.9.9",
+        typescript: "6.0.3",
+        "@types/node": "24.13.6",
+        vitest: "5.0.1",
+        yaml: "2.9.1",
+      },
     }),
   );
   write(
@@ -81,6 +92,13 @@ function comboFixture() {
     "# 주소\nAPI_BASE_URL=http://localhost:4010/api/v1 # API\nNEXT_PUBLIC_REALTIME_URL=http://localhost:4010\n",
   );
   write(root, "templates/nextjs/.prettierrc.json", "{}\n");
+  write(root, "templates/nextjs/tsconfig.base.json", '{"compilerOptions":{"strict":true}}\n');
+  write(root, "templates/nextjs/docs/conventions/error-codes.md", "# 에러 코드\n");
+  write(root, "templates/nextjs/contract/typespec/main.tsp", "model Item {}\n");
+  write(root, "templates/nextjs/contract/openapi.yaml", "openapi: 3.1.0\n");
+  write(root, "templates/nextjs/contract/mock/src/generated/api.ts", "export type Item = {};\n");
+  write(root, "templates/nextjs/contract/mock/bin/start.sh", "#!/bin/sh\necho mock\n");
+  write(root, "templates/nextjs/contract/untracked.txt", "복사 금지\n");
   write(root, "templates/nextjs/Dockerfile", "# 단독 web 이미지\nCOPY pnpm-lock.yaml ./\n");
   write(root, "templates/nextjs/.github/workflows/ci.yml", "name: web\n");
   write(root, "templates/fastapi/.github/workflows/ci.yml", "name: api\n");
@@ -103,6 +121,8 @@ function comboFixture() {
   write(root, ".editorconfig", "root = true\n");
   copyComboAssets(root);
   git(root, "add", ".");
+  git(root, "reset", "--", "templates/nextjs/contract/untracked.txt");
+  git(root, "update-index", "--chmod=+x", "templates/nextjs/contract/mock/bin/start.sh");
   git(root, "-c", "commit.gpgsign=false", "commit", "-m", "chore: combo fixture");
   return root;
 }
@@ -141,6 +161,26 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
     ["--filter", "web", "run", "gen"],
   ]);
   expect(git(target, "status", "--porcelain")).toBe("");
+  expect(existsSync(join(target, "apps/web/contract"))).toBe(false);
+  for (const file of ["tsconfig.base.json", "docs/conventions/error-codes.md"]) {
+    expect(existsSync(join(target, file))).toBe(true);
+    expect(readFileSync(join(target, file))).toEqual(readFileSync(join(target, "apps/web", file)));
+    expect(git(target, "show", `HEAD:${file}`)).toBe(readFileSync(join(target, file), "utf8"));
+  }
+  for (const file of ["typespec/main.tsp", "openapi.yaml", "mock/src/generated/api.ts"]) {
+    expect(readFileSync(join(target, "contract", file))).toEqual(
+      readFileSync(join(root, "templates/nextjs/contract", file)),
+    );
+    expect(git(target, "show", `HEAD:contract/${file}`)).toBe(
+      readFileSync(join(root, "templates/nextjs/contract", file), "utf8"),
+    );
+  }
+  expect(existsSync(join(target, "contract/untracked.txt"))).toBe(false);
+  expect(git(target, "ls-files", "--stage", "contract/mock/bin/start.sh")).toMatch(/^100755 /);
+  expect(JSON.parse(readFileSync(join(target, "apps/web/gen.config.json"), "utf8"))).toEqual({
+    openapi: "../api/openapi.json",
+    contract: "../../contract",
+  });
   expect(directories[0]).toBe(root);
   expect(new Set(directories.slice(1)).size).toBe(1);
   expect(directories[1]).not.toBe(root);
@@ -170,16 +210,23 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
     name: "api",
     scripts: { "e2e:serve": "uv run poe e2e:serve" },
   });
-  expect(readFileSync(join(target, "apps/web/package.json"), "utf8")).toBe(
-    '{\n  "name": "web",\n  "engines": {\n    "node": ">=24 <25"\n  },\n  "devDependencies": {\n    "lefthook": "2.1.14",\n    "prettier": "3.9.9",\n    "typescript": "6.0.3"\n  }\n}\n',
-  );
+  expect(JSON.parse(readFileSync(join(target, "apps/web/package.json"), "utf8"))).toMatchObject({
+    name: "web",
+    engines: { node: ">=24 <25" },
+    devDependencies: {
+      typescript: "6.0.3",
+      "@types/node": "24.13.6",
+      vitest: "5.0.1",
+      yaml: "2.9.1",
+    },
+  });
   expect(readFileSync(join(target, "apps/web/.env.example"), "utf8")).toBe(
     "# 주소\nAPI_BASE_URL=http://127.0.0.1:8000/api/v1 # API\nNEXT_PUBLIC_REALTIME_URL=http://127.0.0.1:8000\n",
   );
   expect(existsSync(join(target, "apps/web/pnpm-lock.yaml"))).toBe(false);
   expect(existsSync(join(target, "apps/web/pnpm-workspace.yaml"))).toBe(false);
   expect(parse(readFileSync(join(target, "pnpm-workspace.yaml"), "utf8"))).toMatchObject({
-    packages: ["apps/api", "apps/web", "apps/web/contract/*"],
+    packages: ["apps/api", "apps/web", "contract/*"],
     minimumReleaseAge: 1440,
     allowBuilds: { lefthook: false },
     overrides: { typescript: "6.0.3" },
@@ -193,11 +240,21 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
   expect(turbo.agentGuidance).toBe(false);
   expect(turbo.tasks["web#gen"]?.dependsOn).toContain("api#gen");
   expect(turbo.tasks["web#check"]?.inputs).toContain("$TURBO_ROOT$/apps/api/openapi.json");
+  for (const task of ["web#check", "web#test", "web#gen"]) {
+    expect(turbo.tasks[task]?.inputs).toContain("$TURBO_ROOT$/contract/**");
+  }
   expect(turbo.tasks.gen?.cache).toBe(false);
   expect(JSON.parse(readFileSync(join(target, "package.json"), "utf8"))).toMatchObject({
     name: "my-app",
     engines: { node: ">=24 <25" },
-    devDependencies: { turbo: "2.11.6", prettier: "3.9.9", lefthook: "2.1.14" },
+    devDependencies: {
+      turbo: "2.11.6",
+      prettier: "3.9.9",
+      lefthook: "2.1.14",
+      "@types/node": "24.13.6",
+      vitest: "5.0.1",
+      yaml: "2.9.1",
+    },
   });
 });
 

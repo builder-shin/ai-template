@@ -86,6 +86,29 @@ describe("PreToolUse JSON", () => {
 });
 
 describe("SessionStart와 Stop JSON", () => {
+  it("앱 밖 계약만 바뀌어도 Stop이 검사하고 성공 뒤에는 다시 실행하지 않는다", () => {
+    const parent = root;
+    put("contract/typespec/main.tsp", "model Item {}\n");
+    put("contract/mock/src/main.ts", "export {};\n");
+    put("apps/web/gen.config.json", '{"contract":"../../contract"}\n');
+    put(
+      "apps/web/scripts/check/cli.ts",
+      'import { mkdirSync, writeFileSync } from "node:fs"; mkdirSync(".cache", { recursive: true }); writeFileSync(".cache/args.json", JSON.stringify(process.argv));',
+    );
+    root = resolve(parent, "apps/web");
+    try {
+      hook("session-start", fixture("session-start"));
+      writeFileSync(`${parent}/contract/typespec/main.tsp`, "model Item { id: string; }\n");
+      expect(hook("stop-check", fixture("stop"))).toBeUndefined();
+      const args: string[] = JSON.parse(readFileSync(`${root}/.cache/args.json`, "utf8"));
+      expect(args).toContain("../../contract/typespec/main.tsp");
+      writeFileSync(`${root}/.cache/args.json`, "[]");
+      expect(hook("stop-check", fixture("stop"))).toBeUndefined();
+      expect(readFileSync(`${root}/.cache/args.json`, "utf8")).toBe("[]");
+    } finally {
+      root = parent;
+    }
+  });
   it("상태를 요약하고 바뀌지 않은 턴과 재귀 Stop은 검사하지 않는다", () => {
     const started = hook("session-start", fixture("session-start"));
     expect(started.hookSpecificOutput.hookEventName).toBe("SessionStart");

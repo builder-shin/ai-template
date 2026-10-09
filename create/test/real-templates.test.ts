@@ -68,7 +68,17 @@ it("실제 조합은 설치 대역만으로 web 환경 값·OpenAPI 입력과 ge
   expect(example).toMatch(/^NEXT_PUBLIC_REALTIME_URL=http:\/\/127\.0\.0\.1:8000$/m);
   expect(JSON.parse(readFileSync(join(target, "apps/web/gen.config.json"), "utf8"))).toEqual({
     openapi: "../api/openapi.json",
+    contract: "../../contract",
   });
+  expect(existsSync(join(target, "apps/web/contract"))).toBe(false);
+  const contractFiles = git(source, "ls-files", "-z", "--", "templates/nextjs/contract")
+    .split("\0")
+    .filter(Boolean);
+  for (const file of contractFiles) {
+    const moved = file.slice("templates/nextjs/".length);
+    expect(readFileSync(join(target, moved))).toEqual(readFileSync(join(source, file)));
+    expect(git(target, "ls-files", "--", moved).trim()).toBe(moved);
+  }
   expect(git(target, "show", "HEAD:apps/web/generated.txt")).toBe("gen 대역\n");
   expect(git(target, "status", "--porcelain")).toBe("");
 });

@@ -21,3 +21,6 @@ git 사용자 정보가 없으면 저장소를 초기화하고 파일을 스테�
 첫 커밋은 복사한 템플릿 파일을 이름 목록으로 강제 추가하고 원본 인덱스의 실행 권한을 보존한다. 사용자의 전역 excludes가 `.env.example`, `.claude/`, `.mcp.json`을 무시해도 해당 파일을 빠뜨리지 않는다. 조합에서 새로 만든 파일도 프로젝트의 ignore 규칙에 따라 추가하며 설치물과 캐시는 포함하지 않는다.
 
 조합 자산과 루트 `.gitattributes`·`.editorconfig`는 HEAD의 추적 내용만 복사한다. 이 입력에 미커밋 변경이 있으면 먼저 커밋하도록 안내한다. web 환경 예제의 API·실시간 키와 package.json의 엔진·도구 버전이 빠졌으면 설치 전에 고치도록 안내한다.
+
+조합은 web 템플릿의 추적 계약을 루트 `contract/`에 복사하고 `apps/web/contract`는 만들지 않는다. TypeSpec·OpenAPI·목은 프론트들이 함께 쓰는 계약 하나다. web의 `gen.config.json`은 `{ "openapi": "../api/openapi.json", "contract": "../../contract" }`이며 workspace 패키지는 `apps/api`, `apps/web`, `contract/*`다. 잠금 파일의 앱 importer(`.`)만 `apps/web`으로 옮기고 `contract/<패키지>`는 루트 경로를 유지한다.
+계약 검사의 상대 참조를 위해 `tsconfig.base.json`·`docs/conventions/`는 루트와 web 양쪽에 복사한다. 루트 Node 타입·Vitest·YAML 버전은 web의 검증한 버전을 그대로 쓴다.

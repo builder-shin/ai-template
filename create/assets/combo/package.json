@@ -18,8 +18,11 @@
     "db:reset": "pnpm --filter api run db:reset"
   },
   "devDependencies": {
+    "@types/node": "{{NODE_TYPES}}",
     "turbo": "2.11.6",
     "lefthook": "{{LEFTHOOK}}",
-    "prettier": "{{PRETTIER}}"
+    "prettier": "{{PRETTIER}}",
+    "vitest": "{{VITEST}}",
+    "yaml": "{{YAML}}"
   }
 }

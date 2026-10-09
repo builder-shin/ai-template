@@ -6,14 +6,26 @@
     "dev": { "persistent": true, "cache": false },
     "check": { "outputs": [] },
     "web#check": {
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/api/openapi.json"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/api/openapi.json",
+        "$TURBO_ROOT$/contract/**"
+      ],
       "outputs": []
     },
     "test": { "outputs": [] },
+    "web#test": {
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/contract/**"],
+      "outputs": []
+    },
     "gen": { "cache": false },
     "web#gen": {
       "dependsOn": ["api#gen"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/api/openapi.json"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/api/openapi.json",
+        "$TURBO_ROOT$/contract/**"
+      ],
       "cache": false
     },
     "fix": { "cache": false }

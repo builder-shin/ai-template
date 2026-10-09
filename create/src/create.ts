@@ -110,17 +110,25 @@ export function createProject(
     staging = mkdtempSync(join(parent, `aitpl-${options.name}-`));
     for (const { template, files } of plans)
       for (const file of files) {
-        const destination = join(
-          staging,
-          options.template === "combo" ? `apps/${template === "fastapi" ? "api" : "web"}` : "",
-          file.path,
-        );
-        mkdirSync(dirname(destination), { recursive: true });
-        copyFileSync(join(root, "templates", template, file.path), destination);
-        copiedFiles.push(relative(staging, destination).split(sep).join("/"));
-        if (file.executable)
-          executableFiles.push(relative(staging, destination).split(sep).join("/"));
-        if (process.platform !== "win32") chmodSync(destination, file.executable ? 0o755 : 0o644);
+        const appPath = template === "fastapi" ? "apps/api" : "apps/web";
+        const comboWeb = options.template === "combo" && template === "nextjs";
+        const prefixes = options.template === "combo" ? [appPath] : [""];
+        if (comboWeb && file.path.startsWith("contract/")) prefixes[0] = "";
+        // 계약 패키지의 상대 설정·규약 참조는 루트와 앱 양쪽에 같은 사본을 둔다.
+        if (
+          comboWeb &&
+          (file.path === "tsconfig.base.json" || file.path.startsWith("docs/conventions/"))
+        )
+          prefixes.push("");
+        for (const prefix of prefixes) {
+          const destination = join(staging, prefix, file.path);
+          mkdirSync(dirname(destination), { recursive: true });
+          copyFileSync(join(root, "templates", template, file.path), destination);
+          copiedFiles.push(relative(staging, destination).split(sep).join("/"));
+          if (file.executable)
+            executableFiles.push(relative(staging, destination).split(sep).join("/"));
+          if (process.platform !== "win32") chmodSync(destination, file.executable ? 0o755 : 0o644);
+        }
       }
     if (options.template === "combo") writeCombo(staging, options.name, inputs, pnpm);
     else renameStandalone(staging, options.template, options.name);

@@ -9,7 +9,7 @@ RUN npm install --global pnpm@12.6.0
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/web/package.json ./apps/web/package.json
-COPY apps/web/contract ./apps/web/contract
+COPY contract ./contract
 # 루트 도구와 api 대신 web과 그 workspace 의존성만 설치한다.
 RUN pnpm --filter web... install --frozen-lockfile
 

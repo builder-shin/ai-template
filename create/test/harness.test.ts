@@ -15,6 +15,12 @@ it("앱 경로 권한은 범위를 옮기고 명령 합집합에 루트 어휘�
   );
   expect(settings.permissions.deny).toContain("Read(./apps/api/.env)");
   expect(settings.permissions.deny).toContain("Edit(./apps/web/src/lib/api/schema.d.ts)");
+  for (const tool of ["Edit", "Write"]) {
+    expect(settings.permissions.deny).toContain(`${tool}(./contract/openapi.yaml)`);
+    expect(settings.permissions.deny).toContain(`${tool}(./contract/**/generated/**)`);
+    expect(settings.permissions.deny).toContain(`${tool}(./apps/web/**/generated/**)`);
+    expect(settings.permissions.deny).not.toContain(`${tool}(./apps/web/contract/openapi.yaml)`);
+  }
   expect(settings.permissions.allow).toContain("Read(./apps/web/.env.example)");
   for (const shell of ["Bash", "PowerShell"]) {
     expect(settings.permissions.allow).toContain(`${shell}(pnpm db:migrate *)`);
@@ -88,7 +94,8 @@ it("비밀 스캔 예외를 앱 안으로 제한하며 수기 코드와 루트�
     "apps/api/uv.lock",
     "apps/api/openapi.json",
     "apps/api/api-style/lint.mjs",
-    "apps/web/contract/mock/src/server.ts",
+    "contract/mock/src/server.ts",
+    "contract/openapi.yaml",
     "apps/web/src/lib/generated/errors.ts",
     "apps/web/generated/api.ts",
     "apps/web/src/lib/api/schema.d.ts",
@@ -103,6 +110,8 @@ it("비밀 스캔 예외를 앱 안으로 제한하며 수기 코드와 루트�
     "apps/api/src/app/core/config.py",
     "apps/api/contract/source.ts",
     "apps/web/openapi.json",
+    "contracts/source.ts",
+    "apps/web/contract/source.ts",
   ])
     expect(ignored(path)).toBe(false);
 });

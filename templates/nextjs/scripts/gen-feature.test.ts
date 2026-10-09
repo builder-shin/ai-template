@@ -14,6 +14,7 @@ import { parseAllDocuments, parseDocument } from "yaml";
 import { findWorkspaceRoot } from "./workspace-root";
 import { pnpm } from "./process.mjs";
 import { pathToFileURL } from "node:url";
+import { readGenConfig, resolveContractPaths } from "./gen-config.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 let temporary: string;
@@ -48,6 +49,23 @@ async function copyProject() {
       });
     }
   }
+  // 앱 밖 계약도 독립 사본 안으로 복사하고 설정의 입력 경로를 함께 옮긴다.
+  const contract = resolveContractPaths(root);
+  if (contract.root !== join(root, "contract"))
+    cpSync(contract.root, join(project, "contract"), {
+      recursive: true,
+      filter: (path) => !/(^|[/\\])(node_modules|\.cache|\.env[^/\\]*)([/\\]|$)/.test(path),
+    });
+  const config = readGenConfig(root);
+  if (config.openapi) {
+    cpSync(resolve(root, config.openapi), join(project, "openapi.json"));
+    config.openapi = "openapi.json";
+  }
+  if (Object.keys(config).length)
+    writeFileSync(
+      join(project, "gen.config.json"),
+      JSON.stringify({ ...config, contract: "contract" }, null, 2) + "\n",
+    );
   // 조합에서도 이 사본은 web의 독립 workspace다. 위치와 정리 방식은 그대로 둔다.
   const workspaceRoot = findWorkspaceRoot(root);
   const prefix = relative(workspaceRoot, root).replaceAll("\\", "/");
@@ -64,8 +82,18 @@ async function copyProject() {
       "importers",
       Object.fromEntries(
         Object.entries(importers)
-          .filter(([path]) => path === prefix || path.startsWith(`${prefix}/`))
-          .map(([path, value]) => [path === prefix ? "." : path.slice(prefix.length + 1), value]),
+          .filter(
+            ([path]) =>
+              path === prefix || path.startsWith(`${prefix}/`) || path.startsWith("contract/"),
+          )
+          .map(([path, value]) => [
+            path === prefix
+              ? "."
+              : path.startsWith(`${prefix}/`)
+                ? path.slice(prefix.length + 1)
+                : path,
+            value,
+          ]),
       ),
     );
     writeFileSync(

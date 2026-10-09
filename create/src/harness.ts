@@ -22,12 +22,21 @@ const vocabulary = [
 export function mergeSettings(api: AppSettings, web: AppSettings) {
   const rules = (kind: "allow" | "deny") =>
     [api, web].flatMap((settings, index) =>
-      settings.permissions[kind].map((rule) =>
-        rule.replace(
+      settings.permissions[kind].flatMap((rule) => {
+        // 프론트의 계약 경로는 앱 밖의 루트 계약으로 옮긴다.
+        if (index === 1 && /^(Read|Edit|Write|Glob|Grep)\(\.\/contract\//.test(rule)) return [rule];
+        const moved = rule.replace(
           /^(Read|Edit|Write|Glob|Grep)\(\.\//,
           `$1(./apps/${index === 0 ? "api" : "web"}/`,
-        ),
-      ),
+        );
+        if (
+          index === 1 &&
+          kind === "deny" &&
+          /^(Edit|Write)\(\.\/\*\*\/generated\/\*\*\)$/.test(rule)
+        )
+          return [moved, rule.replace("./**/", "./contract/**/")];
+        return [moved];
+      }),
     );
   const allow = rules("allow");
   for (const shell of ["Bash", "PowerShell"]) {
@@ -104,6 +113,7 @@ export function mergeBetterleaks(api: string, web: string): string {
       ...(config.allowlists ?? []).flatMap((list) => list.paths),
     ];
     return patterns.map((pattern) => {
+      if (app === "web" && pattern.startsWith("^contract/")) return pattern;
       // 루트 앵커와 경로 경계를 앱의 상대 경로 기준으로 옮긴다.
       const local = pattern.replace(/^\^/, "").replace(/\(\^\|\/\)/g, "(?:|.*/)");
       const anchored = pattern.startsWith("^") || pattern.startsWith("(^|/)");
@@ -111,7 +121,7 @@ export function mergeBetterleaks(api: string, web: string): string {
     });
   });
   return (
-    "# 앱의 생성물 예외만 합친다. 루트와 수기 코드는 계속 검사한다.\n" +
+    "# 앱의 생성물과 루트 계약 예외만 합친다. 나머지 수기 코드는 계속 검사한다.\n" +
     stringifyToml({ extend: { useDefault: true }, allowlists: [{ paths: [...new Set(paths)] }] })
   );
 }
