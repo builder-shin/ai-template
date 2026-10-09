@@ -54,7 +54,8 @@ export async function runStack(
   let attempted = false;
   const commandOptions: CommandOptions = options.signal ? { signal: options.signal } : {};
   try {
-    if (plan.project !== projectName(plan.runId)) throw new Error("전용 프로젝트 이름을 쓴다.");
+    if (plan.project !== projectName(plan.runId, plan.app))
+      throw new Error("전용 프로젝트 이름을 쓴다.");
     deps.validate();
     await deps.probe();
     options.signal?.throwIfAborted();
@@ -95,7 +96,7 @@ export async function runStack(
     if (attempted) {
       if (options.keep === true && code === 0) {
         deps.log(
-          `스택 유지: ${plan.project}. 정리 인자: ${JSON.stringify(plan.commands.down)} (COMPOSE_DISABLE_ENV_FILE=1, WEB_E2E_RUN_ID=${plan.runId}).`,
+          `스택 유지: ${plan.project}. 정리 인자: ${JSON.stringify(plan.commands.down)} (COMPOSE_DISABLE_ENV_FILE=1, ${plan.runIdVariable}=${plan.runId}).`,
         );
       } else {
         if (code !== 0) {

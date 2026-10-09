@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { record, validateCompose } from "../../src/web-e2e/config.ts";
-import { createPlan, projectName, webCommand } from "../../src/web-e2e/plan.ts";
+import { createPlan, projectName, appCommand } from "../../src/web-e2e/plan.ts";
 import { commandEnv, probePorts, execute } from "../../src/web-e2e/process.ts";
 import { downStack, runStack, type Dependencies } from "../../src/web-e2e/run.ts";
 
@@ -22,7 +22,7 @@ const compose = () => readFileSync(resolve(root, plan.composeFile), "utf8");
 
 describe("전용 스택의 명령과 주소", () => {
   it("pnpm 12 native 실행 파일은 Node 스크립트로 취급하지 않는다", () => {
-    expect(webCommand(plan, "C:/tools/pnpm-native.exe")).toEqual([
+    expect(appCommand(plan, "C:/tools/pnpm-native.exe")).toEqual([
       "C:/tools/pnpm-native.exe",
       "--dir",
       resolve(root, "templates/nextjs"),
@@ -30,7 +30,7 @@ describe("전용 스택의 명령과 주소", () => {
     ]);
   });
   it("web의 같은 pnpm test:e2e를 셸 없이 실행하며 필터를 넣지 않는다", () => {
-    expect(webCommand(plan, "C:/tools/pnpm.cjs")).toEqual([
+    expect(appCommand(plan, "C:/tools/pnpm.cjs")).toEqual([
       process.execPath,
       "C:/tools/pnpm.cjs",
       "--dir",
@@ -72,7 +72,7 @@ describe("전용 스택의 명령과 주소", () => {
   );
 
   it("web 설정과 외부 주소는 전용 포트와 일치한다", () => {
-    expect(plan.webEnv).toEqual({
+    expect(plan.appEnv).toEqual({
       E2E_TARGET: "fastapi",
       APP_URL: "http://localhost:3100",
       API_BASE_URL: "http://127.0.0.1:18100/api/v1",
@@ -213,39 +213,40 @@ describe("포트와 자식 명령", () => {
   });
 });
 
-function harness(failure?: string, code = 7) {
-  const events: string[] = [];
-  const deps: Dependencies = {
-    validate: vi.fn(() => {
-      events.push("validate");
-    }),
-    probe: vi.fn(() => {
-      events.push("probe");
-      return Promise.resolve();
-    }),
-    execute: vi.fn((argv: readonly string[]) => {
-      const step =
-        Object.entries(plan.commands).find(([, command]) => command === argv)?.[0] ?? "unknown";
-      events.push(step);
-      return Promise.resolve({
-        code: step === failure ? code : 0,
-        stdout: step === "worker" ? "worker\n" : step === "image" ? "owned-image\n" : "",
-      });
-    }),
-    ready: vi.fn(() => {
-      events.push("ready");
-      return Promise.resolve();
-    }),
-    command: vi.fn(() => {
-      events.push("command");
-      return Promise.resolve(failure === "command" ? code : 0);
-    }),
-    log: vi.fn(),
-  };
-  return { deps, events };
-}
+describe.each(["web", "admin"] as const)("스택 수명과 실패 정리 (%s)", (app) => {
+  const plan = createPlan("offline-04", root, app);
+  function harness(failure?: string, code = 7) {
+    const events: string[] = [];
+    const deps: Dependencies = {
+      validate: vi.fn(() => {
+        events.push("validate");
+      }),
+      probe: vi.fn(() => {
+        events.push("probe");
+        return Promise.resolve();
+      }),
+      execute: vi.fn((argv: readonly string[]) => {
+        const step =
+          Object.entries(plan.commands).find(([, command]) => command === argv)?.[0] ?? "unknown";
+        events.push(step);
+        return Promise.resolve({
+          code: step === failure ? code : 0,
+          stdout: step === "worker" ? "worker\n" : step === "image" ? "owned-image\n" : "",
+        });
+      }),
+      ready: vi.fn(() => {
+        events.push("ready");
+        return Promise.resolve();
+      }),
+      command: vi.fn(() => {
+        events.push("command");
+        return Promise.resolve(failure === "command" ? code : 0);
+      }),
+      log: vi.fn(),
+    };
+    return { deps, events };
+  }
 
-describe("스택 수명과 실패 정리", () => {
   it("설정과 포트를 확인한 뒤 시작하고 성공하면 진단 없이 정리한다", async () => {
     const { deps, events } = harness();
     expect(await runStack(plan, {}, deps)).toEqual({ code: 0, cleanupCode: 0 });

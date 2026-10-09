@@ -26,6 +26,7 @@ export function ResourceSelect({
   invalid,
   describedBy,
   allowEmpty = false,
+  emptyLabel = "all",
   disabled = false,
 }: {
   name: string;
@@ -37,6 +38,7 @@ export function ResourceSelect({
   invalid?: boolean;
   describedBy?: string | undefined;
   allowEmpty?: boolean;
+  emptyLabel?: "all" | "none";
   disabled?: boolean;
 }) {
   const t = useTranslations("resource");
@@ -93,14 +95,12 @@ export function ResourceSelect({
     )
   )
     setRetainedOptions(selectedOptions);
-  const items = [
-    ...new Map(
-      [...(term ? (searchResult ?? options) : options), ...selectedOptions].map((option) => [
-        option.value,
-        option,
-      ]),
-    ).values(),
-  ];
+  const availableOptions = term ? (searchResult ?? options) : options;
+  // 검색 결과가 바뀌어도 선택한 항목의 위치를 고정해 선택기의 포커스 동기화를 막는다.
+  const orderedOptions = search
+    ? [...selectedOptions, ...availableOptions]
+    : [...availableOptions, ...selectedOptions];
+  const items = [...new Map(orderedOptions.map((option) => [option.value, option])).values()];
   return (
     <Select
       name={name}
@@ -160,7 +160,7 @@ export function ResourceSelect({
         )}
         {error && <p role="alert">{t("optionsError")}</p>}
         <SelectGroup>
-          {allowEmpty && !multiple && <SelectItem value="">{t("all")}</SelectItem>}
+          {allowEmpty && !multiple && <SelectItem value="">{t(emptyLabel)}</SelectItem>}
           {items.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}

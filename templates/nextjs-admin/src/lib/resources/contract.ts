@@ -57,7 +57,23 @@ export type RelationshipKey<T extends ResourceType> = Extract<
   keyof Relationships<ResourceRecord<T>>,
   string
 >;
-export type FieldKey<T extends ResourceType> = AttributeKey<T> | RelationshipKey<T>;
+export type FieldKey<T extends ResourceType> = "id" | AttributeKey<T> | RelationshipKey<T>;
+type RelationshipData<R, K extends keyof Relationships<R>> = NonNullable<
+  NonNullable<Relationships<R>[K]> extends { data: infer D } ? D : never
+>;
+type Identifier<D> = D extends readonly (infer Item)[] ? Item : D;
+export type RelationshipTarget<T extends ResourceType, K extends RelationshipKey<T>> =
+  Identifier<RelationshipData<ResourceRecord<T>, K>> extends { type: infer Target extends string }
+    ? Target
+    : never;
+type DocumentRecord<D> = D extends { data: infer R } ? Identifier<R> : never;
+// 파일처럼 목록 없는 관계 대상도 단건 응답의 속성으로 라벨을 검사한다.
+type TargetRecord<T extends string> = [Success<At<`/${T}`, "get">>] extends [never]
+  ? DocumentRecord<Success<At<`/${T}/{id}`, "get">>>
+  : DocumentRecord<Success<At<`/${T}`, "get">>>;
+export type TargetAttributeKey<T extends string> = [TargetRecord<T>] extends [never]
+  ? never
+  : Extract<keyof Attributes<TargetRecord<T>>, string>;
 export type ListQuery<T extends ResourceType> =
   ContractOperation<T, "list"> extends {
     parameters: { query?: infer Q };
@@ -92,6 +108,11 @@ export type WriteRelationshipKey<T extends ResourceType, M extends "create" | "e
   keyof Relationships<WriteData<T, M>>,
   string
 >;
+export type WriteRelationshipKind<
+  T extends ResourceType,
+  M extends "create" | "edit",
+  K extends WriteRelationshipKey<T, M>,
+> = RelationshipData<WriteData<T, M>, K> extends readonly unknown[] ? "relation-many" : "relation";
 type RelationshipValues<R> = {
   [K in keyof R]: NonNullable<R[K]> extends { data: infer D } ? D : never;
 };

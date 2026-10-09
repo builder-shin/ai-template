@@ -1,11 +1,26 @@
 # 필드 종류 추가
 
-먼저 `src/lib/resources/definition.ts`와 `src/components/resource/types.ts`를 읽는다. 기존 text·textarea·date·enum·boolean·relation·relation-many·file로 표현되는지 확인한다. 필터는 text·enum·relation·date, 입력은 text·textarea·enum·boolean·relation·relation-many다.
+먼저 `src/lib/resources/definition.ts`와 `src/components/resource/types.ts`를 읽는다. 기존 text·textarea·date·enum·enum-many·boolean·relation·relation-many·file로 표현되는지 확인한다. 필터는 text·enum·relation·date, 입력은 text·textarea·enum·enum-many·boolean·relation·relation-many다.
 
-1. 리소스 하나만 필요한 표시는 그 폴더의 컴포넌트를 최상위 `fields.<name>.display`에 둔다. 입력은 `input`에 둔다. `DisplayProps`는 name·value·record·included·locale·timeZone, `InputProps`는 name·label·kind·defaultValue·options·search를 받는다.
-2. 입력은 같은 name으로 제출하고 `useResourceField(name)`으로 오류·접근성 속성을 읽는다. 비운 관계·체크박스는 `__present_<name>`을 제출한다. Server Action과 `useActionState`를 유지한다. 일반 컴포넌트 함수를 클라이언트 props로 넘기지 않는다.
+1. 리소스 하나만 필요한 표시는 그 폴더의 컴포넌트를 최상위 `fields.<name>.display`에 둔다. 입력은 `input`에 둔다. `DisplayProps`는 name·value·record·included·locale·timeZone·linkable, `InputProps`는 name·label·kind·defaultValue·options·search·disabled·error를 받는다. linkable(type)은 등록한 상세와 현재 보기 권한을 함께 확인한다. options는 관계·열거값 입력에만 있고 search는 관계 입력에만 있다.
+2. 입력은 같은 name으로 제출하고 `useResourceField(name)`으로 오류·접근성 속성을 읽는다. 비운 관계·체크박스는 `__present_<name>`을 제출한다. 비활성 입력은 둘 다 제출하지 않는다. 범용 fieldset이 입력 override도 비활성화하며 사용자 정의 선택 부품에도 disabled를 전달한다. Server Action과 `useActionState`를 유지한다. 일반 컴포넌트 함수를 클라이언트 props로 넘기지 않는다.
 3. 공통 종류가 필요하면 definition의 DisplayKind·InputKind·FilterKind와 화면 types를 함께 늘린다. display.tsx·form.tsx·filters.tsx·screen.tsx의 실제 소비자를 맞춘다. 모든 종류를 세 위치에 무조건 추가하지 않는다.
 4. 쓰기 종류는 `src/lib/resources/values.ts`의 FormData 해석과 data.ts의 JSON:API attributes·relationships 분류도 맞춘다. 이름만 추가하면 문서가 달라지므로 실제 목의 요청·응답과 source.pointer를 검사한다.
 5. `scripts/gen-resource/draft.ts`의 스키마 추론을 검토하고 계약 조각 테스트를 더한다. 자동 추론이 불가능한 종류는 레시피에 수동 선언 절차를 적는다. 문구·enum values는 ko/en 양쪽에 둔다.
-6. 날짜는 TIME_ZONE, enum은 번역한 배지, 관계는 included의 이름·id 대체를 유지한다. DOM에서 값·오류·비운 값·접근성을 확인한다. UI 부품은 고정 `pnpm exec shadcn add <부품>`을 쓴다.
-7. `pnpm check`, `pnpm build`, `pnpm test:e2e`를 차례로 통과시키고 시작한 서버를 종료한다. 로딩은 스피너·스켈레톤만 쓴다.
+6. 날짜는 TIME_ZONE, enum은 번역한 배지, 관계는 included의 이름·id 대체를 유지한다. 관계 키의 relation.type은 계약의 대상, 그 밖의 필드는 목록이 있는 ResourceType이며 label은 대상의 속성 키다. 파일은 목록 없이 단건 응답의 속성(예: filename)으로 검사하며 id는 라벨 선언으로 쓰지 않는다. 쓰기 계약의 단일 관계는 relation, 다중 관계는 relation-many만 받는다.
+7. 관계 현재값은 단건 included로 보충하고 추가 조회하지 않는다. 옵션 목록의 403은 해당 입력만 비활성화하고 번역 안내를 옆에 보인다. 다른 오류는 기존 오류 경계로 던진다. 폼의 빈 단일 관계는 resource.none(선택 안 함/None), 필터는 resource.all(전체/All)이다. 관계 검색의 Enter 뒤에도 입력 포커스를 유지한다. DOM에서 값·오류·비운 값·접근성과 다른 필드의 저장을 확인한다. UI 부품은 고정 `pnpm exec shadcn add <부품>`을 쓴다.
+8. `pnpm check`, `pnpm build`, `pnpm test:e2e`를 차례로 통과시키고 시작한 서버를 종료한다. 로딩은 스피너·스켈레톤만 쓴다.
+
+열거값 입력을 좁힐 때 새 종류를 만들지 않는다. 최상위 fields의 values는 표시·필터, inputValues는 폼 옵션이다. inputValues는 values의 일부이며 생략하면 같은 목록을 쓴다. resource-messages는 두 목록의 번역과 포함 관계를 확인한다. 이름이 필드와 다른 관계 필터는 `{ kind: "relation", relation: { type, label, search? } }`로 대상 표시를 직접 선언한다. fields에는 계약의 필드만 남긴다.
+
+이름 없는 사용자는 layout.unnamedUser(사용자/User)를 직접 표시와 관계 기본 옵션·현재 선택·검색 결과에 쓴다. included가 없는 관계의 id 대체와 다른 리소스의 빈 값 표시는 유지한다.
+
+검색 가능한 선택기는 선택한 옵션을 앞에 고정해 결과 갱신 때 인덱스를 유지한다. 선택 항목이 결과의 뒤로 밀리면 Base UI가 그 항목에 포커스를 옮기므로 Enter 검색의 포커스 검사도 유지한다. 검색 없는 선택지는 API·선언 순서를 유지한다.
+
+다중 열거값 속성은 표시·입력에 enum-many를 쓴다. fields의 values와 선택 사항인 inputValues에 코드 목록을 선언한다. 기본 입력은 다중 선택, 표시는 값마다 번역한 배지다. 관계로 선언하지 않는다. 같은 name으로 선택한 값을 각각 제출하고 비울 때 __present_<name>만 제출한다. 미제출은 속성을 생략하고 빈 선택은 []를 attributes.<name>에 보낸다. resource-messages는 값 목록과 모든 번역을 확인한다. 생성기는 배열 items의 enum을 enum-many로 추론한다.
+
+서버에서 열거값 옵션을 읽어야 하면 fields.<name>.loadValues(client)에 코드 배열을 돌려주는 서버 함수를 둔다. 폼은 API 결과와 inputValues 또는 values의 교집합을 카탈로그 라벨로 전달한다. API 오류는 화면의 RequestNotice로 전달한다. 역할의 options.ts는 GET /permissions의 모든 페이지를 읽고 permission-picker.tsx는 코드 접두사별 체크박스를 그린다. API의 영어 설명은 선택기에 표시하지 않는다.
+
+목록 columns와 상세 fields는 id를 선언할 수 있다. fields.id 표시 설정도 허용하며 resources.<type>.fields.id 문구가 필요하다. 값은 attributes가 아닌 레코드 id에서 읽는다. 쓰기 필드와 관계 라벨·정렬의 계약 범위는 유지한다. 권한 목록은 columns: ["id", "group", "description"]이며 상세·필터·정렬·쓰기를 선언하지 않는다.
+
+감사 로그의 metadata.tsx는 임의 JSON 객체를 키·값 목록으로, 배열·중첩 객체는 들여쓴 JSON으로 표시한다. 빈 객체는 범용 빈 값이다. target.tsx는 record.attributes.targetType과 value의 id로 상세 링크를 만들되 linkable(type)이 true일 때만 표시한다. 나머지는 id만, null은 빈 값으로 보인다. 일반 관계 표시는 included의 공개 이름과 기존 이름 대체값을 쓰므로 별도 override가 필요 없다.

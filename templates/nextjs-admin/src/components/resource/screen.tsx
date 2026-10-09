@@ -4,7 +4,7 @@ import { ApiError, translateApiError } from "../../lib/api/errors";
 import type { AnyResource } from "../../lib/resources/definition";
 import type { ScreenRecord, Control, InputProps, FilterProps } from "./types";
 import type { ResourceSearchParams } from "../../lib/resources/query";
-import { presentation, fieldValue } from "../../lib/resources/values";
+import { presentation, filterPresentation, fieldValue } from "../../lib/resources/values";
 import { controlsFor } from "../../lib/resources/access";
 import { relationOptions } from "../../lib/resources/options";
 import {
@@ -72,11 +72,19 @@ export function RecordControls({
     </div>
   );
 }
-function optionValues(context: ScreenContext, name: string) {
-  return (presentation(context.resource, name).values ?? []).map((value) => ({
-    value,
-    label: context.translate(`resources.${context.resource.type}.enums.${name}.${value}`),
-  }));
+function optionValues(
+  context: ScreenContext,
+  name: string,
+  input = false,
+  available?: readonly string[],
+) {
+  const field = presentation(context.resource, name);
+  return ((input ? field.inputValues : undefined) ?? field.values ?? [])
+    .filter((value) => !available || available.includes(value))
+    .map((value) => ({
+      value,
+      label: context.translate(`resources.${context.resource.type}.enums.${name}.${value}`),
+    }));
 }
 export async function ListScreen({
   context,
@@ -93,33 +101,44 @@ export async function ListScreen({
 }) {
   const { resource, translate: t, permissions } = context;
   const filters: FilterProps[] = await Promise.all(
-    Object.entries((resource.list.filters ?? {}) as Record<string, FilterProps["kind"]>).map(
-      async ([key, kind]) => {
-        const name = key.slice(7, -1);
-        const field = presentation(resource, name);
-        let options = optionValues(context, name);
-        let error: string | undefined;
-        if (kind === "relation") {
-          try {
-            options = await relationOptions(context.client, resource, name);
-          } catch (problem) {
-            if (!(problem instanceof ApiError) || problem.status !== 403) throw problem;
-            error = translateApiError(problem, context.locale);
-          }
-          options = withCurrentOptions(options, query[key], field.relation, document.included);
+    Object.entries(resource.list.filters ?? {}).map(async ([key, declaration]) => {
+      const kind = typeof declaration === "string" ? declaration : declaration.kind;
+      const name = key.slice(7, -1);
+      const field = filterPresentation(resource, name);
+      let options = optionValues(context, name);
+      let error: string | undefined;
+      if (kind === "relation") {
+        try {
+          options = await relationOptions(
+            context.client,
+            resource,
+            name,
+            "",
+            t("layout.unnamedUser"),
+          );
+        } catch (problem) {
+          if (!(problem instanceof ApiError) || problem.status !== 403) throw problem;
+          error = translateApiError(problem, context.locale);
         }
-        return {
-          name: key,
-          kind,
-          label: t(`resources.${resource.type}.fields.${name}`),
+        options = withCurrentOptions(
           options,
-          ...(error ? { error, disabled: true } : {}),
-          ...(!error && field.relation?.search
-            ? { search: searchResourceOptions.bind(null, resource.type, "list", name) }
-            : {}),
-        };
-      },
-    ),
+          query[key],
+          field.relation,
+          document.included,
+          t("layout.unnamedUser"),
+        );
+      }
+      return {
+        name: key,
+        kind,
+        label: t(`resources.${resource.type}.fields.${name}`),
+        options,
+        ...(error ? { error, disabled: true } : {}),
+        ...(!error && field.relation?.search
+          ? { search: searchResourceOptions.bind(null, resource.type, "list", name) }
+          : {}),
+      };
+    }),
   );
   const createHref =
     resource.create && permissions.includes(resource.create.permission)
@@ -201,10 +220,12 @@ export async function FormScreen({
   context,
   mode,
   record,
+  included = [],
 }: {
   context: ScreenContext;
   mode: "create" | "edit";
   record?: ScreenRecord;
+  included?: readonly ScreenRecord[];
 }) {
   const { resource, translate: t } = context;
   const inputs = await Promise.all(
@@ -219,18 +240,41 @@ export async function FormScreen({
               ? raw.id
               : null
           : raw;
-      const loadedOptions =
-        kind === "relation" || kind === "relation-many"
-          ? await relationOptions(context.client, resource, name)
-          : optionValues(context, name);
-      const options = withCurrentOptions(loadedOptions, value, field.relation);
+      const relation = kind === "relation" || kind === "relation-many";
+      let options: InputProps["options"];
+      let error: string | undefined;
+      if (relation) {
+        try {
+          options = await relationOptions(
+            context.client,
+            resource,
+            name,
+            "",
+            t("layout.unnamedUser"),
+            mode,
+          );
+        } catch (problem) {
+          if (!(problem instanceof ApiError) || problem.status !== 403) throw problem;
+          error = translateApiError(problem, context.locale);
+        }
+        options = withCurrentOptions(
+          options ?? [],
+          value,
+          field.relation,
+          included,
+          t("layout.unnamedUser"),
+        );
+      } else if (kind === "enum" || kind === "enum-many") {
+        options = optionValues(context, name, true, await field.loadValues?.(context.client));
+      }
       const props: InputProps = {
         name,
         kind,
         label: t(`resources.${resource.type}.fields.${name}`),
         defaultValue: value,
-        options,
-        ...(field.relation?.search
+        ...(options ? { options } : {}),
+        ...(error ? { error, disabled: true } : {}),
+        ...(relation && !error && field.relation?.search
           ? { search: searchResourceOptions.bind(null, resource.type, mode, name) }
           : {}),
       };
@@ -248,7 +292,7 @@ export async function FormScreen({
       title={t(`resources.${resource.type}.title`)}
       action={saveResourceAction.bind(null, resource.type, mode, record?.id ?? null)}
       permalink={`${context.locale === "en" ? "/en" : ""}${path}`}
-      cancelHref={`/${resource.type}${record ? `/${encodeURIComponent(record.id)}` : ""}`}
+      cancelHref={`/${resource.type}${resource.detail && record ? `/${encodeURIComponent(record.id)}` : ""}`}
     >
       {inputs}
     </ResourceForm>

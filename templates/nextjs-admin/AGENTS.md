@@ -4,18 +4,20 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 
 ## 명령
 
-| 명령                             | 하는 일                                                             |
-| -------------------------------- | ------------------------------------------------------------------- |
-| `pnpm setup`                     | 고정 설치·환경 키 보충·독립 git hook·Chromium 준비                  |
-| `pnpm dev`                       | 단독 admin(3001)·목(4011), 백엔드 모드는 admin만 실행               |
-| `pnpm check`                     | 포맷·린트·타입·단위·통합·생성물·리소스 문구·i18n·계약·하네스 10단계 |
-| `pnpm check --fast -- <파일...>` | Stop hook의 빠른 검사                                               |
-| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                          |
-| `pnpm test`                      | Vitest 단위·실제 목 통합 검사                                       |
-| `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 인증·글·권한·언어 Chromium E2E 11개   |
-| `pnpm gen`                       | TypeSpec·목·API·에러·실시간 타입 생성                               |
-| `pnpm gen:resource <type>`       | 계약에서 리소스 선언·ko/en 문구·등록 초안 생성                      |
-| `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                                |
+| 명령                             | 하는 일                                                                                 |
+| -------------------------------- | --------------------------------------------------------------------------------------- |
+| `pnpm setup`                     | 고정 설치·환경 키 보충·독립 git hook·Chromium 준비                                      |
+| `pnpm dev`                       | 단독 admin(3001)·목(4011), 백엔드 모드는 admin만 실행                                   |
+| `pnpm check`                     | 포맷·린트·타입·단위·통합·생성물·리소스 문구·i18n·계약·하네스 10단계                     |
+| `pnpm check --fast -- <파일...>` | Stop hook의 빠른 검사                                                                   |
+| `pnpm fix`                       | 포맷·자동 수정 가능한 린트                                                              |
+| `pnpm test`                      | Vitest 단위·실제 목 통합 검사                                                           |
+| `pnpm test:e2e`                  | 목(4111)과 운영 admin(3101)의 인증·글·사용자·역할·권한·감사 로그·언어 Chromium E2E 18개 |
+| `pnpm gen`                       | TypeSpec·목·API·에러·실시간 타입 생성                                                   |
+| `pnpm gen:resource <type>`       | 계약에서 리소스 선언·ko/en 문구·등록 초안 생성                                          |
+| `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                                                    |
+
+`test:e2e`의 기본 대상은 목이다. 외부 FastAPI는 `E2E_TARGET=fastapi`와 API·실시간·Mailpit 주소, 최근 로그인 창, `E2E_SEED_ADMIN_EMAIL`·`E2E_SEED_ADMIN_PASSWORD`를 받는다. [E2E 규칙](e2e/AGENTS.md)을 따른다.
 
 ## 구조
 
@@ -36,6 +38,7 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 - 먼저 [설치 버전 문서](docs/stack.md)를 읽는다. Next.js 문서는 `node_modules/next/dist/docs`다. `agentRules: false`를 유지한다.
 - 브라우저는 백엔드 API를 직접 부르지 않는다. 토큰은 서버의 암호화 쿠키에만 둔다. 개발 `admin-session`, 운영 `__Host-admin-session`이다.
 - 로그인은 password grant다. `/me`의 `meta.permissions`에 `admin:access`가 없으면 발급한 세션을 끝내고 세션·`NEXT_LOCALE` 쿠키를 쓰지 않는다. 발급 뒤 실패한 세션도 끝낸다.
+- 로그인은 안전한 `returnTo` 경로·쿼리를 보존하고 성공 뒤 계정 언어로 복귀한다. 외부·모호한 경로와 중복 쿼리값은 `/`로 돌아간다. 실패·회원 거절과 JS 없는 제출은 같은 복귀 쿼리의 로그인 URL을 유지한다.
 - `/login` 외의 모든 화면은 로그인이 필요하다. `(admin)` 레이아웃은 문서 요청마다, 관리 홈·리소스 화면과 Action은 요청마다 권한을 확인한다. 클라이언트 이동은 레이아웃을 다시 실행하지 않는다. 권한 상실은 `/forbidden`, 401은 쿠키 정리 뒤 로그인으로 보낸다. `/forbidden`은 계정만 읽고 관리 권한을 요구하지 않는다.
 - 소셜로만 가입해 비밀번호가 없는 계정은 로그인할 수 없다. web의 비밀번호 재설정으로 비밀번호를 정하거나 다른 관리자 계정을 쓴다. 이 앱에는 소셜 로그인·가입·메일 인증·재설정 화면이 없다.
 - 로그아웃은 현재 API 세션을 끝내고 쿠키를 지운 뒤 같은 언어의 `/login`으로 간다. API 실패에도 브라우저 쿠키를 지운다.
@@ -58,21 +61,25 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 ## 리소스
 
 - 골든은 `src/resources/posts/`다. 목록·상세·발행·발행 취소·삭제·실시간만 제공하며 작성·수정 화면은 없다. 목록과 상세는 작성자와 표지 이미지를 함께 읽고, 상세에서만 표지 이미지의 파일 이름을 보인다. 목록에는 coverImage 열이 없다.
+- 사용자는 `src/resources/users/`다. users:read로 목록·상세를 보고 users:manage로 상태·역할을 수정한다. 검색·상태·검색 가능한 역할 필터를 제공한다. 상태 입력은 active·deactivated만, 표시·필터는 deleted도 포함한다. 탈퇴 사용자의 수정은 숨기고 최신 상태가 바뀐 저장은 409로 알린다. 아바타는 표시하지 않는다. 메뉴 순서는 posts, users, roles, permissions, audit-logs다.
+- 역할은 roles:read로 목록·상세, roles:manage로 생성·수정·삭제한다. 이름·선택 사항인 설명 textarea·권한 선택기로 저장하며 시스템 역할 삭제는 숨긴다. 권한은 roles:read의 읽기 전용 목록이며 코드(id)·그룹·설명을 보인다. 권한 선택기는 서버의 /permissions 옵션을 코드 접두사로 묶고 카탈로그 이름으로 표시한다.
+- 감사 로그는 audit-logs:read의 읽기 전용 목록·상세다. 행위자·행위·대상 종류·기간으로 거르고 actor를 공개 이름으로 include한다. metadata는 키·값 목록, targetId는 등록한 상세와 보기 권한이 있을 때만 링크한다. 없는 행위자·대상과 빈 메타데이터는 빈 값으로 보인다. 기본 정렬은 -createdAt이다.
 - 실시간 채널이 있는 목록·상세만 구독한다. 구독 컴포넌트: `ResourceRealtime`. 첫 이벤트부터 1000ms 고정 창 안의 이벤트를 한 번의 갱신으로 묶으며 이후 이벤트로 예약을 미루지 않는다. 상세는 자신의 레코드 이벤트만 반영한다. 숨은 탭은 갱신을 보류하고 다시 보일 때 한 번 갱신한다. 채널·레코드 변경과 unmount 때 예약과 보류를 취소한다.
 - 리소스 하나는 `src/resources/<type>/resource.ts`의 선언 하나다. `src/resources/index.ts`의 등록 순서가 메뉴와 첫 화면 순서다. 선언의 권한이 있는 리소스만 보인다. 미등록 리소스와 선언에 없는 화면은 API 호출 전에 404다.
 - 화면은 `resources/index.ts`에서만 등록 목록을 가져온다. 리소스끼리 내부를 가져오지 않고 기반·컴포넌트는 화면에 의존하지 않는다. `lib/resources/`와 리소스의 `actions.ts`는 server-only다.
-- 열·상세·쓰기 필드는 계약의 속성·관계 이름, 필터는 목록 operation의 쿼리 키로 타입 검사한다. 필터 파라미터가 없는 목록은 `filters`를 선언할 수 없다. 계약에 없는 쓰기 operation은 선언할 수 없다. 정렬은 계약이 허용한 목록 operation에서 속성 키만 검사하며 서버의 지원 후보는 선언자가 확인한다.
+- 열·상세는 id 또는 계약의 속성·관계 이름, 쓰기 필드는 계약의 속성·관계 이름, 필터는 목록 operation의 쿼리 키로 타입 검사한다. 필터 파라미터가 없는 목록은 `filters`를 선언할 수 없다. 계약에 없는 쓰기 operation은 선언할 수 없다. 정렬은 계약이 허용한 목록 operation에서 속성 키만 검사하며 서버의 지원 후보는 선언자가 확인한다.
 - 필터·정렬·페이지는 URL 쿼리다. 선언한 필터와 정렬만 보내고 페이지 크기는 20이다. 관계 표시는 선언의 `include`로 함께 읽는다. 등록한 상세 화면과 보기 권한이 있을 때만 관계 링크를 만든다. 파일은 이름만 보인다.
 - 쿼리 이동 뒤 필터 막대의 검색·날짜·선택·정렬 값은 새 URL을 따른다. 적용 버튼은 유지해 포커스를 보존한다. 새로고침의 기본 옵션·라벨은 반영하되, 열린 관계 검색의 결과와 기다리는 응답은 유지한다. 팝업 닫기·검색어 변경이나 비우기·URL 쿼리 변경은 검색을 끝내고 늦은 응답을 버린다.
 - 관계 선택기는 현재 선택한 값에서 본 옵션을 기본 옵션·검색 결과에 합친다. 검색 결과에 기존 선택이 없거나 팝업을 닫아도 단일·다중 선택의 값과 라벨이 남는다. 보관하는 옵션은 현재 선택으로 제한하며 새 기본 옵션의 라벨을 우선한다. 옵션 밖 URL 선택값은 included의 같은 대상·id에서 라벨을 읽고, included에 없으면 id로 보인다.
-- 기간 필터의 날짜는 `TIME_ZONE`의 하루 시작·끝으로 API에 보낸다. 잘못된 URL 필터의 4xx는 같은 화면의 안내다. 관계 옵션의 403은 해당 필터만 비활성화하고 안내한다. 검색 가능한 관계는 첫 20개만 읽고, 검색 없는 관계는 마지막 페이지까지 읽는다.
-- 최상위 `fields`에 표시 종류·열거값 `values`·관계 대상과 라벨·표시·입력 override를 둔다. 열거값은 런타임 목록도 선언한다. 입력 종류는 `create`·`edit`의 `fields`에 두고 폼은 선언한 필드만 보낸다.
+- 기간 필터의 날짜는 `TIME_ZONE`의 하루 경계로 API에 보낸다. 선택한 종료 날짜까지 포함하며 배타적인 createdTo에는 다음 날 0시를 보낸다. ISO 종료 URL은 직전 시각의 날짜로 표시한다. 잘못된 URL 필터의 4xx는 같은 화면의 안내다. 관계 옵션의 403은 해당 필터만 비활성화하고 안내한다. 검색 가능한 관계는 첫 20개만 읽고, 검색 없는 관계는 마지막 페이지까지 읽는다.
+- 최상위 `fields`에 표시 종류·열거값 `values`·입력 전용 `inputValues`·관계 대상과 라벨·표시·입력 override를 둔다. inputValues는 values의 일부이며 생략하면 같은 목록을 쓴다. 필드 이름과 다른 관계 필터는 `{ kind: "relation", relation: { type, label, search? } }`로 자체 표시를 선언한다. 대상은 계약의 목록 type, label은 그 대상의 속성이다. 입력 종류는 `create`·`edit`의 `fields`에 두고 폼은 선언한 필드만 보낸다.
+- 이름 없는 사용자는 목록·상세·관계 라벨·기본 옵션·현재 선택·검색 결과에서 layout.unnamedUser(사용자/User)를 쓴다. include하지 않은 관계는 기존 id 대체를 유지한다.
 - 범용 저장 Action은 런타임에도 `create`·`edit` 모드만 허용한다. 그 밖의 모드는 권한 검사·API 호출 전에 404 `resource.not_found`로 거절한다.
 - 메뉴·버튼·화면과 Server Action은 모두 권한·조건을 확인하며 최종 판정은 API가 한다. Action은 최신 단건을 읽어 조건을 다시 확인한다. 권한이 없으면 `permission.denied`, 권한은 있으나 현재 조건과 다르면 `resource.conflict` 안내다.
 - 삭제와 확인이 필요한 동작은 dialog를 거친다. 필드 표시·입력만 바꿔 끼우며 리소스 전체 화면 override는 없다.
 - 문구는 `resources.<type>.title`, `fields.<name>`, `enums.<name>.<value>`, `actions.<name>`이다. `resource-messages` 검사가 등록 선언에서 키를 모아 ko/en 양쪽의 빈 문구와 누락을 확인한다. 전체 check는 format·lint·types·tests·generated·resource-messages·i18n·contract-typespec·contract-mock·harness의 10단계다.
 - `pnpm gen:resource <type>`은 계약의 목록·쓰기 operation에서 수정 가능한 초안을 만든다. 권한은 `x-permission`, 없으면 `admin:access` 초안이므로 실제 읽기·쓰기 권한을 검토한다. 글은 계약에 생성·수정 operation이 있어도 관리 앱에서 해당 선언을 제거한다.
-- 생성기의 ko/en 문구는 번역 전 자리표시자다. 점이 든 이름·값은 중첩 키로 적는다. 기존 리소스 폴더·문구·등록은 덮지 않는다. 현재 제품 등록은 posts 하나이며 사용자·역할·권한·감사 로그는 후속 범위다.
+- 생성기의 ko/en 문구는 번역 전 자리표시자다. 점이 든 이름·값은 중첩 키로 적는다. 기존 리소스 폴더·문구·등록은 덮지 않는다. 현재 제품 등록은 posts, users, roles, permissions, audit-logs다.
 - 절차: [리소스 추가](docs/recipes/add-resource.md), [필드 종류 추가](docs/recipes/add-field-kind.md), [동작 추가](docs/recipes/add-action.md). `.claude/skills/add-resource/SKILL.md`는 리소스 레시피를 부르는 얇은 포장이다.
 
 ## 고정 앱 계약

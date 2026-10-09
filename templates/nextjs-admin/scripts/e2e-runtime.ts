@@ -16,6 +16,18 @@ export interface ServerDependencies {
   stopped(): boolean;
 }
 
+/** 성공한 빌드는 조용히 끝내고 실패한 빌드의 두 출력 스트림을 함께 전달한다. */
+export function captureBuildOutput(child: ChildProcess, report: (output: string) => void) {
+  const output: string[] = [];
+  for (const stream of [child.stdout, child.stderr]) {
+    stream?.setEncoding("utf8");
+    stream?.on("data", (text: string) => output.push(text));
+  }
+  child.once("close", (code) => {
+    if (code !== 0) report(output.join(""));
+  });
+}
+
 /** 외부 스택은 소유하지 않는다. 선택한 대상 준비 뒤 운영 앱만 시작한다. */
 export async function startE2eServers(
   env: Record<string, string | undefined>,
@@ -60,7 +72,7 @@ export async function startE2eServers(
   }
   const next = require.resolve("next/dist/bin/next");
   const build = deps.start([next, "build"], appEnv, false);
-  const [code] = await once(build, "exit");
+  const [code] = await once(build, "close");
   if (code !== 0 || deps.stopped()) throw new Error("E2E 운영 빌드에 실패했다.");
   const app = deps.start(
     [next, "start", "--hostname", "localhost", "--port", new URL(applicationOrigin).port],

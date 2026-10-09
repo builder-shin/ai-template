@@ -55,7 +55,8 @@
     "confirm": "확인",
     "deleteDescription": "이 항목을 삭제할까요?",
     "actionDescription": "이 동작을 실행할까요?",
-    "retryAfter": "{seconds}초 뒤에 다시 시도하세요."
+    "retryAfter": "{seconds}초 뒤에 다시 시도하세요.",
+    "none": "선택 안 함"
   },
   "resources": {
     "posts": {
@@ -72,6 +73,91 @@
       },
       "enums": { "status": { "draft": "초안", "published": "발행됨" } },
       "actions": { "publish": "발행", "unpublish": "발행 취소" }
+    },
+    "users": {
+      "title": "사용자",
+      "fields": {
+        "name": "이름",
+        "email": "이메일",
+        "locale": "언어",
+        "status": "상태",
+        "emailVerifiedAt": "이메일 인증 시각",
+        "roles": "역할",
+        "createdAt": "생성 시각",
+        "updatedAt": "수정 시각",
+        "q": "검색",
+        "role": "역할"
+      },
+      "enums": {
+        "locale": { "ko": "한국어", "en": "영어" },
+        "status": { "active": "활성", "deactivated": "비활성", "deleted": "탈퇴" }
+      }
+    },
+    "roles": {
+      "title": "역할",
+      "fields": {
+        "name": "이름",
+        "description": "설명",
+        "permissions": "권한",
+        "isSystem": "시스템 역할",
+        "createdAt": "생성 시각",
+        "updatedAt": "수정 시각",
+        "q": "검색"
+      },
+      "enums": {
+        "permissions": {
+          "admin:access": "관리 앱 접근",
+          "users:read": "사용자 조회",
+          "users:manage": "사용자 관리",
+          "roles:read": "역할과 권한 조회",
+          "roles:manage": "역할 관리",
+          "audit-logs:read": "감사 로그 조회",
+          "posts:create": "글 작성",
+          "posts:manage": "전체 글 관리"
+        }
+      }
+    },
+    "permissions": {
+      "title": "권한",
+      "fields": { "id": "코드", "group": "그룹", "description": "설명" }
+    },
+    "audit-logs": {
+      "title": "감사 로그",
+      "fields": {
+        "action": "행위",
+        "targetType": "대상 종류",
+        "targetId": "대상 ID",
+        "metadata": "메타데이터",
+        "ipAddress": "IP 주소",
+        "createdAt": "기록 시각",
+        "actor": "행위자",
+        "createdFrom": "시작 날짜",
+        "createdTo": "종료 날짜"
+      },
+      "enums": {
+        "action": {
+          "session": {
+            "login_succeeded": "로그인 성공",
+            "login_failed": "로그인 실패",
+            "all_revoked": "전체 세션 종료"
+          },
+          "user": {
+            "password_changed": "비밀번호 변경",
+            "password_reset": "비밀번호 재설정",
+            "roles_changed": "사용자 역할 변경",
+            "deactivated": "사용자 비활성화",
+            "reactivated": "사용자 재활성화",
+            "deleted": "사용자 탈퇴"
+          },
+          "role": {
+            "created": "역할 생성",
+            "updated": "역할 수정",
+            "deleted": "역할 삭제"
+          },
+          "post": { "deleted_by_admin": "관리자 글 삭제" }
+        },
+        "targetType": { "users": "사용자", "roles": "역할", "posts": "글" }
+      }
     }
   }
 }

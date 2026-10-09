@@ -1,6 +1,18 @@
 import { expect, it } from "vitest";
 import { withCurrentOptions } from "./current-options";
 
+it("included의 이름 없는 사용자도 현재 선택의 번역 라벨을 유지한다", () => {
+  expect(
+    withCurrentOptions(
+      [],
+      "u",
+      { type: "users", label: "name" },
+      [{ type: "users", id: "u", attributes: { name: null } }],
+      "사용자",
+    ),
+  ).toEqual([{ value: "u", label: "사용자" }]);
+});
+
 const relation = { type: "users", label: "name" };
 const options = [{ value: "a", label: "기본 이름" }];
 const included = [
@@ -21,9 +33,12 @@ it("단일 현재 값과 폼의 관계 라벨 없는 현재 값도 보존한다"
   ]);
   expect(withCurrentOptions([], "b")).toEqual([{ value: "b", label: "b" }]);
 });
-it.each([null, undefined, "", 12, [null, 12]])(
-  "없는 값·문자열 아닌 값은 더하지 않는다: %j",
-  (value) => {
-    expect(withCurrentOptions(options, value, relation, included)).toEqual(options);
-  },
-);
+it.each([
+  { name: "null", value: null },
+  { name: "undefined", value: undefined },
+  { name: "빈 문자열", value: "" },
+  { name: "숫자", value: 12 },
+  { name: "문자열 없는 배열", value: [null, 12] },
+])("없는 값·문자열 아닌 값은 더하지 않는다: $name", ({ value }) => {
+  expect(withCurrentOptions(options, value, relation, included)).toEqual(options);
+});

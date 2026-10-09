@@ -1,5 +1,6 @@
 import "server-only";
 import type { ComponentType } from "react";
+import type { createApiClient } from "../api/client";
 import type { DisplayProps, InputProps } from "../../components/resource/types";
 import type { FormResult } from "../api/errors";
 import type { components } from "../api/schema";
@@ -9,24 +10,49 @@ import type {
   FilterKey,
   ListQuery,
   RelationshipKey,
+  RelationshipTarget,
   ResourceRecord,
   ResourceType,
   SortKey,
+  TargetAttributeKey,
   WriteAttributeKey,
   WriteRelationshipKey,
+  WriteRelationshipKind,
 } from "./contract";
 
 export type Permission = components["schemas"]["PermissionCode"];
-export type InputKind = "text" | "textarea" | "enum" | "boolean";
+export type InputKind = "text" | "textarea" | "enum" | "enum-many" | "boolean";
 export type FilterKind = "text" | "enum" | "relation" | "date";
 export type DisplayKind =
-  "text" | "textarea" | "date" | "enum" | "boolean" | "relation" | "relation-many" | "file";
+  | "text"
+  | "textarea"
+  | "date"
+  | "enum"
+  | "enum-many"
+  | "boolean"
+  | "relation"
+  | "relation-many"
+  | "file";
 export type FieldPresentation = {
   kind?: DisplayKind;
   values?: readonly string[];
+  inputValues?: readonly string[];
+  loadValues?: (client: ReturnType<typeof createApiClient>) => Promise<readonly string[]>;
   relation?: { type: string; label: string; search?: boolean };
   display?: ComponentType<DisplayProps>;
   input?: ComponentType<InputProps>;
+};
+type Relation<T extends string> = {
+  [Target in T]: { type: Target; label: TargetAttributeKey<Target>; search?: boolean };
+}[T];
+export type FilterDeclaration = FilterKind | { kind: "relation"; relation: Relation<ResourceType> };
+type ContractField<T extends ResourceType, K extends FieldKey<T>> = Omit<
+  FieldPresentation,
+  "relation"
+> & {
+  relation?: K extends RelationshipKey<T>
+    ? Relation<RelationshipTarget<T, K>>
+    : Relation<ResourceType>;
 };
 export type ResourceForm<T extends ResourceType, M extends "create" | "edit"> = {
   permission: Permission;
@@ -34,7 +60,7 @@ export type ResourceForm<T extends ResourceType, M extends "create" | "edit"> = 
   fields: {
     readonly [K in WriteAttributeKey<T, M>]?: InputKind;
   } & {
-    readonly [K in WriteRelationshipKey<T, M>]?: "relation" | "relation-many";
+    readonly [K in WriteRelationshipKey<T, M>]?: WriteRelationshipKind<T, M, K>;
   };
 };
 export type ResourceAction<T extends ResourceType> = {
@@ -47,10 +73,12 @@ export type ResourceAction<T extends ResourceType> = {
 export type ResourceDefinition<T extends ResourceType> = {
   type: T;
   permission: Permission;
-  fields?: Partial<Record<FieldKey<T>, FieldPresentation>>;
+  fields?: { readonly [K in FieldKey<T>]?: ContractField<T, K> };
   list: {
     columns: readonly FieldKey<T>[];
-    filters?: [FilterKey<T>] extends [never] ? never : Partial<Record<FilterKey<T>, FilterKind>>;
+    filters?: [FilterKey<T>] extends [never]
+      ? never
+      : Partial<Record<FilterKey<T>, FilterDeclaration>>;
     sort?: "sort" extends keyof ListQuery<T>
       ? {
           fields: readonly SortKey<T>[];

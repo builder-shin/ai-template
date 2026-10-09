@@ -36,7 +36,7 @@ function harness() {
       const step = args.includes("build") ? "build" : args.includes("start") ? "web" : "mock";
       events.push(step);
       const child = new ChildProcess();
-      if (step === "build") queueMicrotask(() => child.emit("exit", 0));
+      if (step === "build") queueMicrotask(() => child.emit("close", 0));
       return child;
     }),
     stopped: () => false,

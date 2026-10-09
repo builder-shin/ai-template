@@ -175,6 +175,10 @@ poe는 인자의 `$VAR`·`${VAR}`를 환경 값으로 치환하므로 문자 그
 | `E2E_MAILPIT_URL`          | `http://127.0.0.1:28025`(Mailpit API)    |
 | `E2E_OAUTH_URL`            | `http://127.0.0.1:28080`(모의 OAuth)     |
 | `E2E_RECENT_LOGIN_SECONDS` | `10`                                     |
+| `E2E_SEED_ADMIN_EMAIL` | E2E 설정의 `SEED_ADMIN_EMAIL` |
+| `E2E_SEED_ADMIN_PASSWORD` | E2E 설정의 `SEED_ADMIN_PASSWORD`(가리지 않은 값) |
+
+admin에는 `--web-url http://localhost:3101`을 쓴다. 같은 메일·실시간 출처 규칙을 적용하며 시드 계정은 API로 역할을 준비할 때만 쓴다. 시드 비밀번호를 출력하지 않는다.
 
 명령의 입출력을 그대로 연결하고 종료 코드로 끝난다. Ctrl+C·종료 신호도 명령과 세 서버의 자손까지 내린다.
 POSIX 중단 때는 기다리기 전에 서버 그룹과 명령 트리에 SIGTERM을 보내고, 0.8초 안에서 기다린 뒤 남은 그룹을 강제 종료한다. poe가 실행기를 먼저 강제 종료해도 서버가 남지 않도록 신호를 먼저 보낸다.
@@ -209,11 +213,12 @@ auth 모듈의 `service/oauth.py`와 `providers/`다. 제공자는 파일 하나
 - 설정은 `app.core.config.Settings` 하나다. 비밀(키, 비밀번호, 계정이 든 `DATABASE_URL`, `REDIS_URL`, `SMTP_URL`)은 `SecretStr`로 받아 repr과 로그에 값이 드러나지 않는다. 쓰는 곳에서만 `get_secret_value()`로 꺼낸다.
 - `RECENT_LOGIN_SECONDS`는 탈퇴에 필요한 최근 로그인 창이다(초, 1 이상의 정수, 기본 600). 재인증 E2E에서만 줄인다. 창의 경계까지 허용하고, 지나면 401 `auth.reauthentication_required`와 같은 초를 담은 `WWW-Authenticate`의 `max_age`를 돌려준다. 세션의 최초 로그인 시각으로 검사하므로 refresh로는 풀리지 않으며, 다시 로그인해야 한다.
 
-web의 재인증·브라우저 업로드를 맞출 때는 다음 두 설정을 명시한다. 이름·공개 기본값은 `.env.example`, 검증은 `app.core.config.Settings`를 따른다.
+web·admin의 실시간·재인증·브라우저 업로드를 맞출 때는 다음 설정을 명시한다. 이름·공개 기본값은 `.env.example`, 검증은 `app.core.config.Settings`를 따른다.
 
 | 변수                      | 생략할 때                                     | web E2E 예시            | 적용                                                                                                 |
 | ------------------------- | --------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
 | `RECENT_LOGIN_SECONDS`    | `600`초                                       | `10`                    | 탈퇴 검사와 `WWW-Authenticate`의 `max_age`. web 어댑터의 `E2E_RECENT_LOGIN_SECONDS`도 같은 초로 둔다 |
+| `REALTIME_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:3001` | `http://localhost:3100` | Socket.IO의 브라우저 Origin 허용 목록. admin E2E는 `http://localhost:3101`이다 |
 | `STORAGE_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:3001` | `http://localhost:3100` | 스토리지 준비 뒤 `python -m app.storage_setup`으로 버킷 CORS를 적용한다                              |
 
 최근 로그인 창은 1 이상의 정수만 받으며 refresh로 늘어나지 않는다. 스토리지 Origin은 쉼표 목록을 정규화하고 빈 목록·wildcard·잘못된 주소를 거절한다.

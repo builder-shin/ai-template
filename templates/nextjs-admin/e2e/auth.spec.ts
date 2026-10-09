@@ -1,9 +1,21 @@
 import { admin, member, expect, login, realtime, sessionCookieName, test } from "./fixtures";
 
-test("로그인 뒤 글 목록과 계정 정보·좁은 화면 메뉴를 보여 준다", async ({ page }) => {
-  const { account } = await admin();
-  await login(page, account);
-  await expect(page).toHaveURL("/posts");
+test("로그인 뒤 글 목록과 계정 정보·좁은 화면 메뉴를 보여 준다", async ({ request, page }) => {
+  const { account } = await admin(request);
+  const returnTo = "/posts?filter%5Bstatus%5D=draft&sort=title";
+  await page.goto(returnTo);
+  await expect(page).toHaveURL(`/login?${new URLSearchParams({ returnTo })}`);
+  await page.getByRole("textbox", { name: "이메일", exact: true }).fill(account.email);
+  await page.getByLabel("비밀번호", { exact: true }).fill("wrong"); // betterleaks:allow 사유: 테스트 비밀번호
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "이메일과 비밀번호를 확인하세요.",
+  );
+  await expect(page).toHaveURL(`/login?${new URLSearchParams({ returnTo })}`);
+  await page.getByLabel("비밀번호", { exact: true }).fill(account.password);
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await expect(page).toHaveURL(returnTo);
+  await expect(page.getByRole("combobox", { name: "상태", exact: true })).toContainText("초안");
   await expect(page.getByRole("heading", { name: "글", exact: true })).toBeVisible();
   await expect(page.getByRole("banner").getByText(account.email)).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -14,10 +26,11 @@ test("로그인 뒤 글 목록과 계정 정보·좁은 화면 메뉴를 보여 
 });
 
 test("일반 회원은 같은 로그인 화면에서 거절되며 새 세션·쿠키가 남지 않는다", async ({
+  request,
   page,
   context,
 }) => {
-  const { account, owner } = await member();
+  const { account, owner } = await member(request);
   const before = (await owner.client.GET("/sessions")).data!.data.length;
   await login(page, account);
   await expect(page).toHaveURL("/login");
@@ -32,8 +45,12 @@ test("일반 회원은 같은 로그인 화면에서 거절되며 새 세션·�
   expect((await owner.client.GET("/sessions")).data!.data).toHaveLength(before);
 });
 
-test("로그아웃은 세션·쿠키를 끝내고 로그인 화면으로 돌아간다", async ({ page, context }) => {
-  const { account, owner } = await admin();
+test("로그아웃은 세션·쿠키를 끝내고 로그인 화면으로 돌아간다", async ({
+  request,
+  page,
+  context,
+}) => {
+  const { account, owner } = await admin(request);
   await login(page, account);
   await expect(page).toHaveURL("/posts");
   expect((await context.cookies()).some((cookie) => cookie.name === sessionCookieName)).toBe(true);
@@ -43,8 +60,11 @@ test("로그아웃은 세션·쿠키를 끝내고 로그인 화면으로 돌아�
   expect((await owner.client.GET("/sessions")).data!.data).toHaveLength(1);
 });
 
-test("로그인 중 관리 권한을 잃으면 실시간 이벤트 뒤 forbidden으로 간다", async ({ page }) => {
-  const { account, roleId, seed } = await admin();
+test("로그인 중 관리 권한을 잃으면 실시간 이벤트 뒤 forbidden으로 간다", async ({
+  request,
+  page,
+}) => {
+  const { account, roleId, seed } = await admin(request);
   const socket = realtime(page);
   await login(page, account);
   await expect(page).toHaveURL("/posts");
@@ -61,10 +81,11 @@ test("로그인 중 관리 권한을 잃으면 실시간 이벤트 뒤 forbidden
 });
 
 test("언어 전환은 URL·쿠키·계정 언어를 맞추고 다음 로그인에도 유지한다", async ({
+  request,
   page,
   context,
 }) => {
-  const { account, owner } = await admin();
+  const { account, owner } = await admin(request);
   await login(page, account);
   await expect(page).toHaveURL("/posts");
   await page

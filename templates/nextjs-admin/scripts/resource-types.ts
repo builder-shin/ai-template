@@ -2,6 +2,7 @@ import { defineResource, type Permission } from "../src/lib/resources/definition
 import { createResourceData } from "../src/lib/resources/data";
 import type { createApiClient } from "../src/lib/api/client";
 import { resources } from "../src/resources";
+import type { TargetAttributeKey } from "../src/lib/resources/contract";
 
 // 실행하지 않는다. types 단계의 tsc가 오류 주석과 실제 진단을 함께 검사한다.
 export function resourceTypeChecks(client: ReturnType<typeof createApiClient>) {
@@ -9,7 +10,135 @@ export function resourceTypeChecks(client: ReturnType<typeof createApiClient>) {
   // @ts-expect-error 사유: 내보낸 권한 타입도 계약에 없는 코드를 거절해야 한다.
   const invalidPermission: Permission = "unknown";
   void invalidPermission;
+  // @ts-expect-error 사유: 응답 계약 없는 대상은 라벨을 임의 문자열로 넓히지 않는다.
+  const unknownLabel: TargetAttributeKey<"unlisted"> = "name";
+  void unknownLabel;
   const data = createResourceData(client);
+  defineResource({
+    type: "roles",
+    permission: "roles:read",
+    fields: { id: { kind: "text" } },
+    list: { columns: ["id", "name"] },
+    detail: { fields: ["id", "permissions"] },
+  });
+  defineResource({
+    type: "roles",
+    permission: "roles:read",
+    list: { columns: ["id"] },
+    // @ts-expect-error 사유: id 표시를 허용해도 쓰기 계약 밖 필드는 보낼 수 없다.
+    edit: { permission: "roles:manage", fields: { id: "text" } },
+  });
+  defineResource({
+    type: "users",
+    permission: "users:read",
+    list: {
+      columns: ["name"],
+      filters: {
+        "filter[role]": {
+          kind: "relation",
+          relation: { type: "roles", label: "name", search: true },
+        },
+      },
+    },
+  });
+  defineResource({
+    type: "users",
+    permission: "users:read",
+    list: {
+      columns: ["name"],
+      filters: {
+        // @ts-expect-error 사유: 필터의 관계 대상도 계약의 목록 type이어야 한다.
+        "filter[role]": { kind: "relation", relation: { type: "typo", label: "name" } },
+      },
+    },
+  });
+  defineResource({
+    type: "users",
+    permission: "users:read",
+    list: {
+      columns: ["name"],
+      filters: {
+        // @ts-expect-error 사유: 필터의 관계 라벨은 그 대상의 속성 키여야 한다.
+        "filter[role]": { kind: "relation", relation: { type: "roles", label: "email" } },
+      },
+    },
+  });
+  defineResource({
+    type: "posts",
+    permission,
+    list: { columns: ["title"] },
+    fields: {
+      author: { relation: { type: "users", label: "name" } },
+      coverImage: { kind: "file", relation: { type: "files", label: "filename" } },
+      title: { relation: { type: "roles", label: "name" } },
+    },
+  });
+  defineResource({
+    type: "posts",
+    permission,
+    list: { columns: ["title"] },
+    fields: {
+      // @ts-expect-error 사유: 관계의 대상은 계약의 대상 type과 같아야 한다.
+      author: { relation: { type: "roles", label: "name" } },
+    },
+  });
+  defineResource({
+    type: "posts",
+    permission,
+    list: { columns: ["title"] },
+    fields: {
+      // @ts-expect-error 사유: 관계 라벨은 대상의 속성 키여야 한다.
+      author: { relation: { type: "users", label: "unknown" } },
+    },
+  });
+  defineResource({
+    type: "posts",
+    permission,
+    list: { columns: ["title"] },
+    fields: {
+      // @ts-expect-error 사유: 다른 리소스의 속성은 관계 라벨로 쓸 수 없다.
+      author: { relation: { type: "users", label: "title" } },
+    },
+  });
+  defineResource({
+    type: "posts",
+    permission,
+    list: { columns: ["title"] },
+    fields: {
+      // @ts-expect-error 사유: 관계가 아닌 필드의 대상도 목록 리소스여야 한다.
+      title: { relation: { type: "typo", label: "name" } },
+    },
+  });
+  defineResource({
+    type: "posts",
+    permission,
+    list: { columns: ["title"] },
+    fields: {
+      // @ts-expect-error 사유: 일반 필드에서도 라벨과 대상의 속성이 일치해야 한다.
+      title: { relation: { type: "roles", label: "title" } },
+    },
+  });
+  defineResource({
+    type: "posts",
+    permission,
+    list: { columns: ["title"] },
+    // @ts-expect-error 사유: 단일 관계에는 다중 관계 입력을 선언할 수 없다.
+    create: { permission: "posts:create", fields: { coverImage: "relation-many" } },
+  });
+  defineResource({
+    type: "posts",
+    permission,
+    list: { columns: ["title"] },
+    // @ts-expect-error 사유: 수정의 단일 관계도 다중 관계 입력을 거절한다.
+    edit: { permission, fields: { coverImage: "relation-many" } },
+  });
+  defineResource({
+    type: "users",
+    permission: "users:read",
+    list: { columns: ["name"] },
+    // @ts-expect-error 사유: 다중 관계에는 단일 관계 입력을 선언할 수 없다.
+    edit: { permission: "users:manage", fields: { roles: "relation" } },
+  });
   for (const resource of resources) {
     data.list(resource, {});
   }

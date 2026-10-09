@@ -15,7 +15,8 @@ export function resourceMessageKeys(registry: readonly AnyResource[]) {
     ];
     for (const name of fields) keys.add(`${prefix}.fields.${name}`);
     for (const [name, field] of Object.entries(resource.fields ?? {}))
-      for (const value of field.values ?? []) keys.add(`${prefix}.enums.${name}.${value}`);
+      for (const value of [...(field.values ?? []), ...(field.inputValues ?? [])])
+        keys.add(`${prefix}.enums.${name}.${value}`);
     for (const action of resource.actions ?? []) keys.add(`${prefix}.actions.${action.name}`);
   }
   return [...keys].sort();
@@ -36,15 +37,26 @@ export function missingResourceMessages(
     const fields = new Set<string>();
     for (const form of [resource.create, resource.edit])
       for (const [name, kind] of Object.entries(form?.fields ?? {}))
-        if (kind === "enum") fields.add(name);
+        if (kind === "enum" || kind === "enum-many") fields.add(name);
     for (const [key, kind] of Object.entries(resource.list.filters ?? {}))
       if (kind === "enum") fields.add(key.slice(7, -1));
     for (const [name, field] of Object.entries(resource.fields ?? {}))
-      if (field.kind === "enum") fields.add(name);
+      if (field.kind === "enum" || field.kind === "enum-many") fields.add(name);
     const metadata = resource.fields as Record<string, { values?: readonly string[] }> | undefined;
-    return [...fields]
-      .filter((name) => !metadata?.[name]?.values?.length)
-      .map((name) => `${resource.type}.${name}: 열거값 목록 없음 — fields의 values를 선언한다.`);
+    const inputErrors = Object.entries(resource.fields ?? {}).flatMap(([name, field]) =>
+      (field.inputValues ?? [])
+        .filter((value) => !field.values?.includes(value))
+        .map(
+          (value) =>
+            `${resource.type}.${name}: 입력 열거값이 표시 목록에 없다 (${value}) — inputValues를 values의 일부로 선언한다.`,
+        ),
+    );
+    return [
+      ...inputErrors,
+      ...[...fields]
+        .filter((name) => !metadata?.[name]?.values?.length)
+        .map((name) => `${resource.type}.${name}: 열거값 목록 없음 — fields의 values를 선언한다.`),
+    ];
   });
   return [
     ...configuration,

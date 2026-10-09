@@ -1,6 +1,6 @@
 "use server";
 import "server-only";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { resources } from "../../resources";
@@ -10,7 +10,7 @@ import { ApiError } from "../api/errors";
 import { redirectOnUnauthorized } from "../session/request";
 import { findScreen, controlsFor, type Screen } from "./access";
 import { createResourceData } from "./data";
-import { parseResourceForm, presentation } from "./values";
+import { parseResourceForm, presentation, filterPresentation } from "./values";
 import { relationOptions } from "./options";
 import { resourceFormResult } from "./form-result";
 import type { AnyResource } from "./definition";
@@ -108,7 +108,7 @@ export async function saveResourceAction(
             id!,
             parsed.values as WriteValues<AnyResource["type"], "edit">,
           );
-    target = location(type, document.data.id, ctx.locale);
+    target = location(type, ctx.resource.detail ? document.data.id : null, ctx.locale);
     revalidatePath(location(type, null, ctx.locale));
   } catch (error) {
     const resource = findScreen(resources, type, mode);
@@ -165,7 +165,9 @@ export async function searchResourceOptions(
       : screen === "create" || screen === "edit"
         ? Object.keys(ctx.resource[screen]!.fields)
         : [];
-  if (!keys.includes(name) || !presentation(ctx.resource, name).relation)
+  const field = (screen === "list" ? filterPresentation : presentation)(ctx.resource, name);
+  if (!keys.includes(name) || !field.relation || screen === "detail")
     throw denied("resource.not_found");
-  return relationOptions(ctx.client, ctx.resource, name, query);
+  const t = await getTranslations({ locale: ctx.locale });
+  return relationOptions(ctx.client, ctx.resource, name, query, t("layout.unnamedUser"), screen);
 }

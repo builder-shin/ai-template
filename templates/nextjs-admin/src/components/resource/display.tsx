@@ -3,6 +3,7 @@ import { Badge } from "../ui/badge";
 import { Link } from "../../lib/i18n/navigation";
 import type { FieldPresentation } from "../../lib/resources/definition";
 import { fieldValue } from "../../lib/resources/values";
+import { recordLabel } from "../../lib/resources/labels";
 import type { DisplayProps } from "./types";
 export function FieldDisplay({
   name,
@@ -29,9 +30,15 @@ export function FieldDisplay({
         included={included}
         locale={locale}
         timeZone={timeZone}
+        linkable={linkable}
       />
     );
-  if (value === null || value === undefined) return <span>—</span>;
+  if (value === null || value === undefined)
+    return (
+      <span>
+        {record.type === "users" && name === "name" ? translate("layout.unnamedUser") : "—"}
+      </span>
+    );
   const kind =
     field.kind ??
     (record.relationships?.[name]
@@ -64,6 +71,16 @@ export function FieldDisplay({
         {translate(`resources.${record.type}.enums.${name}.${String(value)}`)}
       </Badge>
     );
+  if (kind === "enum-many" && Array.isArray(value))
+    return (
+      <span className="inline-flex flex-wrap gap-2">
+        {value.map((item: unknown, index) => (
+          <Badge key={index} variant="secondary">
+            {translate(`resources.${record.type}.enums.${name}.${String(item)}`)}
+          </Badge>
+        ))}
+      </span>
+    );
   if (["relation", "relation-many", "file"].includes(kind)) {
     const identifiers = Array.isArray(value) ? value : [value];
     return (
@@ -79,12 +96,16 @@ export function FieldDisplay({
           const linked = included.find(
             (item) => item.id === identifier.id && item.type === identifier.type,
           );
-          const label = String(
-            linked?.attributes[field.relation?.label ?? "name"] ??
+          const label = recordLabel(
+            linked,
+            field.relation?.label ?? "name",
+            String(
               linked?.attributes.title ??
-              linked?.attributes.filename ??
-              linked?.attributes.originalName ??
-              identifier.id,
+                linked?.attributes.filename ??
+                linked?.attributes.originalName ??
+                identifier.id,
+            ),
+            translate("layout.unnamedUser"),
           );
           if (kind === "file" || identifier.type === "file" || identifier.type === "files")
             return <span key={index}>{label}</span>;

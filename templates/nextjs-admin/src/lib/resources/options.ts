@@ -2,15 +2,19 @@ import "server-only";
 import type { createApiClient } from "../api/client";
 import type { AnyResource } from "./definition";
 import type { Option, ScreenRecord } from "../../components/resource/types";
-import { presentation } from "./values";
+import { presentation, filterPresentation } from "./values";
+import { recordLabel } from "./labels";
+import { ko } from "../i18n/catalogs";
 
 export async function relationOptions(
   client: ReturnType<typeof createApiClient>,
   resource: AnyResource,
   name: string,
   query = "",
+  unnamedUser = ko.layout.unnamedUser,
+  screen: "list" | "create" | "edit" = "list",
 ): Promise<Option[]> {
-  const relation = presentation(resource, name).relation;
+  const relation = (screen === "list" ? filterPresentation : presentation)(resource, name).relation;
   if (!relation) return [];
   // 경로는 서버 선언에서만 고른다. 브라우저가 대상 API 경로를 지정하지 못한다.
   const request = client.request as unknown as (
@@ -38,6 +42,6 @@ export async function relationOptions(
   } while (!relation.search && number <= totalPages);
   return records.map((record) => ({
     value: record.id,
-    label: String(record.attributes[relation.label] ?? record.id),
+    label: recordLabel(record, relation.label, record.id, unnamedUser),
   }));
 }

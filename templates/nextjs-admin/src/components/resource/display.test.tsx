@@ -14,6 +14,7 @@ const record = {
     createdAt: "2026-10-08T00:00:00Z",
     status: "draft",
     enabled: true,
+    permissions: ["posts:create", "posts:manage"],
   },
   relationships: {
     author: { data: { type: "users", id: "u" } },
@@ -27,7 +28,12 @@ const included = [
   { type: "files", id: "f", attributes: { filename: "파일.png" } },
 ];
 const translate = (key: string) =>
-  ({ "resource.yes": "예", "resources.posts.enums.status.draft": "초안" })[key] ?? key;
+  ({
+    "resource.yes": "예",
+    "resources.posts.enums.status.draft": "초안",
+    "resources.posts.enums.permissions.posts:create": "글 작성",
+    "resources.posts.enums.permissions.posts:manage": "글 관리",
+  })[key] ?? key;
 function show(
   name: string,
   kind: NonNullable<Parameters<typeof FieldDisplay>[0]["field"]["kind"]>,
@@ -67,6 +73,13 @@ it("날짜는 설정 시간대로, 열거값과 참거짓은 번역으로 표시
   expect(screen.getByText("예")).toBeDefined();
   expect(screen.getByText(/줄1/).textContent).toBe("줄1\n줄2");
 });
+it("다중 열거값은 값마다 번역한 배지를 표시하고 id 열은 식별자를 표시한다", () => {
+  show("permissions", "enum-many");
+  show("id", "text");
+  expect(screen.getByText("글 작성").getAttribute("data-slot")).toBe("badge");
+  expect(screen.getByText("글 관리").getAttribute("data-slot")).toBe("badge");
+  expect(screen.getByText("1")).toBeDefined();
+});
 it("선언의 표시 override는 원래 값과 레코드를 받는다", () => {
   render(
     <FieldDisplay
@@ -105,3 +118,49 @@ it("등록되지 않았거나 볼 수 없는 대상의 관계는 링크 없이 �
   expect(screen.queryByRole("link")).toBeNull();
   expect(screen.getByText("작성자")).toBeDefined();
 });
+it("표시 override도 요청의 대상 상세 접근 판정을 따른다", () => {
+  render(
+    <FieldDisplay
+      name="status"
+      field={{
+        display: ({ linkable }) => <span>{linkable?.("users") ? "상세 허용" : "상세 없음"}</span>,
+      }}
+      record={record}
+      included={included}
+      locale="ko"
+      timeZone="Asia/Seoul"
+      translate={translate}
+      linkable={(type) => type === "users"}
+    />,
+  );
+  expect(screen.getByText("상세 허용")).toBeDefined();
+});
+
+it.each(["ko", "en"] as const)(
+  "이름 없는 사용자는 직접 표시와 관계 라벨에 번역한 대체값을 쓴다: %s",
+  (locale) => {
+    const unnamed = locale === "ko" ? "사용자" : "User";
+    const user = { type: "users", id: "u", attributes: { name: null } };
+    const props = {
+      included: [user],
+      locale,
+      timeZone: "Asia/Seoul",
+      translate: (key: string) => (key === "layout.unnamedUser" ? unnamed : key),
+      linkable: () => false,
+    };
+    render(
+      <>
+        <FieldDisplay {...props} name="name" field={{}} record={user} />
+        <FieldDisplay
+          {...props}
+          name="author"
+          field={{ kind: "relation", relation: { type: "users", label: "name" } }}
+          record={record}
+        />
+      </>,
+    );
+    expect(screen.getAllByText(unnamed)).toHaveLength(2);
+    expect(screen.queryByText("—")).toBeNull();
+    expect(screen.queryByText("u")).toBeNull();
+  },
+);

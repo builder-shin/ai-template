@@ -6,9 +6,11 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import ts from "typescript";
 import { draftResource, generateResource } from "./generate";
@@ -247,6 +249,39 @@ it("설정으로 고른 백엔드 스펙을 읽는다", async () => {
   put("contract/openapi.yaml", "{}");
   await generateResource(root, "articles");
   expect(files()).toHaveProperty(join(root, "src/resources/articles/resource.ts"));
+});
+it.for([[], ["articles", "extra"], ["--unknown"]])(
+  "생성기 CLI의 사용법 오류는 종료 코드 2이며 파일을 쓰지 않는다: %j",
+  (args) => {
+    const before = files();
+    const result = spawnSync(
+      process.execPath,
+      [resolve("node_modules/tsx/dist/cli.mjs"), resolve("scripts/gen-resource/cli.ts"), ...args],
+      { cwd: root, encoding: "utf8" },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("리소스 type이 필요하다 —");
+    expect(files()).toEqual(before);
+  },
+);
+it("리소스 출력 경로의 링크는 문구·등록·대상 파일을 쓰기 전에 거절한다", async () => {
+  const outside = join(root, "outside");
+  mkdirSync(outside);
+  const saved = ["src/resources/index.ts", "messages/ko.json", "messages/en.json"].map((path) =>
+    readFileSync(join(root, path), "utf8"),
+  );
+  symlinkSync(
+    outside,
+    join(root, "src/resources/articles"),
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  await expect(generateResource(root, "articles")).rejects.toThrow("링크 경로 —");
+  expect(readdirSync(outside)).toEqual([]);
+  expect(
+    ["src/resources/index.ts", "messages/ko.json", "messages/en.json"].map((path) =>
+      readFileSync(join(root, path), "utf8"),
+    ),
+  ).toEqual(saved);
 });
 
 it.for(["../articles", "Articles", "missing"])(

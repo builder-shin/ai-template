@@ -10,6 +10,8 @@ export type InputProps = {
   defaultValue?: unknown;
   options?: readonly Option[];
   search?: SearchOptions;
+  disabled?: boolean;
+  error?: string;
   children?: ReactNode;
 };
 export type FilterProps = {
@@ -46,4 +48,5 @@ export type DisplayProps = {
   included: readonly ScreenRecord[];
   locale: "ko" | "en";
   timeZone: string;
+  linkable: (type: string) => boolean;
 };

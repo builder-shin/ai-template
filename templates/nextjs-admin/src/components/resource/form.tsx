@@ -66,14 +66,22 @@ export function ResourceInput({
   defaultValue,
   options,
   search,
+  disabled = false,
+  error,
   children,
 }: InputProps) {
   const state = useContext(FormContext);
   const [value, setValue] = useState(state.values?.[name] ?? defaultValue);
-  const { errors, invalid, describedBy } = useResourceField(name);
+  const { errors, invalid, describedBy: fieldDescription } = useResourceField(name);
+  const describedBy =
+    [fieldDescription, error ? `${name}-notice` : undefined].filter(Boolean).join(" ") || undefined;
   const props = { id: name, name, "aria-invalid": invalid, "aria-describedby": describedBy };
   return (
-    <div className="flex flex-col gap-2" data-invalid={invalid || undefined}>
+    <fieldset
+      disabled={disabled}
+      className="flex min-w-0 flex-col gap-2"
+      data-invalid={invalid || undefined}
+    >
       <Label htmlFor={name}>{label}</Label>
       <input type="hidden" name={`__present_${name}`} value="1" />
       {children ??
@@ -86,17 +94,19 @@ export function ResourceInput({
           />
         ) : kind === "boolean" ? (
           <Checkbox {...props} value="true" checked={value === true} onCheckedChange={setValue} />
-        ) : ["enum", "relation", "relation-many"].includes(kind) ? (
+        ) : ["enum", "enum-many", "relation", "relation-many"].includes(kind) ? (
           <ResourceSelect
             name={name}
             label={label}
             defaultValue={value}
-            multiple={kind === "relation-many"}
+            multiple={kind === "relation-many" || kind === "enum-many"}
             {...(options ? { options } : {})}
             {...(search ? { search } : {})}
             invalid={invalid}
             describedBy={describedBy}
             allowEmpty={kind === "relation"}
+            emptyLabel="none"
+            disabled={disabled}
           />
         ) : (
           <Input
@@ -106,12 +116,17 @@ export function ResourceInput({
           />
         ))}
       {errors.length > 0 && (
-        <div id={describedBy} className="text-sm text-destructive">
+        <div id={fieldDescription} className="text-sm text-destructive">
           {errors.map((error, index) => (
             <p key={index}>{error}</p>
           ))}
         </div>
       )}
-    </div>
+      {error && (
+        <p id={`${name}-notice`} role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </fieldset>
   );
 }

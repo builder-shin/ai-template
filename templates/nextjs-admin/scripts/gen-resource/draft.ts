@@ -89,6 +89,8 @@ export async function draftResource(spec: unknown, type: string) {
     const value = read(schema);
     const values = strings(value.enum);
     if (values.length) return { kind: "enum", values };
+    const items = strings(read(value.items).enum);
+    if (value.type === "array" && items.length) return { kind: "enum-many", values: items };
     if (value.type === "boolean") return { kind: "boolean" };
     if (["date", "date-time"].includes(String(value.format))) return { kind: "date" };
     return { kind: "text" };
@@ -102,11 +104,18 @@ export async function draftResource(spec: unknown, type: string) {
     const targetPath = paths[`/api/v1/${targetType}`] ? `/api/v1/${targetType}` : `/${targetType}`;
     const target = read(paths[targetPath]);
     const targetGet = read(target.get);
-    const targetRecord = read(
-      property(document(object(read(targetGet.responses))["200"]), "data").items,
+    const targetDetail = read(read(paths[`${targetPath}/{id}`]).get);
+    const targetData = property(
+      document(object(read((target.get ? targetGet : targetDetail).responses))["200"]),
+      "data",
     );
+    const targetRecord = read(targetData.type === "array" ? targetData.items : targetData);
     const targetAttributes = properties(property(targetRecord, "attributes"));
-    const label = ["name", "title", "code", "email"].find((key) => key in targetAttributes) ?? "id";
+    const label =
+      ["name", "title", "code", "email", "filename"].find((key) => key in targetAttributes) ??
+      Object.keys(targetAttributes)[0];
+    if (!label)
+      throw new Error(`${name}: 관계 대상의 라벨 속성 없음 — 대상 응답의 attributes를 선언한다.`);
     fields[name] = {
       kind: targetType === "files" ? "file" : data.type === "array" ? "relation-many" : "relation",
       relation: {
@@ -180,7 +189,9 @@ export async function draftResource(spec: unknown, type: string) {
       if (!(name in attributes)) continue;
       const display = presentation(value);
       if (display.values) fields[name] = display;
-      inputs[name] = ["enum", "boolean"].includes(display.kind) ? display.kind : "text";
+      inputs[name] = ["enum", "enum-many", "boolean"].includes(display.kind)
+        ? display.kind
+        : "text";
     }
     for (const [name, value] of Object.entries(properties(property(writeData, "relationships"))))
       if (name in relationships)

@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { lookup } from "node:dns/promises";
 import { createServer } from "node:net";
 import { setTimeout } from "node:timers/promises";
-import { startE2eServers } from "./e2e-runtime";
+import { captureBuildOutput, startE2eServers } from "./e2e-runtime";
 import { startProcessTree, stopProcessTree } from "./process-tree.mjs";
 
 const root = new URL("../", import.meta.url);
@@ -30,9 +30,10 @@ function start(
   const child = startProcessTree(args, {
     cwd: root,
     env,
-    stdio: "inherit",
+    stdio: server ? "inherit" : ["ignore", "pipe", "pipe"],
   });
   children.add(child);
+  if (!server) captureBuildOutput(child, (output) => process.stderr.write(output));
   child.on("error", (error) => {
     console.error(error.message);
     void stop(1);

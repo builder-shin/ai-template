@@ -6,6 +6,7 @@ import { createResourceData } from "../../lib/resources/data";
 import type { AnyResource } from "../../lib/resources/definition";
 import type { ResourceSearchParams } from "../../lib/resources/query";
 import { resourceQuery } from "../../lib/resources/query";
+import { filterCalendarDate } from "../../lib/resources/date";
 import { requireAdmin } from "../../lib/admin/account";
 import { createSessionApiClient } from "../../lib/api/session-client";
 import { ApiError } from "../../lib/api/errors";
@@ -63,17 +64,7 @@ export async function ResourcePage({
       );
       for (const [key, kind] of Object.entries(resource.list.filters ?? {}))
         if (kind === "date" && typeof searchParams[key] === "string") {
-          const raw = searchParams[key];
-          const date = new Date(raw);
-          query[key] =
-            /^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(date.getTime())
-              ? raw
-              : new Intl.DateTimeFormat("en-CA", {
-                  timeZone: context.timeZone,
-                  year: "numeric",
-                  month: "2-digit",
-                  day: "2-digit",
-                }).format(date);
+          query[key] = filterCalendarDate(searchParams[key], key.endsWith("To]"), context.timeZone);
         }
       return await ListScreen({ context, document, query });
     }
@@ -90,7 +81,12 @@ export async function ResourcePage({
         errors: [{ code: "resource.conflict", params: {} }],
         traceId: "",
       });
-    return await FormScreen({ context, mode: "edit", record: document.data });
+    return await FormScreen({
+      context,
+      mode: "edit",
+      record: document.data,
+      included: "included" in document ? (document.included ?? []) : [],
+    });
   } catch (error) {
     redirectOnUnauthorized(error, locale === "en" ? "/en" : "/");
     if (!(error instanceof ApiError)) throw error;
