@@ -1,13 +1,13 @@
 import { registerHooks } from "node:module";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 import { appSessionCookieName } from "../src/lib/app-config.mjs";
-import { mockOrigin } from "./targets";
+import { createTarget, targetName, targetEnvironment } from "./targets";
 import { ko, en } from "../src/lib/i18n/catalogs";
 import type { components } from "../src/lib/api/schema";
 
 type PermissionCode = components["schemas"]["PermissionCode"];
 
-export { test, expect, mockOrigin };
+export { test, expect };
 export const sessionCookieName = appSessionCookieName("production");
 
 /** Node의 테스트 worker에서만 server-only 표식을 비운다. 앱 빌드는 경계를 유지한다. */
@@ -33,14 +33,37 @@ async function fixtures() {
   }
 }
 
-export async function member(locale: "ko" | "en" = "ko") {
-  return (await fixtures()).memberFixture(mockOrigin, locale);
+function accountOptions(request: APIRequestContext) {
+  const name = targetName();
+  const env = targetEnvironment(name);
+  const target = createTarget(name, request);
+  return {
+    origin: new URL(env.API_BASE_URL!).origin,
+    options: {
+      mailLink: target.mailLink,
+      ...(name === "fastapi"
+        ? {
+            seedAccount: {
+              email: env.E2E_SEED_ADMIN_EMAIL!,
+              password: env.E2E_SEED_ADMIN_PASSWORD!,
+            },
+          }
+        : {}),
+    },
+  };
+}
+
+export async function member(request: APIRequestContext, locale: "ko" | "en" = "ko") {
+  const { origin, options } = accountOptions(request);
+  return (await fixtures()).memberFixture(origin, locale, options);
 }
 export async function admin(
+  request: APIRequestContext,
   locale: "ko" | "en" = "ko",
   permissions: readonly PermissionCode[] = ["admin:access", "posts:manage", "users:read"],
 ) {
-  return (await fixtures()).partialAdminFixture(mockOrigin, locale, permissions);
+  const { origin, options } = accountOptions(request);
+  return (await fixtures()).partialAdminFixture(origin, locale, permissions, options);
 }
 export async function login(
   page: Page,

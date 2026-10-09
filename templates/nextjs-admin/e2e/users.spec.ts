@@ -14,10 +14,10 @@ async function role(seed: Awaited<ReturnType<typeof admin>>["seed"], name: strin
   });
   return data!.data;
 }
-test("사용자 목록의 검색·상태·역할 필터는 대상 검색과 URL을 따른다", async ({ page }) => {
-  const actor = await admin("ko", permissions);
-  const first = await member();
-  const second = await member();
+test("사용자 목록의 검색·상태·역할 필터는 대상 검색과 URL을 따른다", async ({ request, page }) => {
+  const actor = await admin(request, "ko", permissions);
+  const first = await member(request);
+  const second = await member(request);
   const prefix = `사용자목록-${randomUUID()}`;
   for (const [index, account] of [first, second].entries())
     await account.owner.client.PATCH("/me", {
@@ -60,9 +60,12 @@ test("사용자 목록의 검색·상태·역할 필터는 대상 검색과 URL�
   await page.reload();
   await expect(page.getByRole("combobox", { name: "역할", exact: true })).toContainText(name);
 });
-test("사용자 수정 폼으로 역할을 부여하고 비활성화하면 상세에 두 값이 보인다", async ({ page }) => {
-  const actor = await admin("ko", permissions);
-  const target = await member();
+test("사용자 수정 폼으로 역할을 부여하고 비활성화하면 상세에 두 값이 보인다", async ({
+  request,
+  page,
+}) => {
+  const actor = await admin(request, "ko", permissions);
+  const target = await member(request);
   const name = `부여역할-${randomUUID()}`;
   const chosen = await role(actor.seed, name);
   await login(page, actor.account);

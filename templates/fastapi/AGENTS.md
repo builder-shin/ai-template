@@ -30,7 +30,7 @@ JSON:API 규약을 따르는 FastAPI 백엔드다. Python 3.14와 uv를 쓰고, 
 - 테스트가 "인프라가 꺼져 있다"로 멈추면 `uv run poe setup`을 돌린다.
 - `dev`는 출력 앞에 프로세스 이름을 붙이고, 하나가 끝나거나 Ctrl+C를 누르면 모두 내린다.
 - `test:e2e`는 개발 인프라에 DB `app_e2e`, Valkey DB 14, api 포트 18000으로 띄운다. 실패하면 프로세스 출력(`.cache/e2e/processes.log`)의 끝부분을 보여 준다.
-- `e2e:serve`는 같은 격리로 외부 E2E를 실행한다. web 기본 주소는 `http://localhost:3100`이며 경로 없는 http(s) Origin만 받는다. 명령은 poe가 넘긴 `POE_PWD`(호출한 폴더)에서 실행하고 그 종료 코드로 끝난다. [E2E](docs/architecture.md#e2e)를 따른다.
+- `e2e:serve`는 같은 격리로 외부 E2E를 실행한다. web 기본 주소는 `http://localhost:3100`이며 경로 없는 http(s) Origin만 받는다. admin에는 `--web-url http://localhost:3101`을 쓴다. 시드 계정은 E2E 설정에서 가져와 `E2E_SEED_ADMIN_EMAIL`·`E2E_SEED_ADMIN_PASSWORD`로 자식 환경에 전달한다. 명령은 poe가 넘긴 `POE_PWD`(호출한 폴더)에서 실행하고 그 종료 코드로 끝난다. [E2E](docs/architecture.md#e2e)를 따른다.
 
 ## 완료 기준
 

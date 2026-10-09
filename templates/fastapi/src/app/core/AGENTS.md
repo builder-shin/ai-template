@@ -2,7 +2,7 @@
 
 도메인을 모르는 기반이다. 모든 모듈이 쓴다.
 
-- `config.py`: 설정 스키마 `Settings` 하나. 값은 환경 변수와 `.env`에서 온다. 비밀(키, 비밀번호, 계정이 든 URL)은 `SecretStr`로 받아 쓰는 곳에서만 `.get_secret_value()`로 꺼낸다. `load_settings()`는 틀린 값을 변수마다 한 줄씩 알리고 멈춘다. 운영(`APP_ENV=production`)에서는 앱이 스스로 정하는 비밀(`JWT_SECRET`, `IDENTIFIER_HASH_SECRET`, `SEED_ADMIN_PASSWORD`)이 `.env.example`의 예시 값이면 시작하지 않는다. `REALTIME_ALLOWED_ORIGINS`·`STORAGE_ALLOWED_ORIGINS`는 값마다 브라우저가 보내는 Origin으로 바꾸고 `*`는 거절한다(`Origins`). 스토리지의 기본값은 개발 web·admin(`http://localhost:3000`, `http://localhost:3001`)이다.
+- `config.py`: 설정 스키마 `Settings` 하나. 값은 환경 변수와 `.env`에서 온다. 비밀(키, 비밀번호, 계정이 든 URL)은 `SecretStr`로 받아 쓰는 곳에서만 `.get_secret_value()`로 꺼낸다. `load_settings()`는 틀린 값을 변수마다 한 줄씩 알리고 멈춘다. 운영(`APP_ENV=production`)에서는 앱이 스스로 정하는 비밀(`JWT_SECRET`, `IDENTIFIER_HASH_SECRET`, `SEED_ADMIN_PASSWORD`)이 `.env.example`의 예시 값이면 시작하지 않는다. `REALTIME_ALLOWED_ORIGINS`·`STORAGE_ALLOWED_ORIGINS`는 값마다 브라우저가 보내는 Origin으로 바꾸고 `*`는 거절한다(`Origins`). 두 허용 출처의 기본값은 개발 web·admin(`http://localhost:3000`, `http://localhost:3001`)이다.
 - `logging.py`: structlog 설정과 traceId 미들웨어.
 - `db.py`: 비동기 엔진, 세션 팩토리, 모델의 기반 `Base`(제약 이름 규칙 포함), 요청 세션 `SessionDep`, 모델 시각의 기본값 `utc_now`.
 - `redis.py`: Valkey 클라이언트와 요청 의존성 `RedisDep`.

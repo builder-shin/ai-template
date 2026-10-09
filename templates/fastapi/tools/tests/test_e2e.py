@@ -23,6 +23,8 @@ BASE = Settings.model_construct(
     realtime_allowed_origins=frozenset({"http://localhost:3000"}),
     oauth_redirect_uris=frozenset({"http://localhost:3000/oauth/callback"}),
     storage_allowed_origins=frozenset({"http://localhost:3000", "http://localhost:3001"}),
+    seed_admin_email="serve-admin@example.com",
+    seed_admin_password=SecretStr("serve-admin-password"),  # betterleaks:allow 가짜 값
 )
 
 
@@ -146,7 +148,7 @@ def test_serve_overrides_keep_development_settings_intact() -> None:
 
 def test_child_environment_only_adds_backend_facts() -> None:
     inherited = {"PATH": "tools", "APP_URL": "caller-value", "DATABASE_URL": "caller-db"}
-    env = e2e.child_environment("http://localhost:3200", inherited)
+    env = e2e.child_environment("http://localhost:3200", inherited, BASE)
     assert env == {
         **inherited,
         "PYTHONUTF8": "1",
@@ -155,6 +157,8 @@ def test_child_environment_only_adds_backend_facts() -> None:
         "E2E_MAILPIT_URL": "http://127.0.0.1:28025",
         "E2E_OAUTH_URL": "http://127.0.0.1:28080",
         "E2E_RECENT_LOGIN_SECONDS": "10",
+        "E2E_SEED_ADMIN_EMAIL": "serve-admin@example.com",
+        "E2E_SEED_ADMIN_PASSWORD": "serve-admin-password",  # betterleaks:allow 가짜 값
     }
     assert inherited == {"PATH": "tools", "APP_URL": "caller-value", "DATABASE_URL": "caller-db"}
 
@@ -236,6 +240,8 @@ def test_serve_propagates_command_exit_and_uses_poe_pwd(
         assert args == ["node", "runner.mjs", "--flag"]
         assert cwd == tmp_path
         assert env["E2E_WEB_URL"] == "http://localhost:3100"
+        assert env["E2E_SEED_ADMIN_EMAIL"] == "serve-admin@example.com"
+        assert env["E2E_SEED_ADMIN_PASSWORD"] == "serve-admin-password"  # betterleaks:allow 가짜 값
         assert "APP_ENV" not in env  # 서버 설정을 명령에 덮어쓰지 않는다.
         lifecycle.append("command")
         return code

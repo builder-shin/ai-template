@@ -44,7 +44,7 @@
 
 현재 제품 등록은 posts, users, roles, permissions, audit-logs 순서다. 사용자는 users:read로 목록·상세를 보고 users:manage로 상태·역할을 수정한다. 목록은 이름·이메일·상태·역할·생성 시각과 검색·상태·역할 필터, 기본 -createdAt 정렬을 제공한다. roles만 include하며 아바타는 제외한다. 상세에는 언어·이메일 인증 시각·수정 시각도 표시한다. 상태 입력은 active·deactivated만 제공하고 표시·필터는 deleted도 포함한다. 탈퇴한 사용자 수정은 숨기며 수정 화면·저장 Action은 최신 상태를 확인해 409를 보인다. 자기 자신·상위 권한 대상의 수정은 API의 403을 폼 배너로 알린다.
 
-`pnpm gen:resource <type>`은 API 타입 생성과 같은 `gen.config.json` 입력으로 선언·ko/en 자리표시자·등록 초안을 만들고 기존 자료는 덮지 않는다. operation의 `x-permission`이 없으면 `admin:access`를 넣으므로 권한·필드·문구를 검토한다. [리소스](recipes/add-resource.md)·[필드 종류](recipes/add-field-kind.md)·[동작](recipes/add-action.md) 레시피를 따른다. FastAPI 대상 확장은 후속 범위다.
+`pnpm gen:resource <type>`은 API 타입 생성과 같은 `gen.config.json` 입력으로 선언·ko/en 자리표시자·등록 초안을 만들고 기존 자료는 덮지 않는다. operation의 `x-permission`이 없으면 `admin:access`를 넣으므로 권한·필드·문구를 검토한다. [리소스](recipes/add-resource.md)·[필드 종류](recipes/add-field-kind.md)·[동작](recipes/add-action.md) 레시피를 따른다. 외부 FastAPI에도 같은 E2E 시나리오를 실행한다.
 
 역할은 roles:read로 목록·상세를, roles:manage로 이름·설명·권한 배열의 생성·수정과 삭제를 제공한다. 설명은 선택 사항인 textarea다. permissions는 관계가 아닌 enum-many 속성이며 FormData의 같은 이름으로 여러 값을 제출하고 빈 선택은 []를 attributes에 보낸다. 표시와 선택기 이름은 resources.roles.enums.permissions의 ko/en 번역이다. 서버의 loadValues는 /permissions의 모든 페이지를 읽고 선언한 values 안의 코드를 제공한다. 선택기는 코드 접두사로 그룹을 나누고 영어 API 설명은 쓰지 않는다. 시스템 역할의 삭제 버튼은 숨기며 직접 Action 호출은 최신 상태를 읽어 409로 막는다. 시스템 이름 변경·admin 권한 변경의 API 422는 번역 배너, 중복 이름의 pointer는 이름 아래 오류로 보인다. API의 권한 범위 거부는 403 배너다.
 
@@ -56,7 +56,7 @@
 
 ## 테스트
 
-Vitest global setup이 실제 목 프로세스를 시작하고 `mockBaseUrl`을 제공한다. 요청 저장소를 대체한 Action 검사도 실제 HTTP API로 로그인·권한·폐기를 확인한다. 앱 번역 테스트는 `scripts/test/intl-fixture.ts`로 환경 스키마의 시간대를 고정한다. E2E 18개는 목(4111), 운영 admin(3101), 두 Chromium worker로 인증·글·사용자·역할·권한·감사 로그·언어를 확인하며 실행기가 시작한 자원을 종료한다. 작성자·역할 필터는 대상 검색으로 고르고 실시간 검사는 화면마다 새 subscribe ACK를 확인한 뒤 다른 세션에서 변경한다. 기존 포트의 서버는 재사용하거나 종료하지 않는다. 영상·스크린샷·trace는 저장하지 않는다.
+Vitest global setup이 실제 목 프로세스를 시작하고 `mockBaseUrl`을 제공한다. 요청 저장소를 대체한 Action 검사도 실제 HTTP API로 로그인·권한·폐기를 확인한다. 앱 번역 테스트는 `scripts/test/intl-fixture.ts`로 환경 스키마의 시간대를 고정한다. E2E 18개는 목(4111), 운영 admin(3101), 두 Chromium worker로 인증·글·사용자·역할·권한·감사 로그·언어를 확인하며 실행기가 시작한 자원을 종료한다. 작성자·역할 필터는 대상 검색으로 고르고 실시간 검사는 화면마다 새 subscribe ACK를 확인한 뒤 다른 세션에서 변경한다. 기존 포트의 서버는 재사용하거나 종료하지 않는다. 영상·스크린샷·trace는 저장하지 않는다. FastAPI는 E2E_TARGET=fastapi와 APP_URL·API_BASE_URL·NEXT_PUBLIC_REALTIME_URL·E2E_MAILPIT_URL·E2E_RECENT_LOGIN_SECONDS, 필수 E2E_SEED_ADMIN_EMAIL·E2E_SEED_ADMIN_PASSWORD를 받는다. 계정은 API 가입 뒤 Mailpit 인증 링크의 토큰으로 인증하고 로그인한다. 메일 링크 Origin은 APP_URL과 같아야 하므로 backend FRONTEND_URL도 3101 출처로 맞춘다. 시드 계정은 역할 준비만 맡는다. 성공한 운영 빌드는 조용히 끝내며 실패한 빌드의 두 출력 스트림은 stderr로 전달한다.
 
 ## 실행과 이미지
 

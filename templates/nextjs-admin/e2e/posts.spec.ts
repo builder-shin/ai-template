@@ -12,9 +12,12 @@ async function post(
   expect(result.response.status).toBe(201);
   return result.data!.data;
 }
-test("글 목록의 검색·상태·작성자 필터, 양방향 정렬과 페이지를 URL에 보존한다", async ({ page }) => {
-  const { account } = await admin();
-  const author = await member();
+test("글 목록의 검색·상태·작성자 필터, 양방향 정렬과 페이지를 URL에 보존한다", async ({
+  request,
+  page,
+}) => {
+  const { account } = await admin(request);
+  const author = await member(request);
   const prefix = `목록-${randomUUID()}`;
   await author.owner.client.PATCH("/me", {
     body: { data: { type: "users", id: author.userId, attributes: { name: prefix } } },
@@ -50,9 +53,9 @@ test("글 목록의 검색·상태·작성자 필터, 양방향 정렬과 페이
   await expect(page.getByRole("row").nth(1)).toContainText(`${prefix}-22`);
   expect(new URL(page.url()).searchParams.get("page[number]")).toBe("1");
 });
-test("글 상세의 발행과 발행 취소는 상태와 버튼을 바꾼다", async ({ page }) => {
-  const { account, seed } = await admin();
-  const author = await member();
+test("글 상세의 발행과 발행 취소는 상태와 버튼을 바꾼다", async ({ request, page }) => {
+  const { account, seed } = await admin(request);
+  const author = await member(request);
   const record = await post(author.owner, `상태-${randomUUID()}`);
   await login(page, account);
   await expect(page).toHaveURL("/posts");
@@ -70,9 +73,9 @@ test("글 상세의 발행과 발행 취소는 상태와 버튼을 바꾼다", a
   await expect(page.getByText("초안", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "발행", exact: true })).toBeVisible();
 });
-test("글 삭제는 확인 대화상자의 취소와 삭제 뒤 목록 이동을 따른다", async ({ page }) => {
-  const { account, seed } = await admin();
-  const author = await member();
+test("글 삭제는 확인 대화상자의 취소와 삭제 뒤 목록 이동을 따른다", async ({ request, page }) => {
+  const { account, seed } = await admin(request);
+  const author = await member(request);
   const record = await post(author.owner, `삭제-${randomUUID()}`);
   await login(page, account);
   await expect(page).toHaveURL("/posts");
@@ -96,9 +99,9 @@ test("글 삭제는 확인 대화상자의 취소와 삭제 뒤 목록 이동을
     seed.client.GET("/posts/{id}", { params: { path: { id: record.id } } }),
   ).rejects.toMatchObject({ status: 404, code: "resource.not_found" });
 });
-test("다른 세션의 초안 생성은 posts:all 이벤트 뒤 목록에 나타난다", async ({ page }) => {
-  const { account } = await admin();
-  const author = await member();
+test("다른 세션의 초안 생성은 posts:all 이벤트 뒤 목록에 나타난다", async ({ request, page }) => {
+  const { account } = await admin(request);
+  const author = await member(request);
   const title = `실시간-${randomUUID()}`;
   const socket = realtime(page);
   const loginSubscriptions = socket.subscriptionCount("posts:all");
@@ -128,8 +131,8 @@ test("다른 세션의 초안 생성은 posts:all 이벤트 뒤 목록에 나타
   await expect.poll(() => socket.received("post.updated")).toBe(true);
   await expect(page.getByText(changed, { exact: true })).toBeVisible();
 });
-test("일부 권한 관리자의 메뉴와 화면은 리소스 권한을 따른다", async ({ page }) => {
-  const partial = await admin("ko", ["admin:access"]);
+test("일부 권한 관리자의 메뉴와 화면은 리소스 권한을 따른다", async ({ request, page }) => {
+  const partial = await admin(request, "ko", ["admin:access"]);
   await login(page, partial.account);
   await expect(page).toHaveURL("/");
   await expect(page.getByText("등록된 관리 메뉴가 없습니다.")).toBeVisible();
@@ -139,7 +142,7 @@ test("일부 권한 관리자의 메뉴와 화면은 리소스 권한을 따른�
   await page.goto("/posts");
   await expect(page).toHaveURL("/forbidden");
   await page.getByRole("main").getByRole("button", { name: "로그아웃", exact: true }).click();
-  const postsOnly = await admin("ko", ["admin:access", "posts:manage"]);
+  const postsOnly = await admin(request, "ko", ["admin:access", "posts:manage"]);
   await login(page, postsOnly.account);
   await expect(page).toHaveURL("/posts");
   await expect(
@@ -153,8 +156,8 @@ test("일부 권한 관리자의 메뉴와 화면은 리소스 권한을 따른�
   );
   await expect(page.getByRole("table")).toBeVisible();
 });
-test("등록하지 않은 리소스와 글 작성·수정 화면은 404다", async ({ page }) => {
-  const { account } = await admin();
+test("등록하지 않은 리소스와 글 작성·수정 화면은 404다", async ({ request, page }) => {
+  const { account } = await admin(request);
   await login(page, account);
   await expect(page).toHaveURL("/posts");
   for (const path of [

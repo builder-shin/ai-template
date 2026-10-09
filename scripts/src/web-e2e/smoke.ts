@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { record } from "./config.ts";
-import { type Plan, URLS } from "./plan.ts";
+import { type Plan } from "./plan.ts";
 
 /** HTTP 조회는 값을 출력하지 않고 짧은 요청 제한과 전체 대기 제한을 함께 쓴다. */
 async function request(
@@ -13,11 +13,12 @@ async function request(
   return fetch(url, { ...options, signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
 }
 
-export async function waitForServices(signal?: AbortSignal): Promise<void> {
+export async function waitForServices(plan: Plan, signal?: AbortSignal): Promise<void> {
+  const URLS = plan.urls;
   for (const url of [
     `${URLS.api}/health/ready`,
     `${URLS.mail}/readyz`,
-    `${URLS.oauth}/default/.well-known/openid-configuration`,
+    ...(URLS.oauth ? [`${URLS.oauth}/default/.well-known/openid-configuration`] : []),
   ]) {
     const deadline = Date.now() + 60_000;
     for (;;) {
@@ -36,6 +37,7 @@ export async function waitForServices(signal?: AbortSignal): Promise<void> {
 }
 
 export async function smoke(plan: Plan, signal?: AbortSignal): Promise<number> {
+  const URLS = plan.urls;
   const posts = await request(
     `${URLS.api}/api/v1/posts`,
     { headers: { Accept: "application/vnd.api+json" } },
@@ -64,7 +66,7 @@ export async function smoke(plan: Plan, signal?: AbortSignal): Promise<number> {
     cors.headers.get("access-control-allow-origin") !== URLS.web ||
     !methods.includes("PUT")
   ) {
-    throw new Error("스토리지 CORS는 web Origin의 PUT을 허용해야 한다.");
+    throw new Error("스토리지 CORS는 앱 Origin의 PUT을 허용해야 한다.");
   }
 
   const email = `stack-${plan.runId}@example.com`;
@@ -112,13 +114,15 @@ export async function smoke(plan: Plan, signal?: AbortSignal): Promise<number> {
         typeof text !== "string" ||
         !text.includes(`${URLS.web}/verify-email?token=`)
       ) {
-        throw new Error("인증 메일 링크는 web 주소여야 한다.");
+        throw new Error("인증 메일 링크는 앱 주소여야 한다.");
       }
       break;
     }
     if (Date.now() >= deadline) throw new Error("worker가 30초 안에 인증 메일을 보내야 한다.");
     await sleep(200, undefined, signal ? { signal } : {});
   }
-  console.log("smoke 통과: API·시드·Mailpit·OAuth·worker 메일·스토리지 CORS");
+  console.log(
+    `smoke 통과: API·시드·Mailpit${URLS.oauth ? "·OAuth" : ""}·worker 메일·스토리지 CORS`,
+  );
   return 0;
 }

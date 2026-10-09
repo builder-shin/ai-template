@@ -177,8 +177,10 @@ class Settings(BaseSettings):
     mail_from: NonEmpty
     # 메일 링크의 프론트 주소. 인증·재설정 링크는 여기에 경로와 ?token=을 붙인다
     frontend_url: HttpUrl
-    # Socket.IO 연결을 받을 브라우저 Origin(쉼표로 구분). 예: http://localhost:3000
-    realtime_allowed_origins: Origins
+    # Socket.IO 연결을 받을 브라우저 Origin. 개발 web과 admin을 기본으로 허용한다
+    realtime_allowed_origins: Origins = frozenset(
+        {"http://localhost:3000", "http://localhost:3001"}
+    )
     # 브라우저가 보는 이 API의 주소. 소셜 로그인 제공자가
     # <API_URL>/api/v1/oauth/<제공자>/callback으로 돌아온다. 제공자 콘솔에 이 콜백 주소를 등록한다
     api_url: HttpUrl

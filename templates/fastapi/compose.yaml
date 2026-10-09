@@ -32,7 +32,7 @@ x-app: &app
     SMTP_URL: smtp://mailpit:1025
     MAIL_FROM: "AI Template <no-reply@example.com>"
     FRONTEND_URL: http://localhost:3000
-    REALTIME_ALLOWED_ORIGINS: http://localhost:3000
+    REALTIME_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
     # 소셜 로그인: 인가 주소는 호스트의 브라우저가, 토큰과 프로필 주소는 컨테이너가 부른다
     API_URL: http://localhost:8000
     OAUTH_REDIRECT_URIS: http://localhost:3000/oauth/callback

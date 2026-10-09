@@ -17,6 +17,8 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 | `pnpm gen:resource <type>`       | 계약에서 리소스 선언·ko/en 문구·등록 초안 생성                                          |
 | `pnpm build`, `pnpm start`       | 운영 빌드·서버(3001)                                                                    |
 
+`test:e2e`의 기본 대상은 목이다. 외부 FastAPI는 `E2E_TARGET=fastapi`와 API·실시간·Mailpit 주소, 최근 로그인 창, `E2E_SEED_ADMIN_EMAIL`·`E2E_SEED_ADMIN_PASSWORD`를 받는다. [E2E 규칙](e2e/AGENTS.md)을 따른다.
+
 ## 구조
 
 | 경로                | 내용                                                     |

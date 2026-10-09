@@ -1,0 +1,179 @@
+# admin E2E 전용 스택. 루트 실행기가 프로젝트와 실행 ID를 정한다.
+# 개발 compose·환경 파일·데이터 볼륨을 참조하지 않는다.
+x-app: &app
+  build:
+    context: ../../templates/fastapi
+  image: ai-template-admin-e2e-fastapi:${ADMIN_E2E_RUN_ID:?실행 ID를 지정한다}
+  environment:
+    APP_ENV: production
+    LOG_LEVEL: info
+    DATABASE_URL: postgresql+psycopg://app:app@postgres:5432/app
+    REDIS_URL: redis://valkey:6379/0
+    S3_ENDPOINT_URL: http://seaweedfs:8333
+    S3_PUBLIC_ENDPOINT_URL: http://127.0.0.1:28434
+    S3_REGION: us-east-1
+    S3_ACCESS_KEY_ID: app
+    S3_SECRET_ACCESS_KEY: app-secret # betterleaks:allow 전용 스택의 가짜 키
+    S3_BUCKET: app
+    STORAGE_ALLOWED_ORIGINS: http://localhost:3101
+    FILE_MAX_SIZE: "10485760"
+    FILE_ALLOWED_TYPES: image/png,image/jpeg,image/webp,image/gif
+    FILE_USER_QUOTA: "1073741824"
+    JWT_SECRET: admin-e2e-only-jwt-signing-key-at-least-32 # betterleaks:allow 전용 스택의 가짜 키
+    IDENTIFIER_HASH_SECRET: admin-e2e-only-identifier-hash-key-32 # betterleaks:allow 전용 스택의 가짜 키
+    RECENT_LOGIN_SECONDS: "10"
+    SMTP_URL: smtp://mailpit:1025
+    MAIL_FROM: "AI Template <no-reply@example.com>"
+    FRONTEND_URL: http://localhost:3101
+    REALTIME_ALLOWED_ORIGINS: http://localhost:3101
+    API_URL: http://127.0.0.1:18101
+    OAUTH_REDIRECT_URIS: http://localhost:3101/oauth/callback
+    OAUTH_GOOGLE_CLIENT_ID: local-google-client
+    OAUTH_GOOGLE_CLIENT_SECRET: local-google-secret # betterleaks:allow 전용 OAuth의 가짜 키
+    OAUTH_GOOGLE_AUTHORIZE_URL: https://unused-oauth.example.com/google/authorize
+    OAUTH_GOOGLE_TOKEN_URL: https://unused-oauth.example.com/google/token
+    OAUTH_GOOGLE_PROFILE_URL: https://unused-oauth.example.com/google/userinfo
+    OAUTH_KAKAO_CLIENT_ID: local-kakao-client
+    OAUTH_KAKAO_CLIENT_SECRET: local-kakao-secret # betterleaks:allow 전용 OAuth의 가짜 키
+    OAUTH_KAKAO_AUTHORIZE_URL: https://unused-oauth.example.com/kakao/authorize
+    OAUTH_KAKAO_TOKEN_URL: https://unused-oauth.example.com/kakao/token
+    OAUTH_KAKAO_PROFILE_URL: https://unused-oauth.example.com/kakao/userinfo
+    OAUTH_NAVER_CLIENT_ID: local-naver-client
+    OAUTH_NAVER_CLIENT_SECRET: local-naver-secret # betterleaks:allow 전용 OAuth의 가짜 키
+    OAUTH_NAVER_AUTHORIZE_URL: https://unused-oauth.example.com/naver/authorize
+    OAUTH_NAVER_TOKEN_URL: https://unused-oauth.example.com/naver/token
+    OAUTH_NAVER_PROFILE_URL: https://unused-oauth.example.com/naver/userinfo
+    SEED_ADMIN_EMAIL: admin-e2e-admin@example.com
+    SEED_ADMIN_PASSWORD: admin-e2e-only-admin-password # betterleaks:allow 전용 스택의 가짜 비밀번호
+    OTEL_ENABLED: "false"
+    OTEL_SERVICE_NAME: admin-e2e
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4318
+    RATE_LIMIT_GLOBAL: "1000000"
+    RATE_LIMIT_LOGIN_IP: "1000000"
+    RATE_LIMIT_LOGIN_IDENTIFIER: "1000000"
+    RATE_LIMIT_REGISTRATION_IP: "1000000"
+    RATE_LIMIT_MAIL_IP: "1000000"
+    RATE_LIMIT_MAIL_EMAIL: "1000000"
+    RATE_LIMIT_PASSWORD_CHANGE_USER: "1000000"
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app # betterleaks:allow 전용 DB의 가짜 비밀번호
+      POSTGRES_DB: app
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "--username", "app", "--dbname", "app"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  valkey:
+    image: valkey/valkey:9.1.2
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47
+    command: ["mini", "-dir=/data", "-bucket=app"]
+    environment:
+      AWS_ACCESS_KEY_ID: app
+      AWS_SECRET_ACCESS_KEY: app-secret # betterleaks:allow 전용 S3의 가짜 키
+    ports:
+      - "127.0.0.1:28434:8333"
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8333/healthz"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    environment:
+      MP_ENABLE_CHAOS: "false"
+    ports:
+      - "127.0.0.1:28126:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    <<: *app
+    command: ["sh", "-c", "alembic upgrade head && python -m app.seed"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  storage-init:
+    <<: *app
+    command: ["python", "-m", "app.storage_setup"]
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    ports:
+      - "127.0.0.1:18101:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 12
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  scheduler:
+    <<: *app
+    command:
+      [
+        "taskiq",
+        "scheduler",
+        "app.scheduler:create_scheduler",
+        "--no-configure-logging",
+        "--update-interval=10",
+      ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  seaweedfs-data:
