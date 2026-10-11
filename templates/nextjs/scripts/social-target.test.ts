@@ -177,7 +177,7 @@ describe("navikt 부수 채널", () => {
   });
 
   it.each(["missing-state", "duplicate-state", "wrong-callback", "wrong-provider", "wrong-origin"])(
-    "%s인 제공자 시도는 거부하고 폼을 제출하지 않는다",
+    "(%s)인 제공자 시도는 거부하고 폼을 제출하지 않는다",
     async (problem) => {
       const f = await oauthFixture();
       const url = f.providerUrl(problem === "wrong-provider" ? "kakao" : "google");
@@ -200,7 +200,7 @@ it.each([
   "http://localhost:28180/#private-value",
   "http://127.0.0.1:28180?",
   "http://127.0.0.1:28180#",
-])("잘못된 OAuth Origin %s를 값 없이 알린다", (value) => {
+])("잘못된 OAuth Origin (%s)를 값 없이 알린다", (value) => {
   expect(() => appEnvironment("fastapi", { E2E_OAUTH_URL: value })).toThrow("E2E_OAUTH_URL");
   expect(() => appEnvironment("fastapi", { E2E_OAUTH_URL: value })).not.toThrow("private-value");
 });

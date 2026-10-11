@@ -68,15 +68,15 @@
 ## 리소스 더하기
 
 1. 계약(`contract/typespec/src/`)을 고치고 `pnpm gen`한다.
-2. FastAPI 모듈을 읽고 `src/modules/<이름>/`에 같은 단위로 만든다: `model.ts`(행), `service.ts`(규칙, 에러, 감사 로그, 이벤트), `documents.ts`(리소스), `routes.ts`(`api.route("<operationId>", { auth, filters }, handler)`). 예시는 `posts`다.
+2. 계약의 operation과 기존 `src/modules/posts/`를 읽고 `src/modules/<이름>/`에 같은 단위로 만든다: `model.ts`(행), `service.ts`(규칙, 에러, 감사 로그, 이벤트), `documents.ts`(리소스), `routes.ts`(`api.route("<operationId>", { auth, filters }, handler)`). 예시는 `posts`다.
 3. 테이블은 `src/store.ts`, 그 밖의 상태는 `src/state.ts`, 시드는 `src/seed.ts`에 더하고, 라우트는 `src/app.ts`에서 단다.
 4. 다른 모듈과 얽히는 처리(계정 닫기, 파일 읽기 규칙과 참조 확인, 역할 변경)는 등록 지점에 걸고 `src/modules/registry.ts`에서 잇는다.
 5. 알림(`realtime.publish`)과 재검사(`realtime.recheck`)는 그 상태를 바꾼 뒤에 보낸다. 한 처리가 여러 곳을 바꾸며 알리면 `state.realtime.batch`로 전체를 감싸 재검사가 이미 바뀐 상태를 보게 한다(FastAPI의 commit 뒤 발행과 같다. 예: `modules/roles/management.ts`의 `deleteRole`).
-6. `test/`에 단위 테스트를 둔다. 기대값은 FastAPI에 같은 요청을 보내 얻은 응답이다.
+6. `test/`에 계약·규약·위 규칙에 따른 요청·응답과 상태 변경을 검사하는 테스트를 둔다. FastAPI 백엔드가 함께 있는 저장소에서는 같은 적합성 흐름을 목과 FastAPI에 실행해 차이를 확인한다. 단독 프론트에는 FastAPI 소스나 실행 환경이 필요 없다.
 
 ## FastAPI와 다른 점
 
-- `RECENT_LOGIN_SECONDS`로 탈퇴의 재인증 창을 줄일 수 있다. 기본 600초는 FastAPI의 `core/access.py`와 같다. refresh는 로그인 시각을 바꾸지 않으며, 창이 지나면 새 로그인이 필요하다. web 통합 검사는 별도 목에서 2초, E2E는 10초를 쓴다. W4의 FastAPI E2E 대상은 같은 조건을 만드는 방법이 필요하다.
+- `RECENT_LOGIN_SECONDS`로 탈퇴의 재인증 창을 줄일 수 있다. 기본 600초는 FastAPI의 `core/access.py`와 같다. refresh는 로그인 시각을 바꾸지 않으며, 창이 지나면 새 로그인이 필요하다. web 통합 검사는 별도 목에서 2초, E2E는 10초를 쓴다. 외부 FastAPI E2E는 백엔드와 같은 최근 로그인 창을 대상 환경에 명시한다.
 - access token은 JWT가 아닌 불투명한 문자열이다. 만료는 세션 응답의 `accessTokenExpiresAt`, `refreshTokenExpiresAt`으로 본다.
 - 메일은 요청 안에서 바로 보관함에 들어가고(FastAPI는 요청 뒤 잡으로 보낸다) 텍스트 본문만 있다.
 - 비밀번호 해시(scrypt), 소셜 로그인 제공자(가짜 OAuth 서버), 스토리지(메모리 버킷)는 개발용이다. 재시작하면 옛 presigned URL은 맞지 않는다.

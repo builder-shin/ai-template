@@ -24,7 +24,7 @@ describe("RFC 3339", () => {
     ["2026-01-01T00:00:00,5Z", "2026-01-01T00:00:00.500000Z"],
     ["2026-01-01T00:00:00.1234567Z", "2026-01-01T00:00:00.123456Z"],
     ["2024-02-29T23:59:59.999999-23:59", "2024-03-01T23:58:59.999999Z"],
-  ])("%s는 %s다", (raw, expected) => {
+  ])("(%s)는 (%s)다", (raw, expected) => {
     expect(read(raw)).toBe(expected);
   });
 });
@@ -41,7 +41,7 @@ describe("Unix 시각", () => {
     ["20000000001", "1970-08-20T11:33:20.001000Z"],
     // speedate는 실수의 밀리초를 초로 바꾼 뒤 한 번 더 밀리초로 본다.
     ["253402300799999.5", "1978-01-11T21:31:41.798512Z"],
-  ])("%s는 %s다", (raw, expected) => {
+  ])("(%s)는 (%s)다", (raw, expected) => {
     expect(read(raw)).toBe(expected);
   });
 });
@@ -67,7 +67,7 @@ describe("틀린 값", () => {
     // speedate는 i64로 넘친 정수가 양수로 돌아오면 그대로 쓴다.
     ["19833883338632104484", invalid("dates after 9999 are not supported as unix timestamps")],
     ["0000-12-31T23:00:00-01:00", "Input should be a valid datetime, year 0 is out of range"],
-  ])("%j는 %s다", (raw, problem) => {
+  ])("(%j)는 (%s)다", (raw, problem) => {
     expect(read(raw)).toBe(problem);
   });
 });

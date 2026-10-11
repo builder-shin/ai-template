@@ -16,7 +16,7 @@ it.each([
   ["messages/ko.json", '{"page":{"pending":"불러오는 중..."}}'],
   ["messages/shared/en.json", '{"submit":{"pending":"Loading…"}}'],
   ["messages/shared/ko.json", '{"page":{"pending":"불러오는 중..."}}'],
-] as const)("%s의 로딩 문구를 막는다", (path, content) => {
+] as const)("(%s)의 로딩 문구를 막는다", (path, content) => {
   expect(checkHarness({ ...base, [path]: content }, []).join()).toMatch(/로딩 문구/);
 });
 it("aria-label만 접근성 예외로 두고 URL 속성·속성 이름·식별자·주석·테스트·사본은 검사하지 않는다", () => {

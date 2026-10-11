@@ -104,7 +104,7 @@ describe("세션 목록", () => {
     ["?sort=password", "jsonapi.unsupported_sort", "sort"],
     ["?filter%5Bcurrent%5D=true", "jsonapi.invalid_query", "filter[current]"],
     ["?page%5Bsize%5D=101", "jsonapi.invalid_query", "page[size]"],
-  ])("틀린 쿼리 %s는 400이다", async (query, code, parameter) => {
+  ])("틀린 쿼리 (%s)는 400이다", async (query, code, parameter) => {
     const { app, state } = testApp();
     const user = await newUser(app, state);
     const response = await send(app, "GET", `${SESSIONS}${query}`, { token: user.accessToken });
@@ -190,7 +190,7 @@ describe("다른 기기·전체 로그아웃", () => {
   it.each([
     ["others", 2, true],
     ["all", 3, false],
-  ] as const)("scope %s는 살아 있는 세션 %i개를 폐기한다", async (scope, count, currentAlive) => {
+  ] as const)("scope (%s)는 살아 있는 세션 %i개를 폐기한다", async (scope, count, currentAlive) => {
     const clock = testClock();
     const { app, state } = testApp({}, { clock });
     // 만료된 세션은 이미 끝났으므로 폐기하지도 세지도 않는다(GET /sessions에 보이던 세션만 센다).

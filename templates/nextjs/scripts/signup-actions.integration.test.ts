@@ -108,7 +108,7 @@ it("중복 이메일 가입은 이메일 오류로 남는다", async () => {
 });
 
 it.each(["", "invalid", "a".repeat(43)])(
-  "잘못된 인증 토큰 %s는 번역된 실패 안내로 바뀐다",
+  "잘못된 인증 토큰 (%s)는 번역된 실패 안내로 바뀐다",
   async (token) => {
     context.locale = "en";
     const result = await verifyEmailAction({ ok: true }, verification(token));

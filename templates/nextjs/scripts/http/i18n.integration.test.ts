@@ -43,7 +43,7 @@ describe("실제 Next 서버의 로케일 렌더링", () => {
   it.each([
     ["/", "ko", "Web 템플릿"],
     ["/en", "en", "Web template"],
-  ])("%s는 %s HTML과 번역을 렌더링한다", async (path, locale, title) => {
+  ])("(%s)는 %s HTML과 번역을 렌더링한다", async (path, locale, title) => {
     const response = await fetch(`${base}${path}`, { headers: { "Accept-Language": "ko" } });
     expect(response.status).toBe(200);
     const html = await response.text();

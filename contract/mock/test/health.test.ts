@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { testApp } from "./support.ts";
 
 describe("헬스체크", () => {
-  it.each(["/health/live", "/health/ready"])("%s는 200 HealthReport다", async (path) => {
+  it.each(["/health/live", "/health/ready"])("(%s)는 200 HealthReport다", async (path) => {
     const { app } = testApp();
     const response = await app.request(path);
     expect(response.status).toBe(200);

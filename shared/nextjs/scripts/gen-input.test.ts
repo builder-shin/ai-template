@@ -39,7 +39,7 @@ const mock = "// TypeSpec 목 타입\n";
 
 describe("web 생성 입력", () => {
   it.each([{}, { contract: "contract" }])(
-    "선택 키만 있는 설정 %j는 TypeSpec 입력을 쓴다",
+    "선택 키만 있는 설정 (%j)는 TypeSpec 입력을 쓴다",
     async (config) => {
       configure(config);
       expect(readWebOpenapi(root, contract)).toBe(contract);
@@ -124,7 +124,7 @@ describe("web 생성 입력", () => {
   });
 
   it.each(["x-realtime-events", "components.schemas.ErrorCode"])(
-    "%s가 없으면 백엔드에서 선언하도록 안내한다",
+    "(%s)가 없으면 백엔드에서 선언하도록 안내한다",
     async (missing) => {
       const spec = fixture("backend");
       if (missing === "x-realtime-events") Reflect.deleteProperty(spec, missing);
@@ -152,7 +152,7 @@ describe("web 생성 입력", () => {
       { openapi: "C:\\backend.json" },
       { openapi: "/backend.json" },
     ].map((value) => [value]),
-  )("잘못된 설정 %j를 고칠 방법과 함께 거절한다", (value) => {
+  )("잘못된 설정 (%j)를 고칠 방법과 함께 거절한다", (value) => {
     configure(value);
     expect(() => readWebOpenapi(root, contract)).toThrow(/gen\.config\.json.*—.*openapi/);
   });

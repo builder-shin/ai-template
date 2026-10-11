@@ -65,7 +65,7 @@ describe("Next 설정의 환경 검증 시점", () => {
   it.each([
     [PHASE_DEVELOPMENT_SERVER, "development"],
     [PHASE_PRODUCTION_SERVER, "production"],
-  ])("%s는 잘못된 변수마다 한 줄을 출력하고 종료한다", (phase, mode) => {
+  ])("(%s)는 잘못된 변수마다 한 줄을 출력하고 종료한다", (phase, mode) => {
     const result = loadConfig(phase, {
       ...example,
       NODE_ENV: mode,

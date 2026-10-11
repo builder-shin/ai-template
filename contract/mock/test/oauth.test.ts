@@ -65,15 +65,18 @@ describe("계정 연결", () => {
   it.each([
     ["kakao", false],
     ["naver", true],
-  ] as const)("%s의 미검증 이메일로는 이메일 없는 새 계정을 만든다", async (provider, verified) => {
-    const { app, state } = testApp();
-    const existing = newAccount(state);
-    const back = await social(app, provider, randomUUID(), { email: existing.email, verified });
-    const user = await me(app, back);
-    expect(user.id).not.toBe(existing.id);
-    expect(user.email).toBeNull();
-    expect(state.store.users.get(user.id)?.emailVerifiedAt).toBeNull();
-  });
+  ] as const)(
+    "(%s)의 미검증 이메일로는 이메일 없는 새 계정을 만든다",
+    async (provider, verified) => {
+      const { app, state } = testApp();
+      const existing = newAccount(state);
+      const back = await social(app, provider, randomUUID(), { email: existing.email, verified });
+      const user = await me(app, back);
+      expect(user.id).not.toBe(existing.id);
+      expect(user.email).toBeNull();
+      expect(state.store.users.get(user.id)?.emailVerifiedAt).toBeNull();
+    },
+  );
 
   it("구글이 검증했어도 hd(Workspace)가 없는 gmail.com 밖 이메일은 믿지 않는다", async () => {
     const { app, state } = testApp();

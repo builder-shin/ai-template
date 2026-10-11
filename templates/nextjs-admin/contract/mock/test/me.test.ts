@@ -104,7 +104,7 @@ describe("GET /me", () => {
     ["?fields%5Bposts%5D=title", "jsonapi.invalid_query", "fields[posts]"],
     ["?sort=name", "jsonapi.invalid_query", "sort"],
     ["?include=roles&include=avatar", "jsonapi.invalid_query", "include"],
-  ])("틀린 쿼리 %s는 400이다", async (query, code, parameter) => {
+  ])("틀린 쿼리 (%s)는 400이다", async (query, code, parameter) => {
     const { app, state } = testApp();
     const user = await newUser(app, state);
     const response = await send(app, "GET", `${ME}${query}`, { token: user.accessToken });

@@ -50,7 +50,7 @@ describe("standalone 시작 검증", () => {
     ["APP_URL", "ftp://invalid-app.example"],
     ["NEXT_PUBLIC_REALTIME_URL", "invalid-realtime-value"],
     ["TIME_ZONE", "invalid/time-zone"],
-  ])("잘못된 %s를 값과 스택 없이 알리고 종료한다", (key, value) => {
+  ])("잘못된 (%s)를 값과 스택 없이 알리고 종료한다", (key, value) => {
     const result = startup({ [key]: value });
     expect(result.error).toBeUndefined();
     expect(result.status).toBe(1);

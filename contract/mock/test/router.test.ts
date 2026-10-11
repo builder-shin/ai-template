@@ -103,7 +103,7 @@ describe("인증과 권한", () => {
     ["Bearer", ""],
     ["bearer  token ", "token"],
     ["BEARER a b", "a b"],
-  ])("Authorization %s의 토큰은 %s다", (header, token) => {
+  ])("Authorization (%s)의 토큰은 (%s)다", (header, token) => {
     expect(bearerToken(header)).toBe(token);
   });
 

@@ -70,7 +70,7 @@ describe("UUID", () => {
     [" 0199a0b2-8c3e-7abc-8def-0123456789ab", undefined],
     ["{0199a0b28c3e7abc8def0123456789ab}", undefined],
     ["urn:uuid:0199a0b28c3e7abc8def0123456789ab", undefined],
-  ])("Pydantic처럼 %s를 %s로 읽는다", (value, expected) => {
+  ])("Pydantic처럼 (%s)를 (%s)로 읽는다", (value, expected) => {
     expect(parseUuid(value)).toBe(expected);
   });
 
@@ -93,7 +93,7 @@ describe("UUID", () => {
     ["\ufeff199a0b28c3e7abc8def0123456789ab", undefined],
     ["\u00e9199a0b28c3e7abc8def0123456789ab", undefined],
     ["not-a-uuid", undefined],
-  ])("Python의 uuid.UUID()처럼 %j를 %s로 읽는다", (value, expected) => {
+  ])("Python의 uuid.UUID()처럼 (%j)를 (%s)로 읽는다", (value, expected) => {
     expect(parsePythonUuid(value)).toBe(expected);
   });
 });

@@ -182,7 +182,7 @@ describe("감사 로그", () => {
       "2026-13-01T00:00:00Z",
       "Input should be a valid datetime or date, month value is outside expected range of 1-12",
     ],
-  ])("%s=%s는 400 jsonapi.invalid_query다", async (parameter, value, detail) => {
+  ])("%s=(%s)는 400 jsonapi.invalid_query다", async (parameter, value, detail) => {
     const { app, state } = testApp();
     const reader = await userWith(app, state, ["audit-logs:read"]);
     const query = `?${encodeURIComponent(parameter)}=${encodeURIComponent(value)}`;

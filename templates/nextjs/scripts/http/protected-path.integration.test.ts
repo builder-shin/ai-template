@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { base } from "./helpers";
 
 describe("실제 HTTP의 인코딩·점이 있는 보호 경로", () => {
-  it.each(["GET", "POST"])("%s는 proxy에서 로그인으로 보낸다", async (method) => {
+  it.each(["GET", "POST"])("(%s)는 proxy에서 로그인으로 보낸다", async (method) => {
     for (const [path, canonical] of [
       ["/%6d%65", "/me"],
       ["/my%2dposts", "/my-posts"],

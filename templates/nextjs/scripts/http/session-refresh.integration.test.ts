@@ -14,7 +14,7 @@ import {
 
 describe("§13 #3/#4/#5 실제 페이지·헤더·로그아웃 Action", () => {
   it.each(["/", "/en"])(
-    "%s의 같은 렌더링은 거절된 옛 토큰 대신 갱신 토큰으로 헤더를 읽는다",
+    "(%s)의 같은 렌더링은 거절된 옛 토큰 대신 갱신 토큰으로 헤더를 읽는다",
     async (path) => {
       const tokens = await login();
       const { data: sessions } = await mockClient(tokens.accessToken).GET("/sessions");

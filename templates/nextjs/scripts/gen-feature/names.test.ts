@@ -39,6 +39,6 @@ it("이름에 post가 들어 있어도 한 번만 바꾸고 불규칙 단수형�
 });
 
 it.each(["classes", "returns", "defaults", "functions", "imports", "news"])(
-  "%s의 단수형이 예약어면 코드 생성 전에 거절한다",
+  "(%s)의 단수형이 예약어면 코드 생성 전에 거절한다",
   (name) => expect(() => namesFor(name)).toThrow(/예약어/),
 );

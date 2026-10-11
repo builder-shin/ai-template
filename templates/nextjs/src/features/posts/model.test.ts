@@ -55,7 +55,7 @@ it.each([
   ["-createdAt", "latest"],
   ["-publishedAt", "published"],
   ["title", "title"],
-])("페이지 이동에서도 API 정렬 %s를 web 선택 %s로 유지한다", (apiSort, webSort) => {
+])("페이지 이동에서도 API 정렬 (%s)를 web 선택 (%s)로 유지한다", (apiSort, webSort) => {
   expect(postPageHref(`/api/v1/posts?sort=${apiSort}&page%5Bnumber%5D=3&page%5Bsize%5D=10`)).toBe(
     `/posts?sort=${webSort}&page=3&size=10`,
   );

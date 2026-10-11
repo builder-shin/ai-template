@@ -148,7 +148,7 @@ describe("인가 주소와 코드 교환", () => {
   });
 
   it.each(["google", "kakao", "naver"] as const)(
-    "%s의 프로필을 가짜 OAuth 서버에서 읽는다",
+    "(%s)의 프로필을 가짜 OAuth 서버에서 읽는다",
     (provider: OAuthProvider) => {
       const { state, config } = testApp();
       const { verifier } = pkce();

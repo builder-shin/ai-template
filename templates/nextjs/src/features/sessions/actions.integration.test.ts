@@ -73,7 +73,7 @@ it("선택 순번은 서버에 바인딩한 세션 id로 해석하고 폼의 다
   expect((await owner.client.GET("/me")).response.status).toBe(200);
 });
 it.each([undefined, "", "-1", "999", "1.5", "abc"])(
-  "잘못된 선택 순번 %j는 세션을 폐기하지 않고 번역 안내를 반환한다",
+  "잘못된 선택 순번 (%j)는 세션을 폐기하지 않고 번역 안내를 반환한다",
   async (index) => {
     request.locale = "en";
     const second = await owner.login();

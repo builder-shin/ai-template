@@ -20,7 +20,7 @@ describe("415 jsonapi.unsupported_media_type", () => {
     ["application/vnd.api+json; charset=utf-8"],
     ['application/vnd.api+json; ext="https://jsonapi.org/ext/atomic"'],
     ['application/vnd.api+json; profile="https://example.com/p"; foo=bar'],
-  ])("본문을 받는 요청의 Content-Type이 %s이면 415다", async (contentType) => {
+  ])("본문을 받는 요청의 Content-Type이 (%s)이면 415다", async (contentType) => {
     const { app } = echoApp();
     const headers = contentType === undefined ? {} : { "Content-Type": contentType };
     const response = await app.request(ECHO, { method: "POST", body: NOT_JSON, headers });
@@ -98,7 +98,7 @@ describe("406 jsonapi.not_acceptable", () => {
     ['application/vnd.api+json; profile="https://example.com/p"'],
     ["application/vnd.api+json; foo=bar, application/vnd.api+json"],
     ["text/html, */*;q=0.1"],
-  ])("Accept가 %s이면 통과한다", async (accept) => {
+  ])("Accept가 (%s)이면 통과한다", async (accept) => {
     const { app } = echoApp();
     const headers = accept === undefined ? {} : { Accept: accept };
     expect((await app.request(ECHO, { headers })).status).toBe(200);

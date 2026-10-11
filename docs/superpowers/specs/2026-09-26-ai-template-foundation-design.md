@@ -1,9 +1,9 @@
 # AI 바이브코딩 템플릿: 기반 설계
 
 - 작성일: 2026-09-26
-- 상태: 승인됨. 하위 프로젝트 0(기반), 1(FastAPI), 2(Next.js web), 3(create CLI) 구현 완료
+- 상태: 승인됨. 하위 프로젝트 0(기반), 1(FastAPI), 2(Next.js web), 3(create CLI), 4(admin)의 A1·A2 구현·병합 완료. A3는 승인된 SDD로 구현했으며 PR CI·검토·main 병합은 남는다
 - 범위: 하위 프로젝트 0(기반)의 설계와 네 템플릿 전체 로드맵
-- 다음 단계: 하위 프로젝트 4(admin)를 설계한다. 앞선 설계는 [FastAPI 템플릿 설계](2026-09-26-fastapi-template-design.md), [Next.js web 템플릿 설계](2026-09-30-nextjs-web-design.md), [create CLI 설계](2026-10-03-create-cli-design.md)를 참고한다.
+- 다음 단계: A3 PR CI·검토·main 병합 뒤 하위 프로젝트 5(NestJS)를 설계한다. [admin 설계](2026-10-08-nextjs-admin-design.md) §12·§16의 확정 결정과 검증 범위를 따른다. 앞선 설계는 [FastAPI 템플릿 설계](2026-09-26-fastapi-template-design.md), [Next.js web 템플릿 설계](2026-09-30-nextjs-web-design.md), [create CLI 설계](2026-10-03-create-cli-design.md)를 참고한다.
 
 ## 1. 목표
 
@@ -75,7 +75,7 @@ ai-template/
 
 - 저장소를 clone한 뒤 `pnpm new`로 실행한다. 입력, 이름 치환, 잠금 파일과 하네스의 세부 규칙은 [create CLI 설계](2026-10-03-create-cli-design.md)를 따른다.
 - 단독: 템플릿 하나의 git 추적 파일을 대상 폴더 루트에 복사하고 프로젝트 이름을 치환한다.
-- 이번 조합은 FastAPI+web이다. admin과 NestJS 조합은 각 템플릿 사이클에서 더한다.
+- FastAPI에 web·admin 중 하나 이상을 조합한다(`--api fastapi [--web] [--admin]`). admin 단독은 `--template nextjs-admin`이다. NestJS 조합은 해당 템플릿 사이클에서 더한다. admin 확장은 A3에서 구현했으며 PR CI·검토·main 병합은 남는다.
 
 ```
 my-project/
@@ -85,13 +85,17 @@ my-project/
 ├── .claude/                      # 앱 hook 디스패처와 합친 권한
 ├── .github/workflows/ci.yml
 ├── scripts/                      # 조합 명령 실행기
+├── contract/                     # 프론트가 함께 쓰는 TypeSpec·OpenAPI·목
+├── tsconfig.base.json, docs/conventions/  # 루트 계약의 설정·규약
 └── apps/
     ├── api/                      # FastAPI, package.json 래퍼, compose.yaml
-    └── web/                      # Next.js BFF, TypeSpec·목 사본
+    ├── web/                      # --web, Next.js BFF
+    └── admin/                    # --admin, 관리 BFF
 ```
 
 - 루트 compose는 없다. 로컬 인프라는 `apps/api/compose.yaml`이 맡고 compose 프로젝트 이름은 생성한 프로젝트 이름이다. 포트는 템플릿의 고정값을 쓰므로 여러 프로젝트의 동시 실행은 지원하지 않는다.
-- 루트의 명령 어휘는 템플릿과 같다. Turborepo는 api·web만 골라 실행하고 `check`·`test`를 캐시한다. `gen`은 생성물 복원 범위를 검증하기 전까지 캐시하지 않는다.
+- 루트의 명령 어휘는 템플릿과 같다. Turborepo는 api와 선택한 프론트만 골라 실행하고 `check`·`test`를 캐시한다. `gen`은 생성물 복원 범위를 검증하기 전까지 캐시하지 않는다.
+- 프론트 안의 계약 사본은 제거하고 루트 contract 하나를 쓴다. 각 gen.config.json은 openapi=../api/openapi.json, contract=../../contract다. 조합 잠금 파일은 모든 프론트 importer와 패키지 해석을 보존하며 공통 계약·workspace 설정·잠금 해석이 다르면 생성 전에 거절한다.
 - 생성한 뒤에는 백엔드 코드가 진실의 원천이다(code-first). 백엔드 `gen`이 `openapi.json`을 내보내 커밋하고, 프론트 `gen`이 그 파일로 타입과 클라이언트를 다시 만든다. 템플릿 저장소의 계약은 템플릿끼리의 호환을 보장하는 용도로만 쓴다.
 
 ### 3.4 하위 프로젝트 로드맵
@@ -596,7 +600,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 | 1. FastAPI | 모두 정했다. 결정은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §2와 §7에 있다 |
 | 2. web | API 클라이언트 생성기(openapi-fetch 또는 orval)와 JSON:API 역직렬화 헬퍼 설계, 데이터 패칭 패턴(RSC와 Server Actions, 클라이언트 쿼리의 역할 분담), 폼 라이브러리(TanStack Form 또는 React Hook Form), shadcn 기반(Base UI 또는 Radix), Next.js 관리 블록 처리(수용 또는 `agentRules: false`), i18n URL 전략, 목 서버 구현 방식, 단독 프론트에서 계약을 확장하는 방법(TypeSpec 원본 동봉 여부), TS 7 병용, Node 26 전환, 템플릿 안 계약 사본(`openapi.yaml`)을 비밀 스캔에서 빼는 방법 |
 | 3. create CLI | 모두 정했다. 로컬 clone 뒤 `pnpm new`, apps/api·apps/web 조합과 api 소유 인프라, 고정 포트다. 결정은 [create CLI 설계](2026-10-03-create-cli-design.md) §2·§5·§6에 있다 |
-| 4. admin | 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위, 조합에서 web과 admin이 계약·목 패키지(`@ai-template/*`)를 함께 쓰는 방식(같은 이름의 패키지 충돌), admin 포트 3001 |
+| 4. admin      | 승인 설계와 A1·A2는 병합했다. A3는 리소스 다섯 개·FastAPI E2E·단독 admin·루트 계약 조합을 구현했다. 결정과 검증은 [admin 설계](2026-10-08-nextjs-admin-design.md) §12·§16에 있다. Q1–Q4는 사용자 계획 검토에서 확정했고 PR CI·검토·main 병합은 남는다                                                                                                                                                                                                               |
 | 5. NestJS | ORM 최종 확인(Prisma 7), JSON:API DTO와 swagger 스키마 이름을 맞추는 방법, 린터 구성(TS 6 제약 아래 ESLint 또는 oxlint), `e2e:serve` 구현, 조합의 `--api nestjs` |
 | 나중 | 생성한 프로젝트 갱신, npm 배포, 포트 오프셋 |
 

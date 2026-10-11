@@ -148,7 +148,7 @@ describe("역할 만들기", () => {
       "validation.too_long",
       "/data/attributes/description",
     ],
-  ])("%j는 %i %s다", async (document, status, code, pointer) => {
+  ])("(%j)는 %i (%s)다", async (document, status, code, pointer) => {
     const { app, state } = testApp();
     const manager = await userWith(app, state, [...MANAGER]);
     const response = await send(app, "POST", ROLES, { document, token: manager.accessToken });
@@ -226,7 +226,7 @@ describe("역할 고치기", () => {
     ["member", { name: "members" }, 422, "role.system_role_protected"],
     ["admin", { description: "everything" }, 403, "permission.denied"],
     ["member", { permissions: ["posts:create", "users:manage"] }, 403, "permission.denied"],
-  ])("%s 역할을 %j로 고치면 %i %s다", async (name, attributes, status, code) => {
+  ])("%s 역할을 (%j)로 고치면 %i (%s)다", async (name, attributes, status, code) => {
     const { app, state } = testApp();
     const manager = await userWith(app, state, [...MANAGER, "posts:create"]);
     const response = await patch(app, manager, roleId(state, name), attributes);

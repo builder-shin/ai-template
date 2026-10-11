@@ -20,7 +20,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 it.each(["ko", "en"] as const)(
-  "%s의 다음 요청은 실제로 회수된 권한을 다시 확인한다",
+  "(%s)의 다음 요청은 실제로 회수된 권한을 다시 확인한다",
   async (locale) => {
     const { owner, seed, roleId } = await partialAdminFixture(inject("mockBaseUrl"), locale);
     request.value = await sealSession(sessionFromTokens(owner.session, owner.id));

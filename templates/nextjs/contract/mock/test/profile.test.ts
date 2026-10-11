@@ -84,7 +84,7 @@ describe("PATCH /me", () => {
       "resource.not_found",
       AVATAR_POINTER,
     ],
-  ])("%j는 %i %s(%s)다", async (data, status, code, pointer) => {
+  ])("(%j)는 %i %s(%s)다", async (data, status, code, pointer) => {
     const { app, state } = testApp();
     const user = await newUser(app, state);
     const document = meUpdate(user.userId, data);

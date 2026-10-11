@@ -12,6 +12,6 @@ it.each<[string | string[] | undefined, number]>([
   [["2", "abc"], 2],
   ["1.5", 1],
   ["9007199254740992", 1],
-])("세션 페이지 %j를 %i로 해석한다", (input, expected) => {
+])("세션 페이지 (%j)를 %i로 해석한다", (input, expected) => {
   expect(parseSessionsPage(input)).toBe(expected);
 });
