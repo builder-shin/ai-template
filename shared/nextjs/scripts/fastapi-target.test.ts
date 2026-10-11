@@ -126,11 +126,15 @@ function mail(id: string, text: string, created = "2020-01-01T00:00:00Z", to = r
   return { ID: id, Created: created, To: [{ Address: to, Name: "" }], Subject: "메일", Text: text };
 }
 
-async function mailbox(messages: (poll: number) => Mail[], status = 200) {
+async function mailbox(
+  messages: (poll: number) => Mail[],
+  status = 200,
+  { mailTimeoutMs = 1000, responseDelayMs = 0 } = {},
+) {
   const calls: string[] = [];
   let poll = 0;
   let stored: Mail[] = [];
-  const base = await serve((req, res) => {
+  const base = await serve(async (req, res) => {
     calls.push(`${req.method} ${req.url}`);
     if (req.url === undefined) throw new Error("메일 fixture 요청 URL을 확인한다.");
     const url = new URL(req.url, "http://fixture");
@@ -141,6 +145,7 @@ async function mailbox(messages: (poll: number) => Mail[], status = 200) {
         return;
       }
       stored = messages(++poll);
+      if (responseDelayMs) await new Promise((resolve) => setTimeout(resolve, responseDelayMs));
       res.writeHead(status).end(JSON.stringify({ messages: stored, total: stored.length }));
     } else if (url.pathname.startsWith("/api/v1/message/")) {
       const id = url.pathname.split("/").at(-1);
@@ -153,12 +158,22 @@ async function mailbox(messages: (poll: number) => Mail[], status = 200) {
   });
   const target = fastapiTarget(request, env({ E2E_MAILPIT_URL: base }), {
     mailPollMs: 1,
-    mailTimeoutMs: 100,
+    mailTimeoutMs,
   });
   return { target, calls, polls: () => poll };
 }
 
 describe("Mailpit 부수 채널", () => {
+  it("100ms보다 늦게 응답한 정상 메일도 성공 예산 안에서 읽는다", async () => {
+    const correct = `${appOrigin("e2e")}/verify-email?token=delayed`;
+    const fixture = await mailbox(() => [mail("delayed", correct)], 200, {
+      responseDelayMs: 150,
+    });
+    expect(await fixture.target.mailLink(recipient, "verification")).toBe(correct);
+    expect(fixture.polls()).toBe(1);
+    expect(fixture.calls.every((call) => call.startsWith("GET "))).toBe(true);
+  });
+
   it("배달을 폴링하고 수신자·목적·최신 시각에 맞는 실제 URL을 고른다", async () => {
     const correct = `${appOrigin("e2e")}/verify-email?token=new&source=mail`;
     const fixture = await mailbox((poll) =>
@@ -222,7 +237,11 @@ describe("Mailpit 부수 채널", () => {
   });
 
   it("목적 링크가 없거나 토큰이 비면 제한 시간 뒤 실패한다", async () => {
-    const fixture = await mailbox(() => [mail("empty", `${appOrigin("e2e")}/verify-email?token=`)]);
+    const fixture = await mailbox(
+      () => [mail("empty", `${appOrigin("e2e")}/verify-email?token=`)],
+      200,
+      { mailTimeoutMs: 100 },
+    );
     await expect(fixture.target.mailLink(recipient, "verification")).rejects.toThrow("제한 시간");
     expect(fixture.polls()).toBeGreaterThan(1);
   });
