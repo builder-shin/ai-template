@@ -1,0 +1,50 @@
+{
+  "name": "nestjs-prototype",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24.15 <25"
+  },
+  "scripts": {
+    "check": "node scripts/preflight-tmp.mjs scripts/check.ts",
+    "fix": "prettier --write . && eslint --fix .",
+    "build": "nest build -b swc",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "probe:di": "node scripts/preflight-tmp.mjs scripts/di-probe.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.1.2",
+    "@nestjs/core": "12.1.2",
+    "@nestjs/platform-express": "12.1.2",
+    "@nestjs/platform-socket.io": "12.1.2",
+    "@nestjs/websockets": "12.1.2",
+    "express": "5.2.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "socket.io": "4.8.3",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@nestjs/cli": "12.0.8",
+    "@nestjs/testing": "12.1.2",
+    "@swc/cli": "0.8.1",
+    "@swc/core": "1.16.12",
+    "@types/express": "5.0.6",
+    "@types/node": "24.13.6",
+    "@types/supertest": "7.2.1",
+    "eslint": "10.11.0",
+    "eslint-import-resolver-typescript": "3.10.1",
+    "eslint-plugin-boundaries": "7.2.0",
+    "prettier": "3.9.9",
+    "supertest": "7.3.1",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "unplugin-swc": "2.0.0",
+    "vite": "8.3.1",
+    "vitest": "5.0.1"
+  }
+}

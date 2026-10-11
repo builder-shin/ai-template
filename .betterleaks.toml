@@ -14,6 +14,7 @@ filter.matchesAny(attributes["path"], [
   `^templates/nextjs-admin/contract/openapi\.yaml$`,
   `^templates/nextjs-admin/contract/typespec/src/.+\.tsp$`,
   `^templates/[^/]+/openapi\.json$`,
+  `^prototypes/nestjs/openapi\.json$`,
   `^contract/api-style/dist/lint\.mjs$`,
   `^templates/[^/]+/api-style/lint\.mjs$`,
 ])
@@ -26,7 +27,7 @@ useDefault = true
 description = "생성한 프런트엔드 잠금 파일의 @inquirer/password 패키지 이름"
 condition = "AND"
 targetRules = ["generic-password"]
-paths = ['''^templates/nextjs(?:-admin)?/pnpm-lock\.yaml$''']
+paths = ['''^templates/nextjs(?:-admin)?/pnpm-lock\.yaml$''', '''^prototypes/nestjs/pnpm-lock\.yaml$''']
 regexTarget = "line"
 regexes = ['''@inquirer/password''']
 

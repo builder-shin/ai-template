@@ -14,6 +14,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `contract/conformance/`   | 두 백엔드와 목에 똑같이 돌리는 적합성 테스트 틀                                           |
 | `contract/mock/`          | 플랫폼 API를 메모리로 구현한 목 서버(Hono). 단독 web의 개발 백엔드이자 적합성 `mock` 대상 |
 | `templates/`              | 템플릿. 각 폴더는 그대로 복사하면 동작하는 독립 프로젝트다                                |
+| `prototypes/nestjs/`      | 병합하지 않는 NestJS 프로토타입                                                           |
 | `templates/fastapi/`      | FastAPI 백엔드 템플릿                                                                     |
 | `templates/nextjs/`       | Next.js BFF web. 자체 workspace의 계약·목과 인증·글·내 정보·세션·업로드·실시간 기능       |
 | `templates/nextjs-admin/` | Next.js 관리 BFF. 자체 계약·목, 비밀번호 로그인·관리 권한·ko/en·실시간 접근 확인          |
