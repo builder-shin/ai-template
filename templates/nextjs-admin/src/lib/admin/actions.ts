@@ -14,13 +14,18 @@ import { loginDestination } from "../session/redirect";
 import ko from "../../../messages/ko.json";
 import en from "../../../messages/en.json";
 import type { LoginState, LocaleState } from "./state";
+import { safeLoginReturnTo } from "./redirect";
 
 function text(data: FormData, name: string) {
   const value = data.get(name);
   return typeof value === "string" ? value : "";
 }
 
-export async function loginAction(_state: LoginState, data: FormData): Promise<LoginState> {
+export async function loginAction(
+  returnTo: string,
+  _state: LoginState,
+  data: FormData,
+): Promise<LoginState> {
   const locale = await getLocale();
   const email = text(data, "email");
   const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
@@ -61,7 +66,7 @@ export async function loginAction(_state: LoginState, data: FormData): Promise<L
       path: "/",
       sameSite: "lax",
     });
-    target = loginDestination("/", accountLocale);
+    target = loginDestination(safeLoginReturnTo(returnTo), accountLocale);
     issued = undefined;
   } catch (error) {
     // 권한 확인에 실패한 발급 세션도 브라우저에 남기지 않는다.

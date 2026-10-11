@@ -2,8 +2,20 @@ import { admin, member, expect, login, realtime, sessionCookieName, test } from 
 
 test("로그인 뒤 글 목록과 계정 정보·좁은 화면 메뉴를 보여 준다", async ({ page }) => {
   const { account } = await admin();
-  await login(page, account);
-  await expect(page).toHaveURL("/posts");
+  const returnTo = "/posts?filter%5Bstatus%5D=draft&sort=title";
+  await page.goto(returnTo);
+  await expect(page).toHaveURL(`/login?${new URLSearchParams({ returnTo })}`);
+  await page.getByRole("textbox", { name: "이메일", exact: true }).fill(account.email);
+  await page.getByLabel("비밀번호", { exact: true }).fill("wrong"); // betterleaks:allow 사유: 테스트 비밀번호
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "이메일과 비밀번호를 확인하세요.",
+  );
+  await expect(page).toHaveURL(`/login?${new URLSearchParams({ returnTo })}`);
+  await page.getByLabel("비밀번호", { exact: true }).fill(account.password);
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await expect(page).toHaveURL(returnTo);
+  await expect(page.getByRole("combobox", { name: "상태", exact: true })).toContainText("초안");
   await expect(page.getByRole("heading", { name: "글", exact: true })).toBeVisible();
   await expect(page.getByRole("banner").getByText(account.email)).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
