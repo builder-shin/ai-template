@@ -76,7 +76,7 @@ describe("암호화 세션 쿠키", () => {
   });
 
   it.each(["development", "production"] as const)(
-    "%s의 쿠키 플래그와 refresh 수명을 적용한다",
+    "(%s)의 쿠키 플래그와 refresh 수명을 적용한다",
     async (mode) => {
       vi.useFakeTimers({ now: new Date("2030-01-01T00:00:00Z") });
       const cookie = await sessionCookie(session, secret, mode);

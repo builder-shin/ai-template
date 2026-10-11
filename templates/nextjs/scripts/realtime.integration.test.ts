@@ -121,7 +121,7 @@ describe("실시간 Action과 실제 목 Socket.IO", () => {
     }
   });
   it.each(["others", "password"] as const)(
-    "%s는 폐기된 연결만 끊고 현재 쿠키를 유지한다",
+    "(%s)는 폐기된 연결만 끊고 현재 쿠키를 유지한다",
     async (mode) => {
       const other = await owner.login("Other realtime device");
       const currentSocket = await connected({ ticket: await getRealtimeTicket() });

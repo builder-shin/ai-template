@@ -186,7 +186,7 @@ describe("실제 목 제공자를 거치는 OAuth HTTP", () => {
   it.each([
     ["access_denied", "auth.oauth_denied", "ko"],
     ["server_error", "auth.oauth_failed", "en"],
-  ])("제공자의 %s를 번역한 로그인 안내로 바꾼다", async (error, notice, locale) => {
+  ])("제공자의 (%s)를 번역한 로그인 안내로 바꾼다", async (error, notice, locale) => {
     const attempt = await start("google", "/me", locale);
     await failed(
       await callback(await providerCallback(attempt.authorize, "google", error), attempt.cookie),
@@ -264,7 +264,7 @@ describe("실제 목 제공자를 거치는 OAuth HTTP", () => {
     "//evil.example",
     "/en/%252f%252fevil.example",
     "/en/..//evil.example",
-  ])("외부 returnTo %s는 홈으로 바꾼다", async (returnTo) => {
+  ])("외부 returnTo (%s)는 홈으로 바꾼다", async (returnTo) => {
     const attempt = await start("google", returnTo);
     expect(attempt.payload.returnTo).toBe("/");
     const result = await callback(
@@ -301,7 +301,7 @@ describe("실제 목 제공자를 거치는 OAuth HTTP", () => {
   it.each([
     ["/login", "ko", ["Google로 로그인", "카카오로 로그인", "네이버로 로그인"]],
     ["/en/login", "en", ["Continue with Google", "Continue with Kakao", "Continue with Naver"]],
-  ] as const)("%s는 JS 없이 제공자 시작 링크를 렌더링한다", async (path, locale, names) => {
+  ] as const)("(%s)는 JS 없이 제공자 시작 링크를 렌더링한다", async (path, locale, names) => {
     const response = await fetch(`${base}${path}?returnTo=%2Fmy-posts%3Fstatus%3Ddraft`, {
       headers,
     });

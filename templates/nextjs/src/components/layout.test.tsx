@@ -40,39 +40,42 @@ describe("헤더", () => {
     expect(header.getByRole("link", { name: "로그인" }).getAttribute("href")).toBe("/login");
     expect(header.queryByRole("button")).toBeNull();
   });
-  it.each(["마우스", "키보드"])("세션이 있으면 %s로 이름과 로그아웃 메뉴를 연다", async (input) => {
-    const user = userEvent.setup();
-    let logouts = 0;
-    show(
-      <Header
-        user={{ name: "관리자" }}
-        logoutAction={async () => {
-          logouts++;
-        }}
-      />,
-    );
-    expect(screen.queryByRole("link", { name: "로그인" })).toBeNull();
-    const trigger = screen.getByRole("button", { name: "사용자 메뉴: 관리자" });
-    if (input === "마우스") await user.click(trigger);
-    else {
-      trigger.focus();
-      await user.keyboard("{Enter}");
-    }
-    const logout = await screen.findByRole("menuitem", { name: "로그아웃" });
-    expect(logout.getAttribute("aria-disabled")).not.toBe("true");
-    if (input === "마우스") await user.click(logout);
-    else {
-      logout.focus();
-      await user.keyboard("{Enter}");
-    }
-    expect(logouts).toBe(1);
-  });
+  it.each(["마우스", "키보드"])(
+    "세션이 있으면 (%s)로 이름과 로그아웃 메뉴를 연다",
+    async (input) => {
+      const user = userEvent.setup();
+      let logouts = 0;
+      show(
+        <Header
+          user={{ name: "관리자" }}
+          logoutAction={async () => {
+            logouts++;
+          }}
+        />,
+      );
+      expect(screen.queryByRole("link", { name: "로그인" })).toBeNull();
+      const trigger = screen.getByRole("button", { name: "사용자 메뉴: 관리자" });
+      if (input === "마우스") await user.click(trigger);
+      else {
+        trigger.focus();
+        await user.keyboard("{Enter}");
+      }
+      const logout = await screen.findByRole("menuitem", { name: "로그아웃" });
+      expect(logout.getAttribute("aria-disabled")).not.toBe("true");
+      if (input === "마우스") await user.click(logout);
+      else {
+        logout.focus();
+        await user.keyboard("{Enter}");
+      }
+      expect(logouts).toBe(1);
+    },
+  );
   it.each([
     ["ko", "마우스"],
     ["ko", "키보드"],
     ["en", "마우스"],
     ["en", "키보드"],
-  ] as const)("%s 사용자 메뉴의 내 정보를 %s로 활성화한다", async (locale, input) => {
+  ] as const)("%s 사용자 메뉴의 내 정보를 (%s)로 활성화한다", async (locale, input) => {
     const user = userEvent.setup();
     let logouts = 0;
     show(

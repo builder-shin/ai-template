@@ -66,14 +66,14 @@ describe("FastAPI 대상 설정", () => {
   });
 
   it.each(["APP_URL", "API_BASE_URL", "E2E_MAILPIT_URL", "E2E_RECENT_LOGIN_SECONDS"])(
-    "%s가 빠지면 변수 이름을 알린다",
+    "(%s)가 빠지면 변수 이름을 알린다",
     (key) => {
       expect(() => parseFastapiTargetEnv(env({ [key]: undefined }))).toThrow(key);
     },
   );
 
   it.each(["", "0", "-1", "1.5", "NaN", "Infinity", "1e2", "2147484"])(
-    "잘못된 최근 로그인 창 %s를 거절한다",
+    "잘못된 최근 로그인 창 (%s)를 거절한다",
     (value) => {
       expect(() => parseFastapiTargetEnv(env({ E2E_RECENT_LOGIN_SECONDS: value }))).toThrow(
         "E2E_RECENT_LOGIN_SECONDS",
@@ -96,7 +96,7 @@ describe("FastAPI 대상 설정", () => {
     ["API_BASE_URL", "http://127.0.0.1:18100/api/v1#"],
     ["E2E_MAILPIT_URL", "http://127.0.0.1:28125?"],
     ["E2E_MAILPIT_URL", "http://127.0.0.1:28125#"],
-  ])("%s의 잘못된 주소를 값 없이 알린다", (key, value) => {
+  ])("(%s)의 잘못된 주소를 값 없이 알린다", (key, value) => {
     if (key === undefined || value === undefined) throw new Error("URL 검사 입력을 확인한다.");
     const parse = () => parseFastapiTargetEnv(env({ [key]: value }));
     expect(parse).toThrow(key);

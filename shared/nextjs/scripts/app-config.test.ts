@@ -19,13 +19,13 @@ describe("앱 설정", () => {
     expect(appConfig).toEqual(config);
   });
   it.each(["", "Web", "admin_app", "-admin", "admin--app", "admin-", 1])(
-    "잘못된 앱 이름 %j를 거절한다",
+    "잘못된 앱 이름 (%j)를 거절한다",
     (app) => {
       expect(() => parseAppConfig({ app, ports })).toThrow(/app\.config\.json.*—.*kebab-case/);
     },
   );
   it.each([1023, 65536, 3000.5, "3000", null, 4010])(
-    "잘못되거나 중복된 포트 %j를 거절한다",
+    "잘못되거나 중복된 포트 (%j)를 거절한다",
     (dev) => {
       expect(() => parseAppConfig({ app: "web", ports: { ...ports, dev } })).toThrow(
         /app\.config\.json.*—.*1024.*65535.*서로 다른/,
@@ -33,7 +33,7 @@ describe("앱 설정", () => {
     },
   );
   it.each([null, [], {}, { app: "web" }, { app: "web", ports: {} }])(
-    "불완전한 설정 %j를 거절한다",
+    "불완전한 설정 (%j)를 거절한다",
     (value) => {
       expect(() => parseAppConfig(value)).toThrow(/app\.config\.json.*—/);
     },

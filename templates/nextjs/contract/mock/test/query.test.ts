@@ -106,7 +106,7 @@ describe("컬렉션 쿼리", () => {
     ["?filter%5Bstatus%5D=gone", "jsonapi.invalid_query", "filter[status]"],
     ["?filter%5Bnope%5D=x&filter%5Bstatus%5D=gone", "jsonapi.invalid_query", "filter[status]"],
     ["?sort=name&sort=email", "jsonapi.invalid_query", "sort"],
-  ])("%s는 400 %s(parameter %s)다", async (query, code, parameter) => {
+  ])("(%s)는 400 %s(parameter %s)다", async (query, code, parameter) => {
     expect(await problemOf(query)).toEqual([code, parameter]);
   });
 

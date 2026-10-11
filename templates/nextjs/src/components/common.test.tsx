@@ -38,7 +38,7 @@ describe("로케일 전환", () => {
     ["ko", "/me", "page=2&tag=a&tag=b", "/en/me?page=2&tag=a&tag=b"],
     // 기본 언어 전환은 /ko에서 쿠키를 갱신한 뒤 proxy가 접두사를 지운다.
     ["en", "/en/me", "page=2", "/ko/me?page=2"],
-  ] as const)("%s에서 경로·쿼리를 유지한다", (locale, pathname, query, target) => {
+  ] as const)("(%s)에서 경로·쿼리를 유지한다", (locale, pathname, query, target) => {
     navigation.pathname = pathname;
     navigation.query = query;
     show(<LocaleSwitcher />, locale);

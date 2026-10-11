@@ -132,7 +132,7 @@ describe("값을 파싱하는 문자열(길이 제약, 선택지)", () => {
       { filename: "a\ud800.png", contentType: "image/png", size: 1 },
       "/data/attributes/filename",
     ],
-  ])("%s도 같다", async (_label, schema, type, attributes, pointer) => {
+  ])("(%s)도 같다", async (_label, schema, type, attributes, pointer) => {
     expect(await errorsOf(await send(schema, create(type, attributes)), 422)).toEqual([
       unreadable(pointer),
     ]);

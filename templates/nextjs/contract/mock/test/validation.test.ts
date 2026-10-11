@@ -135,7 +135,7 @@ describe("본문 읽기", () => {
     ["깨진 JSON", '{"data": ', structure(undefined, "Request body is not valid JSON.")],
     ["배열", "[]", structure("", DICT)],
     ["문자열", '"x"', structure("", DICT)],
-  ])("%s는 400 jsonapi.invalid_document다", async (_label, body, error) => {
+  ])("(%s)는 400 jsonapi.invalid_document다", async (_label, body, error) => {
     expect(await rejected("RegistrationCreateDocument", body, 400)).toEqual([error]);
   });
 

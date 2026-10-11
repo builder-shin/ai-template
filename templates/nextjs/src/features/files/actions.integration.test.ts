@@ -97,7 +97,7 @@ it("폐기된 세션은 업로드 화면으로 돌아오는 로그인 경로로 
 it.each([
   ["create", "1"],
   ["ready", "2"],
-] as const)("%s의 실제 저한도 429는 Retry-After를 보존한다", async (stage, limit) => {
+] as const)("(%s)의 실제 저한도 429는 Retry-After를 보존한다", async (stage, limit) => {
   const mock = await startMock({ env: { RATE_LIMIT_GLOBAL: limit } });
   try {
     const limited = await loginSeedAccount({

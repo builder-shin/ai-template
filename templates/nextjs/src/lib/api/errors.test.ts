@@ -9,7 +9,7 @@ describe("API 에러와 폼 결과", () => {
     ["malformed", traceId],
     ["ABCDEF1234567890ABCDEF1234567890", traceId],
     ["abcdef1234567890abcdef1234567890", "abcdef1234567890abcdef1234567890"],
-  ])("응답 trace %s는 0이 아닌 소문자 16진수만 사용한다", async (responseTrace, expected) => {
+  ])("응답 trace (%s)는 0이 아닌 소문자 16진수만 사용한다", async (responseTrace, expected) => {
     const error = await ApiError.fromResponse(
       new Response(JSON.stringify({ meta: { traceId: responseTrace } }), { status: 500 }),
       traceId,
@@ -52,7 +52,7 @@ describe("API 에러와 폼 결과", () => {
     "/data/attributes/",
     "/data/attributes/missing",
     "/data/attributes/bad~2key",
-  ])("입력칸과 짝이 없는 pointer %s는 폼 에러다", (pointer) => {
+  ])("입력칸과 짝이 없는 pointer (%s)는 폼 에러다", (pointer) => {
     const error = new ApiError({
       status: 422,
       traceId,
@@ -162,7 +162,7 @@ describe("API 에러와 폼 결과", () => {
     [403, "permission.denied", "forbidden"],
     [404, "resource.not_found", "not-found"],
     [500, "internal.unexpected", "unexpected"],
-  ] as const)("%s는 %s를 %s 안내로 분류한다", (status, code, kind) => {
+  ] as const)("(%s)는 (%s)를 %s 안내로 분류한다", (status, code, kind) => {
     expect(
       mapApiError(new ApiError({ status, traceId, errors: [{ code, params: {} }] })).kind,
     ).toBe(kind);
@@ -176,7 +176,7 @@ describe("API 에러와 폼 결과", () => {
     [null, null],
     ["Thu, 01 Jan 2026 00:00:10 GMT", 10],
     ["Wed, 31 Dec 2025 23:59:59 GMT", 0],
-  ])("429 Retry-After %s를 초로 바꾼다", async (header, expected) => {
+  ])("429 Retry-After (%s)를 초로 바꾼다", async (header, expected) => {
     const response = new Response("{}", {
       status: 429,
       headers: header === null ? {} : { "Retry-After": String(header) },

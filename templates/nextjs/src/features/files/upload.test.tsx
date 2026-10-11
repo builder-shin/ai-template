@@ -44,7 +44,7 @@ function show(locale: "ko" | "en" = "ko") {
     </NextIntlClientProvider>,
   );
 }
-it.each(["ko", "en"] as const)("%s의 JS 안내·현재 파일 값과 해제", async (locale) => {
+it.each(["ko", "en"] as const)("(%s)의 JS 안내·현재 파일 값과 해제", async (locale) => {
   show(locale);
   expect(
     screen.getByText(
@@ -186,7 +186,7 @@ it.each([
   ["en", "create"],
   ["ko", "ready"],
   ["en", "ready"],
-] as const)("%s의 %s 한도 오류는 대기 시간을 안내한다", async (locale, stage) => {
+] as const)("(%s)의 %s 한도 오류는 대기 시간을 안내한다", async (locale, stage) => {
   show(locale);
   const failure = {
     ok: false as const,

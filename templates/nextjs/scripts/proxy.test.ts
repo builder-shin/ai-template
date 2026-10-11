@@ -28,7 +28,7 @@ describe("로케일 proxy 단위 테스트", () => {
     ["/", "ko-KR,ko;q=0.9", "ko"],
     ["/en", "en-US,en;q=0.9", "en"],
   ])(
-    "첫 방문 %s에서 언어 헤더와 로케일이 일치하면 쿠키를 쓰지 않는다",
+    "첫 방문 (%s)에서 언어 헤더와 로케일이 일치하면 쿠키를 쓰지 않는다",
     async (path, language, locale) => {
       const result = await route(path!, { "Accept-Language": language! });
       expect(result.headers.get("x-middleware-request-x-next-intl-locale")).toBe(locale);

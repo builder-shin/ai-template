@@ -6,13 +6,13 @@
   - 이 문서는 기반 설계 §10에서 사이클 4로 미룬 결정을 내린다: 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위, 조합에서 web과 admin이 계약·목 패키지를 함께 쓰는 방식, admin 포트.
   - 동작 기준은 [Next.js web 설계](2026-09-30-nextjs-web-design.md), [create CLI 설계](2026-10-03-create-cli-design.md), [FastAPI 설계](2026-09-26-fastapi-template-design.md)다.
 - 구현 계획: 마일스톤(§11)마다 `docs/superpowers/plans/`에 쓴다.
-- 현재 단계: A2 구현, PR CI·병합 뒤 A3
+- 현재 단계: A1·A2 구현·병합 완료(main `e48f6e5`). A3는 기능 브랜치에서 구현·검증한 프로토타입이며 계획 승인·SDD·main 병합 전이다(§16).
 
 ## 1. 목표와 범위
 
 ### 1.1 산출물
 
-A2 제품 등록은 글 하나이며 나머지 리소스·FastAPI E2E·create CLI 확장은 A3다.
+A2는 글 골든까지 병합했다. A3 프로토타입은 리소스 다섯 개·FastAPI E2E·create CLI 확장을 구현했으며 검증과 남은 승인 절차는 §16에 적는다.
 
 1. `shared/nextjs/`: web과 admin이 같이 쓰는 코드의 원본. `pnpm sync`가 두 템플릿에 같은 바이트로 복사한다(§3).
 2. 계약 위치 설정: 템플릿이 목 서버와 TypeSpec의 위치를 `gen.config.json`에서 읽는다. 조합은 루트 `contract/` 하나를 공유한다(§3.5, §9).
@@ -341,7 +341,7 @@ export default defineResource({
 | --- | --- | --- | --- |
 | 글 | A2(골든) | `posts:manage` | 목록(검색·상태·작성자 필터, `createdAt`·`publishedAt`·`title` 정렬, 작성자·표지 이미지 include), 상세, 발행·발행 취소, 삭제, 실시간 `posts:all` |
 | 사용자 | A3 | `users:read`, 수정은 `users:manage` | 목록(검색·상태·역할 필터), 상세, 수정(상태, 역할 다중 선택) |
-| 역할 | A3 | `roles:read`, 쓰기는 `roles:manage` | 목록(검색), 상세, 생성·수정(이름, 권한 선택기), 삭제. 시스템 역할은 삭제 버튼을 감추고 백엔드 거부도 번역한다 |
+| 역할      | A3       | `roles:read`, 쓰기는 `roles:manage` | 목록(검색), 상세, 생성·수정(이름, 선택 사항인 설명 textarea, 권한 선택기), 삭제. 시스템 역할은 삭제 버튼을 감추고 백엔드 거부도 번역한다        |
 | 권한 | A3 | `roles:read` | 읽기 전용 목록 |
 | 감사 로그 | A3 | `audit-logs:read` | 읽기 전용 목록(행위자·행위·대상 종류·기간 필터), 상세 |
 
@@ -487,7 +487,7 @@ Docker가 필요한 확인은 PR CI에서만 한다(AD16).
 | --- | --- | --- |
 | A1 공유 원본 | §3, §10의 A1 | 루트 check(사본 검사 포함), web check·build·목 E2E 20개, PR CI(web FastAPI E2E 포함) |
 | A2 admin 뼈대 | 인증·레이아웃·리소스 프레임워크·글(골든)·생성기·하네스·목 E2E | admin check·build·목 E2E, 루트 check, PR CI `nextjs-admin` |
-| A3 나머지 | 사용자·역할·권한·감사 로그, FastAPI E2E, create CLI, 문서 | admin 목 E2E 전체, PR CI(`nextjs-admin-e2e-fastapi`, `create-combo`, `create-standalone` 포함) |
+| A3 나머지     | 사용자·역할·권한·감사 로그, FastAPI E2E, create CLI, 문서의 프로토타입 | 기능 브랜치에서 admin 목 E2E 18개와 전체 PR CI를 검증(§16). 계획 사용자 승인 → SDD·리뷰 → 최종 PR CI → main 병합은 남는다 |
 
 마일스톤마다 프로토타입 → 계획 → SDD → PR CI → 병합을 거친다(AD1).
 
@@ -514,6 +514,28 @@ Docker가 필요한 확인은 PR CI에서만 한다(AD16).
 | 8 실시간 출처 | 목 기본값에 `http://localhost:3001`을 추가해 web 3000과 함께 허용한다. admin E2E는 3101, web E2E는 3100을 명시한다. FastAPI 기본값 변경과 admin FastAPI 실행기는 A3다. 글 목록·상세는 posts:all을 구독하고 첫 이벤트부터 1초의 고정 창으로 갱신을 묶는다. 상세는 자신의 레코드 이벤트만 반영하며 숨은 탭은 다시 보일 때 한 번 갱신한다. 채널·레코드 변경·unmount 때 예약과 보류를 취소한다. 성공한 subscribe ACK 뒤 다른 세션의 생성·수정이 목록·상세에 반영되는지 확인한다. |
 | 9 로케일 쿠키 | NEXT_LOCALE을 유지한다. 운영은 서로 다른 host의 host-only 쿠키라 공유하지 않고 localhost에서는 같은 사용자의 계정 locale 동기화가 선택을 맞춘다. 이름을 바꿔 기존 web 동작을 바꾸지 않는다. 세션 쿠키는 별도로 app 이름에서 계산한다. |
 
+### A3 프로토타입에서 확인한 결정 (2026-10-11)
+
+이 표는 검증한 프로토타입의 선택이다. Q1~Q3는 코디네이터의 잠정 결정이며 사용자 계획 검토에서 확정한다. 승인 설계와 A1·A2의 병합 상태를 바꾸거나 A3의 SDD·main 통합 완료를 뜻하지 않는다.
+
+| 항목               | 결정과 근거                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 6 잠금 파일·계약   | 각 프론트 importer `.`만 `apps/<앱>`으로 옮기고 `contract/*`는 루트에 유지한다. 계약 추적 경로·바이트·실행 권한, 계약 importer, 같은 package·snapshot 키, pnpm 도구 설치 문서는 같아야 한다. 고유 키는 합집합으로 합치고 충돌하면 섹션·키와 수정 방법을 알린다. lockfile-only 뒤 모든 프론트의 importer·resolution·snapshot 보존을 검사한다. `minimumReleaseAge`·`allowBuilds`·`overrides`도 같아야 하며 저장소 check가 양쪽 값과 수정 방법을 알린다.                                                                                  |
+| 7 E2E 계정         | 목은 테스트 메일 통로, FastAPI는 가입 → Mailpit 링크 → API 인증으로 새 회원을 만든다. admin의 대상 환경은 `E2E_SEED_ADMIN_EMAIL`·`E2E_SEED_ADMIN_PASSWORD`를 필수로 받고 누락·빈 값은 기동 전에 변수 이름만 알린다. 시드는 API 역할 준비만 맡고 브라우저 주체가 아니다. `e2e:serve`는 백엔드 설정의 두 값을 자식 환경에 전달한다. 메일 링크 Origin·FRONTEND_URL은 admin의 APP_URL과 같아야 한다.                                                                                                                                       |
+| 8 실시간 출처      | 목과 FastAPI 기본값은 web 3000·admin 3001이다. web E2E 3100·admin E2E 3101은 각각 명시하며 저장소 FastAPI 적합성 대상의 기존 3000 설정은 유지한다. 화면마다 새 subscribe ACK를 기다린 뒤 다른 세션에서 변경한다.                                                                                                                                                                                                                                                                                                                       |
+| 관계·폼            | `RelationshipTarget`·`TargetAttributeKey`·`WriteRelationshipKind`로 대상·라벨·쓰기 카디널리티를 검사한다. 목록 없는 files는 단건 attributes의 filename을 라벨로 쓰며 id는 라벨 속성이 아니다. 기본 선택기는 대상 목록이 필요하다. 관계·enum 입력만 옵션을 받고 관계 현재값은 단건 included로 보충한다. 옵션 403은 해당 입력만 비활성화하며 다른 입력·저장을 유지한다. 폼의 빈 단일 관계는 `resource.none`(선택 안 함/None), 필터는 `resource.all`이다. 상세 없는 선언은 저장·취소 뒤 목록으로 간다.                                    |
+| 로그인 복귀        | 앱 소유 `safeLoginReturnTo`가 공유 `safeReturnTo` 위에서 로그인·세션 정리 경로를 거절한다. 경로·쿼리·hash는 유지하며 성공은 계정 로케일을 따른다. 외부·모호한 인코딩·중복 값은 홈으로 간다. 페이지와 Action이 모두 검사하며 실패·회원 거절·permalink도 returnTo를 유지한다. 로그아웃 E2E는 로그인 URL 도착을 기다린 뒤 다음 이동을 시작한다.                                                                                                                                                                                           |
+| 사용자             | 목록은 name·email·status·roles·createdAt, 상세는 locale·emailVerifiedAt·updatedAt도 포함한다. avatar는 제외한다. `filter[role]`은 자체 roles/name/search 관계 선언이고 `fields.role`은 만들지 않는다. 표시·필터 values는 active·deactivated·deleted, inputValues는 앞의 둘이다. 탈퇴 수정은 숨기고 최신 상태 충돌은 409, 자기 자신·상위 권한 거절은 API 403이다. 이름 없음은 `layout.unnamedUser`(사용자/User), include 없음은 id 대체다.                                                                                              |
+| 역할·권한          | `enum-many`는 문자열 속성 배열이며 같은 name의 FormData 여러 값, 빈 선택의 존재 표식, 미제출 생략을 구분한다. `loadValues(client)`는 서버 권한 목록과 선언 values의 교집합을 준다. PermissionPicker는 코드 접두사별 체크박스와 카탈로그 라벨이다. 시스템 역할 삭제는 숨기고 직접 Action도 최신 상태로 409를 반환한다. 시스템 변경의 API 422·중복 이름 pointer·권한 범위 403을 번역한다. 권한은 id·group·description의 목록만 둔다. id 표시만 확장하고 쓰기·관계 라벨·정렬 타입은 유지한다.                                             |
+| Q3 설명(스펙 추가) | 역할 생성·수정에 계약의 선택 사항인 description textarea를 포함했다. 기존 §6의 이름·권한 선택기에 더한 프로토타입 선택이며 사용자 계획 검토에서 확정한다.                                                                                                                                                                                                                                                                                                                                                                              |
+| 감사 로그          | actor include, 행위 13개·대상 종류·기간 필터, 기본 -createdAt이다. metadata는 리소스 표시 override의 키·값 목록이고 targetId는 `DisplayProps.linkable(type)`으로 등록 상세·현재 권한을 확인한다. actor는 공개 이름만 쓴다. users:read가 없으면 actor 옵션의 403은 그 필터만 막는다. 종료 날짜는 포함하며 배타적인 createdTo에 TIME_ZONE의 다음 날 0시를 보낸다. ISO 입력의 종료 경계만 직전 시각의 날짜로 되돌린다. 23·25시간 날짜도 검사했다.                                                                                         |
+| 등록·초안 검토     | 메뉴는 posts → users → roles → permissions → audit-logs다. 사용자 초안은 avatar 제거·role 관계 필터·입력 상태 제한·탈퇴 조건을 더했고, 역할은 textarea·enum-many·서버 옵션·선택기·시스템 삭제 조건을 더했다. 권한은 id 열과 목록만 남겼다. 감사 로그는 열·순서·기본 정렬·두 표시 override를 정했다. 생성 초안 strict 컴파일과 제품 다섯 개의 ko/en 누락 없음은 별도로 검사한다.                                                                                                                                                        |
+| 실행기·빌드 진단   | 기존 web 실행기를 앱 설정으로 넓혔다. admin은 compose `ai-template-admin-e2e-<ID>`·이미지 `ai-template-admin-e2e-fastapi:<ID>`·ADMIN_E2E_RUN_ID와 새 볼륨만 쓴다. 앱 3101·API 18101·S3 28434·Mailpit 28126이며 OAuth 서비스는 생략한다. smoke는 API·시드 글·Mailpit·가입 메일 Origin·스토리지 preflight다. 공유 운영 빌드는 성공 때 조용히, 실패·신호 종료 때 두 출력 스트림을 stderr로 전달하고 close까지 기다린다.                                                                                                                                                  |
+| CLI·하네스         | 단독 nextjs-admin, FastAPI와 web·admin 중 하나 이상을 지원한다. 조합의 fastapi·api·web·admin 이름은 오류 2다. 계약은 루트 하나, 각 gen 설정은 api OpenAPI와 ../../contract다. 루트 tsconfig.base·규약과 기존 프론트 테스트 도구 pin도 계약을 지원한다. CLI는 선택한 프론트 목록으로 package·turbo·CI를 쓰고 실행기·dispatcher는 실제 apps 배치를 읽는다. 루트 contract 변경은 모든 프론트 Stop과 루트 검사에 보낸다. 루트 계약 생성물을 보호하고 Betterleaks의 계약 예외도 루트에 한정한다. 같은 이름 MCP는 같은 설정만 하나로 합친다. |
+| 조합 순서·이미지   | 실제 E2E는 api → admin → web, 생성 시 gen은 web → admin이다. 각 gen은 api#gen 뒤이며 cache=false다. 두 gen의 루트 OpenAPI·목 타입 출력은 같은 바이트였다. admin 이미지는 루트 문맥·standalone workspace·UID 10001·3001을 쓰며 healthcheck는 200 또는 303이다. CI container GET /는 로그인 이동을 따라 최종 200을 요구한다.                                                                                                                                                                                                             |
+| Q2 단일 프론트 CI  | web만·admin만 있는 조합은 생성·루트 Node 테스트·Turbo check dry-run을 CI에 더했다. 전체 setup·실제 백엔드 E2E·이미지는 두 프론트 조합에서 확인한다. 잠정 범위이며 사용자 계획 검토에서 확정한다.                                                                                                                                                                                                                                                                                                                                       |
+| Q1 공유 IP 예산    | A3 범위 밖으로 두고 두 프론트 아키텍처에 한계를 한 줄 적었다. 클라이언트 주소 전달 배포 전에는 API의 IP별 한도를 모든 사용자가 함께 쓴다. 범위 선택은 사용자 계획 검토에서 확정한다.                                                                                                                                                                                                                                                                                                                                                   |
+
 ## 13. 미룬 결정
 
 기반 설계 §10의 admin 행은 이 문서로 정한다. 남는 것은 다음이다.
@@ -539,7 +561,7 @@ Docker가 필요한 확인은 PR CI에서만 한다(AD16).
 
 ## 15. A2 구현 기록 (2026-10-08)
 
-A1 머리에서 SDD 아홉 태스크와 리뷰 수정을 순서대로 구현했다. 독립 admin의 공통 사본은 덮어 놓기 대상에 등록하고 원본 수정 뒤 동기화로 맞췄다. 현재 제품 등록은 posts 하나다.
+A1 머리에서 SDD 아홉 태스크와 리뷰 수정을 순서대로 구현했다. 독립 admin의 공통 사본은 덮어 놓기 대상에 등록하고 원본 수정 뒤 동기화로 맞췄다. A2 당시 제품 등록은 posts 하나였다.
 
 | 태스크 | 구현 |
 | --- | --- |
@@ -575,8 +597,35 @@ SDD 리뷰에서 바꾼 내용은 다음과 같다.
 - 실시간 갱신은 1초 고정 창이며 상세는 자기 레코드만, 숨은 탭은 복귀 때 한 번 갱신한다.
 - 로그인 뒤 복귀 경로 보존은 A3로 남긴다. 쿼리 키: `returnTo`.
 - 실시간 provider의 key는 세션 id를 유지한다. 컴포넌트: `RealtimeProvider`.
-- 최종 수정 묶음(Ruling 20): 옵션 밖 URL 관계 값은 `included` 라벨 또는 id로 보충해 검색 뒤에도 보존한다. 폼과 같은 보충 helper를 쓴다. 동작 UI는 안정 키로 묶고 관계 검색은 Enter도 받으며 URL에서 API용 `include`를 뺀다. 골든 오류 문구·직접 호출 충돌 검사, 활성 린트 테스트만 임시 폴더 생성, `Permission` 내보내기를 고정했다. 목 적합성 흐름·admin 스택·생성기 include·E2E 문서와 이 계획의 우선순위 안내도 맞췄다.
+- 최종 수정 묶음(Ruling 20): 옵션 밖 URL 관계 값은 `included` 라벨 또는 id로 보충해 검색 뒤에도 보존한다. 폼과 같은 보충 helper를 쓴다. 동작 UI는 안정 키로 묶고 관계 검색은 Enter도 받으며 URL에서 API용 `include`를 뺀다. 골든 오류 문구·직접 호출 충돌 검사, 활성 린트 테스트만 임시 폴더 생성, `Permission` 내보내기를 고정했다. 목 적합성 흐름·admin 스택·생성기 include·E2E 문서와 A2 구현 계획의 우선순위 안내도 맞췄다.
 
 Base UI 팝업의 열림은 findByRole, 닫힘은 waitFor로 기다린다. 번역 테스트는 intlFixture로 환경 스키마의 TIME_ZONE을 고정한다. Next 스트리밍 404는 응답 시작 뒤 HTTP 200일 수 있어 화면과 head의 noindex를 함께 확인했다. 빠른 메뉴 이동에서 Next의 `The destination stream closed early` 진단을 관찰했으며 UI/API assertion 통과와 별도로 기록했다. 원인은 확정하지 않았다.
 
-A2는 PR CI의 check·fastapi·nextjs·nextjs-admin·nextjs-e2e-fastapi·conformance-fastapi·conformance-mock·create-combo·create-standalone 아홉 작업과 검토·병합을 남긴다. 사용자·역할·권한·감사 로그의 제품 등록, admin FastAPI E2E와 가입·Mailpit 준비, create CLI의 admin 지원은 A3다.
+A2는 아홉 PR CI 작업과 검토를 거쳐 main `e48f6e5`까지 병합했다. 사용자·역할·권한·감사 로그의 제품 등록, admin FastAPI E2E와 가입·Mailpit 준비, create CLI 확장은 아래 A3 프로토타입 기록으로 이어진다.
+
+## 16. A3 구현 기록 (2026-10-11, 프로토타입)
+
+A1·A2가 병합된 main `e48f6e5`에서 기능 브랜치의 프로토타입을 순차 구현했다. 이 기록은 계획을 작성·검토할 근거이며 A3의 계획 승인·SDD·main 병합 기록이 아니다. 기존 설계는 승인 상태이고 Q1~Q3의 잠정 선택은 §12에서 구분했다.
+
+| 구현 단계      | 구현과 후속 수정                                                                                                                                                                                                                                                                                                      |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 관계·폼      | 계약 대상·라벨·카디널리티 음성 타입 검사, files/filename 초안, 입력별 옵션·403·빈 선택, included 현재값, 상세 없는 이동, 화면 테스트 분할                                                                                                                                                                             |
+| 2 인증·오류    | returnTo와 앱 로그인 경로 차단, 실제 proxy·갱신·쿠키 검사, RequestNotice 재전파, main#main 접근성. 후속 수정은 폐기 쿠키의 로그인 복귀 루프와 로그아웃 E2E 이동 경합을 함께 고정                                                                                                                                      |
+| 3 사용자       | 사용자 제품 선언·권한·상태·역할 필터와 수정, inputValues·관계 필터 객체·이름 없음 표시, 사용자 E2E 두 개                                                                                                                                                                                                              |
+| 4 역할·권한    | enum-many·loadValues·권한 선택기·id 표시, 선택 설명 textarea, 시스템 보호·필드 오류, E2E 네 개. 검색 결과가 바뀌어도 선택 항목 인덱스를 유지해 Enter 포커스 회귀를 수정                                                                                                                                               |
+| 5 감사 로그    | 읽기 전용 선언·두 표시 override·권한별 링크·actor 403, 포함 종료 날짜·ISO 역변환·DST, 감사 E2E 한 개와 전체 등록·문구 검사                                                                                                                                                                                            |
+| 6 FastAPI E2E  | admin 대상 계정·시드 환경, 공통 실행기의 앱 설정·전용 스택·포트·OAuth 생략·smoke, FastAPI realtime 기본값·e2e:serve 시드 전달, 공유 실패 빌드 출력                                                                                                                                                                    |
+| 7 루트 계약    | 조합 contract·support 설정·규약 이동, importer·권한·Betterleaks·Stop snapshot·Turbo·이미지 입력. 복구 후 외부 계약 fixture의 상대 경로 필터, POSIX 실행 권한과 macOS 임시 경로 정규화를 실제 실패 근거로 보강. 원래 구현 커밋 `f140fe7`과 후속 `fad02de`를 별도 보존                                                  |
+| 8 단독·앱 목록 | standalone admin, 목록 기반 작성·배치 기반 실행, 범용 E2E·MCP 병합·없는 앱의 Turbo/CI 제거. CI 후속 `103ac61`은 web upload retry 검사의 완료 조건만 수정: new-id·이전 alert 없음·spinner 없음·파일 입력과 저장 활성화를 같은 waitFor에서 기다린다. Transition 중간 commit을 완료로 오인한 검사였으며 제품 코드는 유지 |
+| 9 admin 조합   | --admin·예약 이름, 계약/잠금/workspace 동등성·해석 보존, admin Dockerfile·CI 이미지와 컨테이너. 실제 생성에서 발견한 admin platform fixture의 contract/openapi.yaml 고정을 gen.config-aware 입력으로 바꾸고 apps/admin + 루트 계약 + api OpenAPI 회귀를 추가                                                          |
+| 10 문서·정리   | 기반·create·admin 설계와 하네스·독립 문서 정합성, 목 추가 절차·UI 레시피 예시·테스트 제목, 두 BFF IP 한계와 별도 web 경고 정리 제안                                                                                                                                                                                   |
+
+로컬에서는 루트 check 11단계, web check 9단계·build·목 Chromium E2E 20개, admin check 10단계·build·목 E2E 18개를 직렬로 확인했다. 체크 캐시는 제거했고 실제 생성은 커밋한 추적 입력을 썼다. 이전 조합 검증의 admin Vitest은 86파일·754개, web은 104파일·905개였고, 아래 프로세스 회귀를 포함한 최종 검증은 admin 86파일·765개, web 104파일·916개다. 실제 양쪽 조합은 frozen 설치·각 프론트 check·gen 뒤 깨끗한 git 상태와 계약 출력 바이트·잠금 해석 보존을 확인했다. Docker·전체 FastAPI·조합 루트 setup/check/E2E는 로컬에서 실행하지 않았다.
+
+`42708b7`의 [PR CI 실행 38108189099](https://github.com/builder-shin/ai-template/actions/runs/38108189099)는 check·fastapi·nextjs·nextjs-admin·nextjs-e2e-fastapi·nextjs-admin-e2e-fastapi·conformance-fastapi·conformance-mock·create-combo·create-standalone 열 작업이 모두 통과했다. create-combo는 단일 프론트 생성 검증, 양쪽 조합 setup/check·api/admin/web E2E·이미지 셋·컨테이너 둘을 확인했고 11분 40초였다. 90분 제한을 유지했다. 앞선 `fad02de`·`103ac61`의 전체 CI도 통과했다. 문서·제목 정리 이후 커밋의 전체 PR CI는 별도로 확인해야 하며 기존 성공을 새 커밋의 증거로 대신하지 않는다.
+
+web Vitest은 기존 17 stderr 블록을 유지한다. 블록 안에는 React act 17건·Base UI defaultValue 2건·nativeButton 1건이 겹쳐 있으므로 합산한 값이 블록 수는 아니다. 기존 파일·메시지·횟수의 일치만 이번 프로토타입 예외로 받아들였고 경고를 숨기거나 관련 없는 제품 코드를 수정하지 않았다. 제목 변경·경로와 stack 이동만 명시한 매핑으로 정규화해 비교한다. admin Vitest 경고는 0이다. [별도 경고 정리 제안](../plans/2026-10-11-web-test-warning-cleanup-proposal.md)은 사용자 계획 검토 대상으로 남긴다.
+
+진단은 수정 결과와 구분한다. 빠른 메뉴 이동의 Next `The destination stream closed early`는 완료 전 HTTP RSC 연결 close와 일치했고 단독 33개 검사는 통과했다. 앱 Action 경쟁은 재현하지 못했으며 원인을 확정하거나 억제하지 않았다. 공유 types 검사 무출력 실패도 20회 중 재현되지 않았다. 이전 조합 검증의 macOS admin check에서 process-tree kill EPERM 한 건은 소유 그룹 30회 probe와 원래 동작의 계측 검사에서 재현되지 않았고, 해당 검증에서만 허용한 uncached 재검사로 통과했다. 그 검증에서는 공유 코드 수정·errno 무시·assertion 완화나 영구 flake 허용이 없었다.
+
+문서 정리의 전체 web 검사에서 같은 errno가 다시 발생해 별도로 진단했다. 실제 Node 부모가 소유한 자식의 회수를 늦추면 Darwin 그룹의 0 신호가 EPERM을 내고 회수 뒤 ESRCH로 바뀌는 경로를 재현했다. 이 통제 실험은 이전 실패 당시 구성원을 확정하는 증거는 아니다. 검토한 교정은 Darwin의 0 신호 EPERM만 기존 25ms 확인과 기존 유예·SIGKILL 뒤 2초 한도 안에서 판단 불가로 유지하고 네이티브 ESRCH에서만 성공한다. 한도까지 이어진 오류는 같은 객체로 던지고, 성공한 확인은 이전 오류를 지운다. ps 조회·새 의존성·추가 시간 예산은 없다. 다른 플랫폼과 실제 SIGTERM/SIGKILL 오류는 그대로이며, 신호를 보낼 순간 그룹 전원이 종료 중인 좁은 경쟁은 실패로 남는다. 원래 네 검사와 소유 프로세스가 사라지는 2초 assertion을 보존했고, 결정적 오류/시간 한도 회귀와 실제 PID·PGID 소멸 검사를 추가해 15개가 통과했다. 교정은 문서·제목 변경보다 앞선 별도 커밋으로 기록한다.

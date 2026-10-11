@@ -11,7 +11,7 @@ it("최근 로그인 설정은 기본 600초이며 빈 값도 기본값이다", 
   expect(loadConfig({ RECENT_LOGIN_SECONDS: " 2 " }).recentLoginSeconds).toBe(2);
 });
 it.each(["0", "-1", "1.5", "no", "9007199254740992"])(
-  "최근 로그인 설정 %s는 시작할 때 거절한다",
+  "최근 로그인 설정 (%s)는 시작할 때 거절한다",
   (value) => {
     expect(() => loadConfig({ RECENT_LOGIN_SECONDS: value })).toThrow("RECENT_LOGIN_SECONDS");
   },

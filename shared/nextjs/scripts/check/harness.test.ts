@@ -52,7 +52,7 @@ it("외부 백엔드 예시를 목 포트 오류로 보고하지 않는다", () 
 });
 
 it.each(["localhost", "127.0.0.1", "[::1]"])(
-  "백엔드 선언이 없는 %s의 목 포트 드리프트를 잡는다",
+  "백엔드 선언이 없는 (%s)의 목 포트 드리프트를 잡는다",
   (host) => {
     expect(
       checkHarness(
@@ -70,7 +70,7 @@ it.each(["localhost", "127.0.0.1", "[::1]"])(
 );
 
 it.each(["localhost", "127.0.0.1", "[::1]"])(
-  "%s의 정상 목 주소와 API 끝 슬래시를 실행기처럼 허용한다",
+  "(%s)의 정상 목 주소와 API 끝 슬래시를 실행기처럼 허용한다",
   (host) => {
     expect(
       checkHarness(apiExample(`http://${host}:4010/api/v1/`, `http://${host}:4010`), apiKeys),
@@ -92,7 +92,7 @@ it("빈 OpenAPI 설정은 백엔드 선언으로 인정하지 않는다", () => 
   ]);
 });
 
-it.each([3000, 3001])("앱 %s의 목 API·실시간 예시 포트를 검사한다", (dev) => {
+it.each([3000, 3001])("앱 (%s)의 목 API·실시간 예시 포트를 검사한다", (dev) => {
   const mock = dev + 1010;
   const files = {
     ...base,

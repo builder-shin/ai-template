@@ -94,7 +94,7 @@ it.for([
   "src/app/[locale]/posts",
   "src/app/[locale]/my-posts",
   "scripts/http",
-])("링크 입력 %s를 거절하고 원본과 출력 트리를 그대로 둔다", async (path, context) => {
+])("링크 입력 (%s)를 거절하고 원본과 출력 트리를 그대로 둔다", async (path, context) => {
   const source = resolve(project, path);
   const target = join(temporary, "linked-source");
   // 이동할 두 절대 경로가 이 픽스처 안에 있는지 먼저 확인한다.

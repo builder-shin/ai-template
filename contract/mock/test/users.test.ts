@@ -154,7 +154,7 @@ describe("사용자 읽기", () => {
       "Input should be 'active', 'deactivated' or 'deleted'",
     ],
     ["filter%5Bnope%5D=x", "filter[nope]", "Extra inputs are not permitted"],
-  ])("틀린 필터 %s는 400 jsonapi.invalid_query다", async (query, parameter, detail) => {
+  ])("틀린 필터 (%s)는 400 jsonapi.invalid_query다", async (query, parameter, detail) => {
     const { app, state } = testApp();
     const reader = await userWith(app, state, ["users:read"]);
     const response = await send(app, "GET", `${USERS}?${query}`, { token: reader.accessToken });

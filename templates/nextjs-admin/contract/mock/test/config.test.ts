@@ -159,11 +159,11 @@ describe("loadConfig", () => {
     ]);
   });
 
-  it.each(["0", "65536", "-1", "4010.5"])("포트 %s는 범위 밖이거나 정수가 아니다", (port) => {
+  it.each(["0", "65536", "-1", "4010.5"])("포트 (%s)는 범위 밖이거나 정수가 아니다", (port) => {
     expect(problemsOf({ PORT: port })).toHaveLength(1);
   });
 
-  it.each(["-1", "1.5", "ten"])("레이트 리밋 한도 %s는 틀린 값이다", (limit) => {
+  it.each(["-1", "1.5", "ten"])("레이트 리밋 한도 (%s)는 틀린 값이다", (limit) => {
     expect(problemsOf({ RATE_LIMIT_MAIL_EMAIL: limit })).toHaveLength(1);
   });
 

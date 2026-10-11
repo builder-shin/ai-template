@@ -262,7 +262,7 @@ describe("틀린 쿼리", () => {
     ],
     [filter("mine", "1"), "filter[mine]", "Extra inputs are not permitted"],
     ["fields%5Broles%5D=name", "fields[roles]", "Unknown query parameter fields[roles]."],
-  ])("%s는 400 jsonapi.invalid_query다", async (query, parameter, detail) => {
+  ])("(%s)는 400 jsonapi.invalid_query다", async (query, parameter, detail) => {
     const { app } = testApp();
     const errors = await errorsOf(await send(app, "GET", `${POSTS}?${query}`), 400);
     expect(errors.map((error) => [error.code, error.source, error.detail])).toEqual([
@@ -279,7 +279,7 @@ describe("틀린 쿼리", () => {
       "sort",
       "Unknown query parameter sort.",
     ],
-  ])("%s는 400 %s다", async (path, code, parameter, detail) => {
+  ])("(%s)는 400 (%s)다", async (path, code, parameter, detail) => {
     const { app } = testApp();
     const errors = await errorsOf(await send(app, "GET", path), 400);
     expect(errors.map((error) => [error.code, error.source, error.detail])).toEqual([

@@ -190,7 +190,7 @@ it("메일·비밀번호 길이는 입력 오류로, 토큰은 폼 오류로 번
 });
 
 it.each([true, false])(
-  "계정 존재 %s와 관계없이 메일 한도·Retry-After를 같은 방식으로 안내한다",
+  "계정 존재 (%s)와 관계없이 메일 한도·Retry-After를 같은 방식으로 안내한다",
   async (exists) => {
     const email = exists ? await register() : `missing-limit-${randomUUID()}@example.com`;
     context.locale = "en";

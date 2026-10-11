@@ -180,7 +180,7 @@ describe("로그아웃 Action", () => {
     await expect(mockClient(session.accessToken).GET("/me")).rejects.toMatchObject({ status: 401 });
   });
   it.each(["revoked", "offline", "anonymous"])(
-    "%s여도 쿠키를 지우고 홈으로 이동한다",
+    "(%s)여도 쿠키를 지우고 홈으로 이동한다",
     async (mode) => {
       if (mode !== "anonymous") {
         const session = await login();

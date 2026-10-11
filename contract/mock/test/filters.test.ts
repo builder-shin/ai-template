@@ -41,7 +41,7 @@ describe("UUID", () => {
     ["01920000000070008000000000000000", "01920000-0000-7000-8000-000000000000"],
     ["{ABCDEF00-0000-7000-8000-000000000000}", "abcdef00-0000-7000-8000-000000000000"],
     ["urn:uuid:01920000-0000-7000-8000-000000000000", "01920000-0000-7000-8000-000000000000"],
-  ])("Pydantic처럼 %s를 받는다", (raw, expected) => {
+  ])("Pydantic처럼 (%s)를 받는다", (raw, expected) => {
     expect(outcome(uuidFilter, raw)).toBe(expected);
   });
 
@@ -82,7 +82,7 @@ describe("UUID", () => {
       "invalid length: expected length 32 for simple format, found 36",
     ],
     ["01920000-0000-7000-8000-00000000000é", "invalid character: found `é` at 36"],
-  ])("%j는 uuid 크레이트의 설명을 붙인다", (raw, problem) => {
+  ])("(%j)는 uuid 크레이트의 설명을 붙인다", (raw, problem) => {
     expect(outcome(uuidFilter, raw)).toBe(`Input should be a valid UUID, ${problem}`);
   });
 });

@@ -110,7 +110,7 @@
 
 - 골든 모듈 `posts`는 모든 계층, 테스트, 권한, 실시간, 다국어의 정답 예시다.
 - 생성기(`gen:module <name>` 등)는 골든 모듈을 복사해 이름을 바꾸고 등록 작업(라우터·모듈 등록, 권한 문자열, i18n 키, 마이그레이션 초안, 테스트)까지 처리한다.
-- admin의 `gen:resource <type>`은 계약에서 선언·ko/en 자리표시자·등록을 만든다. 범용 화면은 복사하지 않는다. 목록 없는 type과 기존 리소스·문구·등록은 쓰기 전에 거절한다. 글 골든에는 목록·상세·상태 변경·삭제·실시간이 있고 작성·수정 폼은 없다.
+- admin의 `gen:resource <type>`은 계약에서 선언·ko/en 자리표시자·등록을 만든다. 범용 화면은 복사하지 않는다. 목록 없는 type과 기존 리소스·문구·등록은 쓰기 전에 거절한다. 글 골든에는 목록·상세·상태 변경·삭제·실시간이 있고 작성·수정 폼은 없다. 제품 등록은 posts·users·roles·permissions·audit-logs이며 사용자·역할이 폼의 예시를 맡는다.
 - 골든 모듈은 생성기가 읽는 표시를 주석으로 단다(복사하지 않을 줄, 이름을 바꾸지 않을 줄, 새 모듈에서 고칠 곳). 생성기는 만든 뒤 고칠 곳을 목록으로 알린다.
 - 절차의 원본은 `docs/recipes/*.md`다. Claude Code skill(`.claude/skills/<이름>/SKILL.md`)은 레시피를 불러오고 생성기를 호출하는 얇은 포장이다.
 - 공식 제공 skill이 있으면 넣는다(FastAPI 공식 에이전트 skill, Next.js `next-dev-loop`, Playwright CLI skill).
@@ -129,7 +129,7 @@
 ## 최종 안전망
 
 - lefthook: pre-commit에서 스테이징된 파일을 포맷·린트하고 Betterleaks로 비밀을 스캔한다. pre-push에서 `check`를 돌린다.
-- CI: `check`, `test:e2e`, Docker 이미지 빌드. 생성 프로젝트도 자기 CI에서 같은 검사를 돈다.
+- CI: `check`, `test:e2e`, Docker 이미지 빌드. 생성 프로젝트도 자기 CI에서 같은 검사를 돈다. create-standalone은 fastapi·nextjs·nextjs-admin의 setup·check를 확인하며 create-combo는 루트 계약 하나를 쓰는 FastAPI+web+admin의 실제 백엔드 E2E와 이미지·컨테이너를 확인한다.
 
 ## 공유 자산
 
@@ -149,4 +149,4 @@
 4. `.claude/settings.json`에 `PostToolUse`, `Stop`, `PreToolUse`, `SessionStart` hook이 exec form으로 있다.
 5. `.env.example`, `.github/workflows/ci.yml`, `.gitattributes`, `docs/recipes/*.md`, 골든 모듈 폴더가 있다.
 6. 공유 자산 사본이 원본과 같다.
-7. web·admin의 공통 dependencies·devDependencies·overrides는 같은 버전이다. 차이가 있으면 두 버전과 잠금 파일 갱신 방법을 안내한다.
+7. web·admin의 공통 dependencies·devDependencies·overrides는 같은 버전이며 pnpm-workspace.yaml의 minimumReleaseAge·allowBuilds·overrides도 같다. 차이가 있으면 두 버전과 잠금 파일 갱신 방법을 안내한다.

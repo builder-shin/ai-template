@@ -1,5 +1,7 @@
 # 아키텍처
 
+BFF의 API 요청은 BFF 주소에서 나가므로 클라이언트 주소를 전달하도록 배포를 구성하기 전에는 API의 IP별 한도를 모든 사용자가 함께 쓴다.
+
 Next.js App Router의 BFF다. Server Component가 데이터를 읽고 Server Action이 쓴다.
 브라우저는 백엔드 API를 직접 부르지 않는다. W3의 실시간 Socket.IO와 presigned URL 업로드는 직접 연결한다.
 API 계약·목 사본은 이 프로젝트의 `contract/` 안에 두고 자체 workspace로 실행한다.

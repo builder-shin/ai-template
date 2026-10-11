@@ -26,7 +26,7 @@ async function step(
 }
 
 describe("i18n 검사 단계", () => {
-  it.each(["ko", "en"] as const)("%s의 공유 키 누락을 앱 번역으로 가릴 수 없다", (locale) => {
+  it.each(["ko", "en"] as const)("(%s)의 공유 키 누락을 앱 번역으로 가릴 수 없다", (locale) => {
     const shared = { ko: { common: { title: "제목" } }, en: { common: { title: "Title" } } };
     Reflect.deleteProperty(shared[locale].common, "title");
     const app = { ko: {}, en: {}, [locale]: { common: { title: "App title" } } };
@@ -35,7 +35,7 @@ describe("i18n 검사 단계", () => {
     );
   });
 
-  it.each(["ko", "en"] as const)("%s의 앱 키 누락을 공유 번역으로 가릴 수 없다", (locale) => {
+  it.each(["ko", "en"] as const)("(%s)의 앱 키 누락을 공유 번역으로 가릴 수 없다", (locale) => {
     const app = { ko: { home: { title: "홈" } }, en: { home: { title: "Home" } } };
     Reflect.deleteProperty(app[locale].home, "title");
     const shared = { ko: {}, en: {}, [locale]: { home: { title: "Shared title" } } };
@@ -44,7 +44,7 @@ describe("i18n 검사 단계", () => {
     );
   });
 
-  it.each(["ko", "en"] as const)("%s의 공유·앱 중복 키는 같은 문구여도 실패한다", (locale) => {
+  it.each(["ko", "en"] as const)("(%s)의 공유·앱 중복 키는 같은 문구여도 실패한다", (locale) => {
     const app = { ko: {}, en: {}, [locale]: { common: { title: "Title" } } };
     const shared = { ko: {}, en: {}, [locale]: { common: { title: "Title" } } };
     expect(checkI18n(app, [], shared).join("\n")).toContain(
@@ -85,16 +85,19 @@ describe("i18n 검사 단계", () => {
     expect((await step({ ko: catalog(), en: catalog() })).ok).toBe(true);
   });
 
-  it.each(["ko", "en"] as const)("%s의 일반 키 누락은 실패하고 캐시하지 않는다", async (locale) => {
-    const catalogs = { ko: catalog(), en: catalog() };
-    Reflect.deleteProperty(catalogs[locale].home, "title");
-    const result = await step(catalogs);
-    expect(result.ok).toBe(false);
-    expect(result.output).toContain(`✗ i18n\nmessages/${locale}.json: home.title`);
-    expect(result.cache).not.toHaveProperty("i18n");
-  });
+  it.each(["ko", "en"] as const)(
+    "(%s)의 일반 키 누락은 실패하고 캐시하지 않는다",
+    async (locale) => {
+      const catalogs = { ko: catalog(), en: catalog() };
+      Reflect.deleteProperty(catalogs[locale].home, "title");
+      const result = await step(catalogs);
+      expect(result.ok).toBe(false);
+      expect(result.output).toContain(`✗ i18n\nmessages/${locale}.json: home.title`);
+      expect(result.cache).not.toHaveProperty("i18n");
+    },
+  );
 
-  it.each(["ko", "en"] as const)("%s의 에러 코드 누락은 실패한다", async (locale) => {
+  it.each(["ko", "en"] as const)("(%s)의 에러 코드 누락은 실패한다", async (locale) => {
     const catalogs = { ko: sharedCatalog(), en: sharedCatalog() };
     Reflect.deleteProperty(catalogs[locale].errors.auth, "unauthenticated");
     const result = await step({ ko: catalog(), en: catalog() }, undefined, catalogs);

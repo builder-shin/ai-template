@@ -219,7 +219,7 @@ it("이름", () => {
   });
 
   it.each(["../escape", "Posts", "post", "a_b", "a--bs", "", "x".repeat(21) + "s"])(
-    "잘못된 이름 %s는 파일을 쓰지 않는다",
+    "잘못된 이름 (%s)는 파일을 쓰지 않는다",
     (name) => {
       const before = file("messages/ko.json");
       expect(run(name).status).not.toBe(0);

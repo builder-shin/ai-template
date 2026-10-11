@@ -13,7 +13,7 @@ const attempt = {
 afterEach(() => vi.useRealTimers());
 
 it.each(["development", "production"] as const)(
-  "%s는 암호화·httpOnly 쿠키에 10분만 시도를 보관한다",
+  "(%s)는 암호화·httpOnly 쿠키에 10분만 시도를 보관한다",
   async (mode) => {
     vi.useFakeTimers({ now: new Date("2030-01-01T00:00:00Z") });
     const cookie = await oauthCookie(attempt, secret, mode);

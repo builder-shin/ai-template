@@ -406,7 +406,7 @@ it.each([
 );
 
 it.each(["success", "failure"] as const)(
-  "연결이 끊긴 인증의 늦은 %s는 CONNECT와 재시도를 만들지 않는다",
+  "연결이 끊긴 인증의 늦은 (%s)는 CONNECT와 재시도를 만들지 않는다",
   async (outcome) => {
     vi.useFakeTimers();
     const warning = vi.spyOn(console, "warn").mockImplementation(() => {});

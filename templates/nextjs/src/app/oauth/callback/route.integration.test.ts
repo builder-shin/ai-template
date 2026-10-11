@@ -57,7 +57,7 @@ it.each([
   ["/me", "not-json", "SyntaxError"],
   ["/me", "", "TypeError"],
   ["/me", "{}", "TypeError"],
-])("%s의 잘못된 200 응답(%s)은 쿠키를 정리하고 실패로 이동한다", async (path, body, name) => {
+])("(%s)의 잘못된 200 응답(%s)은 쿠키를 정리하고 실패로 이동한다", async (path, body, name) => {
   const actual = globalThis.fetch;
   // 목이 만들 수 없는 응답만 HTTP 경계에서 주입하고 API 클라이언트는 그대로 쓴다.
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {

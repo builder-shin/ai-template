@@ -48,7 +48,7 @@ describe("urlsplit", () => {
     "http://[::1]@a/", // betterleaks:allow 자격 증명이 아니라 사용자 정보 자리의 대괄호 호스트다
     "http://[1::2::3]/",
     "http://ex\u2100ample.com/",
-  ])("%j는 Python이 ValueError를 던지는 URL이다", (url) => {
+  ])("(%j)는 Python이 ValueError를 던지는 URL이다", (url) => {
     expect(() => urlsplit(url)).toThrow(UrlError);
   });
 

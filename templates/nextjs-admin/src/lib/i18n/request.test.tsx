@@ -14,7 +14,7 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe("요청 메시지와 시간대", () => {
   it.each(["ko", "en"] as const)(
-    "%s의 모든 에러 메시지가 코드와 meta.params로 번역된다",
+    "(%s)의 모든 에러 메시지가 코드와 meta.params로 번역된다",
     async (locale) => {
       const config = await resolveRequestConfig(Promise.resolve(locale));
       const t = createTranslator({ ...config, namespace: "errors" });
@@ -36,7 +36,7 @@ describe("요청 메시지와 시간대", () => {
   });
 
   it.each(["Asia/Seoul", "America/New_York"])(
-    "서버와 클라이언트가 TIME_ZONE=%s로 같은 날짜를 만든다",
+    "서버와 클라이언트가 TIME_ZONE=(%s)로 같은 날짜를 만든다",
     async (timeZone) => {
       vi.stubEnv("TIME_ZONE", timeZone);
       const config = await resolveRequestConfig(Promise.resolve("en"));

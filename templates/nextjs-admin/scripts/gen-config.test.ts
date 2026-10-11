@@ -46,7 +46,7 @@ describe("계약 경로", () => {
     expect(() => resolveContractPaths(root)).toThrow(/mock.*폴더.*—/);
   });
   it.each([null, 1, [], "", " ", "/contract", "C:\\contract"])(
-    "잘못된 계약 값 %j를 거절한다",
+    "잘못된 계약 값 (%j)를 거절한다",
     (value) => {
       writeFileSync(join(root, "gen.config.json"), JSON.stringify({ contract: value }));
       expect(() => readGenConfig(root)).toThrow(/gen\.config\.json.*—.*contract.*상대 경로/);

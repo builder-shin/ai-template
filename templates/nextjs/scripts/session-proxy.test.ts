@@ -29,7 +29,7 @@ function request(path: string, cookie = "NEXT_LOCALE=ko", method = "GET") {
 
 describe("세션과 로케일 proxy 합성", () => {
   it.each(["GET", "POST"])(
-    "%s의 대소문자가 섞인 로케일도 첫 요청에서 로그인으로 보낸다",
+    "(%s)의 대소문자가 섞인 로케일도 첫 요청에서 로그인으로 보낸다",
     async (method) => {
       for (const [path, target, returnTo] of [
         ["/EN/me?tab=profile", "/en/login", "/EN/me?tab=profile"],
@@ -53,7 +53,7 @@ describe("세션과 로케일 proxy 합성", () => {
   });
 
   it.each(["/me", "/my-posts?page=2", "/en/me/security"])(
-    "%s는 로그인과 안전한 returnTo로 보낸다",
+    "(%s)는 로그인과 안전한 returnTo로 보낸다",
     async (path) => {
       const result = await proxy(request(path));
       const location = new URL(result.headers.get("location")!);
@@ -64,7 +64,7 @@ describe("세션과 로케일 proxy 합성", () => {
     },
   );
 
-  it.each(["GET", "POST"])("%s의 인코딩된 보호 경로도 로그인으로 보낸다", async (method) => {
+  it.each(["GET", "POST"])("(%s)의 인코딩된 보호 경로도 로그인으로 보낸다", async (method) => {
     for (const [path, canonical] of [
       ["/%6d%65", "/me"],
       ["/my%2dposts?page=2", "/my-posts?page=2"],
@@ -83,7 +83,7 @@ describe("세션과 로케일 proxy 합성", () => {
     ["/me/100%25", "/en/%6d%65/100%25", "/my-posts/a%25b"].flatMap((path) =>
       ["GET", "POST"].map((method) => [path, method] as const),
     ),
-  )("유효한 퍼센트 경로 %s의 %s도 로그인으로 보낸다", async (path, method) => {
+  )("유효한 퍼센트 경로 (%s)의 (%s)도 로그인으로 보낸다", async (path, method) => {
     const result = await proxy(request(path, undefined, method));
     expect(result.status).toBe(303);
     expect(new URL(result.headers.get("location")!).pathname).toBe(
@@ -93,7 +93,7 @@ describe("세션과 로케일 proxy 합성", () => {
   });
 
   it.each(["GET", "POST"])(
-    "%s의 경로 디코딩 오류도 로그인 검사를 통과하지 못한다",
+    "(%s)의 경로 디코딩 오류도 로그인 검사를 통과하지 못한다",
     async (method) => {
       const result = await proxy(request("/me/%", undefined, method));
       expect(result.status).toBe(303);
@@ -102,7 +102,7 @@ describe("세션과 로케일 proxy 합성", () => {
   );
 
   it.each(["/x/../en/me?tab=profile#details", "/%2e%2e/en/me?tab=profile#details"])(
-    "점 구간 %s를 정규화하고 쿼리와 hash는 보존한다",
+    "점 구간 (%s)를 정규화하고 쿼리와 hash는 보존한다",
     (path) => expect(safeReturnTo(path)).toBe("/en/me?tab=profile#details"),
   );
 
@@ -114,7 +114,7 @@ describe("세션과 로케일 proxy 합성", () => {
     "/%5cevil.example",
     "/%252fevil.example",
     "/\n/evil.example",
-  ])("외부 또는 모호한 returnTo %s를 기본 경로로 바꾼다", (path) => {
+  ])("외부 또는 모호한 returnTo (%s)를 기본 경로로 바꾼다", (path) => {
     expect(safeReturnTo(path)).toBe("/");
   });
   it("정상 쿼리와 로케일 상대 경로를 유지한다", () => {
