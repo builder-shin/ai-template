@@ -111,6 +111,14 @@ export function fixtureRepository(): string {
   write(root, "templates/nextjs/.gitattributes", "* text=auto eol=lf\n");
   write(root, "templates/nextjs/docs/공백 문서.md", "한국어\r\n바이트 보존\r\n");
   write(root, "templates/nextjs/bin/start.sh", "#!/bin/sh\necho ok\n");
+  write(root, "templates/nextjs-admin/README.md", "# Next.js admin\n\n내용\n");
+  write(
+    root,
+    "templates/nextjs-admin/package.json",
+    '{\n  "name": "nextjs-admin-template",\n  "private": true\n}\n',
+  );
+  write(root, "templates/nextjs-admin/pnpm-lock.yaml", "lockfileVersion: '9.0'\n");
+  write(root, "templates/nextjs-admin/template.json", "{}\n");
   write(root, "templates/fastapi/README.md", "# FastAPI 템플릿\n\n내용\n");
   write(
     root,

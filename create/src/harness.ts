@@ -1,4 +1,6 @@
-import { readFileSync, mkdirSync, writeFileSync, copyFileSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { isDeepStrictEqual } from "node:util";
+import { CreateError } from "./errors.ts";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
@@ -19,18 +21,16 @@ const vocabulary = [
   "db:reset",
 ];
 
-export function mergeSettings(api: AppSettings, web: AppSettings) {
+export function mergeSettings(apps: Record<string, AppSettings>) {
   const rules = (kind: "allow" | "deny") =>
-    [api, web].flatMap((settings, index) =>
+    Object.entries(apps).flatMap(([app, settings]) =>
       settings.permissions[kind].flatMap((rule) => {
         // 프론트의 계약 경로는 앱 밖의 루트 계약으로 옮긴다.
-        if (index === 1 && /^(Read|Edit|Write|Glob|Grep)\(\.\/contract\//.test(rule)) return [rule];
-        const moved = rule.replace(
-          /^(Read|Edit|Write|Glob|Grep)\(\.\//,
-          `$1(./apps/${index === 0 ? "api" : "web"}/`,
-        );
+        if (app !== "api" && /^(Read|Edit|Write|Glob|Grep)\(\.\/contract\//.test(rule))
+          return [rule];
+        const moved = rule.replace(/^(Read|Edit|Write|Glob|Grep)\(\.\//, `$1(./apps/${app}/`);
         if (
-          index === 1 &&
+          app !== "api" &&
           kind === "deny" &&
           /^(Edit|Write)\(\.\/\*\*\/generated\/\*\*\)$/.test(rule)
         )
@@ -76,9 +76,11 @@ interface Job {
   [key: string]: unknown;
 }
 
-export function mergeLefthook(api: string, web: string): string {
-  const jobs = [api, web].flatMap((source, index) => {
-    const app = index === 0 ? "api" : "web";
+export function mergeLefthook(apps: Record<string, string>): string {
+  const frontend = Object.keys(apps).find((app) => app !== "api");
+  if (!frontend)
+    throw new CreateError("비밀 검사에 쓸 프론트 앱이 없다", "프론트 앱을 하나 이상 지정한다.");
+  const jobs = Object.entries(apps).flatMap(([app, source]) => {
     const config = parse(source) as { "pre-commit": { jobs: Job[] } };
     return config["pre-commit"].jobs
       .filter((job) => job.name !== "secrets")
@@ -96,7 +98,7 @@ export function mergeLefthook(api: string, web: string): string {
         { name: "root-format", run: "node scripts/staged-format.mjs" },
         {
           name: "secrets",
-          run: "pnpm --filter web run -s tool betterleaks git ../.. --pre-commit --staged --no-banner --redact --config ../../.betterleaks.toml",
+          run: `pnpm --filter ${frontend} run -s tool betterleaks git ../.. --pre-commit --staged --no-banner --redact --config ../../.betterleaks.toml`,
         },
       ],
     },
@@ -104,16 +106,15 @@ export function mergeLefthook(api: string, web: string): string {
   });
 }
 
-export function mergeBetterleaks(api: string, web: string): string {
-  const paths = [api, web].flatMap((source, index) => {
-    const app = index === 0 ? "api" : "web";
+export function mergeBetterleaks(apps: Record<string, string>): string {
+  const paths = Object.entries(apps).flatMap(([app, source]) => {
     const config = parseToml(source) as { prefilter?: string; allowlists?: { paths: string[] }[] };
     const patterns = [
       ...[...(config.prefilter ?? "").matchAll(/`([^`]+)`/g)].map((match) => match[1] ?? ""),
       ...(config.allowlists ?? []).flatMap((list) => list.paths),
     ];
     return patterns.map((pattern) => {
-      if (app === "web" && pattern.startsWith("^contract/")) return pattern;
+      if (app !== "api" && pattern.startsWith("^contract/")) return pattern;
       // 루트 앵커와 경로 경계를 앱의 상대 경로 기준으로 옮긴다.
       const local = pattern.replace(/^\^/, "").replace(/\(\^\|\/\)/g, "(?:|.*/)");
       const anchored = pattern.startsWith("^") || pattern.startsWith("(^|/)");
@@ -126,28 +127,53 @@ export function mergeBetterleaks(api: string, web: string): string {
   );
 }
 
-export function writeHarness(root: string): void {
-  const source = (app: string, file: string) =>
-    readFileSync(join(root, `apps/${app}`, file), "utf8");
+export function mergeMcp(apps: Record<string, string>) {
+  const servers = new Map<string, unknown>();
+  for (const source of Object.values(apps)) {
+    const config = JSON.parse(source) as { mcpServers?: Record<string, unknown> };
+    for (const [name, settings] of Object.entries(config.mcpServers ?? {})) {
+      if (servers.has(name) && !isDeepStrictEqual(servers.get(name), settings))
+        throw new CreateError(
+          `MCP 서버 설정이 다르다: ${name}`,
+          "앱의 같은 이름 서버 설정을 맞추고 다시 생성한다.",
+        );
+      servers.set(name, settings);
+    }
+  }
+  return { mcpServers: Object.fromEntries(servers) };
+}
+
+export function writeHarness(root: string, apps: readonly string[]): void {
+  const sources = (file: string) =>
+    Object.fromEntries(
+      apps.map((app) => [app, readFileSync(join(root, `apps/${app}`, file), "utf8")]),
+    );
   mkdirSync(join(root, ".claude"), { recursive: true });
+  const settings = Object.fromEntries(
+    Object.entries(sources(".claude/settings.json")).map(([app, source]) => [
+      app,
+      JSON.parse(source) as AppSettings,
+    ]),
+  );
   writeFileSync(
     join(root, ".claude/settings.json"),
+    JSON.stringify(mergeSettings(settings), null, 2) + "\n",
+  );
+  writeFileSync(join(root, "lefthook.yml"), mergeLefthook(sources("lefthook.yml")));
+  writeFileSync(join(root, ".betterleaks.toml"), mergeBetterleaks(sources(".betterleaks.toml")));
+  // MCP 설정이 있는 앱의 서버를 이름으로 합친다.
+  writeFileSync(
+    join(root, ".mcp.json"),
     JSON.stringify(
-      mergeSettings(
-        JSON.parse(source("api", ".claude/settings.json")) as AppSettings,
-        JSON.parse(source("web", ".claude/settings.json")) as AppSettings,
+      mergeMcp(
+        Object.fromEntries(
+          apps
+            .filter((app) => existsSync(join(root, `apps/${app}/.mcp.json`)))
+            .map((app) => [app, readFileSync(join(root, `apps/${app}/.mcp.json`), "utf8")]),
+        ),
       ),
       null,
       2,
     ) + "\n",
   );
-  writeFileSync(
-    join(root, "lefthook.yml"),
-    mergeLefthook(source("api", "lefthook.yml"), source("web", "lefthook.yml")),
-  );
-  writeFileSync(
-    join(root, ".betterleaks.toml"),
-    mergeBetterleaks(source("api", ".betterleaks.toml"), source("web", ".betterleaks.toml")),
-  );
-  copyFileSync(join(root, "apps/web/.mcp.json"), join(root, ".mcp.json"));
 }

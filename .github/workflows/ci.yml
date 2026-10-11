@@ -298,3 +298,10 @@ jobs:
         working-directory: ${{ runner.temp }}/aitpl-nextjs
       - run: pnpm check
         working-directory: ${{ runner.temp }}/aitpl-nextjs
+      - run: pnpm new "$RUNNER_TEMP/aitpl-admin" --template nextjs-admin --name ci-admin
+      - run: pnpm setup
+        working-directory: ${{ runner.temp }}/aitpl-admin
+      - run: pnpm exec playwright install-deps chromium
+        working-directory: ${{ runner.temp }}/aitpl-admin
+      - run: pnpm check
+        working-directory: ${{ runner.temp }}/aitpl-admin

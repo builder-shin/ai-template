@@ -33,7 +33,7 @@ FastAPI와 Next.js BFF를 함께 개발하는 프로젝트다. Node 24, pnpm 12.
 setup·E2E·DB 명령은 캐시하지 않는다. gen도 생성물 누락을 피하도록 캐시하지 않는다.
 turbo는 loose 환경 모드로 Docker·uv·프록시·Playwright 등 개발 환경 변수를 앱에 전달한다. 캐시는 선언한 입력만 해시한다.
 dev 이외 앱 명령은 동시 실행 수 1로 돌린다. check 성공은 한 줄, 실패는 실패한 단계 출력만 보여 준다.
-루트 실행기는 pnpm 명령으로 실행한다. web check는 gen-feature 테스트의 설치 때문에 패키지 레지스트리 접속이 필요하다.
+루트 실행기는 pnpm 명령으로 실행한다. setup·check·E2E·hook은 apps 아래 package.json이 있는 앱을 읽고, package·turbo·CI는 생성 때 있는 프론트만 포함한다. web check는 gen-feature 테스트의 설치 때문에 패키지 레지스트리 접속이 필요하다.
 
 ## 앱 사이 흐름
 
@@ -44,7 +44,7 @@ dev 이외 앱 명령은 동시 실행 수 1로 돌린다. check 성공은 한 �
 - web은 Server Component가 읽고 Server Action이 쓰는 BFF다. 브라우저 직접 연결은 실시간과 presigned PUT이다.
 - 각 앱의 setup은 `.env.example`로 환경 키를 준비한다. `.env`는 읽거나 출력하지 않는다.
 - api e2e:serve는 E2E DB `app_e2e`와 Valkey DB 14를 사용하고 받은 명령의 종료 코드로 끝난다. 개발 DB·Valkey DB 0을 사용하지 않는다.
-- Mailpit과 스토리지 버킷은 개발 인프라를 함께 쓰며 Mailpit 전체를 비우지 않는다. web E2E Origin만 CORS에 더한다.
+- Mailpit과 스토리지 버킷은 개발 인프라를 함께 쓰며 Mailpit 전체를 비우지 않는다. 각 프론트의 app.config.json에 있는 E2E 포트로 Origin을 정하고 해당 e2e:serve 실행의 CORS에 더한다. 서버 옵션 앞에는 --를 더하지 않고 자식 명령 앞에만 --를 둔다.
 
 ## 포트
 
@@ -72,11 +72,11 @@ BuildKit이 필요하다. 프로젝트 루트에서 `DOCKER_BUILDKIT=1 docker bu
 - skill은 각 앱의 `.claude/skills/`에 둔다. 루트 세션도 앱 파일을 처음 읽거나 고칠 때 그 아래 skill을 불러온다.
 - 루트 hook은 앱의 `.claude/settings.json`에서 exec form의 command hook을 매번 읽고 앱 폴더에서 실행한다.
 - matcher·이벤트·권한을 바꾸면 루트 `.claude/settings.json`도 고친다. 앱 lefthook·Betterleaks 설정을 바꾸면 루트 `lefthook.yml`·`.betterleaks.toml`도 고친다. prompt hook은 루트 디스패처가 지원하지 않는다.
-- 편집 hook은 고친 앱만, Stop은 바뀐 앱과 루트 검사만 돈다. 루트 `contract/` 변경은 web hook과 루트 검사를 실행한다. web hook도 앱 밖 계약의 변경·삭제를 감지한다. 위험 명령은 두 앱이 검사하고 하나라도 거부하면 막는다. SessionStart는 앱별 상태를 함께 보여 준다.
+- 편집 hook은 고친 앱만, Stop은 바뀐 앱과 루트 검사만 돈다. 루트 `contract/` 변경은 모든 프론트 hook과 루트 검사를 실행한다. web hook도 앱 밖 계약의 변경·삭제를 감지한다. 위험 명령은 두 앱이 검사하고 하나라도 거부하면 막는다. SessionStart는 앱별 상태를 함께 보여 준다.
 - 루트 권한은 `contract/openapi.yaml`과 `contract/**/generated/**`의 Edit·Write를 막는다. Betterleaks 예외는 루트 계약과 각 앱의 기존 생성물에만 적용한다.
 - 앱 hook의 exit 2와 JSON deny·block은 차단한다. 일반 실패·실행 도구 누락·시간 초과는 고치는 방법과 함께 비차단 오류로 알린다. 성공 응답의 문맥·권한 결정에 곁들인 오류는 `systemMessage`로 사용자에게 경고를 보여 준다.
 - 루트 `lefthook.yml`이 커밋 전 앱 포맷·린트와 루트 포맷을 돌리고, 합친 `.betterleaks.toml`로 비밀을 한 번 스캔한다. 푸시 전에는 `pnpm check`를 돌린다.
-- 루트와 앱 setup은 자기 폴더가 git 최상위일 때만 hook을 설치한다. 루트가 git 최상위가 아니면 Stop은 `systemMessage`로 사용자에게 경고를 보여 주고 통과한다. 루트에서 `git init` 후 다시 실행한다. 루트 `.mcp.json`은 web의 고정 MCP 서버를 쓴다.
+- 루트와 앱 setup은 자기 폴더가 git 최상위일 때만 hook을 설치한다. 루트가 git 최상위가 아니면 Stop은 `systemMessage`로 사용자에게 경고를 보여 주고 통과한다. 루트에서 `git init` 후 다시 실행한다. 루트 `.mcp.json`은 앱의 MCP 서버를 이름으로 합친다. 같은 이름의 설정이 다르면 생성을 거절한다. 비밀 스캔 도구는 첫 프론트의 고정 버전이다.
 
 ## 완료 기준
 

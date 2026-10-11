@@ -3,16 +3,20 @@ import { resolve } from "node:path";
 import { it, expect } from "vitest";
 import { parse as yaml } from "yaml";
 import { parse as toml } from "smol-toml";
-import { mergeSettings, mergeLefthook, mergeBetterleaks } from "../src/harness.ts";
+import { mergeSettings, mergeLefthook, mergeBetterleaks, mergeMcp } from "../src/harness.ts";
 
 const template = (app: string, file: string) =>
   readFileSync(resolve(import.meta.dirname, `../../templates/${app}/${file}`), "utf8");
 
 it("앱 경로 권한은 범위를 옮기고 명령 합집합에 루트 어휘를 더한다", () => {
-  const settings = mergeSettings(
-    JSON.parse(template("fastapi", ".claude/settings.json")) as Parameters<typeof mergeSettings>[0],
-    JSON.parse(template("nextjs", ".claude/settings.json")) as Parameters<typeof mergeSettings>[1],
-  );
+  const settings = mergeSettings({
+    api: JSON.parse(template("fastapi", ".claude/settings.json")) as Parameters<
+      typeof mergeSettings
+    >[0][string],
+    web: JSON.parse(template("nextjs", ".claude/settings.json")) as Parameters<
+      typeof mergeSettings
+    >[0][string],
+  });
   expect(settings.permissions.deny).toContain("Read(./apps/api/.env)");
   expect(settings.permissions.deny).toContain("Edit(./apps/web/src/lib/api/schema.d.ts)");
   for (const tool of ["Edit", "Write"]) {
@@ -46,16 +50,19 @@ it.each([
   ["PreToolUse", 90],
   ["SessionStart", 180],
 ] as const)("루트 %s hook의 시간 제한은 %i초다", (event, timeout) => {
-  const settings = mergeSettings(
-    { permissions: { allow: [], deny: [] } },
-    { permissions: { allow: [], deny: [] } },
-  );
+  const settings = mergeSettings({
+    api: { permissions: { allow: [], deny: [] } },
+    web: { permissions: { allow: [], deny: [] } },
+  });
   expect(settings.hooks[event][0]?.hooks[0]?.timeout).toBe(timeout);
 });
 
 it("앱 hook 작업의 옵션과 glob 범위를 보존하고 비밀 스캔은 한 번만 둔다", () => {
   const merged = yaml(
-    mergeLefthook(template("fastapi", "lefthook.yml"), template("nextjs", "lefthook.yml")),
+    mergeLefthook({
+      api: template("fastapi", "lefthook.yml"),
+      web: template("nextjs", "lefthook.yml"),
+    }),
   ) as {
     "pre-commit": {
       jobs: { name: string; root?: string; glob?: string; run: string; stage_fixed?: boolean }[];
@@ -82,10 +89,10 @@ it("앱 hook 작업의 옵션과 glob 범위를 보존하고 비밀 스캔은 �
 
 it("비밀 스캔 예외를 앱 안으로 제한하며 수기 코드와 루트는 계속 검사한다", () => {
   const merged = toml(
-    mergeBetterleaks(
-      template("fastapi", ".betterleaks.toml"),
-      template("nextjs", ".betterleaks.toml"),
-    ),
+    mergeBetterleaks({
+      api: template("fastapi", ".betterleaks.toml"),
+      web: template("nextjs", ".betterleaks.toml"),
+    }),
   ) as { extend: { useDefault: boolean }; allowlists: { paths: string[] }[] };
   expect(merged.extend.useDefault).toBe(true);
   const ignored = (path: string) =>
@@ -114,4 +121,56 @@ it("비밀 스캔 예외를 앱 안으로 제한하며 수기 코드와 루트�
     "apps/web/contract/source.ts",
   ])
     expect(ignored(path)).toBe(false);
+});
+
+it("두 번째 프론트의 권한·hook 작업·예외를 합치며 첫 프론트의 도구를 쓴다", () => {
+  const settings = {
+    permissions: {
+      allow: ["Read(./.env.example)"],
+      deny: ["Read(./.env)", "Edit(./contract/openapi.yaml)", "Write(./**/generated/**)"],
+    },
+  };
+  const merged = mergeSettings({
+    api: { permissions: { allow: [], deny: [] } },
+    web: settings,
+    admin: settings,
+  });
+  expect(merged.permissions.deny).toContain("Read(./apps/admin/.env)");
+  expect(merged.permissions.deny).toContain("Write(./apps/admin/**/generated/**)");
+  expect(
+    merged.permissions.deny.filter((rule) => rule === "Edit(./contract/openapi.yaml)"),
+  ).toHaveLength(1);
+  const hook = "pre-commit:\n  jobs:\n    - name: lint\n      glob: '*.ts'\n      run: pnpm lint\n";
+  const config = yaml(mergeLefthook({ api: hook, admin: hook, web: hook })) as {
+    "pre-commit": { jobs: { name: string; run: string }[] };
+  };
+  expect(
+    config["pre-commit"].jobs.find((job: { name: string }) => job.name === "admin-lint"),
+  ).toMatchObject({ root: "apps/admin/", glob: "apps/admin/*.ts" });
+  expect(
+    config["pre-commit"].jobs.find((job: { name: string }) => job.name === "secrets")?.run,
+  ).toContain("--filter admin");
+  const leaks = toml(
+    mergeBetterleaks({ api: "", web: "", admin: template("nextjs", ".betterleaks.toml") }),
+  ) as { allowlists: { paths: string[] }[] };
+  const ignored = (path: string) =>
+    leaks.allowlists.some((list) => list.paths.some((pattern) => new RegExp(pattern).test(path)));
+  expect(ignored("apps/admin/src/lib/generated/errors.ts")).toBe(true);
+  expect(ignored("contract/openapi.yaml")).toBe(true);
+  expect(ignored("apps/admin/src/keys.ts")).toBe(false);
+});
+
+it("MCP는 서버 이름으로 같은 설정을 한 번만 합치고 다른 설정을 거절한다", () => {
+  const shared = { command: "npx", args: ["next-devtools-mcp@0.4.0"] };
+  const source = (mcpServers: Record<string, unknown>) => JSON.stringify({ mcpServers });
+  expect(
+    mergeMcp({
+      api: source({}),
+      web: source({ next: shared }),
+      admin: source({ next: shared, fixture: { command: "node" } }),
+    }),
+  ).toEqual({ mcpServers: { next: shared, fixture: { command: "node" } } });
+  expect(() =>
+    mergeMcp({ web: source({ next: shared }), admin: source({ next: { command: "other" } }) }),
+  ).toThrow(/MCP.*next.* — /);
 });

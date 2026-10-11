@@ -3,8 +3,8 @@ import { relative, resolve, join, sep } from "node:path";
 import { run, exitCode, gitEnvironment, isGitRoot, pnpmEntry } from "../../scripts/process.mjs";
 import { checkRoot } from "../../scripts/check.mjs";
 import { formatFile } from "../../scripts/staged-format.mjs";
+import { appNames } from "../../scripts/apps.mjs";
 
-const apps = ["api", "web"];
 const label = (app, text) => `[${app}]\n${text}`;
 // 비차단 오류는 첫 stderr 줄만 보이는 세션에서도 원인과 방법을 함께 알린다.
 const errorLabel = (app, text) => `[${app}] ${text.replace(/\s*\r?\n\s*/g, " ")}`;
@@ -199,6 +199,7 @@ export function dispatch(
     const input = JSON.parse(raw);
     root = resolve(root ?? process.env.CLAUDE_PROJECT_DIR ?? input.cwd);
     if (event === "Stop" && input.stop_hook_active === true) return { code: 0 };
+    const apps = appNames(root);
     let selected = apps;
     const results = [];
     if (event === "PostToolUse") {
@@ -218,7 +219,7 @@ export function dispatch(
       selected = apps.filter((app) =>
         files.some(
           (path) =>
-            path.startsWith(`apps/${app}/`) || (app === "web" && path.startsWith("contract/")),
+            path.startsWith(`apps/${app}/`) || (app !== "api" && path.startsWith("contract/")),
         ),
       );
       if (files.some((path) => !path.startsWith("apps/"))) {

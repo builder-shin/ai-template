@@ -19,8 +19,8 @@ describe("CLI 입력", () => {
     }
   });
 
-  it.each(["api", "web"])("단독은 %s 이름을 두 입력 경로 모두 받는다", (name) => {
-    for (const template of ["fastapi", "nextjs"]) {
+  it.each(["api", "web", "admin"])("단독은 %s 이름을 두 입력 경로 모두 받는다", (name) => {
+    for (const template of ["fastapi", "nextjs", "nextjs-admin"]) {
       for (const args of [[name], ["target", "--name", name]]) {
         expect(parseArguments([...args, "--template", template], {})).toMatchObject({ name });
       }
@@ -43,6 +43,15 @@ describe("CLI 입력", () => {
       target: resolve("Some Folder"),
       name: "my-api",
       template: "fastapi",
+      git: false,
+    });
+  });
+
+  it("admin 단독은 이름 변경과 git 생략을 받는다", () => {
+    expect(parseArguments(["admin", "--template", "nextjs-admin", "--no-git"], {})).toEqual({
+      target: resolve("admin"),
+      name: "admin",
+      template: "nextjs-admin",
       git: false,
     });
   });

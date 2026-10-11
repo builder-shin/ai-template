@@ -17,7 +17,11 @@ import { findRepository, templateFiles } from "../src/repository.ts";
 import { runGit } from "../src/git.ts";
 import { fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
 
-function request(target: string, template: "nextjs" | "fastapi" = "nextjs", initialize = true) {
+function request(
+  target: string,
+  template: "nextjs" | "fastapi" | "nextjs-admin" = "nextjs",
+  initialize = true,
+) {
   return { target, template, name: "my-project", git: initialize };
 }
 
@@ -31,7 +35,7 @@ describe("단독 프로젝트", () => {
     expect(compose.get("name")).toBe(name);
   });
 
-  it.each(["nextjs", "fastapi"] as const)(
+  it.each(["nextjs", "fastapi", "nextjs-admin"] as const)(
     "%s의 파일만 만들고 main 첫 커밋을 남긴다",
     (template) => {
       const root = fixtureRepository();
@@ -56,17 +60,18 @@ describe("단독 프로젝트", () => {
       expect(readFileSync(join(target, "README.md"), "utf8")).toBe("# my-project\n\n내용\n");
       expect(existsSync(join(target, "template.json"))).toBe(false);
       expect(existsSync(join(target, "untracked.txt"))).toBe(false);
-      if (template === "nextjs") {
+      if (template !== "fastapi") {
         expect(readFileSync(join(target, "package.json"), "utf8")).toBe(
           '{\n  "name": "my-project",\n  "private": true\n}\n',
         );
-        expect(readFileSync(join(target, "docs/공백 문서.md"))).toEqual(
-          readFileSync(join(root, "templates/nextjs/docs/공백 문서.md")),
-        );
+        if (template === "nextjs")
+          expect(readFileSync(join(target, "docs/공백 문서.md"))).toEqual(
+            readFileSync(join(root, "templates/nextjs/docs/공백 문서.md")),
+          );
         expect(readFileSync(join(target, "pnpm-lock.yaml"))).toEqual(
-          readFileSync(join(root, "templates/nextjs/pnpm-lock.yaml")),
+          readFileSync(join(root, `templates/${template}/pnpm-lock.yaml`)),
         );
-        if (process.platform !== "win32")
+        if (template === "nextjs" && process.platform !== "win32")
           expect(statSync(join(target, "bin/start.sh")).mode & 0o111).toBe(0o111);
       } else {
         expect(readFileSync(join(target, "compose.yaml"), "utf8")).toBe(
@@ -103,7 +108,7 @@ describe("단독 프로젝트", () => {
     expect(readdirSync(parent)).toEqual([]);
   });
 
-  it.each(["nextjs", "fastapi"] as const)(
+  it.each(["nextjs", "fastapi", "nextjs-admin"] as const)(
     "%s 첫 커밋은 전역 excludes와 무관하게 복사한 파일을 포함한다",
     (template) => {
       const root = fixtureRepository();

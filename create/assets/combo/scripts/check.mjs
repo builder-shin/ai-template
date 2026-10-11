@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { format } from "./format.mjs";
+import { frontendNames } from "./apps.mjs";
 import { exitCode, isMain, run, runnerMain } from "./process.mjs";
 
 export function instructionErrors(root) {
@@ -58,7 +59,15 @@ export function check(root, { run: execute = run, output = console.log, apps = t
     steps.push(() =>
       execute(
         "pnpm",
-        ["exec", "turbo", "run", "check", "--filter=api", "--filter=web", "--concurrency=1"],
+        [
+          "exec",
+          "turbo",
+          "run",
+          "check",
+          "--filter=api",
+          ...frontendNames(root).map((app) => `--filter=${app}`),
+          "--concurrency=1",
+        ],
         { cwd: root },
       ),
     );

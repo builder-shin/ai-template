@@ -2,7 +2,7 @@ import { basename, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { CreateError, errorReason } from "./errors.ts";
 
-export type Template = "fastapi" | "nextjs";
+export type Template = "fastapi" | "nextjs" | "nextjs-admin";
 
 export interface CreateOptions {
   readonly target: string;
@@ -12,7 +12,7 @@ export interface CreateOptions {
 }
 
 export const usage = `사용법:
-  pnpm new <대상 폴더> --template <fastapi|nextjs> [--name <이름>] [--no-git]
+  pnpm new <대상 폴더> --template <fastapi|nextjs|nextjs-admin> [--name <이름>] [--no-git]
   pnpm new <대상 폴더> --api fastapi --web [--name <이름>] [--no-git]
   pnpm new --help
 
@@ -79,14 +79,19 @@ export function parseArguments(
   if (positionals.length !== 1 || !positionals[0]) {
     throw new CreateError(
       "대상 폴더 하나가 필요하다",
-      "pnpm new <대상 폴더> --template <fastapi|nextjs>로 실행한다.",
+      "pnpm new <대상 폴더> --template <fastapi|nextjs|nextjs-admin>로 실행한다.",
       2,
     );
   }
-  if (values.api === undefined && values.template !== "fastapi" && values.template !== "nextjs") {
+  if (
+    values.api === undefined &&
+    values.template !== "fastapi" &&
+    values.template !== "nextjs" &&
+    values.template !== "nextjs-admin"
+  ) {
     throw new CreateError(
       "템플릿이 올바르지 않다",
-      "--template fastapi 또는 --template nextjs를 지정한다.",
+      "--template fastapi, nextjs 또는 nextjs-admin을 지정한다.",
       2,
     );
   }

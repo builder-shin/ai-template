@@ -13,7 +13,7 @@ export function renameStandalone(
   const readme = join(root, "README.md");
   const content = readFileSync(readme, "utf8");
   writeFileSync(readme, content.replace(/^[^\r\n]*/, `# ${name}`));
-  if (template === "nextjs") {
+  if (template !== "fastapi") {
     const path = join(root, "package.json");
     const pkg = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
     pkg.name = name;

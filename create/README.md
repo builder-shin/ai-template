@@ -2,7 +2,9 @@
 
 저장소 루트에서 `pnpm new --help`로 단독·조합 생성 명령을 확인한다.
 
-FastAPI가 있는 프로젝트는 이름 `fastapi`를 예약한다. 템플릿의 개발 compose 이름과 겹치므로 대상 폴더 이름과 `--name` 모두 거절하며, 다른 `--name`을 지정한다. 단독 nextjs는 허용한다. 다른 로컬 compose 프로젝트와도 이름이 겹치지 않도록 사용자가 고른다. 같은 이름은 볼륨을 공유한다.
+단독 템플릿은 fastapi, nextjs, nextjs-admin이다. `pnpm new <대상> --template nextjs-admin [--name <이름>] [--no-git]`은 관리 앱을 만든다. 두 프론트는 package.json의 name과 README 제목만 프로젝트 이름으로 바꾸며 다음 명령은 pnpm setup이다. 단독 admin은 이름 admin을 허용한다.
+
+FastAPI가 있는 프로젝트는 이름 `fastapi`를 예약한다. 템플릿의 개발 compose 이름과 겹치므로 대상 폴더 이름과 `--name` 모두 거절하며, 다른 `--name`을 지정한다. 단독 nextjs·nextjs-admin은 허용한다. 다른 로컬 compose 프로젝트와도 이름이 겹치지 않도록 사용자가 고른다. 같은 이름은 볼륨을 공유한다.
 
 조합은 앱의 workspace 패키지 이름인 `api`·`web`도 예약한다. 대상 폴더 이름과 `--name` 모두 오류 2로 거절하며, 다른 `--name`을 지정한다. 단독 프로젝트는 두 이름을 허용한다.
 
@@ -26,3 +28,9 @@ git 사용자 정보가 없으면 저장소를 초기화하고 파일을 스테�
 계약 검사의 상대 참조를 위해 `tsconfig.base.json`·`docs/conventions/`는 루트와 web 양쪽에 복사한다. 루트 Node 타입·Vitest·YAML 버전은 web의 검증한 버전을 그대로 쓴다.
 
 루트·web 사본의 공통 파일을 함께 맞춘다: `tsconfig.base.json`, `docs/conventions/`.
+
+조합 생성기는 프론트 앱 목록으로 앱 경로·workspace·gen·하네스를 정한다. 현재 CLI의 조합은 `--api fastapi --web`이다. 루트 package·turbo 설정과 CI는 생성할 때 있는 앱만 남기며, setup·check·E2E·hook은 실행할 때 `apps/*/package.json`의 배치를 읽는다. 공유 계약 변경은 모든 프론트의 Stop hook에 전달한다.
+
+E2E는 프론트의 app.config.json에서 ports.e2e를 읽고 api e2e:serve에 --web-url로 넘긴다. pnpm run은 첫 --도 그대로 전달하므로 서버 옵션 앞에는 --를 더하지 않고, 자식 명령 앞에만 --를 둔다. 범용 frontend-e2e 실행기는 받은 API·메일·최근 로그인 값과 앱 Origin을 대상 환경으로 바꾸며 web만 OAuth URL을 요구한다. 관리 앱은 시드 관리자 두 변수를 요구한다.
+
+MCP는 서버 이름으로 합친다. 같은 이름·같은 설정은 하나이며, 설정이 다르면 앱의 서버 설정을 맞추도록 안내하고 실패한다. 비밀 스캔은 생성 목록의 첫 프론트 도구로 한 번만 실행한다.

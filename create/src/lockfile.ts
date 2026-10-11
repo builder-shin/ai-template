@@ -21,7 +21,7 @@ function dependencyDocument(docs: ReturnType<typeof documents>) {
   return { doc, importers };
 }
 
-export function rewriteImporters(source: string): string {
+export function rewriteImporters(source: string, app = "web"): string {
   const docs = documents(source);
   const { doc, importers } = dependencyDocument(docs);
   for (const pair of importers.items) {
@@ -31,7 +31,7 @@ export function rewriteImporters(source: string): string {
         "web importer 경로가 올바르지 않다",
         "web workspace의 contract 패키지를 확인한다.",
       );
-    pair.key = doc.createNode(path === "." ? "apps/web" : path);
+    pair.key = doc.createNode(path === "." ? `apps/${app}` : path);
   }
   return docs
     .map((item) => {
@@ -41,7 +41,7 @@ export function rewriteImporters(source: string): string {
     .join("\n");
 }
 
-export function verifyWebResolutions(original: string, combined: string): void {
+export function verifyWebResolutions(original: string, combined: string, app = "web"): void {
   const before = dependencyDocument(documents(original)).doc.toJS() as Record<
     string,
     Record<string, unknown>
@@ -51,7 +51,7 @@ export function verifyWebResolutions(original: string, combined: string): void {
     Record<string, unknown>
   >;
   for (const [path, importer] of Object.entries(before.importers ?? {})) {
-    const moved = path === "." ? "apps/web" : path;
+    const moved = path === "." ? `apps/${app}` : path;
     if (!isDeepStrictEqual(importer, after.importers?.[moved]))
       throw new CreateError(
         `${path} importer의 해석 결과가 바뀌었다`,

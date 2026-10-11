@@ -21,7 +21,7 @@ export function linkedRoot(root, t) {
   return link;
 }
 
-export function fixture(t) {
+export function fixture(t, apps = ["api", "web"]) {
   const root = realpathSync.native(mkdtempSync(join(tmpdir(), "aitpl-hooks space-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const write = (path, text) => {
@@ -49,7 +49,15 @@ export function fixture(t) {
     });
   write(".gitignore", ".cache/\ngitconfig\n");
   write("README.md", "# 루트\n");
-  for (const app of ["api", "web"]) {
+  write("AGENTS.md", "# 규칙\n");
+  write("CLAUDE.md", "@AGENTS.md\n");
+  for (const app of apps) {
+    write(`apps/${app}/package.json`, JSON.stringify({ name: app, private: true }));
+    if (app !== "api")
+      write(
+        `apps/${app}/app.config.json`,
+        JSON.stringify({ name: app, ports: { e2e: app === "web" ? 3100 : 3101 } }),
+      );
     write(`apps/${app}/file.ts`, "export const value = 1;\n");
     const hooks = Object.fromEntries(
       ["PostToolUse", "Stop", "PreToolUse", "SessionStart"].map((event) => [

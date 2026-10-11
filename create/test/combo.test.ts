@@ -1,10 +1,12 @@
-import { chmodSync, existsSync, readFileSync, readdirSync, mkdirSync } from "node:fs";
+import { cpSync, chmodSync, existsSync, readFileSync, readdirSync, mkdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { expect, it, vi } from "vitest";
 import { parseAllDocuments, parse } from "yaml";
+import { readComboInputs, writeCombo, type ComboFrontend } from "../src/combo.ts";
 import { createProject } from "../src/create.ts";
 import { rewriteImporters, verifyWebResolutions } from "../src/lockfile.ts";
 import { copyComboAssets, fixtureRepository, git, temporaryFolder, write } from "./helpers.ts";
+import { selectFrontendSteps } from "../src/frontend-config.ts";
 import { runPnpm } from "../src/pnpm.ts";
 
 vi.mock("node:fs", async (original) => {
@@ -153,13 +155,31 @@ it("네트워크 없는 fixture 조합의 배치·workspace·실행 순서와 �
     );
   }
   expect(readFileSync(join(target, ".github/workflows/ci.yml"))).toEqual(
-    readFileSync(resolve(import.meta.dirname, "../assets/combo/.github/workflows/ci.yml")),
+    Buffer.from(
+      selectFrontendSteps(
+        readFileSync(
+          resolve(import.meta.dirname, "../assets/combo/.github/workflows/ci.yml"),
+          "utf8",
+        ),
+        ["web"],
+      ),
+    ),
   );
   expect(commands).toEqual([
     ["--version"],
     ["install", "--lockfile-only"],
     ["install", "--frozen-lockfile"],
-    ["exec", "prettier", "--write", ".claude/settings.json", "lefthook.yml", ".mcp.json"],
+    [
+      "exec",
+      "prettier",
+      "--write",
+      ".claude/settings.json",
+      "lefthook.yml",
+      ".mcp.json",
+      "package.json",
+      "turbo.json",
+      ".github/workflows/ci.yml",
+    ],
     ["--filter", "web", "run", "gen"],
   ]);
   expect(git(target, "status", "--porcelain")).toBe("");
@@ -354,5 +374,51 @@ it.each(["install", "gen", "--version"])(
     ).toThrow();
     expect(existsSync(target)).toBe(false);
     expect(readdirSync(parent)).toEqual([]);
+  },
+);
+
+it.each([["web", "admin"], ["admin"]])(
+  "조합 입력은 fixture 프론트 목록의 경로·하네스·gen을 따른다: %j",
+  (...names) => {
+    const repository = comboFixture();
+    const root = temporaryFolder();
+    cpSync(join(repository, "templates/fastapi"), join(root, "apps/api"), { recursive: true });
+    const frontends: ComboFrontend[] = names.map((name) => ({
+      name,
+      template: name === "web" ? "nextjs" : "nextjs-admin",
+    }));
+    for (const { name } of frontends)
+      cpSync(join(repository, "templates/nextjs"), join(root, "apps", name), { recursive: true });
+    const calls: string[][] = [];
+    writeCombo(
+      root,
+      "fixture-combo",
+      readComboInputs(repository, join(repository, "create/assets/combo")),
+      (_cwd, args) => {
+        calls.push(args);
+      },
+      frontends,
+    );
+    expect(calls.filter((args) => args.includes("gen"))).toEqual(
+      names.map((name) => ["--filter", name, "run", "gen"]),
+    );
+    expect(parse(readFileSync(join(root, "pnpm-workspace.yaml"), "utf8"))).toMatchObject({
+      packages: ["apps/api", ...names.map((name) => `apps/${name}`), "contract/*"],
+    });
+    for (const name of names) {
+      expect(
+        JSON.parse(readFileSync(join(root, "apps", name, "package.json"), "utf8")),
+      ).toMatchObject({ name });
+      expect(readFileSync(join(root, "apps", name, "README.md"), "utf8")).toContain(
+        `# fixture-combo ${name}`,
+      );
+      expect(
+        JSON.parse(readFileSync(join(root, "apps", name, "gen.config.json"), "utf8")),
+      ).toMatchObject({ contract: "../../contract" });
+      expect(existsSync(join(root, "apps", name, ".github"))).toBe(false);
+    }
+    expect(readFileSync(join(root, "lefthook.yml"), "utf8")).toContain(
+      `--filter ${names[0]} run -s tool betterleaks`,
+    );
   },
 );
