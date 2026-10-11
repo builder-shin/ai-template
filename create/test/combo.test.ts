@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, mkdirSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, readdirSync, mkdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { expect, it, vi } from "vitest";
 import { parseAllDocuments, parse } from "yaml";
@@ -120,6 +120,8 @@ function comboFixture() {
   write(root, ".gitattributes", "* text=auto eol=lf\n");
   write(root, ".editorconfig", "root = true\n");
   copyComboAssets(root);
+  if (process.platform !== "win32")
+    chmodSync(join(root, "templates/nextjs/contract/mock/bin/start.sh"), 0o755);
   git(root, "add", ".");
   git(root, "reset", "--", "templates/nextjs/contract/untracked.txt");
   git(root, "update-index", "--chmod=+x", "templates/nextjs/contract/mock/bin/start.sh");

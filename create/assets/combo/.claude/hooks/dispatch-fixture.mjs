@@ -1,5 +1,13 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { dispatch } from "./dispatch.mjs";
@@ -14,7 +22,7 @@ export function linkedRoot(root, t) {
 }
 
 export function fixture(t) {
-  const root = mkdtempSync(join(tmpdir(), "aitpl-hooks space-"));
+  const root = realpathSync.native(mkdtempSync(join(tmpdir(), "aitpl-hooks space-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const write = (path, text) => {
     mkdirSync(dirname(join(root, path)), { recursive: true });

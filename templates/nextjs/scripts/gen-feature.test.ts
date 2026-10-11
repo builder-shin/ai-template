@@ -54,7 +54,10 @@ async function copyProject() {
   if (contract.root !== join(root, "contract"))
     cpSync(contract.root, join(project, "contract"), {
       recursive: true,
-      filter: (path) => !/(^|[/\\])(node_modules|\.cache|\.env[^/\\]*)([/\\]|$)/.test(path),
+      filter: (path) =>
+        !/(^|[/\\])(node_modules|\.cache|\.env[^/\\]*)([/\\]|$)/.test(
+          relative(contract.root, path),
+        ),
     });
   const config = readGenConfig(root);
   if (config.openapi) {

@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -68,7 +69,7 @@ it.each(["linked", "lowercase", "nested", "bare", "git"])(
 it.each([false, true, "main"])(
   "setup은 다른 worktree의 hook 환경을 격리한다: workTree=%s",
   (workTree) => {
-    const fixture = mkdtempSync(join(tmpdir(), "next-setup-hook-"));
+    const fixture = realpathSync.native(mkdtempSync(join(tmpdir(), "aitpl-next-setup-hook-")));
     const repo = join(fixture, "repo");
     const linked = join(fixture, "linked");
     const root = join(fixture, "target");
