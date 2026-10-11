@@ -27,7 +27,9 @@ jobs:
           working-directory: apps/api
       - run: pnpm setup
       - run: pnpm --filter web exec playwright install-deps chromium
+      - run: pnpm --filter admin exec playwright install-deps chromium
       - run: pnpm check
       - run: pnpm test:e2e
       - run: docker build apps/api
       - run: docker build -f apps/web/Dockerfile .
+      - run: docker build -f apps/admin/Dockerfile .

@@ -17,7 +17,7 @@ import { CreateError, errorReason } from "./errors.ts";
 import { initialCommitMessage, initializeGit, runGit } from "./git.ts";
 import { templateFiles } from "./repository.ts";
 import { renameStandalone } from "./standalone.ts";
-import { readComboInputs, writeCombo, type ComboTools } from "./combo.ts";
+import { readComboInputs, writeCombo, type ComboTools, type ComboFrontend } from "./combo.ts";
 import { runPnpm } from "./pnpm.ts";
 
 function canonicalPath(path: string): string {
@@ -89,9 +89,12 @@ export function createProject(
       }
     });
   validateTarget(options.target, worktrees);
-  const templates =
-    options.template === "combo" ? (["fastapi", "nextjs"] as const) : [options.template];
-  const plans = templates.map((template) => ({ template, files: templateFiles(root, template) }));
+  const frontends: readonly ComboFrontend[] = [{ name: "web", template: "nextjs" }];
+  const apps =
+    options.template === "combo"
+      ? [{ name: "api", template: "fastapi" as const }, ...frontends]
+      : [{ name: "", template: options.template }];
+  const plans = apps.map((app) => ({ ...app, files: templateFiles(root, app.template) }));
   const inputs =
     options.template === "combo"
       ? readComboInputs(root, tools.assets ?? join(root, "create/assets/combo"))
@@ -108,15 +111,15 @@ export function createProject(
   const movedEntries: string[] = [];
   try {
     staging = mkdtempSync(join(parent, `aitpl-${options.name}-`));
-    for (const { template, files } of plans)
+    for (const { name: app, template, files } of plans)
       for (const file of files) {
-        const appPath = template === "fastapi" ? "apps/api" : "apps/web";
-        const comboWeb = options.template === "combo" && template === "nextjs";
+        const appPath = `apps/${app}`;
+        const comboFrontend = options.template === "combo" && template !== "fastapi";
         const prefixes = options.template === "combo" ? [appPath] : [""];
-        if (comboWeb && file.path.startsWith("contract/")) prefixes[0] = "";
+        if (comboFrontend && file.path.startsWith("contract/")) prefixes[0] = "";
         // 계약 패키지의 상대 설정·규약 참조는 루트와 앱 양쪽에 같은 사본을 둔다.
         if (
-          comboWeb &&
+          comboFrontend &&
           (file.path === "tsconfig.base.json" || file.path.startsWith("docs/conventions/"))
         )
           prefixes.push("");
@@ -130,7 +133,7 @@ export function createProject(
           if (process.platform !== "win32") chmodSync(destination, file.executable ? 0o755 : 0o644);
         }
       }
-    if (options.template === "combo") writeCombo(staging, options.name, inputs, pnpm);
+    if (options.template === "combo") writeCombo(staging, options.name, inputs, pnpm, frontends);
     else renameStandalone(staging, options.template, options.name);
     // 생성 중 다른 프로세스가 대상을 채웠다면 덮어쓰지 않는다.
     validateTarget(options.target, worktrees);

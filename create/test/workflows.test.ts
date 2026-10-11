@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { expect, it } from "vitest";
 import { parse } from "yaml";
 import { fixtureRepository, temporaryFolder, write } from "./helpers.ts";
+import { selectFrontendSteps } from "../src/frontend-config.ts";
 import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
 
 interface Workflow {
@@ -25,7 +26,13 @@ it("조합 CI는 에이전트 환경 검사와 E2E 뒤 작업 트리 오염을 �
 it("조합 workflow의 run 명령은 create-combo가 같은 순서로 검증한다", () => {
   const commands = (job: Workflow["jobs"][string] | undefined) =>
     job?.steps.flatMap((step) => (step.run ? [step.run.replace(/ --tag \S+/, "")] : [])) ?? [];
-  const combo = commands(workflow("create/assets/combo/.github/workflows/ci.yml").jobs.check);
+  const selected = parse(
+    selectFrontendSteps(
+      readFileSync(resolve(root, "create/assets/combo/.github/workflows/ci.yml"), "utf8"),
+      ["web"],
+    ),
+  ) as Workflow;
+  const combo = commands(selected.jobs.check);
   const ci = commands(workflow(".github/workflows/ci.yml").jobs["create-combo"]);
   expect(combo.length).toBeGreaterThan(0);
   let previous = -1;

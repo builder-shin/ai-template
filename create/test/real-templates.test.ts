@@ -83,9 +83,9 @@ it("실제 조합은 설치 대역만으로 web 환경 값·OpenAPI 입력과 ge
   expect(git(target, "status", "--porcelain")).toBe("");
 });
 
-it("두 실제 템플릿의 파일 목록·이름·나머지 바이트와 git 상태를 확인한다", () => {
+it("세 실제 템플릿의 파일 목록·이름·나머지 바이트와 git 상태를 확인한다", () => {
   const parent = temporaryFolder();
-  for (const template of ["fastapi", "nextjs"] as const) {
+  for (const template of ["fastapi", "nextjs", "nextjs-admin"] as const) {
     const name = `aitpl-real-${template}`;
     const target = join(parent, name);
     createProject({ target, name, template, git: true }, source);
@@ -101,9 +101,9 @@ it("두 실제 템플릿의 파일 목록·이름·나머지 바이트와 git �
       let bytes = readFileSync(join(source, "templates", template, file));
       if (file === "README.md") {
         bytes = Buffer.from(bytes.toString("utf8").replace(/^[^\r\n]*/, `# ${name}`));
-      } else if (template === "nextjs" && file === "package.json") {
+      } else if (template !== "fastapi" && file === "package.json") {
         bytes = Buffer.from(
-          bytes.toString("utf8").replace('"name": "nextjs-template"', `"name": "${name}"`),
+          bytes.toString("utf8").replace(`"name": "${template}-template"`, `"name": "${name}"`),
         );
       } else if (template === "fastapi" && file === "compose.yaml") {
         expect(bytes.toString("utf8")).not.toMatch(/^name:/m);
@@ -117,27 +117,30 @@ it("두 실제 템플릿의 파일 목록·이름·나머지 바이트와 git �
   }
 });
 
-it("실제 CLI의 도움말·사용법 오류·실행 오류는 서로 다른 종료 코드다", () => {
-  const parent = temporaryFolder();
-  const run = (args: string[], env: NodeJS.ProcessEnv = process.env) => runCli(args, parent, env);
-  const help = run(["--help"], { ...process.env, PATH: "" });
-  expect(help.status, help.stderr).toBe(0);
-  expect(help.stdout).toContain("사용법");
-  const usage = run(["--template", "bad"]);
-  expect(usage.status).toBe(2);
-  expect(usage.stderr).toMatch(/pnpm new: .+ — .+/);
-  const failure = run([source, "--template", "nextjs", "--name", "my-web"]);
-  expect(failure.status).toBe(1);
-  expect(failure.stderr).toMatch(/pnpm new: .*저장소.* — .+/);
-  const success = run(["aitpl-cli", "--template", "nextjs", "--no-git"], {
-    ...process.env,
-    INIT_CWD: parent,
-  });
-  expect(success.status, success.stderr).toBe(0);
-  expect(success.stdout).toContain(join(parent, "aitpl-cli"));
-  expect(success.stdout).toContain("pnpm setup");
-  expect(readdirSync(join(parent, "aitpl-cli"))).not.toContain(".git");
-});
+it.each(["nextjs", "nextjs-admin"])(
+  "실제 CLI의 도움말·오류·git 생략을 확인한다: %s",
+  (template) => {
+    const parent = temporaryFolder();
+    const run = (args: string[], env: NodeJS.ProcessEnv = process.env) => runCli(args, parent, env);
+    const help = run(["--help"], { ...process.env, PATH: "" });
+    expect(help.status, help.stderr).toBe(0);
+    expect(help.stdout).toContain("사용법");
+    const usage = run(["--template", "bad"]);
+    expect(usage.status).toBe(2);
+    expect(usage.stderr).toMatch(/pnpm new: .+ — .+/);
+    const failure = run([source, "--template", "nextjs", "--name", "my-web"]);
+    expect(failure.status).toBe(1);
+    expect(failure.stderr).toMatch(/pnpm new: .*저장소.* — .+/);
+    const success = run(["aitpl-cli", "--template", template, "--no-git"], {
+      ...process.env,
+      INIT_CWD: parent,
+    });
+    expect(success.status, success.stderr).toBe(0);
+    expect(success.stdout).toContain(join(parent, "aitpl-cli"));
+    expect(success.stdout).toContain("pnpm setup");
+    expect(readdirSync(join(parent, "aitpl-cli"))).not.toContain(".git");
+  },
+);
 
 it.each([
   ["fastapi 단독 --name", "aitpl-reserved", "--template", "fastapi", "--name", "fastapi"],

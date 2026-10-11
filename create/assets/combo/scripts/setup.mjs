@@ -1,9 +1,15 @@
 import { resolve } from "node:path";
+import { frontendNames } from "./apps.mjs";
 import { exitCode, gitEnvironment, isGitRoot, isMain, run, runnerMain } from "./process.mjs";
 
 export function setup(
   root,
-  { run: execute = run, nodeVersion = process.versions.node, output = console.error } = {},
+  {
+    run: execute = run,
+    nodeVersion = process.versions.node,
+    output = console.error,
+    frontends = frontendNames(root),
+  } = {},
 ) {
   if (nodeVersion.split(".")[0] !== "24") {
     output("Node 24가 필요하다 — Node 24를 설치한다.");
@@ -24,7 +30,7 @@ export function setup(
     ["install", "--frozen-lockfile"],
     ["exec", "lefthook", "install"],
     ["--filter", "api", "run", "setup"],
-    ["--filter", "web", "run", "setup"],
+    ...frontends.map((app) => ["--filter", app, "run", "setup"]),
   ]) {
     const hook = args.includes("lefthook");
     // --no-git로 만든 프로젝트가 상위 저장소의 hook을 덮어쓰지 않는다.

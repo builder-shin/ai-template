@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { setup } from "./setup.mjs";
 import { check, instructionErrors } from "./check.mjs";
 import { testE2e } from "./test-e2e.mjs";
-import { webEnvironment, webE2e } from "./web-e2e.mjs";
+import { frontendEnvironment, frontendE2e } from "./frontend-e2e.mjs";
 import { stagedFormat } from "./staged-format.mjs";
 import { run as runProcess } from "./process.mjs";
 import { fixture, linkedRoot } from "../.claude/hooks/dispatch-fixture.mjs";
@@ -37,7 +37,10 @@ test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈
       stderr: "",
     };
   };
-  assert.equal(setup("/combo", { run, nodeVersion: "24.19.0", output: () => undefined }), 7);
+  assert.equal(
+    setup("/combo", { run, frontends: ["web"], nodeVersion: "24.19.0", output: () => undefined }),
+    7,
+  );
   assert.deepEqual(
     calls.map(([, args]) => args),
     [
@@ -50,7 +53,10 @@ test("setup은 도구 확인·설치·api·web 순서이며 첫 실패에서 멈
       ["--filter", "api", "run", "setup"],
     ],
   );
-  assert.equal(setup("/combo", { run, nodeVersion: "22.0.0", output: () => undefined }), 1);
+  assert.equal(
+    setup("/combo", { run, frontends: ["web"], nodeVersion: "22.0.0", output: () => undefined }),
+    1,
+  );
 });
 
 test("setup은 도구별 설치 안내를 쓰고 준비되면 web까지 실행한다", () => {
@@ -58,6 +64,7 @@ test("setup은 도구별 설치 안내를 쓰고 준비되면 web까지 실행�
     const messages = [];
     assert.equal(
       setup("/combo", {
+        frontends: ["web"],
         nodeVersion: "24.19.0",
         output: (text) => messages.push(text),
         run: (command) => ({ status: command === tool ? 1 : 0 }),
@@ -70,6 +77,7 @@ test("setup은 도구별 설치 안내를 쓰고 준비되면 web까지 실행�
   const args = [];
   assert.equal(
     setup("/combo", {
+      frontends: ["web"],
       nodeVersion: "24.19.0",
       run: (_command, values) => {
         args.push(values);
@@ -90,6 +98,7 @@ test("setup은 git 밖이나 상위 저장소 안이면 hook 설치만 건너뛰
     const messages = [];
     assert.equal(
       setup("/combo", {
+        frontends: ["web"],
         nodeVersion: "24.19.0",
         output: (message) => messages.push(message),
         run: (command, args) => {
@@ -128,6 +137,7 @@ test("setup은 자기 저장소에만 hook을 설치하고 git 지정 환경을 
     const calls = [];
     assert.equal(
       setup("/combo", {
+        frontends: ["web"],
         nodeVersion: "24.19.0",
         run: (command, args, options) => {
           calls.push({ command, args, options });
@@ -165,6 +175,7 @@ for (const [name, rootPath] of [
     const calls = [];
     const messages = [];
     const code = setup(root, {
+      frontends: ["web"],
       nodeVersion: "24.19.0",
       output: (text) => messages.push(text),
       run: (command, args, options) => {
@@ -186,25 +197,29 @@ for (const [name, rootPath] of [
   });
 }
 
-test("E2E 실행기는 첫 실패를 전파하고 web 실행기의 절대 경로를 넘긴다", () => {
+test("E2E 실행기는 첫 실패를 전파하고 프론트별 Origin과 절대 경로를 넘긴다", (t) => {
+  const f = fixture(t);
   const calls = [];
   const run = (_command, args, options) => {
     calls.push([args, options.cwd]);
     return { status: 0 };
   };
-  assert.equal(testE2e(import.meta.dirname, run), 0);
+  assert.equal(testE2e(f.root, run), 0);
   assert.deepEqual(calls[0][0], ["--filter", "api", "run", "test:e2e"]);
   assert.deepEqual(calls[1][0], [
     "--filter",
     "api",
     "run",
     "e2e:serve",
+    "--web-url",
+    "http://localhost:3100",
     "--",
     "node",
-    join(import.meta.dirname, "scripts/web-e2e.mjs"),
+    join(f.root, "scripts/frontend-e2e.mjs"),
+    "web",
   ]);
   assert.equal(
-    testE2e(import.meta.dirname, () => ({ status: 9 })),
+    testE2e(f.root, () => ({ status: 9 })),
     9,
   );
 });
@@ -218,17 +233,17 @@ test("백엔드 E2E 값만 web 대상 변수로 바꾸며 누락은 실행 전�
     E2E_OAUTH_URL: "http://127.0.0.1:28080",
     E2E_RECENT_LOGIN_SECONDS: "10",
   };
-  const env = webEnvironment(source);
+  const env = frontendEnvironment("web", source);
   assert.equal(env.E2E_TARGET, "fastapi");
   assert.equal(env.APP_URL, source.E2E_WEB_URL);
   assert.equal(env.API_BASE_URL, `${source.E2E_API_URL}/api/v1`);
   assert.equal(env.NEXT_PUBLIC_REALTIME_URL, source.E2E_API_URL);
   assert.equal(env.KEEP, "yes");
   for (const key of Object.keys(source).filter((key) => key.startsWith("E2E_"))) {
-    assert.throws(() => webEnvironment({ ...source, [key]: "" }), /설정/);
+    assert.throws(() => frontendEnvironment("web", { ...source, [key]: "" }), /설정/);
   }
   assert.equal(
-    webE2e("/combo", source, (_command, args, options) => {
+    frontendE2e("/combo", "web", source, (_command, args, options) => {
       assert.deepEqual(args, ["--filter", "web", "run", "test:e2e"]);
       assert.deepEqual(options.env, env);
       return { status: 6 };
@@ -242,6 +257,8 @@ test("check는 성공 한 줄 또는 실패한 단계만 출력하고 앱을 필
   try {
     writeFileSync(join(root, "AGENTS.md"), "# 규칙\n");
     writeFileSync(join(root, "CLAUDE.md"), "@AGENTS.md\n");
+    mkdirSync(join(root, "apps/web"), { recursive: true });
+    writeFileSync(join(root, "apps/web/package.json"), JSON.stringify({ name: "web" }));
     const output = [];
     const calls = [];
     const run = (_command, args) => {
