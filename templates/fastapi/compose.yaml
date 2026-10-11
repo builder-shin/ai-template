@@ -82,7 +82,8 @@ services:
       # PostgreSQL 18 이미지는 /var/lib/postgresql 아래에 버전별 폴더를 만든다.
       - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD", "pg_isready", "--username", "app", "--dbname", "app"]
+      # 초기화 임시 서버의 Unix 소켓 대신 최종 서버의 TCP 준비를 확인한다.
+      test: ["CMD", "pg_isready", "--host", "127.0.0.1", "--username", "app", "--dbname", "app"]
       interval: 2s
       timeout: 5s
       retries: 30
