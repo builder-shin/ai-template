@@ -1,7 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 
 const project = process.cwd();
 let root: string;
@@ -23,6 +32,44 @@ function hook(name: string, input: Record<string, unknown>) {
   expect(result.status, result.stderr).toBe(0);
   return result.stdout.trim() ? JSON.parse(result.stdout) : undefined;
 }
+
+function temporaryProject(run: () => void) {
+  const original = root;
+  const temporary = realpathSync.native(mkdtempSync(join(tmpdir(), "aitpl-hooks-config-")));
+  root = temporary;
+  try {
+    run();
+  } finally {
+    root = original;
+    rmSync(temporary, { recursive: true, force: true });
+  }
+}
+function strictCheckFixture() {
+  put("scripts/gen-config.mjs", readFileSync(`${project}/scripts/gen-config.mjs`, "utf8"));
+  put(
+    "scripts/check/cli.ts",
+    `import { mkdirSync, writeFileSync } from "node:fs";
+import { resolveContractPaths } from "../gen-config.mjs";
+mkdirSync(".cache", { recursive: true });
+writeFileSync(".cache/check-args.json", JSON.stringify(process.argv.slice(2)));
+try { resolveContractPaths(process.cwd()); }
+catch (error) { console.error(error.message); process.exitCode = 1; }`,
+  );
+}
+const invalidConfigs = [
+  ["잘못된 JSON", "{", "gen.config.json을 읽을 수 없다 — 올바른 JSON 파일로 저장한다."],
+  [
+    "알 수 없는 키",
+    '{"contrat":"contract"}',
+    "gen.config.json 설정이 잘못됐다 — openapi와 contract만 선택 키로 넣는다.",
+  ],
+  [
+    "절대 계약 경로",
+    '{"contract":"/contract"}',
+    "gen.config.json contract가 잘못됐다 — contract에 앱 루트 기준 상대 경로 문자열을 넣는다.",
+  ],
+];
+
 beforeEach(() => {
   mkdirSync(resolve(".cache"), { recursive: true });
   root = mkdtempSync(resolve(".cache/hook-test-"));
@@ -86,6 +133,68 @@ describe("PreToolUse JSON", () => {
 });
 
 describe("SessionStart와 Stop JSON", () => {
+  it.each(invalidConfigs)("설정 오류에서도 세션 문맥을 출력한다: %s", (_name, source) => {
+    temporaryProject(() => {
+      put("gen.config.json", source!);
+      const started = hook("session-start", fixture("session-start"));
+      expect(started.hookSpecificOutput).toEqual({
+        hookEventName: "SessionStart",
+        additionalContext:
+          "의존성: 없음 — pnpm setup을 실행한다.\n.env: 없음 — pnpm setup을 실행한다.\n생성물: 확인 필요 — pnpm check:generated를 실행한다.",
+      });
+    });
+  });
+  it.each(invalidConfigs)(
+    "설정 변경 오류는 빠른 검사 이유로 차단하고 수정 뒤 상태를 저장한다: %s",
+    (_name, source, message) => {
+      temporaryProject(() => {
+        put("gen.config.json", "{}");
+        put("contract/mock/src/main.ts", "export {};\n");
+        put("contract/typespec/main.tsp", "model Item {}\n");
+        strictCheckFixture();
+        hook("session-start", fixture("session-start"));
+        put("gen.config.json", source!);
+        expect(hook("stop-check", { ...fixture("stop"), stop_hook_active: true })).toBeUndefined();
+        expect(existsSync(`${root}/.cache/check-args.json`)).toBe(false);
+        const blocked = hook("stop-check", fixture("stop"));
+        expect(blocked).toMatchObject({ decision: "block" });
+        expect(blocked.reason).toContain(message);
+        expect(JSON.parse(readFileSync(`${root}/.cache/check-args.json`, "utf8"))).toEqual([
+          "--fast",
+          "--",
+          "gen.config.json",
+        ]);
+        put("gen.config.json", '{"contract":"contract"}');
+        expect(hook("stop-check", fixture("stop"))).toBeUndefined();
+        writeFileSync(`${root}/.cache/check-args.json`, "[]");
+        expect(hook("stop-check", fixture("stop"))).toBeUndefined();
+        expect(readFileSync(`${root}/.cache/check-args.json`, "utf8")).toBe("[]");
+      });
+    },
+  );
+  it.each(["mock", "typespec"])("외부 계약 폴더 삭제는 빠른 검사 이유로 차단한다: %s", (folder) => {
+    temporaryProject(() => {
+      const parent = root;
+      put("contract/typespec/main.tsp", "model Item {}\n");
+      put("contract/mock/src/main.ts", "export {};\n");
+      put("apps/web/gen.config.json", '{"contract":"../../contract"}');
+      root = resolve(parent, "apps/web");
+      strictCheckFixture();
+      hook("session-start", fixture("session-start"));
+      rmSync(`${parent}/contract/${folder}`, { recursive: true });
+      const blocked = hook("stop-check", fixture("stop"));
+      expect(blocked).toMatchObject({ decision: "block" });
+      expect(blocked.reason).toContain(
+        `${resolve(parent, "contract", folder)} 계약 폴더가 없다 — gen.config.json의 contract를 mock·typespec 폴더가 있는 계약 위치로 고친다.`,
+      );
+      const args: string[] = JSON.parse(readFileSync(`${root}/.cache/check-args.json`, "utf8"));
+      expect(args.slice(0, 2)).toEqual(["--fast", "--"]);
+      expect(args).toContain(
+        folder === "mock" ? "../../contract/mock/src/main.ts" : "../../contract/typespec/main.tsp",
+      );
+    });
+  });
+
   it("앱 밖 계약만 바뀌어도 Stop이 검사하고 성공 뒤에는 다시 실행하지 않는다", () => {
     const parent = root;
     put("contract/typespec/main.tsp", "model Item {}\n");

@@ -30,13 +30,19 @@ export function safePath(root, path) {
 
 export function snapshot(root) {
   const files = readProjectFiles(root);
-  const config = readGenConfig(root);
-  if (
-    config.contract &&
-    relative(root, resolve(root, config.contract)).replaceAll("\\", "/").startsWith("../")
-  ) {
+  let contract;
+  try {
+    const config = readGenConfig(root);
+    if (
+      config.contract &&
+      relative(root, resolve(root, config.contract)).replaceAll("\\", "/").startsWith("../")
+    )
+      contract = resolveContractPaths(root).root;
+  } catch {
+    // 설정 오류는 앱 파일 변경으로 감지하고 빠른 check에서 안내한다.
+  }
+  if (contract) {
     // 조합의 앱 밖 계약도 Stop 변경 감지에 포함한다. 단독 앱의 경로는 그대로다.
-    const contract = resolveContractPaths(root).root;
     for (const [path, text] of Object.entries(readProjectFiles(contract)))
       files[relative(root, join(contract, path)).replaceAll("\\", "/")] = text;
   }
