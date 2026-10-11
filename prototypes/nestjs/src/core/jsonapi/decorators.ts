@@ -16,7 +16,9 @@ import { operationId, MOUNTED_OPERATIONS } from "./operation.js";
 import type { OperationDeclaration, PermissionCode } from "./operation.js";
 import { parseRequest } from "./validation.js";
 import { writeDocument } from "./render.js";
+import type { Principal as SecurityPrincipal } from "../security/principal.js";
 export interface Principal {
+  authentication?: SecurityPrincipal;
   id: string;
   permissions: readonly PermissionCode[];
 }
@@ -35,6 +37,8 @@ class OperationGuard implements CanActivate {
     if (this.decl.auth === "none") return true;
     const ports = req.app.locals.jsonApiPorts as JsonApiPorts;
     const principal = await ports.authenticator.authenticate(req);
+    ctx.switchToHttp().getResponse<Response>().locals.principal =
+      principal?.authentication ?? principal;
     if (!principal && this.decl.auth === "required")
       throw new ApiError(401, "auth.unauthenticated");
     if (this.decl.permission && !principal?.permissions.includes(this.decl.permission))
@@ -82,3 +86,8 @@ export const JsonApiRequest = createParamDecorator((_data: unknown, ctx: Executi
     req.body as unknown,
   );
 });
+
+export const JsonApiPrincipal = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): unknown =>
+    ctx.switchToHttp().getResponse<Response>().locals.principal,
+);

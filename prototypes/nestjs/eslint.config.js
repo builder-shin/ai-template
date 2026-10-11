@@ -31,7 +31,7 @@ export default defineConfig(
       ],
     },
   },
-  { files: ["test/**/*.ts"], rules: { "max-lines": ["error", { max: 600 }] } },
+  { files: ["test/**/*.ts", "tests/**/*.ts"], rules: { "max-lines": ["error", { max: 600 }] } },
   {
     files: ["**/*.{js,mjs}"],
     extends: [tseslint.configs.disableTypeChecked],

@@ -187,7 +187,7 @@ Decision: **retain ESLint; do not adopt oxlint or add it as a project dependency
 
 CI did not run locally; the coordinator subsequently verified Task 1's exact head for all
 eleven required jobs. Task 2 is now documented separately in
-[the Task 2 measurements](task-2.md). Tasks 3–7, Prisma 7.10.0 execution, real authentication,
-infrastructure, conformance, images, frontend E2E and generated combinations remain outstanding.
+[the Task 2 measurements](task-2.md). Task 3 now adds the data layer and authentication core; see [Task 3 measurements](task-3.md).
+Actual infrastructure acceptance and Tasks 4–7, conformance, images, frontend E2E and generated combinations remain outstanding.
 The BFF shared-IP fairness limitation, timing/socket notes and web
 warning baseline 17/admin 0 remain deferred and unchanged.

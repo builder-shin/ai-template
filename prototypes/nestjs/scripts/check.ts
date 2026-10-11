@@ -8,11 +8,16 @@ const started = performance.now();
 const evidence = resolve(root, ".cache/check");
 mkdirSync(evidence, { recursive: true });
 function sizeProblems(): string[] {
-  return globSync(["src/**/*.ts", "scripts/**/*.{ts,mjs}", "test/**/*.ts"], { cwd: root })
+  return globSync(["src/**/*.ts", "scripts/**/*.{ts,mjs}", "test/**/*.ts", "tests/**/*.ts"], {
+    cwd: root,
+  })
     .filter((file) => !file.includes("/generated/"))
     .flatMap((file) => {
       const lines = readFileSync(resolve(root, file), "utf8").replace(/\n$/, "").split("\n").length;
-      const limit = file.startsWith("test/") || file.includes("/tests/") ? 600 : 400;
+      const limit =
+        file.startsWith("test/") || file.startsWith("tests/") || file.includes("/tests/")
+          ? 600
+          : 400;
       return lines > limit
         ? [`${file}: ${String(lines)} lines. 대신 ${String(limit)}줄 이하로 나누어라.`]
         : [];
@@ -22,6 +27,7 @@ function sizeProblems(): string[] {
 const stages = [
   ["format", ["prettier", "--check", "."]],
   ["lint", ["eslint", "."]],
+  ["prisma", ["node", "scripts/preflight-tmp.mjs", "scripts/gen.ts", "--check"]],
   ["typecheck", ["tsc", "--noEmit"]],
   ["size", []],
   ["test", ["vitest", "run"]],
@@ -72,4 +78,4 @@ for (const [name, args] of stages) {
     process.exit(status ?? 1);
   }
 }
-console.log(`check 통과: 6단계, ${((performance.now() - started) / 1000).toFixed(1)}s`);
+console.log(`check 통과: 7단계, ${((performance.now() - started) / 1000).toFixed(1)}s`);

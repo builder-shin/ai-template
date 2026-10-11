@@ -1,10 +1,8 @@
 import { Module } from "@nestjs/common";
-import { SETTINGS, loadSettings } from "./core/config/settings.js";
+import { DbModule } from "./core/db/db.module.js";
 import { HealthModule } from "./modules/health/index.js";
 import { RolesModule } from "./modules/roles/index.js";
-
-@Module({
-  imports: [HealthModule, RolesModule],
-  providers: [{ provide: SETTINGS, useFactory: () => loadSettings(process.env) }],
-})
+import { UsersModule } from "./modules/users/index.js";
+import { AuthModule } from "./modules/auth/index.js";
+@Module({ imports: [DbModule, HealthModule, RolesModule, UsersModule, AuthModule] })
 export class AppModule {}

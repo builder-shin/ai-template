@@ -5,3 +5,5 @@ dist/
 coverage/
 test/fixtures/lint/
 **/generated/**
+
+src/generated/prisma/

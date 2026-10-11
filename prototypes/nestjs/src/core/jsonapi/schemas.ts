@@ -104,15 +104,23 @@ export const identifier = (type: string) =>
   z.object({ type: z.enum([type]), id: codePointString() });
 export const toOne = (type: string) => z.object({ data: identifier(type).nullable() });
 export const toMany = (type: string) => z.object({ data: z.array(identifier(type)) });
-export const resource = (type: string, attributes: z.ZodType, relationships?: z.ZodType) =>
+export const resource = <A extends z.ZodType>(
+  type: string,
+  attributes: A,
+  relationships?: z.ZodType,
+) =>
   z.object({
     type: z.enum([type]),
     id: codePointString(),
     attributes,
     ...(relationships ? { relationships } : {}),
   });
-export const document = (data: z.ZodType) => z.object({ data });
-export const createDocument = (type: string, attributes: z.ZodType, relationships?: z.ZodType) =>
+export const document = <D extends z.ZodType>(data: D) => z.object({ data });
+export const createDocument = <A extends z.ZodType>(
+  type: string,
+  attributes: A,
+  relationships?: z.ZodType,
+) =>
   document(
     z.object({
       type: z.enum([type]),
@@ -133,6 +141,7 @@ export const datetime = () => formattedString("date-time");
 export const uri = () => formattedString("uri");
 export const email = () =>
   codePointString()
+    .trim()
     .refine((v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(v), {
       params: { kind: "format" },
       message: "Invalid email.",

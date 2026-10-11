@@ -8,17 +8,30 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import express from "express";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { Authenticator } from "./modules/auth/index.js";
 import { AppModule } from "./app.module.js";
 import { SETTINGS } from "./core/config/settings.js";
 import type { Settings } from "./core/config/settings.js";
 
-export async function createApp(
-  ports: JsonApiPorts = { authenticator: { authenticate: () => Promise.resolve(null) } },
-): Promise<NestExpressApplication> {
+export async function createApp(ports?: JsonApiPorts): Promise<NestExpressApplication> {
   // ExpressAdapter의 첫 use() 전에 strict routing을 설정해야 Router에도 적용된다.
   const server = express();
   server.set("strict routing", true);
-  installJsonApi(server, ports);
+  const appPorts: JsonApiPorts = ports ?? {
+    authenticator: {
+      authenticate: async (request) => {
+        const principal = await app.get(Authenticator).authenticate(request.headers.authorization);
+        return principal
+          ? {
+              authentication: principal,
+              id: principal.userId,
+              permissions: [...principal.permissions],
+            }
+          : null;
+      },
+    },
+  };
+  installJsonApi(server, appPorts);
   const app = await NestFactory.create<NestExpressApplication>(
     AppModule,
     new ExpressAdapter(server),

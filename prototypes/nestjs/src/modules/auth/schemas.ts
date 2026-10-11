@@ -30,7 +30,7 @@ export const RegistrationCreateAttributes = contractSchema(
   "RegistrationCreateAttributes",
   z.object({
     email: email(),
-    password: codePointString({ min: 8, max: 128, wellFormed: false }),
+    password: codePointString({ min: 8, max: 128 }),
     name: codePointString({ min: 1, max: 100 }),
     locale: Locale.optional(),
   }),

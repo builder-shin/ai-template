@@ -1,6 +1,10 @@
 import type { Response } from "express";
 export const JSONAPI_MEDIA_TYPE = "application/vnd.api+json";
 export function writeDocument(res: Response, status: number, document: unknown): void {
+  if (document === undefined) {
+    res.status(status).end();
+    return;
+  }
   const bytes = Buffer.from(JSON.stringify(document), "utf8");
   res
     .status(status)

@@ -82,7 +82,7 @@ export function architectureConfig(root) {
     });
   }
   return {
-    files: ["src/**/*.ts", "scripts/**/*.{ts,mjs}", "test/**/*.ts"],
+    files: ["src/**/*.ts", "scripts/**/*.{ts,mjs}", "test/**/*.ts", "tests/**/*.ts"],
     plugins: { boundaries, prototype },
     processor: commentProcessor(),
     settings: {
@@ -119,6 +119,7 @@ export function architectureConfig(root) {
         })),
         { type: "scripts", pattern: "scripts/**" },
         { type: "tests", pattern: "test/**" },
+        { type: "tests", pattern: "tests/**" },
       ],
       "import/resolver": { typescript: { project: `${root}/tsconfig.json` } },
     },

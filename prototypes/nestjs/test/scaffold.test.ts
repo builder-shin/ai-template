@@ -22,7 +22,7 @@ it("returns liveness without listening or requiring infrastructure", async () =>
 });
 
 it("reports only invalid environment names, never supplied values", () => {
-  expect(loadSettings({})).toEqual({ NODE_ENV: "development", PORT: 8000 });
+  expect(loadSettings({})).toMatchObject({ NODE_ENV: "development", PORT: 8000 });
   expect(loadSettings({ PORT: "8080", NODE_ENV: "test" }).PORT).toBe(8080);
   expect(() =>
     loadSettings({ PORT: "private-invalid-value", NODE_ENV: "private-invalid-mode" }),
@@ -36,4 +36,29 @@ it("keeps the eight registered permission values and descriptions", () => {
     registry.list().every((item) => item.description && item.group === item.code.split(":")[0]),
   ).toBe(true);
   expect(registry.has("unknown:permission")).toBe(false);
+});
+
+it("rejects constrained surrogate registration before any database operation", async () => {
+  const app = await createApp();
+  app.useLogger(false);
+  try {
+    await app.init();
+    const response = await request(app.getHttpServer() as Parameters<typeof request>[0])
+      .post("/api/v1/registrations")
+      .set("Content-Type", "application/vnd.api+json")
+      .send({
+        data: {
+          type: "registrations",
+          attributes: { email: "a@example.com", password: "horse\ud800-secret", name: "Alice" }, // betterleaks:allow - public local example or test credential
+        },
+      });
+    expect(response.status).toBe(422);
+    expect(response.body).toMatchObject({
+      errors: [
+        { code: "validation.invalid_format", source: { pointer: "/data/attributes/password" } },
+      ],
+    });
+  } finally {
+    await app.close();
+  }
 });

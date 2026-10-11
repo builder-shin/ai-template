@@ -373,3 +373,33 @@ jobs:
       - run: node prototypes/nestjs/scripts/preflight-tmp.mjs scripts/src/spec-compare/cli.ts --subset contract/openapi.yaml prototypes/nestjs/openapi.json
       - run: pnpm --dir prototypes/nestjs build
       - run: pnpm --dir prototypes/nestjs probe:di
+
+  nestjs-prototype-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: "12.6.0"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: prototypes/nestjs/pnpm-lock.yaml
+      - run: pnpm --dir prototypes/nestjs install --frozen-lockfile
+      - run: pnpm --dir prototypes/nestjs setup
+      - run: pnpm --dir prototypes/nestjs db:drift
+      - run: pnpm --dir prototypes/nestjs test:integration
+      - name: Integration measurements
+        if: always()
+        run: |
+          if [ -f prototypes/nestjs/.cache/integration/measurements.json ]; then
+            cat prototypes/nestjs/.cache/integration/measurements.json
+          fi
+      - name: Infrastructure logs on failure
+        if: failure()
+        run: docker compose -f prototypes/nestjs/compose.yaml logs --no-color
+      - name: Remove owned integration infrastructure
+        if: always()
+        run: docker compose -f prototypes/nestjs/compose.yaml down --volumes

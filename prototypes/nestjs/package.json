@@ -13,8 +13,14 @@
     "start": "node dist/main.js",
     "test": "vitest run",
     "probe:di": "node scripts/preflight-tmp.mjs scripts/di-probe.ts",
-    "gen": "node scripts/preflight-tmp.mjs scripts/gen-openapi.ts",
-    "check:repo": "node scripts/preflight-tmp.mjs scripts/check-repo.ts"
+    "gen": "node scripts/preflight-tmp.mjs scripts/gen.ts",
+    "check:repo": "node scripts/preflight-tmp.mjs scripts/check-repo.ts",
+    "setup": "node scripts/preflight-tmp.mjs scripts/setup.ts",
+    "db:migrate": "node scripts/preflight-tmp.mjs scripts/db-migrate.ts",
+    "db:reset": "node scripts/preflight-tmp.mjs scripts/db-reset.ts",
+    "db:revision": "node scripts/preflight-tmp.mjs scripts/db-revision.ts",
+    "test:integration": "node scripts/preflight-tmp.mjs scripts/test-integration.ts",
+    "db:drift": "node scripts/preflight-tmp.mjs scripts/db-drift.ts"
   },
   "dependencies": {
     "@nestjs/common": "12.1.2",
@@ -26,7 +32,13 @@
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "socket.io": "4.8.3",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "@prisma/client": "7.10.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "jose": "6.2.12",
+    "nodemailer": "10.1.0",
+    "pg": "8.23.1",
+    "argon2": "0.45.1"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -47,6 +59,8 @@
     "typescript-eslint": "8.71.0",
     "unplugin-swc": "2.0.0",
     "vite": "8.3.1",
-    "vitest": "5.0.1"
+    "vitest": "5.0.1",
+    "prisma": "7.10.0",
+    "@types/pg": "8.23.1"
   }
 }
