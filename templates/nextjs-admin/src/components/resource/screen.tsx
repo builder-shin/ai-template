@@ -201,10 +201,12 @@ export async function FormScreen({
   context,
   mode,
   record,
+  included = [],
 }: {
   context: ScreenContext;
   mode: "create" | "edit";
   record?: ScreenRecord;
+  included?: readonly ScreenRecord[];
 }) {
   const { resource, translate: t } = context;
   const inputs = await Promise.all(
@@ -219,18 +221,26 @@ export async function FormScreen({
               ? raw.id
               : null
           : raw;
-      const loadedOptions =
-        kind === "relation" || kind === "relation-many"
-          ? await relationOptions(context.client, resource, name)
-          : optionValues(context, name);
-      const options = withCurrentOptions(loadedOptions, value, field.relation);
+      const relation = kind === "relation" || kind === "relation-many";
+      let options: InputProps["options"];
+      let error: string | undefined;
+      if (relation) {
+        try {
+          options = await relationOptions(context.client, resource, name);
+        } catch (problem) {
+          if (!(problem instanceof ApiError) || problem.status !== 403) throw problem;
+          error = translateApiError(problem, context.locale);
+        }
+        options = withCurrentOptions(options ?? [], value, field.relation, included);
+      } else if (kind === "enum") options = optionValues(context, name);
       const props: InputProps = {
         name,
         kind,
         label: t(`resources.${resource.type}.fields.${name}`),
         defaultValue: value,
-        options,
-        ...(field.relation?.search
+        ...(options ? { options } : {}),
+        ...(error ? { error, disabled: true } : {}),
+        ...(relation && !error && field.relation?.search
           ? { search: searchResourceOptions.bind(null, resource.type, mode, name) }
           : {}),
       };
@@ -248,7 +258,7 @@ export async function FormScreen({
       title={t(`resources.${resource.type}.title`)}
       action={saveResourceAction.bind(null, resource.type, mode, record?.id ?? null)}
       permalink={`${context.locale === "en" ? "/en" : ""}${path}`}
-      cancelHref={`/${resource.type}${record ? `/${encodeURIComponent(record.id)}` : ""}`}
+      cancelHref={`/${resource.type}${resource.detail && record ? `/${encodeURIComponent(record.id)}` : ""}`}
     >
       {inputs}
     </ResourceForm>

@@ -55,7 +55,8 @@
     "confirm": "Confirm",
     "deleteDescription": "Delete this record?",
     "actionDescription": "Run this action?",
-    "retryAfter": "Try again in {seconds} seconds."
+    "retryAfter": "Try again in {seconds} seconds.",
+    "none": "None"
   },
   "resources": {
     "posts": {

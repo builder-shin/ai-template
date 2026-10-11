@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { ResourceForm, ResourceInput, useResourceField } from "./form";
 import ko from "../../../messages/ko.json";
 import shared from "../../../messages/shared/ko.json";
+import en from "../../../messages/en.json";
+import sharedEn from "../../../messages/shared/en.json";
 import { intlFixture } from "../../../scripts/test/intl-fixture";
 
 const navigation = vi.hoisted(() => ({ refresh: vi.fn() }));
@@ -63,7 +65,10 @@ it("입력 override는 같은 필드 오류 상태와 폼 이름을 쓴다", asy
   show(
     <ResourceForm
       title="생성"
-      action={async () => ({ ok: false, formError: null, fieldErrors: { title: ["오류"] } })}
+      action={async (_state, data) => {
+        expect(data.get("title")).toBe("바꾼 입력");
+        return { ok: false, formError: null, fieldErrors: { title: ["오류"] } };
+      }}
       permalink="/posts/new"
       cancelHref="/posts"
     >
@@ -92,6 +97,16 @@ it("체크박스·여러 줄·열거값·다중 관계 입력이 폼으로 제�
       <ResourceInput name="enabled" label="활성" kind="boolean" defaultValue={true} />
       <ResourceInput name="body" label="본문" kind="textarea" defaultValue="본문 값" />
       <ResourceInput
+        name="status"
+        label="상태"
+        kind="enum"
+        defaultValue="draft"
+        options={[
+          { value: "draft", label: "초안" },
+          { value: "published", label: "발행" },
+        ]}
+      />
+      <ResourceInput
         name="roles"
         label="역할"
         kind="relation-many"
@@ -103,11 +118,89 @@ it("체크박스·여러 줄·열거값·다중 관계 입력이 폼으로 제�
       />
     </ResourceForm>,
   );
+  await user.click(screen.getByRole("combobox", { name: "상태" }));
+  await user.click(await screen.findByRole("option", { name: "발행" }));
   await user.click(screen.getByRole("combobox", { name: "역할" }));
   await user.click(await screen.findByRole("option", { name: "B" }));
   await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   await user.click(screen.getByRole("button", { name: "저장" }));
   expect(submitted?.getAll("roles")).toEqual(["a", "b"]);
   expect(submitted?.get("enabled")).toBe("true");
   expect(submitted?.get("body")).toBe("본문 값");
+  expect(submitted?.get("status")).toBe("published");
+});
+
+function relationForm(multiple: boolean, defaultValue?: string | string[]) {
+  return (
+    <ResourceForm
+      title="수정"
+      action={async () => ({ ok: true })}
+      permalink="/users/u/edit"
+      cancelHref="/users/u"
+    >
+      <ResourceInput
+        name="roles"
+        label="역할"
+        kind={multiple ? "relation-many" : "relation"}
+        defaultValue={defaultValue}
+        options={[{ value: "a", label: "기존 역할" }]}
+        search={async () => [{ value: "s", label: "검색 역할" }]}
+      />
+    </ResourceForm>
+  );
+}
+
+it("다중 관계의 검색 선택은 팝업을 닫아도 값과 라벨을 유지한다", async () => {
+  const user = userEvent.setup();
+  show(relationForm(true));
+  const trigger = screen.getByRole("combobox", { name: "역할" });
+  const form = trigger.closest("form")!;
+  await user.click(trigger);
+  await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "역할 이름");
+  await user.click(screen.getByRole("button", { name: "검색" }));
+  await user.click(await screen.findByRole("option", { name: "검색 역할" }));
+  expect(new FormData(form).getAll("roles")).toEqual(["s"]);
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  expect.soft(new FormData(form).getAll("roles")).toEqual(["s"]);
+  expect.soft(trigger.textContent).toContain("검색 역할");
+});
+
+it.each([false, true])(
+  "관계 검색 결과에 없는 기존 선택을 보존한다 (다중 선택: %s)",
+  async (multiple) => {
+    const user = userEvent.setup();
+    show(relationForm(multiple, multiple ? ["a"] : "a"));
+    const trigger = screen.getByRole("combobox", { name: "역할" });
+    const form = trigger.closest("form")!;
+    await user.click(trigger);
+    await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "다른 역할");
+    await user.click(screen.getByRole("button", { name: "검색" }));
+    expect(await screen.findByRole("option", { name: "검색 역할" })).toBeDefined();
+    expect.soft(new FormData(form).getAll("roles")).toEqual(["a"]);
+    expect.soft(trigger.textContent).toContain("기존 역할");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    expect(new FormData(form).getAll("roles")).toEqual(["a"]);
+  },
+);
+it.each([
+  { locale: "ko", label: "선택 안 함" },
+  { locale: "en", label: "None" },
+] as const)("단일 관계 폼의 빈 옵션은 빈 문자열로 제출된다: $locale", async ({ locale, label }) => {
+  const user = userEvent.setup();
+  render(
+    <NextIntlClientProvider
+      {...intlFixture(locale === "en" ? { ...sharedEn, ...en } : { ...shared, ...ko }, locale)}
+    >
+      {relationForm(false, "a")}
+    </NextIntlClientProvider>,
+  );
+  const trigger = screen.getByRole("combobox", { name: "역할" });
+  await user.click(trigger);
+  await user.click(await screen.findByRole("option", { name: label }));
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  expect(new FormData(trigger.closest("form")!).get("roles")).toBe("");
+  expect(screen.queryByText("전체")).toBeNull();
 });

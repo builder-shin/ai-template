@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, expect, inject, it, vi } from "vitest";
 import { RequestNotice } from "../src/components/request-notice";
 import { ResourcePage } from "../src/components/resource/page";
+import { defineResource } from "../src/lib/resources/definition";
 import { postsFixture } from "./test/resource-fixture";
 import { seedFixture, memberFixture, partialAdminFixture } from "./test/admin-fixture";
 import { createResourceData } from "../src/lib/resources/data";
@@ -20,6 +21,7 @@ const messages = {
   ...shared,
   ...ko,
   resources: {
+    users: { title: "사용자", fields: { roles: "역할" } },
     posts: {
       title: "글",
       fields: {
@@ -103,13 +105,13 @@ it("실제 목 목록을 서버에서 읽고 관계·필터·페이지를 HTML�
     body: "본문",
     status: "draft",
   });
-  const resource = {
+  const resource = defineResource({
     ...postsFixture,
     fields: {
       status: { kind: "enum" as const, values: ["draft", "published"] },
       author: { relation: { type: "users", label: "name", search: true } },
     },
-  };
+  });
   const result = await ResourcePage({
     registry: [resource],
     type: "posts",
@@ -138,13 +140,13 @@ it("작성자 목록 권한이 없어도 글 목록은 표시하고 필터에 �
     },
   });
   await session(member.owner);
-  const resource = {
+  const resource = defineResource({
     ...postsFixture,
     fields: {
       status: { kind: "enum" as const, values: ["draft", "published"] },
       author: { relation: { type: "users", label: "name", search: true } },
     },
-  };
+  });
   const result = await ResourcePage({ registry: [resource], type: "posts", screen: "list" });
   expect(result.type.name).not.toBe("RequestNotice");
   const html = renderToStaticMarkup(
@@ -152,6 +154,72 @@ it("작성자 목록 권한이 없어도 글 목록은 표시하고 필터에 �
   );
   expect(html).toContain("<table");
   expect(html).toContain('role="alert"');
+});
+it("수정 페이지는 단건 included로 첫 페이지 밖 역할 라벨을 보충한다", async () => {
+  const seed = await seedFixture(inject("mockBaseUrl"));
+  await session(seed);
+  const member = await memberFixture(inject("mockBaseUrl"));
+  for (let index = 0; index < 20; index++)
+    await seed.client.POST("/roles", {
+      body: {
+        data: {
+          type: "roles",
+          attributes: {
+            name: `000-${member.userId}-${index}`,
+            permissions: [],
+          },
+        },
+      },
+    });
+  const name = `zzzz-${member.userId}`;
+  const { data: role } = await seed.client.POST("/roles", {
+    body: {
+      data: {
+        type: "roles",
+        attributes: {
+          name,
+          permissions: [],
+        },
+      },
+    },
+  });
+  await seed.client.PATCH("/users/{id}", {
+    params: { path: { id: member.userId } },
+    body: {
+      data: {
+        type: "users",
+        id: member.userId,
+        relationships: { roles: { data: [{ type: "roles", id: role!.data.id }] } },
+      },
+    },
+  });
+  const resource = defineResource({
+    type: "users",
+    permission: "users:read",
+    list: { columns: ["name"], include: ["roles"] },
+    fields: { roles: { relation: { type: "roles", label: "name", search: true } } },
+    edit: { permission: "users:manage", fields: { roles: "relation-many" } },
+  });
+  const requests = vi.spyOn(globalThis, "fetch");
+  try {
+    const result = await ResourcePage({
+      registry: [resource],
+      type: "users",
+      screen: "edit",
+      id: member.userId,
+    });
+    const html = renderToStaticMarkup(
+      <NextIntlClientProvider {...intlFixture(messages)}>{result}</NextIntlClientProvider>,
+    );
+    expect(html).toContain(name);
+    const roleRequests = requests.mock.calls.filter(
+      ([request]) => new URL((request as Request).url).pathname === "/api/v1/roles",
+    );
+    expect(roleRequests).toHaveLength(1);
+    expect(new URL((roleRequests[0]![0] as Request).url).searchParams.get("page[size]")).toBe("20");
+  } finally {
+    requests.mockRestore();
+  }
 });
 it("선언의 include는 API 조회에만 쓰고 필터·페이지 쿼리에서 뺀다", async () => {
   await session(await seedFixture(inject("mockBaseUrl")));
