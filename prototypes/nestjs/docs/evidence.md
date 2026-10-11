@@ -5,7 +5,8 @@
 Observed on 2026-10-12 KST (2026-10-11 UTC), macOS arm64, Node **24.19.0**, pnpm
 **12.6.0**. This is prototype evidence for a draft branch that must not merge as product.
 Final NestJS design/plan approval remains separate. No Docker or real infrastructure ran locally.
-CI is **pending coordinator validation on the exact committed head**.
+Task 1's exact-head CI was verified by the coordinator before Task 2 dispatch: all ten
+baseline jobs plus nestjs-prototype succeeded. Task 2's CI remains pending exact-head validation.
 
 ### Versions and installation
 
@@ -27,13 +28,15 @@ Omitted direct dependencies were resolved against registry and installed peer me
 | Direct dependency                   | Pin     | Reason                                                                                                  |
 | ----------------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
 | `@swc/cli`                          | 0.8.1   | Satisfies Nest CLI's `^0.8.0` and SWC core peer; published 2026-04-01                                   |
-| `vite`                              | 8.3.1   | Matches frontend lock resolution and Vitest's `^6.4                                                     |     | ^7  |     | ^8`; published 2026-09-24 |
+| `vite`                              | 8.3.1   | Matches frontend lock resolution and the Vitest peer range below; published 2026-09-24                  |
 | `express`                           | 5.2.1   | Exactly the installed Nest Express dependency; needed to set strict routing before adapter construction |
 | `@types/express`                    | 5.0.6   | Express 5 types; published 2025-12-01                                                                   |
 | `@types/supertest`                  | 7.2.1   | Supertest 7 types; published 2026-07-14                                                                 |
 | `@types/node`                       | 24.13.6 | Matches frontend direct pin                                                                             |
 | `@eslint/js`                        | 10.0.1  | Matches root pin and supports ESLint 10                                                                 |
 | `eslint-import-resolver-typescript` | 3.10.1  | Matches frontend lock resolution, including `.js` → `.ts` resolution                                    |
+
+The actual Vitest Vite peer range is `^6.4 || ^7 || ^8`.
 
 `pnpm --dir prototypes/nestjs exec nest info` reported all six Nest packages at 12.1.2.
 `pnpm --dir prototypes/nestjs why socket.io typescript zod @swc/core` found exactly one
@@ -58,7 +61,9 @@ how to resolve this unused transitive declared-peer limitation.
 
 ### Executed commands
 
-Durations below are observed parent-command wall time. Child stdout/stderr, UTC start/end
+Durations below are previously observed Task 1 parent runs, rather than the final gate
+receipt durations. The final private report and raw journals retain final gate timings.
+Child stdout/stderr, UTC start/end
 and actual native exits are retained privately; reproducible DI and check child receipts
 are also written to ignored `.cache/di` and `.cache/check` directories after each child exits.
 
@@ -180,8 +185,9 @@ Decision: **retain ESLint; do not adopt oxlint or add it as a project dependency
 
 ### Remaining scope
 
-CI has not run locally: `nestjs-prototype` and the existing ten jobs await exact-head PR
-validation by the coordinator. Task 2–7 features, Prisma 7.10.0 execution, full JSON:API and
-OpenAPI, real infrastructure, conformance, images, frontend E2E and generated combinations
-remain outside Task 1. The BFF shared-IP fairness limitation, timing/socket notes and web
+CI did not run locally; the coordinator subsequently verified Task 1's exact head for all
+eleven required jobs. Task 2 is now documented separately in
+[the Task 2 measurements](task-2.md). Tasks 3–7, Prisma 7.10.0 execution, real authentication,
+infrastructure, conformance, images, frontend E2E and generated combinations remain outstanding.
+The BFF shared-IP fairness limitation, timing/socket notes and web
 warning baseline 17/admin 0 remain deferred and unchanged.

@@ -12,7 +12,7 @@ function sizeProblems(): string[] {
     .filter((file) => !file.includes("/generated/"))
     .flatMap((file) => {
       const lines = readFileSync(resolve(root, file), "utf8").replace(/\n$/, "").split("\n").length;
-      const limit = file.startsWith("test/") ? 600 : 400;
+      const limit = file.startsWith("test/") || file.includes("/tests/") ? 600 : 400;
       return lines > limit
         ? [`${file}: ${String(lines)} lines. 대신 ${String(limit)}줄 이하로 나누어라.`]
         : [];
@@ -25,6 +25,7 @@ const stages = [
   ["typecheck", ["tsc", "--noEmit"]],
   ["size", []],
   ["test", ["vitest", "run"]],
+  ["generated", ["node", "scripts/preflight-tmp.mjs", "scripts/gen-openapi.ts", "--check"]],
 ] as const;
 for (const [name, args] of stages) {
   const utcStart = new Date().toISOString();
@@ -71,4 +72,4 @@ for (const [name, args] of stages) {
     process.exit(status ?? 1);
   }
 }
-console.log(`check 통과: 5단계, ${((performance.now() - started) / 1000).toFixed(1)}s`);
+console.log(`check 통과: 6단계, ${((performance.now() - started) / 1000).toFixed(1)}s`);

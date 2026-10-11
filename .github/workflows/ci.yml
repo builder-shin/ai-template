@@ -366,7 +366,10 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: prototypes/nestjs/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
       - run: pnpm --dir prototypes/nestjs install --frozen-lockfile
       - run: pnpm --dir prototypes/nestjs check
+      - run: pnpm --dir prototypes/nestjs check:repo
+      - run: node prototypes/nestjs/scripts/preflight-tmp.mjs scripts/src/spec-compare/cli.ts --subset contract/openapi.yaml prototypes/nestjs/openapi.json
       - run: pnpm --dir prototypes/nestjs build
       - run: pnpm --dir prototypes/nestjs probe:di

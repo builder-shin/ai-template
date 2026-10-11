@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { realpathSync } from "node:fs";
+import { realpathSync, mkdirSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -11,6 +11,16 @@ export function childEnvironment() {
   if (Buffer.byteLength(pipe, "utf8") >= 100) {
     throw new Error("tsx IPC 경로가 너무 길다. 대신 짧은 물리 OS tmp를 사용하라.");
   }
+  const evidence = resolve(import.meta.dirname, "../.cache");
+  mkdirSync(evidence, { recursive: true });
+  appendFileSync(
+    join(evidence, "tmp-preflight.jsonl"),
+    JSON.stringify({
+      utc: new Date().toISOString(),
+      physical,
+      ipcBytes: Buffer.byteLength(pipe, "utf8"),
+    }) + "\n",
+  );
   return { ...process.env, TMPDIR: physical };
 }
 

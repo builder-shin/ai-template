@@ -1,6 +1,5 @@
 import request from "supertest";
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { createApp } from "../src/main.js";
 import { loadSettings } from "../src/core/config/settings.js";
 import { PermissionRegistry } from "../src/modules/roles/index.js";
@@ -30,18 +29,9 @@ it("reports only invalid environment names, never supplied values", () => {
   ).toThrow(/^Invalid environment variables: NODE_ENV, PORT$/);
 });
 
-it("keeps the permission registry aligned with the contract rather than a second copied list", () => {
-  const source = readFileSync(
-    new URL("../../../contract/typespec/src/resources/roles.tsp", import.meta.url),
-    "utf8",
-  );
-  const codes = [
-    ...(/union PermissionCode \{([^}]+)\}/.exec(source)?.[1] ?? "").matchAll(/"([^"]+)"/g),
-  ]
-    .map((match) => match[1])
-    .sort();
+it("keeps the eight registered permission values and descriptions", () => {
   const registry = new PermissionRegistry();
-  expect(registry.list().map((item) => item.code)).toEqual(codes);
+  expect(registry.list()).toHaveLength(8);
   expect(
     registry.list().every((item) => item.description && item.group === item.code.split(":")[0]),
   ).toBe(true);

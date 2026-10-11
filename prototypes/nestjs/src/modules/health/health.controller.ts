@@ -1,8 +1,10 @@
-import { Controller, Get } from "@nestjs/common";
+import { JsonApiRoute } from "../../core/jsonapi/decorators.js";
+import { Health_live } from "./operations.js";
+import { Controller } from "@nestjs/common";
 
-@Controller("health")
+@Controller()
 export class HealthController {
-  @Get("live")
+  @JsonApiRoute(Health_live)
   live(): { status: "ok"; checks: Record<string, "ok" | "unavailable"> } {
     return { status: "ok", checks: {} };
   }

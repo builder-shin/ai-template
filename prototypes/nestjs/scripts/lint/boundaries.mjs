@@ -89,6 +89,7 @@ export function architectureConfig(root) {
       "boundaries/root-path": root,
       "boundaries/elements": [
         { type: "generated-prisma", pattern: "src/generated/prisma/**", mode: "file" },
+        { type: "tests", pattern: "src/core/jsonapi/tests/**", mode: "file" },
         { type: "core", pattern: "src/core/**", mode: "file" },
         ...["index.ts", "*.module.ts"].map((file) => ({
           type: "module-index",
@@ -96,6 +97,7 @@ export function architectureConfig(root) {
           capture: ["module"],
           mode: "file",
         })),
+        { type: "assembly", pattern: "src/modules/registry.ts", mode: "file" },
         ...layers.flatMap((layer) =>
           [layer, `*.${layer}`].map((file) => ({
             type: `module-${layer}`,

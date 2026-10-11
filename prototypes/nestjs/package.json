@@ -12,7 +12,9 @@
     "build": "nest build -b swc",
     "start": "node dist/main.js",
     "test": "vitest run",
-    "probe:di": "node scripts/preflight-tmp.mjs scripts/di-probe.ts"
+    "probe:di": "node scripts/preflight-tmp.mjs scripts/di-probe.ts",
+    "gen": "node scripts/preflight-tmp.mjs scripts/gen-openapi.ts",
+    "check:repo": "node scripts/preflight-tmp.mjs scripts/check-repo.ts"
   },
   "dependencies": {
     "@nestjs/common": "12.1.2",

@@ -1,3 +1,6 @@
+import { installJsonApi } from "./core/jsonapi/pipeline.js";
+import { JsonApiExceptionFilter } from "./core/jsonapi/filter.js";
+import type { JsonApiPorts } from "./core/jsonapi/decorators.js";
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { ExpressAdapter } from "@nestjs/platform-express";
@@ -9,10 +12,13 @@ import { AppModule } from "./app.module.js";
 import { SETTINGS } from "./core/config/settings.js";
 import type { Settings } from "./core/config/settings.js";
 
-export async function createApp(): Promise<NestExpressApplication> {
+export async function createApp(
+  ports: JsonApiPorts = { authenticator: { authenticate: () => Promise.resolve(null) } },
+): Promise<NestExpressApplication> {
   // ExpressAdapter의 첫 use() 전에 strict routing을 설정해야 Router에도 적용된다.
   const server = express();
   server.set("strict routing", true);
+  installJsonApi(server, ports);
   const app = await NestFactory.create<NestExpressApplication>(
     AppModule,
     new ExpressAdapter(server),
@@ -25,6 +31,7 @@ export async function createApp(): Promise<NestExpressApplication> {
     },
   );
   app.set("strict routing", true);
+  app.useGlobalFilters(new JsonApiExceptionFilter());
   return app;
 }
 
