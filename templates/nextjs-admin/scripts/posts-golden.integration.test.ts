@@ -44,7 +44,7 @@ async function draft() {
   return { member, record: response.data!.data };
 }
 it("글 골든은 계약의 읽기·관리 동작만 등록하고 양쪽 문구를 갖춘다", () => {
-  expect(resources.map((resource) => resource.type)).toEqual(["posts"]);
+  expect(resources[0]?.type).toBe("posts");
   const posts = resources[0]!;
   expect(posts.list).toEqual({
     columns: ["title", "author", "status", "publishedAt", "createdAt"],

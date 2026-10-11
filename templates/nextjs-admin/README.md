@@ -4,6 +4,8 @@
 
 글 골든은 `src/resources/posts/`다. 목록의 검색·상태·작성자 필터, 정렬·페이지와 상세, 발행·발행 취소·삭제를 제공한다. 작성자 옵션은 대상 검색으로 찾고 실시간 변경은 목록·상세에 반영한다. 글 작성·수정 화면은 없다.
 
-완료 기준은 `pnpm check`다. `pnpm test:e2e`로 실제 목과 Chromium에서 인증·글·권한·언어 시나리오 11개를 검사한다. [지침](AGENTS.md), [아키텍처](docs/architecture.md), [스택](docs/stack.md)을 따른다.
+사용자는 `src/resources/users/`에 선언한다. 검색·상태·역할 필터와 상세, 상태·역할 수정 폼을 제공한다. 역할은 대상 검색으로 고르며 탈퇴 사용자는 수정할 수 없다. 사용자 아바타 화면은 제공하지 않는다. 메뉴 순서는 글, 사용자이며 보기 권한이 있는 항목만 표시한다.
+
+완료 기준은 `pnpm check`다. `pnpm test:e2e`로 실제 목과 Chromium에서 인증·글·사용자·권한·언어 시나리오 13개를 검사한다. [지침](AGENTS.md), [아키텍처](docs/architecture.md), [스택](docs/stack.md)을 따른다.
 
 `pnpm gen:resource <type>`으로 새 선언·ko/en 문구·메뉴 등록 초안을 만든 뒤 [리소스 추가](docs/recipes/add-resource.md)를 따른다. 생성한 권한·필드·문구를 검토하며 기존 리소스는 덮지 않는다. 소셜로만 가입해 비밀번호가 없는 계정은 비밀번호를 설정한 뒤 로그인한다.

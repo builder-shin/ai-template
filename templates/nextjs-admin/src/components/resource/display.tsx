@@ -3,6 +3,7 @@ import { Badge } from "../ui/badge";
 import { Link } from "../../lib/i18n/navigation";
 import type { FieldPresentation } from "../../lib/resources/definition";
 import { fieldValue } from "../../lib/resources/values";
+import { recordLabel } from "../../lib/resources/labels";
 import type { DisplayProps } from "./types";
 export function FieldDisplay({
   name,
@@ -31,7 +32,12 @@ export function FieldDisplay({
         timeZone={timeZone}
       />
     );
-  if (value === null || value === undefined) return <span>—</span>;
+  if (value === null || value === undefined)
+    return (
+      <span>
+        {record.type === "users" && name === "name" ? translate("layout.unnamedUser") : "—"}
+      </span>
+    );
   const kind =
     field.kind ??
     (record.relationships?.[name]
@@ -79,12 +85,16 @@ export function FieldDisplay({
           const linked = included.find(
             (item) => item.id === identifier.id && item.type === identifier.type,
           );
-          const label = String(
-            linked?.attributes[field.relation?.label ?? "name"] ??
+          const label = recordLabel(
+            linked,
+            field.relation?.label ?? "name",
+            String(
               linked?.attributes.title ??
-              linked?.attributes.filename ??
-              linked?.attributes.originalName ??
-              identifier.id,
+                linked?.attributes.filename ??
+                linked?.attributes.originalName ??
+                identifier.id,
+            ),
+            translate("layout.unnamedUser"),
           );
           if (kind === "file" || identifier.type === "file" || identifier.type === "files")
             return <span key={index}>{label}</span>;

@@ -1,8 +1,20 @@
 import { expect, inject, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
-import { seedFixture } from "./test/admin-fixture";
+import { seedFixture, memberFixture } from "./test/admin-fixture";
+import { postsFixture } from "./test/resource-fixture";
 import { defineResource } from "../src/lib/resources/definition";
 import { relationOptions } from "../src/lib/resources/options";
+it("실제 탈퇴 사용자의 관계 옵션은 id 대신 번역한 사용자 라벨을 쓴다", async () => {
+  const seed = await seedFixture(inject("mockBaseUrl"));
+  const member = await memberFixture(inject("mockBaseUrl"));
+  await member.owner.client.DELETE("/me");
+  const resource = defineResource({
+    ...postsFixture,
+    fields: { author: { relation: { type: "users", label: "name" } } },
+  });
+  const options = await relationOptions(seed.client, resource, "author", "", "User");
+  expect(options.find((option) => option.value === member.userId)?.label).toBe("User");
+});
 it("검색할 수 있는 대상은 첫 페이지만 한 번 읽고 검색 없는 대상은 끝까지 읽는다", async () => {
   const seed = await seedFixture(inject("mockBaseUrl"));
   const prefix = randomUUID();

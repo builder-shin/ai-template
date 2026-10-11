@@ -21,7 +21,7 @@ const messages = {
     users: {
       title: "사용자",
       fields: { status: "상태", roles: "역할" },
-      enums: { status: { active: "활성", deactivated: "비활성" } },
+      enums: { status: { active: "활성", deactivated: "비활성", deleted: "탈퇴" } },
     },
   },
 };
@@ -71,7 +71,11 @@ const users = defineResource({
   permission: "users:read",
   list: { columns: ["name"], include: ["roles"] },
   fields: {
-    status: { kind: "enum", values: ["active", "deactivated"] },
+    status: {
+      kind: "enum",
+      values: ["active", "deactivated", "deleted"],
+      inputValues: ["active", "deactivated"],
+    },
     roles: { relation: { type: "roles", label: "name", search: true } },
   },
   edit: { permission: "users:manage", fields: { status: "enum", roles: "relation-many" } },
@@ -127,6 +131,14 @@ it("관계의 첫 페이지 밖 현재값은 included 라벨을 쓰며 추가 �
   } finally {
     request.mockRestore();
   }
+});
+it("수정 입력은 inputValues만 쓰고 표시·필터 values를 바꾸지 않는다", async () => {
+  const seed = await seedFixture(inject("mockBaseUrl"));
+  show(await FormScreen({ context: context(users, seed.client), mode: "edit", record }));
+  await userEvent.setup().click(screen.getByRole("combobox", { name: "상태" }));
+  const options = await screen.findAllByRole("option");
+  expect(options.map((option) => option.textContent)).toEqual(["활성", "비활성"]);
+  expect(users.fields?.status?.values).toEqual(["active", "deactivated", "deleted"]);
 });
 it("관계 옵션의 403은 해당 입력만 막고 다른 입력의 저장은 유지한다", async () => {
   const actor = await partialAdminFixture(inject("mockBaseUrl"));
