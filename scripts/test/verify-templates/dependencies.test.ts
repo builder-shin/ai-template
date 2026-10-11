@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
 import { verifyFrontendDependencies } from "../../src/verify-templates/dependencies.ts";
+import { stringify } from "yaml";
 
 const repos: string[] = [];
 afterEach(() => {
@@ -71,4 +72,41 @@ it("의존성 구역이 달라도 같은 패키지는 같은 버전이어야 한
 it("두 앱의 같은 override가 원래 선언 버전과 달라도 허용한다", () => {
   const pkg = { dependencies: { package: "1.0.0" }, overrides: { package: "1.0.1" } };
   expect(verifyFrontendDependencies(fixture(pkg, pkg))).toEqual([]);
+});
+
+it.each(["minimumReleaseAge", "allowBuilds", "overrides"])(
+  "workspace 설정의 차이에 두 값과 수정 방법을 알린다: %s",
+  (key) => {
+    const root = fixture({}, {});
+    const left = {
+      minimumReleaseAge: 1440,
+      allowBuilds: { sharp: true },
+      overrides: { typescript: "6.0.3" },
+    };
+    const right = { ...left, [key]: key === "minimumReleaseAge" ? 0 : { changed: true } };
+    for (const [name, settings] of [
+      ["nextjs", left],
+      ["nextjs-admin", right],
+    ] as const)
+      writeFileSync(join(root, "templates", name, "pnpm-workspace.yaml"), stringify(settings));
+    const problems = verifyFrontendDependencies(root);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain(key);
+    expect(problems[0]).toContain(JSON.stringify(left[key as keyof typeof left]));
+    expect(problems[0]).toContain(JSON.stringify(right[key as keyof typeof right]));
+    expect(problems[0]).toMatch(/—.*pnpm-workspace.yaml.*잠금 파일/);
+  },
+);
+
+it("workspace의 키 순서는 해석을 바꾸지 않는다", () => {
+  const root = fixture({}, {});
+  writeFileSync(
+    join(root, "templates/nextjs/pnpm-workspace.yaml"),
+    "allowBuilds: { sharp: true, esbuild: true }\n",
+  );
+  writeFileSync(
+    join(root, "templates/nextjs-admin/pnpm-workspace.yaml"),
+    "allowBuilds: { esbuild: true, sharp: true }\n",
+  );
+  expect(verifyFrontendDependencies(root)).toEqual([]);
 });

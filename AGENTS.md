@@ -18,8 +18,8 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `templates/nextjs/`       | Next.js BFF web. 자체 workspace의 계약·목과 인증·글·내 정보·세션·업로드·실시간 기능       |
 | `templates/nextjs-admin/` | Next.js 관리 BFF. 자체 계약·목, 비밀번호 로그인·관리 권한·ko/en·실시간 접근 확인          |
 | `shared/nextjs/`          | Next.js 앱 공통 코드·테스트·하네스 원본. sync가 템플릿의 같은 경로에 복사한다             |
-| `create/`                 | git 추적 템플릿 파일로 단독·FastAPI+web 조합 프로젝트를 만드는 CLI                        |
-| `create/assets/combo/`    | 조합 루트 실행기·하네스·CI와 조합용 web 이미지의 원본                                     |
+| `create/`                 | git 추적 템플릿 파일로 단독·FastAPI+프론트(web·admin) 조합 프로젝트를 만드는 CLI          |
+| `create/assets/combo/`    | 조합 루트 실행기·하네스·CI와 조합용 web·admin 이미지의 원본                               |
 | `scripts/`                | check 실행기, 도구 설치기, 구조 비교, 지침·템플릿 검사, 동기화                            |
 | `docs/`                   | 하네스 표준, API 규약, 스펙과 계획                                                        |
 
@@ -33,7 +33,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `pnpm gen`                                                   | 계약을 컴파일하고 적합성 테스트와 목 서버의 타입을 다시 만든다                                                                                                                                                                                                                                    |
 | `pnpm sync`                                                  | 공유 자산 원본을 템플릿 사본 위치로 복사한다                                                                                                                                                                                                                                                      |
 | `pnpm new <대상> --template <fastapi\|nextjs\|nextjs-admin>` | 저장소 밖에 단독 프로젝트를 만든다. `--name <이름>`, `--no-git`, `--help`를 지원한다                                                                                                                                                                                                              |
-| `pnpm new <대상> --api fastapi --web`                        | 저장소 밖에 apps/api·apps/web 조합을 만든다. web 의존성 버전을 보존하고 api OpenAPI로 web 타입을 생성한다. `--name`, `--no-git`를 지원한다                                                                                                                                                        |
+| `pnpm new <대상> --api fastapi [--web] [--admin]`            | 저장소 밖에 apps/api와 선택한 apps/web·apps/admin 조합을 만든다. 프론트 의존성 해석을 보존하고 api OpenAPI로 각 프론트 타입을 생성한다. `--name`, `--no-git`를 지원한다                                                                                                                           |
 | `pnpm new --help`                                            | 단독·조합 생성의 사용법과 이름 규칙을 보여 준다                                                                                                                                                                                                                                                   |
 | `pnpm --dir templates/nextjs setup`                          | web의 고정 의존성·Chromium 설치와 환경 준비                                                                                                                                                                                                                                                       |
 | `pnpm --dir templates/nextjs-admin setup`                    | admin의 고정 의존성·Chromium 설치와 환경 준비                                                                                                                                                                                                                                                     |
@@ -57,10 +57,10 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 - 작업을 끝내기 전에 `pnpm check`를 통과시킨다.
 - `pnpm new`는 저장소 밖의 새 폴더 또는 비어 있는 폴더에 만든다. 상대 대상은 명령을 실행한 폴더 기준이다. Windows 저장소 경로의 대소문자 차이는 허용하며 없는 드라이브·공유는 생성 전에 거절한다. 이름은 대상 폴더 이름 또는 `--name`이며 소문자로 시작하는 kebab-case, 50자 이하다.
 - FastAPI 단독·조합의 이름 `fastapi`는 템플릿의 개발 compose 이름이라 예약한다. 폴더 이름·`--name` 모두 오류 2로 거절하며 다른 `--name`을 쓴다. 단독 nextjs는 허용한다. 다른 로컬 compose 프로젝트와도 이름이 겹치지 않게 고른다. 같은 이름은 볼륨을 공유한다.
-- 조합의 이름 `api`·`web`은 앱의 workspace 패키지 이름이라 예약한다. 폴더 이름·`--name` 모두 오류 2로 거절하며 다른 `--name`을 쓴다. 단독 프로젝트는 두 이름을 허용한다.
+- 조합의 이름 `api`·`web`·`admin`은 앱의 workspace 패키지 이름이라 예약한다. 폴더 이름·`--name` 모두 오류 2로 거절하며 다른 `--name`을 쓴다. 단독 프로젝트는 세 이름을 허용한다.
 - FastAPI 템플릿 compose에는 최상위 `name`을 두지 않는다. CLI가 생성할 때 맨 앞에 설명 주석과 `name: <이름>`을 넣고 앱 이미지 값의 바이트 범위만 바꾼다.
 - 생성할 템플릿과 조합 자산·루트 `.gitattributes`·`.editorconfig`의 git 추적 변경은 먼저 커밋한다. 조합 입력은 HEAD의 추적 내용을 쓴다. CLI는 추적 파일만 복사하고 `template.json`, 무추적 환경 파일·설치물·캐시는 제외하며 원본 인덱스의 실행 권한을 보존한다. CLI와 테스트의 git 호출은 `scripts/src/files/git-environment.ts`로 상속된 저장소 지정 변수를 제거한다.
-- 조합 생성은 레지스트리에 접속해 잠금 파일을 합치고 frozen 설치·web gen을 실행한다. TypeScript override와 web 버전 해석을 보존한다. 루트 compose는 없고 인프라는 apps/api가 맡는다. gen은 캐시하지 않는다.
+- 조합 생성은 프론트 계약의 추적 경로·바이트·실행 권한과 workspace의 minimumReleaseAge·allowBuilds·overrides가 같아야 한다. 레지스트리에 접속해 잠금 파일의 같은 계약 importer·패키지·snapshot·도구 해석을 보존해 합치고 frozen 설치·선택한 프론트 gen(web → admin)을 실행한다. TypeScript override와 모든 프론트의 버전 해석을 보존한다. 루트 compose는 없고 인프라는 apps/api가 맡는다. gen은 캐시하지 않는다.
 - 기본 생성은 main 브랜치와 출처를 적은 첫 커밋을 만든다. 복사한 파일은 이름 목록으로 강제 추가하고 조합이 만든 파일은 프로젝트 ignore를 따르므로 설치물·캐시는 제외한다. git 신원이 없으면 init과 스테이징 뒤 commit 명령을 안내하며 사용자 서명 설정을 따른다. `--no-git`은 git 초기화와 커밋을 모두 생략한다.
 - `pnpm new`를 생성 중 Ctrl+C로 중단하면 대상 옆의 임시 폴더 `aitpl-<이름>-XXXXXX`가 남을 수 있으므로 지운다. 기존 빈 대상에 항목별로 옮기는 도중 중단하면 대상도 일부 채워질 수 있으므로 생성된 항목을 비운다. 옮긴 뒤 git 단계에서 중단하면 새 대상과 기존 빈 대상 모두 첫 커밋 없이 또는 일부 지워진 채 남을 수 있으므로 대상을 지우고 다시 만든다(`--no-git` 제외).
 - 생성 smoke는 OS 임시 폴더의 `aitpl-` 이름을 쓴다. Docker가 필요한 생성 프로젝트 setup·FastAPI check·조합 E2E·이미지 빌드는 PR CI의 `create-combo`·`create-standalone`에서 확인한다. 개발 스택 `fastapi`·`joon`과 볼륨은 쓰거나 내리지 않는다.

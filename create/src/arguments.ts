@@ -3,21 +3,24 @@ import { parseArgs } from "node:util";
 import { CreateError, errorReason } from "./errors.ts";
 
 export type Template = "fastapi" | "nextjs" | "nextjs-admin";
+export type Frontend = "web" | "admin";
 
 export interface CreateOptions {
   readonly target: string;
   readonly name: string;
   readonly template: Template | "combo";
   readonly git: boolean;
+  readonly frontends?: readonly Frontend[];
 }
 
 export const usage = `사용법:
   pnpm new <대상 폴더> --template <fastapi|nextjs|nextjs-admin> [--name <이름>] [--no-git]
-  pnpm new <대상 폴더> --api fastapi --web [--name <이름>] [--no-git]
+  pnpm new <대상 폴더> --api fastapi [--web] [--admin] [--name <이름>] [--no-git]
   pnpm new --help
 
 이름은 소문자로 시작하는 kebab-case이며 50자 이하다.
 상대 경로는 명령을 실행한 폴더 기준이다.
+조합은 --web, --admin 가운데 하나 이상이 필요하다.
 `;
 
 export function parseArguments(
@@ -37,6 +40,7 @@ export function parseArguments(
         "no-git": { type: "boolean" },
         api: { type: "string" },
         web: { type: "boolean" },
+        admin: { type: "boolean" },
       },
     });
   } catch (error) {
@@ -60,18 +64,18 @@ export function parseArguments(
   }
   const { values, positionals } = parsed;
   if (values.help) return "help";
-  if (values.template !== undefined && (values.api !== undefined || values.web)) {
+  if (values.template !== undefined && (values.api !== undefined || values.web || values.admin)) {
     throw new CreateError(
       "단독과 조합 옵션을 함께 지정했다",
-      "--template 또는 --api와 --web을 고른다.",
+      "--template 또는 --api와 프론트 옵션(--web, --admin)을 고른다.",
       2,
     );
   }
-  if (values.api !== undefined || values.web) {
-    if (values.api !== "fastapi" || !values.web) {
+  if (values.api !== undefined || values.web || values.admin) {
+    if (values.api !== "fastapi" || (!values.web && !values.admin)) {
       throw new CreateError(
         "조합 옵션이 올바르지 않다",
-        "--api fastapi와 --web을 함께 지정한다.",
+        "--api fastapi에 --web, --admin 가운데 하나 이상을 지정한다.",
         2,
       );
     }
@@ -111,7 +115,7 @@ export function parseArguments(
       2,
     );
   }
-  if (values.api !== undefined && (name === "api" || name === "web")) {
+  if (values.api !== undefined && ["api", "web", "admin"].includes(name)) {
     throw new CreateError(
       `조합 앱의 workspace 패키지 이름(${name})과 겹친다`,
       "다른 --name을 지정한다.",
@@ -123,5 +127,13 @@ export function parseArguments(
     name,
     template: values.api ? "combo" : (values.template as Template),
     git: !values["no-git"],
+    ...(values.api
+      ? {
+          frontends: [
+            ...(values.web ? ["web" as const] : []),
+            ...(values.admin ? ["admin" as const] : []),
+          ],
+        }
+      : {}),
   };
 }

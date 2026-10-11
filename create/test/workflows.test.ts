@@ -9,7 +9,17 @@ import { selectFrontendSteps } from "../src/frontend-config.ts";
 import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
 
 interface Workflow {
-  jobs: Record<string, { steps: { name?: string; run?: string; env?: Record<string, string> }[] }>;
+  jobs: Record<
+    string,
+    {
+      steps: {
+        name?: string;
+        run?: string;
+        env?: Record<string, string>;
+        "working-directory"?: string;
+      }[];
+    }
+  >;
 }
 const root = resolve(import.meta.dirname, "../..");
 const workflow = (file: string) => parse(readFileSync(resolve(root, file), "utf8")) as Workflow;
@@ -29,7 +39,7 @@ it("조합 workflow의 run 명령은 create-combo가 같은 순서로 검증한�
   const selected = parse(
     selectFrontendSteps(
       readFileSync(resolve(root, "create/assets/combo/.github/workflows/ci.yml"), "utf8"),
-      ["web"],
+      ["web", "admin"],
     ),
   ) as Workflow;
   const combo = commands(selected.jobs.check);
@@ -71,21 +81,60 @@ it.skipIf(!existsSync(bash))("작업 트리가 바뀌면 CI는 해결 방법을 
   expect(clean.stderr).toBe("");
 });
 
-it.skipIf(!existsSync(bash))("CI는 기존 컨테이너를 발견하면 trap·실행·삭제 전에 거절한다", () => {
-  const step = workflow(".github/workflows/ci.yml").jobs["create-combo"]?.steps.find(
-    (step) => step.name === "조합 web 컨테이너 시작 확인",
-  );
-  const run = step?.run;
-  if (!run) throw new Error("컨테이너 검증 단계가 없다");
-  // 셸 함수만 호출한다. Docker 실행 파일은 사용하지 않는다.
-  const calls = join(temporaryFolder(), "calls.log").replaceAll("\\", "/");
-  const script = `set -e\ndocker() { printf '%s\\n' "$*" >> "$CALLS"; [ "$1" = container ]; }\nopenssl() { printf 'fixture'; }\n${run}`;
-  const result = spawnSync(bash, ["-c", script], {
-    encoding: "utf8",
-    env: { ...process.env, CALLS: calls, GITHUB_RUN_ID: "fixture", GITHUB_RUN_ATTEMPT: "1" },
-  });
-  expect(result.status).toBe(1);
-  expect(readFileSync(calls, "utf8").trim()).toBe("container inspect aitpl-combo-web-fixture-1");
-  expect(result.stdout).toBe("");
-  expect(result.stderr).toMatch(/ — /);
+it.skipIf(!existsSync(bash)).each(["web", "admin"])(
+  "CI는 기존 컨테이너를 발견하면 trap·실행·삭제 전에 거절한다: %s",
+  (app) => {
+    const step = workflow(".github/workflows/ci.yml").jobs["create-combo"]?.steps.find(
+      (step) => step.name === `조합 ${app} 컨테이너 시작 확인`,
+    );
+    const run = step?.run;
+    if (!run) throw new Error("컨테이너 검증 단계가 없다");
+    // 셸 함수만 호출한다. Docker 실행 파일은 사용하지 않는다.
+    const calls = join(temporaryFolder(), "calls.log").replaceAll("\\", "/");
+    const script = `set -e\ndocker() { printf '%s\\n' "$*" >> "$CALLS"; [ "$1" = container ]; }\nopenssl() { printf 'fixture'; }\n${run}`;
+    const result = spawnSync(bash, ["-c", script], {
+      encoding: "utf8",
+      env: { ...process.env, CALLS: calls, GITHUB_RUN_ID: "fixture", GITHUB_RUN_ATTEMPT: "1" },
+    });
+    expect(result.status).toBe(1);
+    expect(readFileSync(calls, "utf8").trim()).toBe(
+      `container inspect aitpl-combo-${app}-fixture-1`,
+    );
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/ — /);
+  },
+);
+
+it("CI는 모든 앱의 실제 검증과 두 단일 프론트의 생성 전용 검증을 구분한다", () => {
+  const steps = workflow(".github/workflows/ci.yml").jobs["create-combo"]?.steps ?? [];
+  expect(
+    steps.some(
+      (step) =>
+        step.run ===
+        'pnpm new "$RUNNER_TEMP/aitpl-combo" --api fastapi --web --admin --name ci-combo',
+    ),
+  ).toBe(true);
+  for (const app of ["web", "admin"]) {
+    expect(
+      steps.some(
+        (step) => step.run === `pnpm --filter ${app} exec playwright install-deps chromium`,
+      ),
+    ).toBe(true);
+    const generation = steps.find((step) =>
+      step.run?.startsWith(`pnpm new "$RUNNER_TEMP/aitpl-combo-${app}"`),
+    );
+    expect(generation?.run).toContain(`--api fastapi --${app} --name`);
+    expect(generation?.run).not.toContain(app === "web" ? "--admin" : "--web");
+    const runs = steps
+      .filter((step) => step["working-directory"]?.endsWith(`/aitpl-combo-${app}`))
+      .map((step) => step.run);
+    expect(runs).toEqual([
+      "node --test scripts/*.test.mjs .claude/hooks/*.test.mjs",
+      "pnpm exec turbo run check --dry=json",
+    ]);
+  }
+  const admin = steps.find((step) => step.name === "조합 admin 컨테이너 시작 확인");
+  expect(admin?.run).toContain("--publish 127.0.0.1:3201:3001");
+  expect(admin?.run).toContain("curl --location --silent");
+  expect(admin?.run).toContain("= 200 ];");
 });

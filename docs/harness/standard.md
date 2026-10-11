@@ -149,4 +149,4 @@
 4. `.claude/settings.json`에 `PostToolUse`, `Stop`, `PreToolUse`, `SessionStart` hook이 exec form으로 있다.
 5. `.env.example`, `.github/workflows/ci.yml`, `.gitattributes`, `docs/recipes/*.md`, 골든 모듈 폴더가 있다.
 6. 공유 자산 사본이 원본과 같다.
-7. web·admin의 공통 dependencies·devDependencies·overrides는 같은 버전이다. 차이가 있으면 두 버전과 잠금 파일 갱신 방법을 안내한다.
+7. web·admin의 공통 dependencies·devDependencies·overrides는 같은 버전이다. 차이가 있으면 두 버전과 잠금 파일 갱신 방법을 안내한다. 두 pnpm-workspace.yaml의 minimumReleaseAge·allowBuilds·overrides도 같아야 하며 차이가 있으면 두 값과 설정·잠금 파일을 맞추는 방법을 안내한다.
