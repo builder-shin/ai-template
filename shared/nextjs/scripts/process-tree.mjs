@@ -13,7 +13,9 @@ export function startProcessTree(args, options = {}) {
 export async function stopProcessTree(child, graceMs = 5000) {
   if (!child.pid) return;
   const windows = process.platform === "win32";
+  const darwin = process.platform === "darwin";
   const target = windows ? child.pid : -child.pid;
+  let denied;
   function signal(name) {
     if (windows) {
       spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
@@ -32,16 +34,23 @@ export async function stopProcessTree(child, graceMs = 5000) {
   function alive() {
     try {
       process.kill(target, 0);
+      denied = undefined;
       return true;
     } catch (error) {
-      if (error.code !== "ESRCH") throw error;
-      return false;
+      if (error.code === "ESRCH") return false;
+      // Darwin은 종료 중이거나 회수 전인 구성원만 남은 그룹에도 EPERM을 돌려준다.
+      if (!darwin || error.code !== "EPERM") throw error;
+      denied = error;
+      return true;
     }
   }
   async function wait(ms) {
     const deadline = Date.now() + ms;
     while (alive()) {
-      if (Date.now() >= deadline) return false;
+      if (Date.now() >= deadline) {
+        if (denied) throw denied;
+        return false;
+      }
       await setTimeout(25);
     }
     return true;
