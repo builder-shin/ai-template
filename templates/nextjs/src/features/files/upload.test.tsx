@@ -247,10 +247,16 @@ it.each([
   await userEvent
     .setup()
     .upload(screen.getByLabelText(label), new File(["x"], "x.png", { type: "image/png" }));
-  await waitFor(() =>
+  // 파일 값이 먼저 바뀔 수 있으므로 오류와 Transition의 완료도 함께 기다린다.
+  await waitFor(() => {
     expect(document.querySelector<HTMLInputElement>('input[name="coverImage"]')?.value).toBe(
       "new-id",
-    ),
-  );
-  expect(screen.queryByRole("alert")).toBeNull();
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect((screen.getByLabelText(label) as HTMLInputElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
 });
