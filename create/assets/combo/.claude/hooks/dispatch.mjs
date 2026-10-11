@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
 import { relative, resolve, join, sep } from "node:path";
 import { run, exitCode, gitEnvironment, isGitRoot, pnpmEntry } from "../../scripts/process.mjs";
 import { checkRoot } from "../../scripts/check.mjs";
@@ -43,7 +43,15 @@ function changedFiles(root, execute) {
 
 function appHooks(root, app, event, input, raw, execute) {
   const cwd = join(root, "apps", app);
-  const settings = JSON.parse(readFileSync(join(cwd, ".claude/settings.json"), "utf8"));
+  const path = join(cwd, ".claude/settings.json");
+  let source;
+  try {
+    source = readFileSync(path, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT" && !lstatSync(path, { throwIfNoEntry: false })) return [];
+    throw error;
+  }
+  const settings = JSON.parse(source);
   const match = event === "SessionStart" ? input.source : input.tool_name;
   const results = [];
   const env = { ...gitEnvironment(), CLAUDE_PROJECT_DIR: cwd, PYTHONUTF8: "1" };

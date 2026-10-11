@@ -74,7 +74,7 @@ BuildKit이 필요하며 프로젝트 루트를 빌드 문맥으로 쓴다. 있�
 
 - Claude Code를 루트에서 열면 api와 있는 프론트의 권한과 hook을 합친 루트 설정을 쓴다. 앱 폴더에서 열면 그 앱의 설정을 쓴다.
 - skill은 각 앱의 `.claude/skills/`에 둔다. 루트 세션도 앱 파일을 처음 읽거나 고칠 때 그 아래 skill을 불러온다.
-- 루트 hook은 앱의 `.claude/settings.json`에서 exec form의 command hook을 매번 읽고 앱 폴더에서 실행한다.
+- 루트 hook은 앱의 `.claude/settings.json`에서 exec form의 command hook을 매번 읽고 앱 폴더에서 실행한다. 설정 파일이 없으면 해당 앱의 hook만 건너뛰며, 기존 설정을 읽을 수 없거나 형식이 틀리면 오류로 처리한다.
 - matcher·이벤트·권한을 바꾸면 루트 `.claude/settings.json`도 고친다. 앱 lefthook·Betterleaks 설정을 바꾸면 루트 `lefthook.yml`·`.betterleaks.toml`도 고친다. prompt hook은 루트 디스패처가 지원하지 않는다.
 - 편집 hook은 고친 앱만, Stop은 바뀐 앱과 루트 검사만 돈다. 루트 `contract/` 변경은 모든 프론트 hook과 루트 검사를 실행한다. 프론트 hook도 앱 밖 계약의 변경·삭제를 감지한다. 위험 명령은 api와 있는 프론트가 검사하고 하나라도 거부하면 막는다. SessionStart는 앱별 상태를 함께 보여 준다.
 - 루트 권한은 `contract/openapi.yaml`과 `contract/**/generated/**`의 Edit·Write를 막는다. Betterleaks 예외는 루트 계약과 각 앱의 기존 생성물에만 적용한다.
