@@ -19,6 +19,7 @@ import { templateFiles } from "./repository.ts";
 import { renameStandalone } from "./standalone.ts";
 import { readComboInputs, writeCombo, type ComboTools, type ComboFrontend } from "./combo.ts";
 import { runPnpm } from "./pnpm.ts";
+import { verifyContracts } from "./contract.ts";
 
 function canonicalPath(path: string): string {
   if (existsSync(path)) return realpathSync.native(path);
@@ -89,12 +90,20 @@ export function createProject(
       }
     });
   validateTarget(options.target, worktrees);
-  const frontends: readonly ComboFrontend[] = [{ name: "web", template: "nextjs" }];
+  const frontends: readonly ComboFrontend[] = (options.frontends ?? ["web"]).map((name) => ({
+    name,
+    template: name === "web" ? "nextjs" : "nextjs-admin",
+  }));
   const apps =
     options.template === "combo"
       ? [{ name: "api", template: "fastapi" as const }, ...frontends]
       : [{ name: "", template: options.template }];
   const plans = apps.map((app) => ({ ...app, files: templateFiles(root, app.template) }));
+  if (options.template === "combo")
+    verifyContracts(
+      root,
+      plans.filter((plan) => plan.template !== "fastapi"),
+    );
   const inputs =
     options.template === "combo"
       ? readComboInputs(root, tools.assets ?? join(root, "create/assets/combo"))
@@ -116,11 +125,15 @@ export function createProject(
         const appPath = `apps/${app}`;
         const comboFrontend = options.template === "combo" && template !== "fastapi";
         const prefixes = options.template === "combo" ? [appPath] : [""];
-        if (comboFrontend && file.path.startsWith("contract/")) prefixes[0] = "";
+        if (comboFrontend && file.path.startsWith("contract/")) {
+          if (app !== frontends[0]?.name) continue;
+          prefixes[0] = "";
+        }
         // 계약 패키지의 상대 설정·규약 참조는 루트와 앱 양쪽에 같은 사본을 둔다.
         if (
           comboFrontend &&
-          (file.path === "tsconfig.base.json" || file.path.startsWith("docs/conventions/"))
+          (file.path === "tsconfig.base.json" || file.path.startsWith("docs/conventions/")) &&
+          app === frontends[0]?.name
         )
           prefixes.push("");
         for (const prefix of prefixes) {

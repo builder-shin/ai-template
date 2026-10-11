@@ -4,7 +4,7 @@ import { parseArguments } from "../src/arguments.ts";
 import { CreateError } from "../src/errors.ts";
 
 describe("CLI 입력", () => {
-  it.each(["api", "web"])("조합 예약 이름은 두 입력 경로 모두 오류 2다: %s", (name) => {
+  it.each(["api", "web", "admin"])("조합 예약 이름은 두 입력 경로 모두 오류 2다: %s", (name) => {
     for (const args of [[name], ["target", "--name", name]]) {
       try {
         parseArguments([...args, "--api", "fastapi", "--web"], {});
@@ -127,9 +127,37 @@ describe("CLI 입력", () => {
       target: resolve("my-app"),
       name: "my-app",
       template: "combo",
+      frontends: ["web"],
       git: true,
     });
   });
+
+  it.each([["--admin"], ["--web", "--admin"]])("admin 조합의 앱 목록을 받는다: %j", (...flags) => {
+    expect(parseArguments(["my-app", "--api", "fastapi", ...flags], {})).toMatchObject({
+      template: "combo",
+      frontends: flags.map((flag) => flag.slice(2)),
+    });
+  });
+
+  it.each([
+    ["my-app", "--admin"],
+    ["my-app", "--template", "nextjs-admin", "--admin"],
+    ["my-app", "--api", "nestjs", "--admin"],
+    ["my-app", "--api", "fastapi", "--admin", "--admin"],
+  ])("admin의 틀린 조합 인자는 오류 2다: %j", (...args) => {
+    expect(() => parseArguments(args, {})).toThrow(expect.objectContaining({ exitCode: 2 }));
+  });
+
+  it.each(["fastapi", "api", "web", "admin"])(
+    "모든 조합 모양의 예약 이름을 거절한다: %s",
+    (name) => {
+      for (const flags of [["--web"], ["--admin"], ["--web", "--admin"]])
+        for (const args of [[name], ["target", "--name", name]])
+          expect(() => parseArguments([...args, "--api", "fastapi", ...flags], {})).toThrow(
+            expect.objectContaining({ exitCode: 2 }),
+          );
+    },
+  );
 
   it.each([
     ["fastapi 단독 --name", "target", "--template", "fastapi", "--name", "fastapi"],

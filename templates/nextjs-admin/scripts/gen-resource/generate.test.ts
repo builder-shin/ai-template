@@ -6,6 +6,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  renameSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -249,6 +250,28 @@ it("설정으로 고른 백엔드 스펙을 읽는다", async () => {
   put("contract/openapi.yaml", "{}");
   await generateResource(root, "articles");
   expect(files()).toHaveProperty(join(root, "src/resources/articles/resource.ts"));
+});
+
+it("조합의 앱 밖 계약과 api OpenAPI로 리소스 초안을 만든다", async () => {
+  const app = join(root, "apps/admin");
+  mkdirSync(app, { recursive: true });
+  for (const folder of ["src", "messages"]) renameSync(join(root, folder), join(app, folder));
+  put("apps/api/openapi.json", JSON.stringify(contract()));
+  put(
+    "apps/admin/gen.config.json",
+    JSON.stringify({ openapi: "../api/openapi.json", contract: "../../contract" }),
+  );
+  put("contract/openapi.yaml", "{}");
+  expect(await generateResource(app, "articles")).toEqual([
+    "src/resources/articles/resource.ts",
+    "messages/ko.json",
+    "messages/en.json",
+    "src/resources/index.ts",
+  ]);
+  expect(readFileSync(join(app, "src/resources/articles/resource.ts"), "utf8")).toContain(
+    'type: "articles"',
+  );
+  expect(lstatSync(join(app, "contract"), { throwIfNoEntry: false })).toBeUndefined();
 });
 it.for([[], ["articles", "extra"], ["--unknown"]])(
   "생성기 CLI의 사용법 오류는 종료 코드 2이며 파일을 쓰지 않는다: %j",

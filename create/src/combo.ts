@@ -1,7 +1,7 @@
 import { copyFileSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { parseDocument } from "yaml";
-import { rewriteImporters, verifyWebResolutions } from "./lockfile.ts";
+import { mergeFrontendLocks, verifyFrontendResolutions } from "./lockfile.ts";
+import { mergeWorkspace } from "./workspace.ts";
 import { renameStandalone } from "./standalone.ts";
 import type { PnpmRunner } from "./pnpm.ts";
 import { writeHarness } from "./harness.ts";
@@ -124,6 +124,29 @@ export function writeCombo(
     NODE_TYPES: required(pkg.devDependencies?.["@types/node"], "devDependencies.@types/node"),
     VITEST: required(pkg.devDependencies?.vitest, "devDependencies.vitest"),
     YAML: required(pkg.devDependencies?.yaml, "devDependencies.yaml"),
+    FRONTEND_ROWS: frontends
+      .map(({ name: app }) => `| apps/${app}/ | Next.js ${app} BFF, 화면·HTTP 통합·E2E |`)
+      .join("\n"),
+    FRONTEND_GUIDES: frontends
+      .map(({ name: app }) => `[${app} 지침](apps/${app}/AGENTS.md)`)
+      .join("·"),
+    FRONTEND_PATHS: frontends.map(({ name: app }) => `\`apps/${app}/\``).join(", "),
+    FRONTEND_URLS: frontends
+      .map(({ name: app }) => `${app} http://localhost:${app === "admin" ? "3001" : "3000"}`)
+      .join(", "),
+    FRONTEND_PORT_ROWS: frontends
+      .map(
+        ({ name: app }) =>
+          `| ${app} dev·목, E2E·목 | ${app === "admin" ? "3001·4011, 3101·4111" : "3000·4010, 3100·4110"} |`,
+      )
+      .join("\n"),
+    FRONTEND_IMAGES: frontends
+      .map(({ name: app }) => {
+        const port = app === "admin" ? "3001" : "3000";
+        const host = app === "admin" ? "3201" : "3200";
+        return `\`\`\`sh\nDOCKER_BUILDKIT=1 docker build -f apps/${app}/Dockerfile . --tag ${name}-${app}\ndocker run --rm --publish 127.0.0.1:${host}:${port} \\\n  --env API_BASE_URL --env APP_URL --env NEXT_PUBLIC_REALTIME_URL \\\n  --env TIME_ZONE --env SESSION_SECRET ${name}-${app}\n\`\`\``;
+      })
+      .join("\n\n"),
   };
   for (const { path, content } of inputs) {
     const app = /^apps\/([^/]+)\//.exec(path)?.[1];
@@ -141,22 +164,27 @@ export function writeCombo(
     frontends.map((app) => app.name),
   );
   writeHarness(root, ["api", ...frontends.map((app) => app.name)]);
-  const workspace = parseDocument(readFileSync(join(frontend, "pnpm-workspace.yaml"), "utf8"));
-  workspace.set("packages", [
-    "apps/api",
-    ...frontends.map((app) => `apps/${app.name}`),
-    "contract/*",
-  ]);
-  // workspace 이동 뒤에도 계약 패키지의 TypeScript peer를 템플릿 버전으로 유지한다.
-  workspace.setIn(["overrides", "typescript"], typescript);
-  writeFileSync(join(root, "pnpm-workspace.yaml"), workspace.toString());
-  const lock = readFileSync(join(frontend, "pnpm-lock.yaml"), "utf8");
-  writeFileSync(join(root, "pnpm-lock.yaml"), rewriteImporters(lock, first.name));
+  const sources = (file: string) =>
+    frontends.map((app) => ({
+      app: app.name,
+      source: readFileSync(join(root, "apps", app.name, file), "utf8"),
+    }));
+  writeFileSync(
+    join(root, "pnpm-workspace.yaml"),
+    mergeWorkspace(sources("pnpm-workspace.yaml"), typescript),
+  );
+  const locks = sources("pnpm-lock.yaml");
+  writeFileSync(join(root, "pnpm-lock.yaml"), mergeFrontendLocks(locks));
   for (const app of frontends)
     for (const file of ["pnpm-lock.yaml", "pnpm-workspace.yaml"])
       rmSync(join(root, "apps", app.name, file));
   pnpm(root, ["install", "--lockfile-only"]);
-  verifyWebResolutions(lock, readFileSync(join(root, "pnpm-lock.yaml"), "utf8"), first.name);
+  for (const lock of locks)
+    verifyFrontendResolutions(
+      lock.source,
+      readFileSync(join(root, "pnpm-lock.yaml"), "utf8"),
+      lock.app,
+    );
   pnpm(root, ["install", "--frozen-lockfile"]);
   pnpm(root, [
     "exec",
@@ -168,6 +196,8 @@ export function writeCombo(
     "package.json",
     "turbo.json",
     ".github/workflows/ci.yml",
+    "AGENTS.md",
+    "README.md",
   ]);
   for (const app of frontends) pnpm(root, ["--filter", app.name, "run", "gen"]);
 }

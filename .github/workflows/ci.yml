@@ -204,7 +204,19 @@ jobs:
         run: |
           git config --global user.name "CI"
           git config --global user.email "ci@example.com"
-      - run: pnpm new "$RUNNER_TEMP/aitpl-combo" --api fastapi --web --name ci-combo
+      - run: pnpm new "$RUNNER_TEMP/aitpl-combo" --api fastapi --web --admin --name ci-combo
+      - name: web 단독 조합 생성
+        run: pnpm new "$RUNNER_TEMP/aitpl-combo-web" --api fastapi --web --name ci-combo-web-only
+      - run: node --test scripts/*.test.mjs .claude/hooks/*.test.mjs
+        working-directory: ${{ runner.temp }}/aitpl-combo-web
+      - run: pnpm exec turbo run check --dry=json
+        working-directory: ${{ runner.temp }}/aitpl-combo-web
+      - name: admin 단독 조합 생성
+        run: pnpm new "$RUNNER_TEMP/aitpl-combo-admin" --api fastapi --admin --name ci-combo-admin-only
+      - run: node --test scripts/*.test.mjs .claude/hooks/*.test.mjs
+        working-directory: ${{ runner.temp }}/aitpl-combo-admin
+      - run: pnpm exec turbo run check --dry=json
+        working-directory: ${{ runner.temp }}/aitpl-combo-admin
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.12.19"
@@ -214,6 +226,8 @@ jobs:
       - run: pnpm db:migrate
         working-directory: ${{ runner.temp }}/aitpl-combo
       - run: pnpm --filter web exec playwright install-deps chromium
+        working-directory: ${{ runner.temp }}/aitpl-combo
+      - run: pnpm --filter admin exec playwright install-deps chromium
         working-directory: ${{ runner.temp }}/aitpl-combo
       - run: pnpm check
         working-directory: ${{ runner.temp }}/aitpl-combo
@@ -233,6 +247,8 @@ jobs:
       - run: docker build apps/api
         working-directory: ${{ runner.temp }}/aitpl-combo
       - run: docker build --tag ci-combo-web:ci -f apps/web/Dockerfile .
+        working-directory: ${{ runner.temp }}/aitpl-combo
+      - run: docker build --tag ci-combo-admin:ci -f apps/admin/Dockerfile .
         working-directory: ${{ runner.temp }}/aitpl-combo
       - name: 조합 web 컨테이너 시작 확인
         shell: bash
@@ -261,6 +277,37 @@ jobs:
             ci-combo-web:ci
           timeout 60s bash -c '
             until [ "$(curl --silent --output /dev/null --write-out "%{http_code}" --max-time 2 http://127.0.0.1:3200/)" = 200 ]; do
+              sleep 1
+            done
+          '
+
+      - name: 조합 admin 컨테이너 시작 확인
+        shell: bash
+        run: |
+          container="aitpl-combo-admin-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if docker container inspect "$container" >/dev/null 2>&1; then
+            echo "컨테이너가 이미 있다 — 다른 실행 이름을 사용하거나 소유한 컨테이너를 먼저 정리한다." >&2
+            exit 1
+          fi
+          cleanup() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              docker logs "$container" || true
+            fi
+            docker rm -f "$container" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          session_secret=$(openssl rand -hex 32)
+          docker run --detach --name "$container" \
+            --publish 127.0.0.1:3201:3001 \
+            --env API_BASE_URL=http://127.0.0.1:8000/api/v1 \
+            --env APP_URL=http://127.0.0.1:3201 \
+            --env NEXT_PUBLIC_REALTIME_URL=http://127.0.0.1:8000 \
+            --env TIME_ZONE=Asia/Seoul \
+            --env SESSION_SECRET="$session_secret" \
+            ci-combo-admin:ci
+          timeout 60s bash -c '
+            until [ "$(curl --location --silent --output /dev/null --write-out "%{http_code}" --max-time 2 http://127.0.0.1:3201/)" = 200 ]; do
               sleep 1
             done
           '
