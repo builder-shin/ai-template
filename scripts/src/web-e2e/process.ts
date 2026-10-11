@@ -21,19 +21,32 @@ export interface CommandOptions {
 /** SIGINT로 Playwright의 별도 webServer 그룹 정리를 기다린 뒤 소유한 그룹만 강제 종료한다. */
 async function stopOwnedGroup(pid: number, graceMs: number): Promise<void> {
   const target = -pid;
+  const darwin = process.platform === "darwin";
+  let denied: Error | undefined;
   function signal(name: NodeJS.Signals | 0) {
     try {
       process.kill(target, name);
+      if (name === 0) denied = undefined;
       return true;
     } catch (error) {
-      if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) throw error;
-      return false;
+      if (error instanceof Error && "code" in error) {
+        if (error.code === "ESRCH") return false;
+        // Darwin의 회수 전 그룹은 0 신호에 EPERM을 돌려줄 수 있다.
+        if (name === 0 && darwin && error.code === "EPERM") {
+          denied = error;
+          return true;
+        }
+      }
+      throw error;
     }
   }
   async function wait(ms: number) {
     const deadline = Date.now() + ms;
     while (signal(0)) {
-      if (Date.now() >= deadline) return false;
+      if (Date.now() >= deadline) {
+        if (denied) throw denied;
+        return false;
+      }
       await setTimeout(25);
     }
     return true;
