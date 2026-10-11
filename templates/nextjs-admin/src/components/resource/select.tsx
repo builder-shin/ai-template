@@ -13,6 +13,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Spinner } from "../spinner";
 import type { Option, SearchOptions } from "./types";
+import { SearchMultiSelect } from "./search-multi-select";
 
 const emptyOptions: readonly Option[] = [];
 
@@ -101,21 +102,46 @@ export function ResourceSelect({
     ? [...selectedOptions, ...availableOptions]
     : [...availableOptions, ...selectedOptions];
   const items = [...new Map(orderedOptions.map((option) => [option.value, option])).values()];
+  function changeValue(next: string | string[] | null, choices: readonly Option[] = items) {
+    setValue(next);
+    const values = Array.isArray(next) ? next : [next];
+    setRetainedOptions(choices.filter((option) => values.includes(option.value)));
+  }
+  function closeSearch() {
+    endSearch();
+    setTerm("");
+  }
+  if (search && multiple && Array.isArray(value))
+    return (
+      <SearchMultiSelect
+        name={name}
+        label={label}
+        value={value}
+        selectedOptions={selectedOptions}
+        availableOptions={availableOptions}
+        onValueChange={changeValue}
+        term={term}
+        onTermChange={(next) => {
+          endSearch();
+          setTerm(next);
+        }}
+        onSearch={runSearch}
+        onClose={closeSearch}
+        pending={pending}
+        error={error}
+        disabled={disabled}
+        invalid={invalid}
+        describedBy={describedBy}
+      />
+    );
   return (
     <Select
       name={name}
       multiple={multiple}
       value={value}
-      onValueChange={(next) => {
-        setValue(next);
-        const values = Array.isArray(next) ? next : [next];
-        setRetainedOptions(items.filter((option) => values.includes(option.value)));
-      }}
+      onValueChange={(next) => changeValue(next)}
       onOpenChange={(open) => {
-        if (!open) {
-          endSearch();
-          setTerm("");
-        }
+        if (!open) closeSearch();
       }}
       items={items}
       disabled={disabled}
