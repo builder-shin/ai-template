@@ -147,3 +147,21 @@ it.each(["ko", "en"] as const)(
     expect(screen.queryByText("u")).toBeNull();
   },
 );
+
+it("표시 override도 요청의 대상 상세 접근 판정을 따른다", () => {
+  render(
+    <FieldDisplay
+      name="status"
+      field={{
+        display: ({ linkable }) => <span>{linkable?.("users") ? "상세 허용" : "상세 없음"}</span>,
+      }}
+      record={record}
+      included={included}
+      locale="ko"
+      timeZone="Asia/Seoul"
+      translate={translate}
+      linkable={(type) => type === "users"}
+    />,
+  );
+  expect(screen.getByText("상세 허용")).toBeDefined();
+});

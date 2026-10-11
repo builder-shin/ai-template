@@ -19,3 +19,5 @@
 리소스끼리 내부를 import하지 않는다. 화면은 등록 목록만 가져온다. 선언과 서버 모듈에는 `import "server-only"`를 둔다. 범용 화면 전체를 바꾸지 않고 필드 표시·입력만 바꾼다.
 
 역할 폼의 permissions는 관계가 아닌 열거값 배열이다. 생성기의 enum-many 초안에 values 번역·서버 loadValues·입력 override를 검토한다. 역할은 선택 사항인 description을 textarea로 받고 시스템 역할의 delete.visible을 false로 만든다. 권한 목록은 id를 코드 열로 더하고 상세·필터·정렬·쓰기를 두지 않는다.
+
+감사 로그는 읽기 전용이며 actor를 include하고 기본 정렬을 -createdAt으로 둔다. 목록은 기록 시각·행위자·행위·대상 종류·대상 id, 상세는 메타데이터·IP 주소도 표시한다. metadata와 targetId만 리소스 폴더의 표시 override를 쓴다. 대상은 등록한 상세와 보기 권한이 있을 때만 링크하며 actor는 공개 이름만 쓴다. users:read가 없으면 행위자 필터만 403 안내와 함께 비활성화한다. 기간의 종료 날짜는 포함하며 API의 배타적 createdTo에는 TIME_ZONE의 다음 날 0시를 보낸다. date.ts의 filterCalendarDate는 ISO 종료 경계를 입력 날짜로 되돌린다.

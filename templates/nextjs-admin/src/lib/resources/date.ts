@@ -29,13 +29,24 @@ function midnight(timestamp: number, timeZone: string) {
   }
   return current;
 }
-/** 끝 날짜도 포함한다. 다음 날의 경계에서 1ms를 빼 서머타임 변화를 보존한다. */
+/** 끝 날짜를 포함하도록 배타적인 종료 시각을 다음 날의 경계로 보낸다. */
 export function calendarDateFilter(value: string, end: boolean, timeZone: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const timestamp = Date.parse(`${value}T00:00:00Z`);
   if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== value)
     return value;
-  return new Date(
-    midnight(timestamp + (end ? 86400000 : 0), timeZone) - (end ? 1 : 0),
-  ).toISOString();
+  return new Date(midnight(timestamp + (end ? 86400000 : 0), timeZone)).toISOString();
+}
+
+/** ISO 종료 경계의 직전 시각이 속한 날짜를 입력에 표시한다. */
+export function filterCalendarDate(value: string, end: boolean, timeZone: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return value;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(timestamp - (end ? 1 : 0)));
 }

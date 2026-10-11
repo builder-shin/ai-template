@@ -139,6 +139,50 @@
         "group": "Group",
         "description": "Description"
       }
+    },
+    "audit-logs": {
+      "title": "Audit logs",
+      "fields": {
+        "action": "Action",
+        "targetType": "Target type",
+        "targetId": "Target ID",
+        "metadata": "Metadata",
+        "ipAddress": "IP address",
+        "createdAt": "Recorded at",
+        "actor": "Actor",
+        "createdFrom": "Start date",
+        "createdTo": "End date"
+      },
+      "enums": {
+        "action": {
+          "session": {
+            "login_succeeded": "Login succeeded",
+            "login_failed": "Login failed",
+            "all_revoked": "All sessions revoked"
+          },
+          "user": {
+            "password_changed": "Password changed",
+            "password_reset": "Password reset",
+            "roles_changed": "User roles changed",
+            "deactivated": "User deactivated",
+            "reactivated": "User reactivated",
+            "deleted": "User deleted"
+          },
+          "role": {
+            "created": "Role created",
+            "updated": "Role updated",
+            "deleted": "Role deleted"
+          },
+          "post": {
+            "deleted_by_admin": "Post deleted by admin"
+          }
+        },
+        "targetType": {
+          "users": "Users",
+          "roles": "Roles",
+          "posts": "Posts"
+        }
+      }
     }
   }
 }

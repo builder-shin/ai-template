@@ -61,6 +61,6 @@ it("기간 필터는 설정 시간대의 날짜 경계로 API에 보낸다", () 
     }),
   ).toMatchObject({
     "filter[createdFrom]": "2026-10-07T15:00:00.000Z",
-    "filter[createdTo]": "2026-10-08T14:59:59.999Z",
+    "filter[createdTo]": "2026-10-08T15:00:00.000Z",
   });
 });
