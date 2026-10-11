@@ -6,6 +6,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -17,7 +18,7 @@ import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
 const folders: string[] = [];
 
 export function temporaryFolder(): string {
-  const folder = mkdtempSync(join(tmpdir(), "aitpl-create-test-"));
+  const folder = realpathSync.native(mkdtempSync(join(tmpdir(), "aitpl-create-test-")));
   folders.push(folder);
   return folder;
 }

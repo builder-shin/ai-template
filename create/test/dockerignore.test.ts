@@ -13,4 +13,7 @@ it.each(["docs", ".claude", ".agents"])("이미지는 앱 루트의 %s만 제외
   expect(excluded(`apps/web/${folder}`)).toBe(true);
   expect(excluded(`apps/api/${folder}`)).toBe(true);
   expect(excluded(`apps/web/src/app/${folder}`)).toBe(false);
+  expect(excluded(`contract/mock/src/${folder}`)).toBe(false);
+  expect(excluded(`contract/mock/${folder}`)).toBe(true);
+  expect(excluded(`contract/typespec/${folder}`)).toBe(true);
 });

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, relative } from "node:path";
 import { readProjectFiles } from "../../scripts/check/files.ts";
+import { readGenConfig, resolveContractPaths } from "../../scripts/gen-config.mjs";
 
 export const readInput = () => JSON.parse(readFileSync(0, "utf8"));
 export const projectRoot = (input) => resolve(process.env.CLAUDE_PROJECT_DIR ?? input.cwd);
@@ -28,8 +29,19 @@ export function safePath(root, path) {
 }
 
 export function snapshot(root) {
+  const files = readProjectFiles(root);
+  const config = readGenConfig(root);
+  if (
+    config.contract &&
+    relative(root, resolve(root, config.contract)).replaceAll("\\", "/").startsWith("../")
+  ) {
+    // 조합의 앱 밖 계약도 Stop 변경 감지에 포함한다. 단독 앱의 경로는 그대로다.
+    const contract = resolveContractPaths(root).root;
+    for (const [path, text] of Object.entries(readProjectFiles(contract)))
+      files[relative(root, join(contract, path)).replaceAll("\\", "/")] = text;
+  }
   return Object.fromEntries(
-    Object.entries(readProjectFiles(root)).map(([path, text]) => [
+    Object.entries(files).map(([path, text]) => [
       path,
       createHash("sha256").update(text).digest("hex"),
     ]),

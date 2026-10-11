@@ -308,6 +308,8 @@ test("루트 staged 포맷은 앱·잠금 파일을 빼고 고친 루트 파일�
       mkdirSync(dirname(join(root, path)), { recursive: true });
       writeFileSync(join(root, path), "// fixture\n");
     }
+    mkdirSync(join(root, "contract/mock/src"), { recursive: true });
+    writeFileSync(join(root, "contract/mock/src/main.ts"), "export {};\n");
     const calls = [];
     const result = stagedFormat(root, (command, args) => {
       calls.push([command, args]);
@@ -315,7 +317,7 @@ test("루트 staged 포맷은 앱·잠금 파일을 빼고 고친 루트 파일�
         status: 0,
         stdout:
           command === "git" && args[0] === "diff"
-            ? `${files.join("\0")}\0apps/web/file.ts\0pnpm-lock.yaml\0`
+            ? `${files.join("\0")}\0apps/web/file.ts\0pnpm-lock.yaml\0contract/mock/src/main.ts\0`
             : "",
       };
     });

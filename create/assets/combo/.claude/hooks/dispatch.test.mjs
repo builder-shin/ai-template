@@ -239,6 +239,32 @@ test("Stop은 깨끗한 저장소와 재진입을 검사 없이 통과시킨다"
   assert.equal(f.calls("api").length + f.calls("web").length, 0);
 });
 
+test("Stop은 루트 계약 변경과 삭제를 web 검사와 루트 검사에 전달한다", (t) => {
+  const f = fixture(t);
+  f.write("contract/typespec/main.tsp", "model Item {}\n");
+  f.write("contract/mock/removed.ts", "export {};\n");
+  f.git("add", "contract");
+  f.git("commit", "-m", "chore: contract fixture");
+  f.git("rm", "contract/mock/removed.ts");
+  f.write("contract/typespec/main.tsp", "model Item { id: string; }\n");
+  let rootChecks = 0;
+  const result = f.invoke(
+    "Stop",
+    { results: { web: { code: 2, stderr: "계약 타입 오류" } } },
+    {
+      rootCheck: () => {
+        rootChecks++;
+        return { status: 0 };
+      },
+    },
+  );
+  assert.equal(f.calls("api").length, 0);
+  assert.equal(f.calls("web").length, 1);
+  assert.equal(rootChecks, 1);
+  assert.equal(result.json.decision, "block");
+  assert.match(result.json.reason, /계약 타입 오류/);
+});
+
 test("Stop은 바뀐 앱의 이유와 루트 검사 실패만 합친다", (t) => {
   const f = fixture(t);
   f.write("apps/api/file.ts", "api 변경\n");

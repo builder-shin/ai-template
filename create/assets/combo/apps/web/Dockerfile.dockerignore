@@ -24,3 +24,6 @@
 apps/*/.claude
 apps/*/.agents
 apps/*/docs
+contract/*/.claude
+contract/*/.agents
+contract/*/docs

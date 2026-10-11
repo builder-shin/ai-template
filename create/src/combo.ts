@@ -72,7 +72,10 @@ export function writeCombo(
     private: true,
     scripts: Object.fromEntries(commands.map((command) => [command, `uv run poe ${command}`])),
   });
-  writeFileSync(join(web, "gen.config.json"), '{ "openapi": "../api/openapi.json" }\n');
+  writeFileSync(
+    join(web, "gen.config.json"),
+    '{ "openapi": "../api/openapi.json", "contract": "../../contract" }\n',
+  );
   const env = join(web, ".env.example");
   let example = readFileSync(env, "utf8");
   for (const [key, value] of Object.entries({
@@ -90,7 +93,7 @@ export function writeCombo(
   writeFileSync(env, example);
   const pkg = JSON.parse(readFileSync(join(web, "package.json"), "utf8")) as {
     engines?: { node?: string };
-    devDependencies?: { lefthook?: string; prettier?: string; typescript?: string };
+    devDependencies?: Record<string, string>;
   };
   const required = (value: string | undefined, key: string): string => {
     if (typeof value !== "string" || !value.trim())
@@ -106,6 +109,9 @@ export function writeCombo(
     NODE: required(pkg.engines?.node, "engines.node"),
     LEFTHOOK: required(pkg.devDependencies?.lefthook, "devDependencies.lefthook"),
     PRETTIER: required(pkg.devDependencies?.prettier, "devDependencies.prettier"),
+    NODE_TYPES: required(pkg.devDependencies?.["@types/node"], "devDependencies.@types/node"),
+    VITEST: required(pkg.devDependencies?.vitest, "devDependencies.vitest"),
+    YAML: required(pkg.devDependencies?.yaml, "devDependencies.yaml"),
   };
   for (const { path, content } of inputs) {
     const destination = join(root, path);
@@ -118,7 +124,7 @@ export function writeCombo(
   copyFileSync(join(web, ".prettierrc.json"), join(root, ".prettierrc.json"));
   writeHarness(root);
   const workspace = parseDocument(readFileSync(join(web, "pnpm-workspace.yaml"), "utf8"));
-  workspace.set("packages", ["apps/api", "apps/web", "apps/web/contract/*"]);
+  workspace.set("packages", ["apps/api", "apps/web", "contract/*"]);
   // workspace 이동 뒤에도 계약 패키지의 TypeScript peer를 템플릿 버전으로 유지한다.
   workspace.setIn(["overrides", "typescript"], typescript);
   writeFileSync(join(root, "pnpm-workspace.yaml"), workspace.toString());

@@ -11,11 +11,12 @@ web은 http://localhost:3000, api는 http://127.0.0.1:8000에서 열린다.
 인프라는 `apps/api/compose.yaml`에 있고 루트 compose는 없다.
 
 - `pnpm check`: 루트와 두 앱 검사.
-- `pnpm gen`: api OpenAPI → web 타입. TypeSpec·목은 프론트 테스트의 대역이다.
+- `pnpm gen`: api OpenAPI → web 타입. 루트 `contract/`의 TypeSpec·목은 프론트 테스트의 대역이다.
 - `pnpm test:e2e`: api E2E 후 실제 api 위에서 web E2E. api 18000, web 3100을 쓴다.
 - `pnpm fix`, `pnpm test`, `pnpm db:migrate`, `pnpm db:reset`: [루트 지침](AGENTS.md)의 명령 표를 따른다.
 
-구조는 `apps/api/`, `apps/web/`, `scripts/`다. 자세한 규칙과 인프라 포트는 [AGENTS.md](AGENTS.md), 앱별 절차는 [api](apps/api/AGENTS.md)와 [web](apps/web/AGENTS.md)을 따른다.
+구조는 `apps/api/`, `apps/web/`, `contract/`, `scripts/`다. 프론트들이 쓰는 계약은 루트 `contract/` 하나이며 앱 안에는 계약을 복사하지 않는다. web의 `gen.config.json`은 api OpenAPI와 `../../contract`를 선택한다. 자세한 규칙과 인프라 포트는 [AGENTS.md](AGENTS.md), 앱별 절차는 [api](apps/api/AGENTS.md)와 [web](apps/web/AGENTS.md)을 따른다.
+루트 계약 검사에는 web에서 복사한 `tsconfig.base.json`·`docs/conventions/`와 같은 버전의 Node 타입·Vitest·YAML을 쓴다.
 각 앱 setup이 환경 키를 준비한다. 고정 포트를 사용하므로 여러 프로젝트의 동시 실행은 지원하지 않는다.
 
 ## web 이미지
@@ -38,3 +39,5 @@ docker run --rm --publish 127.0.0.1:3200:3000 \
 | `NEXT_PUBLIC_REALTIME_URL` | 브라우저에서 닿는 api Origin                       |
 | `TIME_ZONE`                | 시간대(예: `Asia/Seoul`)                           |
 | `SESSION_SECRET`           | 32바이트 이상의 난수 비밀                          |
+
+루트·web 사본의 공통 파일을 함께 맞춘다: `tsconfig.base.json`, `docs/conventions/`.

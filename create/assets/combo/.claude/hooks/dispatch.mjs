@@ -215,7 +215,12 @@ export function dispatch(
           },
         };
       const files = changedFiles(root, execute);
-      selected = apps.filter((app) => files.some((path) => path.startsWith(`apps/${app}/`)));
+      selected = apps.filter((app) =>
+        files.some(
+          (path) =>
+            path.startsWith(`apps/${app}/`) || (app === "web" && path.startsWith("contract/")),
+        ),
+      );
       if (files.some((path) => !path.startsWith("apps/"))) {
         const result = rootCheck(root);
         results.push({

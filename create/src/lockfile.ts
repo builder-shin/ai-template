@@ -31,7 +31,7 @@ export function rewriteImporters(source: string): string {
         "web importer 경로가 올바르지 않다",
         "web workspace의 contract 패키지를 확인한다.",
       );
-    pair.key = doc.createNode(path === "." ? "apps/web" : `apps/web/${path}`);
+    pair.key = doc.createNode(path === "." ? "apps/web" : path);
   }
   return docs
     .map((item) => {
@@ -51,7 +51,7 @@ export function verifyWebResolutions(original: string, combined: string): void {
     Record<string, unknown>
   >;
   for (const [path, importer] of Object.entries(before.importers ?? {})) {
-    const moved = path === "." ? "apps/web" : `apps/web/${path}`;
+    const moved = path === "." ? "apps/web" : path;
     if (!isDeepStrictEqual(importer, after.importers?.[moved]))
       throw new CreateError(
         `${path} importer의 해석 결과가 바뀌었다`,

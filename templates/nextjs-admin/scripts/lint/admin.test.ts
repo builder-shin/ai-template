@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { ESLint } from "eslint";
 import tseslint from "typescript-eslint";
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { appArchitectureConfig } from "./app.mjs";
 let root: string;
 beforeAll(() => {
-  root = mkdtempSync(join(tmpdir(), "aitpl-admin-boundaries-"));
+  root = realpathSync.native(mkdtempSync(join(tmpdir(), "aitpl-admin-boundaries-")));
   writeFileSync(
     join(root, "tsconfig.json"),
     JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
