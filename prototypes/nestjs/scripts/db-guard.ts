@@ -9,6 +9,8 @@ const appTables = new Set([
   "refresh_tokens",
   "account_tokens",
   "audit_logs",
+  "posts",
+  "files",
 ]);
 export function assertLocalDatabase(url: string): void {
   const target = new URL(url);

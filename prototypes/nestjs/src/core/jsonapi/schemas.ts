@@ -104,37 +104,47 @@ export const identifier = (type: string) =>
   z.object({ type: z.enum([type]), id: codePointString() });
 export const toOne = (type: string) => z.object({ data: identifier(type).nullable() });
 export const toMany = (type: string) => z.object({ data: z.array(identifier(type)) });
-export const resource = <A extends z.ZodType>(
+export const resource = <A extends z.ZodType, R extends z.ZodType | undefined = undefined>(
   type: string,
   attributes: A,
-  relationships?: z.ZodType,
+  relationships?: R,
 ) =>
   z.object({
     type: z.enum([type]),
     id: codePointString(),
     attributes,
-    ...(relationships ? { relationships } : {}),
+    ...((relationships ? { relationships } : {}) as R extends z.ZodType
+      ? { relationships: R }
+      : object),
   });
 export const document = <D extends z.ZodType>(data: D) => z.object({ data });
-export const createDocument = <A extends z.ZodType>(
+export const createDocument = <A extends z.ZodType, R extends z.ZodType | undefined = undefined>(
   type: string,
   attributes: A,
-  relationships?: z.ZodType,
+  relationships?: R,
 ) =>
   document(
     z.object({
       type: z.enum([type]),
       attributes,
-      ...(relationships ? { relationships: relationships.optional() } : {}),
+      ...((relationships ? { relationships: relationships.optional() } : {}) as R extends z.ZodType
+        ? { relationships: z.ZodOptional<Extract<R, z.ZodType>> }
+        : object),
     }),
   );
-export const updateDocument = (type: string, attributes: z.ZodType, relationships?: z.ZodType) =>
+export const updateDocument = <A extends z.ZodType, R extends z.ZodType | undefined = undefined>(
+  type: string,
+  attributes: A,
+  relationships?: R,
+) =>
   document(
     z.object({
       type: z.enum([type]),
       id: codePointString(),
       attributes: attributes.optional(),
-      ...(relationships ? { relationships: relationships.optional() } : {}),
+      ...((relationships ? { relationships: relationships.optional() } : {}) as R extends z.ZodType
+        ? { relationships: z.ZodOptional<Extract<R, z.ZodType>> }
+        : object),
     }),
   );
 export const datetime = () => formattedString("date-time");
@@ -190,5 +200,5 @@ export const PaginationLinks = contractSchema(
   }),
 );
 export const CollectionMeta = contractSchema("CollectionMeta", z.object({ page: PageMeta }));
-export const collection = (data: z.ZodType) =>
+export const collection = <D extends z.ZodType>(data: D) =>
   z.object({ data: z.array(data), links: PaginationLinks, meta: CollectionMeta });

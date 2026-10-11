@@ -1,7 +1,7 @@
 # NestJS prototype — do not merge
 
 Independent Node 24 / Nest 12 / TypeScript 6 ESM prototype. It is outside the root pnpm
-workspace and owns its pinned dependencies, lockfile and six-stage local check.
+workspace and owns its pinned dependencies, lockfile and seven-stage local check.
 
 From the repository root:
 
@@ -17,12 +17,11 @@ pnpm --dir prototypes/nestjs check:repo
 `createApp()` creates an unbound Express application with body parsing disabled and strict
 routing configured before the adapter creates its router. `bootstrap()` listens on port
 8000 by default. `/health/live` needs no infrastructure. `/api/v1/permissions` exposes the
-eight static permissions with pagination, sparse fields and an Authenticator port. The
-default port rejects credentials; actual authentication is Task 3. Tests supply a double.
+eight static permissions with pagination, sparse fields and an Authenticator port. Actual authentication uses the Prisma-backed auth core; DB-free tests supply an explicit port.
 
 Task 2 declares the nineteen-operation slice and registers all 83 reachable contract-named
 schemas, including realtime payloads and all 39 error codes. App-free `gen` emits OpenAPI
-3.1 for the eight mounted operations. Edit declarations and Zod schemas, then run `gen`;
+3.1 for the seventeen mounted operations. Edit declarations and Zod schemas, then run `gen`;
 the generated artifact must not be edited by hand. The input schema exporter preserves
 explicit constraints; a small measured normalizer handles equivalent representations.
 
@@ -43,8 +42,9 @@ Negative fixture directories are excluded from normal lint/typecheck and checked
 through the ESLint API. Positive fixtures cover the allowed layers and module DAG.
 
 The prototype CI job is additive. Existing root checks and CI jobs retain their behavior.
-Tasks 1–3 are implemented. Tasks 4–7, real infrastructure, conformance, images, frontend E2E
-and generated combinations remain outstanding. Final product SDD needs new user approval
+Tasks 1–4 are implemented locally. Task3 corrected-head all-twelve-job CI passed before Task4.
+Task4 real infrastructure acceptance and Tasks5–7, conformance, images, frontend E2E and
+generated combinations remain outstanding. Final product SDD needs new user approval
 after the full Opus design and plan. CI acceptance remains pending exact-head verification.
 See [the evidence ledger](docs/evidence.md) for observed results and limitations.
 
@@ -54,9 +54,15 @@ five-second connection timeout. Generated client files are ignored and recreated
 public defaults are in `.env.example`. The scripts do not read `.env` files.
 
 The CI-only `setup` command starts the infrastructure compose project, creates app,
-app_test and app_e2e, deploys migrations and seeds system roles plus the configured admin.
+app_test and app_e2e, deploys migrations and seeds system roles, the configured admin and three example posts;
+it also prepares the S3 bucket/CORS.
 `test:integration` checks PostgreSQL/Valkey before starting serial tests on app_test and
 Valkey DB 15. Each test truncates app tables and clears the isolated Valkey database and
-Mailpit mailbox. `db:migrate`, `db:revision`, `db:reset` and `db:drift` check ownership and
+Mailpit mailbox and an owned storage prefix. Integration HTTP helpers explicitly listen and
+close their own loopback server; the quota test keeps twenty concurrent requests. `db:migrate`, `db:revision`, `db:reset` and `db:drift` check ownership and
 foreign tables; reset additionally permits only localhost/127.0.0.1. Run drift only in
-CI, because its live datasource comparison requires PostgreSQL. See [Task 3 evidence](docs/task-3.md).
+CI, because its live datasource comparison requires PostgreSQL. See [Task 3 evidence](docs/task-3.md) and [posts/storage evidence](docs/task-4.md).
+
+`storage:setup` creates a missing bucket and overwrites CORS without clearing objects.
+Post/file API operations use the same JSON:API declarations; the recording publisher is
+replaced by actual Socket.IO transport only in the next phase.

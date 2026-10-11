@@ -2,12 +2,13 @@ import { UnitOfWork } from "./core/db/unit-of-work.js";
 import { loadSettings } from "./core/config/settings.js";
 import { RolesModule, RolesService } from "./modules/roles/index.js";
 import { UsersModule, UsersService } from "./modules/users/index.js";
+import { PostsModule, PostsService } from "./modules/posts/index.js";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { NestFactory } from "@nestjs/core";
 import { DbModule } from "./core/db/db.module.js";
 import { Module } from "@nestjs/common";
-@Module({ imports: [DbModule, RolesModule, UsersModule] })
+@Module({ imports: [DbModule, RolesModule, UsersModule, PostsModule] })
 class SeedModule {}
 export async function seed(): Promise<void> {
   const app = await NestFactory.createApplicationContext(SeedModule, { logger: false });
@@ -27,6 +28,7 @@ export async function seed(): Promise<void> {
           verified: true,
         });
         await roles.assign(tx, user.id, ["admin"]);
+        await app.get(PostsService).ensureExamples(tx, user.id);
       },
       { timeout: 15000 },
     );

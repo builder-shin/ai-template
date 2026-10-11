@@ -10,6 +10,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Authenticator } from "./modules/auth/index.js";
 import { AppModule } from "./app.module.js";
+import { registerDomain } from "./modules/registry.js";
 import { SETTINGS } from "./core/config/settings.js";
 import type { Settings } from "./core/config/settings.js";
 
@@ -45,6 +46,7 @@ export async function createApp(ports?: JsonApiPorts): Promise<NestExpressApplic
   );
   app.set("strict routing", true);
   app.useGlobalFilters(new JsonApiExceptionFilter());
+  registerDomain(app);
   return app;
 }
 

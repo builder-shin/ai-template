@@ -19,12 +19,53 @@ model User {
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  avatarId String? @map("avatar_id") @db.Uuid
+  avatar File? @relation("Avatar", fields: [avatarId], references: [id], onDelete: SetNull)
+  files File[] @relation("FileOwner")
+  posts Post[]
   roles UserRole[]
   sessions LoginSession[]
   accountTokens AccountToken[]
   audits AuditLog[]
   @@index([status])
+  @@index([avatarId])
   @@map("users")
+}
+
+model File {
+  id String @id @default(uuid(7)) @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
+  filename String @db.VarChar(255)
+  contentType String @map("content_type") @db.VarChar(255)
+  size BigInt
+  status String @default("pending") @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  owner User @relation("FileOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  avatars User[] @relation("Avatar")
+  covers Post[]
+  @@index([ownerId])
+  @@index([status, createdAt])
+  @@map("files")
+}
+
+model Post {
+  id String @id @default(uuid(7)) @db.Uuid
+  authorId String @map("author_id") @db.Uuid
+  title String @db.VarChar(200)
+  body String @db.Text
+  status String @default("draft") @db.VarChar(16)
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  coverImageId String? @map("cover_image_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  coverImage File? @relation(fields: [coverImageId], references: [id], onDelete: SetNull)
+  @@index([authorId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([createdAt])
+  @@index([coverImageId])
+  @@map("posts")
 }
 
 model Role {

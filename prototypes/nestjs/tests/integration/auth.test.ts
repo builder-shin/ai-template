@@ -20,7 +20,7 @@ import { Pool } from "pg";
 import { settings } from "./helpers.js";
 import { guardDatabase } from "../../scripts/db-guard.js";
 let testStarted = 0;
-beforeAll(start);
+beforeAll(() => start());
 beforeEach(async () => {
   testStarted = performance.now();
   await reset();

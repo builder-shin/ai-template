@@ -5,6 +5,7 @@ export function recordAudit(
   data: {
     actorId?: string;
     targetId?: string;
+    targetType?: string;
     ipAddress?: string;
     metadata?: Record<string, string>;
   } = {},

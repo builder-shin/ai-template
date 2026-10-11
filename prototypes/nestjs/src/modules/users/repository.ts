@@ -9,6 +9,21 @@ export class UsersRepository {
   get(id: string, tx: Tx = this.db) {
     return tx.user.findUnique({ where: { id } });
   }
+  many(ids: readonly string[], tx: Tx = this.db) {
+    return ids.length
+      ? tx.user.findMany({ where: { id: { in: [...new Set(ids)] } }, orderBy: { id: "asc" } })
+      : Promise.resolve([]);
+  }
+  async avatarReferences(tx: Tx, ids: readonly string[]): Promise<ReadonlySet<string>> {
+    return new Set(
+      (
+        await tx.user.findMany({
+          where: { avatarId: { in: [...ids] } },
+          select: { avatarId: true },
+        })
+      ).flatMap((u) => (u.avatarId ? [u.avatarId] : [])),
+    );
+  }
   find(email: string, tx: Tx = this.db) {
     return tx.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   }

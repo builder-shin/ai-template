@@ -12,30 +12,54 @@ import { RolesService } from "../../src/modules/roles/index.js";
 import { SessionWithTokensDocument } from "../../src/modules/auth/schemas.js";
 import { assertTestDatabase, guardDatabase } from "../../scripts/db-guard.js";
 import { valkey } from "../../scripts/valkey.js";
+import { Storage } from "../../src/core/storage/client.js";
+import { RecordingRealtimePublisher } from "../../src/core/realtime/publisher.js";
+import { listenTestServer } from "../http-server.js";
+import type { Server } from "node:http";
 export const settings = loadSettings(process.env);
 export const truncations: number[] = [],
   testDurations: { name: string; durationMs: number }[] = [];
 export let app: NestExpressApplication, db: PrismaService;
-export async function start(): Promise<void> {
+let suite = "auth";
+let server: Server;
+const warnings: string[] = [];
+const warningListener = (warning: Error) => {
+  if (warning.name === "MaxListenersExceededWarning") warnings.push(warning.message);
+};
+export async function start(name = "auth"): Promise<void> {
+  suite = name;
   assertTestDatabase(settings.DATABASE_URL, settings.REDIS_URL);
   await guardDatabase(settings.DATABASE_URL);
   app = await createApp();
   app.useLogger(false);
-  await app.init();
+  process.on("warning", warningListener);
+  server = await listenTestServer(app);
   db = app.get(PrismaService);
 }
 export async function reset(): Promise<void> {
   await guardDatabase(settings.DATABASE_URL);
   const start = performance.now();
-  await db.$executeRaw`TRUNCATE audit_logs, account_tokens, refresh_tokens, sessions, user_roles, roles, users RESTART IDENTITY CASCADE`;
+  await db.$executeRaw`TRUNCATE audit_logs, account_tokens, refresh_tokens, sessions, user_roles, roles, users, posts, files RESTART IDENTITY CASCADE`;
   truncations.push(performance.now() - start);
   await valkey(settings.REDIS_URL, "FLUSHDB");
   const cleared = await fetch(`${settings.MAILPIT_URL}/api/v1/messages`, { method: "DELETE" });
   if (!cleared.ok) throw new Error("Mailpit reset failed.");
   await app.get(UnitOfWork).run((tx) => app.get(RolesService).seed(tx));
+  await app.get(Storage).clear();
+  app.get(RecordingRealtimePublisher).events.length = 0;
 }
 export async function stop(): Promise<void> {
+  await app.get(Storage).clear();
   await app.close();
+  process.off("warning", warningListener);
+  const lifecycle = {
+    suite,
+    explicitlyClosed: !server.listening,
+    maxListeners: server.getMaxListeners(),
+    warnings,
+  };
+  console.log(JSON.stringify({ integrationLifecycle: lifecycle }));
+  if (server.listening) throw new Error("Integration HTTP server remained open.");
   console.log(
     JSON.stringify({
       testCount: testDurations.length,
@@ -47,10 +71,12 @@ export async function stop(): Promise<void> {
   const directory = resolve(".cache/integration");
   mkdirSync(directory, { recursive: true });
   writeFileSync(
-    resolve(directory, "measurements.json"),
+    resolve(directory, `${suite}.json`),
     JSON.stringify(
       {
         executedAt: new Date().toISOString(),
+        suite,
+        lifecycle,
         testCount: testDurations.length,
         tests: testDurations,
         truncateCount: truncations.length,

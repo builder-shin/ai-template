@@ -4,6 +4,7 @@ import { loadSettings } from "../src/core/config/settings.js";
 import { clientManifest } from "./client-manifest.js";
 import { prisma } from "./prisma.js";
 import { guardDatabase, assertLocalDatabase, assertOwnedPostgres } from "./db-guard.js";
+import { storageSetup } from "./storage-setup.js";
 const settings = loadSettings(process.env);
 assertLocalDatabase(settings.DATABASE_URL);
 function command(bin: string, args: string[]): void {
@@ -34,3 +35,4 @@ prisma(["generate"]);
 clientManifest();
 command("pnpm", ["build"]);
 command(process.execPath, ["dist/seed.js"]);
+await storageSetup(settings);

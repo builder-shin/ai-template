@@ -397,6 +397,11 @@ jobs:
           if [ -f prototypes/nestjs/.cache/integration/measurements.json ]; then
             cat prototypes/nestjs/.cache/integration/measurements.json
           fi
+          for file in prisma-manifest.json integration/tampered-put.json integration/query-count.json; do
+            if [ -f "prototypes/nestjs/.cache/$file" ]; then
+              cat "prototypes/nestjs/.cache/$file"
+            fi
+          done
       - name: Infrastructure logs on failure
         if: failure()
         run: docker compose -f prototypes/nestjs/compose.yaml logs --no-color

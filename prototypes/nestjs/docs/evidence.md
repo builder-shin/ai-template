@@ -156,7 +156,7 @@ filters shadows only when sorting promotes a later-declared winner.
 
 The provisional prototype workaround was approved: use **specificity, duplicate:error,
 shadow:warn** for the intentional current/id overlap. Real initialized-app HTTP tests
-verify identical correct responses for `current`, `ordinary-id`, `123`, and `currentish`
+verify identical correct responses for `current`, `ordinary-id`, `124`, and `currentish`
 in **both declaration orders**. Separate fixtures reject exact duplicates and ambiguous
 `/:id` versus `/:name` shadows with strict policies. The order-sensitive strict-policy
 behavior remains asserted as a regression probe.
@@ -208,3 +208,17 @@ in 10.115 seconds. Every regenerated file matches the backup; the temporary back
 only after that verification. Detailed CI observations and remaining acceptance are recorded
 in [Task 3 measurements](task-3.md). The original failed CI gate remains unaccepted; the
 corrective commit still requires a fresh exact-head result for all twelve jobs before Task 4.
+
+## Task 4 — golden posts, files and storage
+
+The coordinator verified the corrected Task3 exact head with all twelve jobs successful in
+[run38181560071](https://github.com/builder-shin/ai-template/actions/runs/38181560071) before this phase.
+The original failed run and the six warnings in each historical auth run remain separate evidence.
+
+The current local implementation mounts seventeen operations, retains83 schemas with zero structural
+differences and passes seven check stages/124 tests. AWS3.1149.0 no-network signatures contain
+content-length;content-type;host, use SigV4 and omit optional checksum query fields; the default
+comparison retains content-length;host plus CRC32 fields. Actual Nest/Supertest10/20-way loopback
+requests preserve startup listener counts/max10 and close explicitly without observed warnings.
+These are local signature/lifecycle observations; the real storage rejection, SQL/query snapshot,
+quota20-way race and29 integration tests remain exact-head CI gates. See [Task4 evidence](task-4.md).

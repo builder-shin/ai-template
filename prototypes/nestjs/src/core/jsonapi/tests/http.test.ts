@@ -39,7 +39,7 @@ it("serves real permission page two, total eight and contract example links", as
       },
     });
     await request(production.getHttpServer() as Parameters<typeof request>[0])
-      .get("/api/v1/posts")
+      .get("/api/v1/roles")
       .expect(404);
   } finally {
     await production.close();

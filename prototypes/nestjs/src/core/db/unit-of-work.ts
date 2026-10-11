@@ -9,7 +9,11 @@ export class UnitOfWork {
   constructor(private readonly prisma: PrismaService) {}
   async run<T>(
     fn: (tx: Tx, afterCommit: AfterCommit) => Promise<T>,
-    options?: { timeout?: number; maxWait?: number },
+    options?: {
+      timeout?: number;
+      maxWait?: number;
+      isolationLevel?: Prisma.TransactionIsolationLevel;
+    },
   ): Promise<T> {
     const hooks: (() => Promise<void> | void)[] = [];
     const value = await this.prisma.$transaction(

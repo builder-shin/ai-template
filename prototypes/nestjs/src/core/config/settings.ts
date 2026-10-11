@@ -10,6 +10,17 @@ const schema = z.object({
   MAIL_FROM: z.string().default("AI Template <no-reply@example.com>"),
   FRONTEND_URL: z.url().default("http://localhost:3000"),
   MAILPIT_URL: z.url().default("http://127.0.0.1:28025"),
+  S3_ENDPOINT_URL: z.url().default("http://127.0.0.1:28333"),
+  S3_PUBLIC_ENDPOINT_URL: z.url().default("http://127.0.0.1:28333"),
+  S3_REGION: z.string().default("us-east-1"),
+  S3_BUCKET: z.string().min(1).default("app"),
+  S3_ACCESS_KEY_ID: z.string().default("app"),
+  S3_SECRET_ACCESS_KEY: z.string().default("app-secret"), // betterleaks:allow - public development credential
+  S3_KEY_PREFIX: z.string().default(""),
+  STORAGE_ALLOWED_ORIGINS: z.string().default("http://localhost:3000"),
+  FILE_MAX_SIZE: z.coerce.number().int().positive().default(10_485_760),
+  FILE_USER_QUOTA: z.coerce.number().int().positive().default(1_073_741_824),
+  FILE_ALLOWED_TYPES: z.string().default("image/png,image/jpeg,image/webp,image/gif"),
   SEED_ADMIN_EMAIL: z.email().default("admin@example.com"),
   SEED_ADMIN_PASSWORD: z.string().min(8).default("local-admin-password"), // betterleaks:allow
 });
