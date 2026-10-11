@@ -9,10 +9,23 @@ import { git, temporaryFolder, write } from "./helpers.ts";
 
 function repository() {
   const root = comboFixture();
+  git(root, "config", "core.filemode", "false");
   cpSync(join(root, "templates/nextjs"), join(root, "templates/nextjs-admin"), { recursive: true });
   for (const file of ["untracked.txt", "contract/untracked.txt"])
     rmSync(join(root, "templates/nextjs-admin", file));
   git(root, "add", "templates/nextjs-admin");
+  for (const entry of git(root, "ls-files", "--stage", "-z", "--", "templates/nextjs").split(
+    "\0",
+  )) {
+    if (!entry.startsWith("100755 ")) continue;
+    const path = entry.slice(entry.indexOf("\t") + 1);
+    git(
+      root,
+      "update-index",
+      "--chmod=+x",
+      `templates/nextjs-admin/${path.slice("templates/nextjs/".length)}`,
+    );
+  }
   git(root, "commit", "-m", "chore: admin combo fixture");
   return root;
 }
