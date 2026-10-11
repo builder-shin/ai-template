@@ -18,7 +18,13 @@ export default function PermissionPicker({
       ? defaultValue.filter((value): value is string => typeof value === "string")
       : [],
   );
-  const groups = Map.groupBy(options, (option) => option.value.split(":")[0]!);
+  const groups = new Map<string, (typeof options)[number][]>();
+  for (const option of options) {
+    const group = option.value.split(":")[0]!;
+    const values = groups.get(group);
+    if (values) values.push(option);
+    else groups.set(group, [option]);
+  }
   return (
     <div
       id={name}
