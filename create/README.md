@@ -36,4 +36,4 @@ E2E는 프론트의 app.config.json에서 ports.e2e를 읽고 api e2e:serve에 -
 
 MCP는 서버 이름으로 합친다. 같은 이름·같은 설정은 하나이며, 설정이 다르면 앱의 서버 설정을 맞추도록 안내하고 실패한다. 비밀 스캔은 생성 목록의 첫 프론트 도구로 한 번만 실행한다.
 
-루트·각 프론트 사본의 공통 파일을 함께 맞춘다: `tsconfig.base.json`, `docs/conventions/`.
+생성한 조합에서는 루트·각 프론트 사본의 공통 파일을 함께 맞춘다: `tsconfig.base.json`, `docs/conventions/`.

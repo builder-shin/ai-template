@@ -72,6 +72,7 @@ test("사용자 수정 폼으로 역할을 부여하고 비활성화하면 상�
   await expect(page).toHaveURL("/users");
   await page.goto(`/users/${target.userId}/edit`);
   await page.getByRole("combobox", { name: "상태", exact: true }).click();
+  await expect(page.getByRole("option", { name: "비활성", exact: true })).toBeVisible();
   await expect(page.getByRole("option", { name: "탈퇴", exact: true })).toHaveCount(0);
   await page.getByRole("option", { name: "비활성", exact: true }).click();
   await page.getByRole("combobox", { name: "역할", exact: true }).click();

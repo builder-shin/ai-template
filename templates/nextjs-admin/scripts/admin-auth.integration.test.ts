@@ -142,6 +142,27 @@ it.each(["ko", "en"] as const)(
   },
 );
 
+it.each(["ko", "en"] as const)(
+  "비문자열 로그인 복귀값은 계정 언어의 홈으로 이동한다: %s",
+  async (locale) => {
+    const { account } = await partialAdminFixture(inject("mockBaseUrl"), locale);
+    await expect(
+      loginAction(123 as unknown as string, { ok: true }, form(account)),
+    ).rejects.toMatchObject({
+      digest: `NEXT_REDIRECT;replace;${locale === "ko" ? "/" : "/en"};307;`,
+    });
+    expect(context.jar.get("NEXT_LOCALE")?.value).toBe(locale);
+    const session = await unsealSession(context.jar.get(cookie)?.value);
+    expect(session).not.toBeNull();
+    const client = createApiClient({
+      baseUrl: `${inject("mockBaseUrl")}/api/v1`,
+      locale,
+      accessToken: session!.accessToken,
+    });
+    expect((await client.GET("/me")).data!.data.attributes.locale).toBe(locale);
+  },
+);
+
 it("로그아웃과 겹친 로그인 요청의 폐기 쿠키도 다음 로그인을 로그인 화면으로 돌리지 않는다", async () => {
   const { owner } = await partialAdminFixture(inject("mockBaseUrl"));
   const staleCookie = await sealSession({

@@ -1,7 +1,8 @@
 import "server-only";
-import { defineResource, type Permission } from "../../lib/resources/definition";
+import { defineResource } from "../../lib/resources/definition";
 import PermissionPicker from "./permission-picker";
 import { permissionValues } from "./options";
+import { permissionCatalog } from "./permission-catalog";
 
 export default defineResource({
   type: "roles",
@@ -10,16 +11,7 @@ export default defineResource({
     description: { kind: "textarea" },
     permissions: {
       kind: "enum-many",
-      values: [
-        "admin:access",
-        "users:read",
-        "users:manage",
-        "roles:read",
-        "roles:manage",
-        "audit-logs:read",
-        "posts:create",
-        "posts:manage",
-      ] satisfies readonly Permission[],
+      values: permissionCatalog,
       loadValues: permissionValues,
       input: PermissionPicker,
     },

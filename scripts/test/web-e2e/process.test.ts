@@ -17,7 +17,15 @@ function alive(pid: number) {
 it("중단 신호는 직접 기동한 web 명령의 자식도 종료한다", async () => {
   const directory = mkdtempSync(join(tmpdir(), "web-e2e-"));
   const marker = resolve(directory, "pid.json");
-  const childScript = `require('node:fs').writeFileSync(process.argv[1], JSON.stringify(process.pid)); setInterval(() => {}, 1000);`;
+  const childScript = `
+    const fs = require('node:fs');
+    fs.writeFileSync(process.argv[1] + '.tmp', '');
+    setTimeout(() => {
+      fs.writeFileSync(process.argv[1] + '.tmp', JSON.stringify(process.pid));
+      fs.renameSync(process.argv[1] + '.tmp', process.argv[1]);
+    }, 150);
+    setInterval(() => {}, 1000);
+  `;
   const parentScript = `require('node:child_process').spawn(process.execPath, ['-e', process.argv[1], process.argv[2]], {stdio: 'ignore', windowsHide: true}); setInterval(() => {}, 1000);`;
   const controller = new AbortController();
   let childPid: number | undefined;
@@ -50,6 +58,7 @@ it("중단 신호는 직접 기동한 web 명령의 자식도 종료한다", asy
     }
     await result;
     rmSync(marker, { force: true });
+    rmSync(`${marker}.tmp`, { force: true });
     rmdirSync(directory);
   }
 });

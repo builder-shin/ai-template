@@ -26,6 +26,7 @@ export async function loginAction(
   _state: LoginState,
   data: FormData,
 ): Promise<LoginState> {
+  returnTo = typeof returnTo === "string" ? returnTo : "/";
   const locale = await getLocale();
   const email = text(data, "email");
   const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });

@@ -6,7 +6,7 @@
   - 이 문서는 기반 설계 §10에서 사이클 3으로 미룬 결정(배포 방식, 조합 루트의 세부 구성, 포트 배정)을 내리고, `create/` CLI와 이번 사이클의 템플릿·저장소 변경을 설계한다.
   - 템플릿의 동작 기준은 [FastAPI 설계](2026-09-26-fastapi-template-design.md), [보강 설계](2026-09-29-fastapi-hardening-design.md), [Next.js web 설계](2026-09-30-nextjs-web-design.md)다.
 - 구현 계획: [create CLI 계획](../plans/2026-10-03-create-cli.md)
-- 다음 단계: A3 PR CI·검토·main 병합 뒤 하위 프로젝트 5(NestJS)를 진행한다. Q1–Q4는 사용자 계획 검토에서 확정했다.
+- 다음 단계: A3 PR CI·검토·main 병합 뒤 하위 프로젝트 5(NestJS)를 진행한다. Q1–Q4는 사용자 계획 검토에서 확정했다(admin 설계 §12·§16).
 
 ## 1. 목표와 범위
 
@@ -426,13 +426,13 @@ DB·Valkey·스토리지 기반 테스트와 실제 `e2e:serve`, Docker 이미�
 
 ### 8.5 admin 확장 구현 기록 (2026-10-11)
 
-Task 9는 조합의 계약을 루트 하나로 옮기고 gen.config의 외부 계약을 check·gen·hook·Turbo·이미지에 연결했다. `.cache` 조상과 macOS 물리 임시 경로에서도 독립 사본과 실행 권한을 확인했다. Ruling16 보완은 설정·외부 계약 snapshot 오류만 앱 파일 snapshot으로 처리하며 엄격한 생성기 오류와 Stop·SessionStart 프로토콜을 유지한다. 두 프론트 실제 hook subprocess 회귀와 전체 로컬 gate를 확인했다.
+Task 9는 조합의 계약을 루트 하나로 옮기고 gen.config의 외부 계약을 check·gen·hook·Turbo·이미지에 연결했다. `.cache` 조상과 macOS 물리 임시 경로에서도 독립 사본과 실행 권한을 확인했다. Ruling16(admin 설계 §16) 보완은 설정·외부 계약 snapshot 오류만 앱 파일 snapshot으로 처리하며 엄격한 생성기 오류와 Stop·SessionStart 프로토콜을 유지한다. 두 프론트 실제 hook subprocess 회귀와 전체 로컬 gate를 확인했다.
 
-Task 10은 단독 admin과 목록 기반 실행기·하네스를 구현했다. 실제 단독 admin 생성의 setup·10단계 check를 확인했고 pnpm→poe의 서버 옵션 구분자, Turbo 그래프, 업로드 재시도 완료 assertion을 확인했다. Ruling17 보완은 실제 settings.json entry가 없는 앱만 hook 없음으로 처리한다. 새로운 dispatcher 19개와 covering Node 66개, create 159개 통과·Windows 전용 7개 건너뜀, 실제 전체 조합 생성의 Node 66개, 루트 11단계와 clean HEAD를 확인했다. 이 보완에서 프론트 check·build·목 E2E를 재실행하지 않았다. settings.json 자체의 invalid·unreadable·dangling link와 실제 deny는 엄격하지만 부모 .claude 링크/Windows 일반 파일 경계는 최종 전체 검토의 Minor로 남는다.
+Task 10은 단독 admin과 목록 기반 실행기·하네스를 구현했다. 실제 단독 admin 생성의 setup·10단계 check를 확인했고 pnpm→poe의 서버 옵션 구분자, Turbo 그래프, 업로드 재시도 완료 assertion을 확인했다. Ruling17(admin 설계 §16) 보완은 실제 settings.json entry가 없는 앱만 hook 없음으로 처리한다. 새로운 dispatcher 19개와 covering Node 66개, create 159개 통과·Windows 전용 7개 건너뜀, 실제 전체 조합 생성의 Node 66개, 루트 11단계와 clean HEAD를 확인했다. 이 보완에서 프론트 check·build·목 E2E를 재실행하지 않았다. settings.json 자체의 invalid·unreadable·dangling link와 실제 deny는 엄격하지만 부모 .claude 링크/Windows 일반 파일 경계는 최종 전체 검토의 T10-RR1-M1 leave 판정으로 수용한다(admin 설계 §16).
 
-Task 11은 --admin과 web+admin 조합, 계약·잠금·workspace 동등성, 없는 프론트 작업 제거, admin 이미지·CI를 구현했다. 실제 frozen 생성의 양쪽 프론트 check와 web→admin→web gen 뒤 같은 계약 출력·clean git을 확인했다. Ruling18은 private admin fixture에 core.filemode=false 입력을 고정하고 원본 100755 인덱스 경로만 복구한다. macOS focused는 수정 전 4 실패·5 통과, 수정 뒤 9 통과였고 create 159개·Node 66개와 루트 11단계를 확인했다. 실제 Windows의 고정 BASE는 4 실패·5 통과, FIX는 9 통과였다. 이는 focused 검증이며 Windows root·프론트 전체·CI 증거가 아니다. Windows 검증 헬퍼의 준비/정리 실패 두 건은 원본 진단을 보존하고 고쳤으며 제품 검증 재실행으로 세지 않는다.
+Task 11은 --admin과 web+admin 조합, 계약·잠금·workspace 동등성, 없는 프론트 작업 제거, admin 이미지·CI를 구현했다. 실제 frozen 생성의 양쪽 프론트 check와 web→admin→web gen 뒤 같은 계약 출력·clean git을 확인했다. Ruling18(admin 설계 §16)은 private admin fixture에 core.filemode=false 입력을 고정하고 원본 100755 인덱스 경로만 복구한다. macOS focused는 수정 전 4 실패·5 통과, 수정 뒤 9 통과였고 create 159개·Node 66개와 루트 11단계를 확인했다. 실제 Windows의 고정 BASE는 4 실패·5 통과, FIX는 9 통과였다. 이는 focused 검증이며 Windows root·프론트 전체·CI 증거가 아니다. Windows 검증 헬퍼의 준비/정리 실패 두 건은 원본 진단을 보존하고 고쳤으며 제품 검증 재실행으로 세지 않는다.
 
-Docker·FastAPI 인프라·조합 루트 setup/check/E2E·이미지·컨테이너는 로컬에서 실행하지 않았다. A3 PR CI의 열 작업, 검토·병합과 main CI가 남는다. web 기존 경고 17블록 정리와 BFF 클라이언트 주소 전달은 승인된 별도 후속이며 별도 경고 제안 문서는 만들지 않는다.
+Docker·FastAPI 인프라·조합 루트 setup/check/E2E·이미지·컨테이너는 로컬에서 실행하지 않았다. 최종 범위 재검토·병합과 정확한 PR/main HEAD의 CI 열 작업은 남는다. 전수 이월 findings의 확정 처분, Ruling19·20·21과 FX1–FX6의 실제 최종 native 합계는 admin 설계 §16을 따른다. 이번 create 계약 거절 시험 보강은 루트 check11이 덮으며 create 제품 코드·자산 변경이나 새 조합 생성은 없다. Windows는 기존 실제 focused9만 인정하고 전체 root·admin·web은 미검증이다. web 기존 경고 17블록 정리와 BFF 클라이언트 주소 전달은 승인된 별도 후속이며 별도 경고 제안 문서는 만들지 않는다.
 
 ## 9. 미룬 결정
 

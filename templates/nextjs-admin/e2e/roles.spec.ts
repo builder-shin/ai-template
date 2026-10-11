@@ -71,6 +71,7 @@ test("사용자 역할 삭제는 dialog를 거치고 시스템 역할은 삭제 
   const system = data!.data.find((item) => item.attributes.name === "member")!;
   await page.goto("/roles?filter%5Bq%5D=member");
   const row = page.getByRole("row", { name: /member/ });
+  await expect(row).toBeVisible();
   await expect(row.getByRole("button", { name: "삭제", exact: true })).toHaveCount(0);
   await page.goto(`/roles/${system.id}`);
   await expect(page.getByRole("button", { name: "삭제", exact: true })).toHaveCount(0);

@@ -12,9 +12,9 @@
 8. 최상위 fields의 표시 종류·enum values·관계의 type·label·search를 검토한다. 관계 키의 type은 계약의 대상이며 그 밖의 필드는 목록이 있는 ResourceType을 받는다. label은 그 대상의 속성 키다. 생성기의 후보는 name·title·code·email·filename, 없으면 첫 속성이다. 목록 없는 파일은 단건 응답의 filename을 쓰며 id는 라벨 키가 아니다. 파일 표시는 지원하지만 기본 선택기는 대상 목록이 필요하므로 파일 입력 초안은 제거하거나 별도 입력으로 바꾼다. 쓰기 계약의 단일 관계는 relation, 다중 관계는 relation-many만 선언한다.
 9. 대상 목록에 `filter[q]`가 있을 때 search를 켠다. 검색 가능한 관계 옵션은 첫 페이지 20개만 읽고 대상 검색으로 찾는다. 검색 없는 대상만 마지막 페이지까지 읽는다. 목록·폼·실시간 갱신마다 검색 가능한 대상의 전체 페이지를 읽지 않는다. 폼 옵션은 관계·열거값 입력에만 주며, 관계 현재값은 단건 included의 라벨이나 id로 보충하고 추가 요청하지 않는다. 대상 목록의 403은 해당 입력만 비활성화하고 번역 안내를 옆에 보이며 다른 입력과 저장을 유지한다. 다른 오류는 기존 경계로 던진다. 폼의 빈 단일 관계는 resource.none(선택 안 함/None), 필터는 resource.all(전체/All)이다. 등록한 상세 화면과 보기 권한이 있는 대상에만 관계 링크를 만들고 그 밖에는 이름만 보인다. 여러 줄·복합 속성·파일 입력은 [필드 종류](add-field-kind.md)를 따른다.
 10. ko/en의 title·fields·enums 자리표시자를 번역한다. 점이 있는 enum은 중첩 객체다. 예: `user.roles_changed`는 `enums.action.user.roles_changed`에 둔다. [동작](add-action.md)과 실시간 채널은 사람이 선언한다. 채널을 선언하면 목록·상세가 첫 이벤트부터 1초 고정 창으로 묶어 갱신한다. 상세는 자신의 레코드 이벤트만 반영하고 숨은 탭은 다시 보일 때 한 번 갱신한다.
-    - enum 입력을 표시·필터보다 좁히면 fields의 inputValues를 values의 일부로 선언한다. 예: users.status는 values에 active·deactivated·deleted, inputValues에 active·deactivated를 둔다. 생략하면 입력도 values를 쓴다. 두 목록의 번역과 포함 관계는 resource-messages가 검사한다. API 검증은 그대로 유지한다.
+    - enum 입력을 표시·필터보다 좁히면 fields의 inputValues를 values의 일부로 선언한다. 예: users.status는 values에 active·deactivated·deleted, inputValues에 active·deactivated를 둔다. 생략하면 입력도 values를 쓴다. 두 목록의 번역과 포함 관계는 resource-messages가 검사한다. API 검증은 그대로 유지한다. 입력에서 제외한 현재값의 수정도 막으려면 `edit.visible` 조건도 함께 선언한다.
     - 이름 없는 사용자는 layout.unnamedUser(사용자/User)를 목록·상세·관계 라벨·기본 옵션·현재 선택·검색 결과에서 쓴다. include하지 않은 관계는 id로 보이며 추가 요청하지 않는다.
-11. 계약 조각 생성 테스트, 실제 목 데이터·Action 검사, DOM·E2E를 더한다. 권한별 메뉴·화면·직접 Action 호출, 필드 오류·403·404·429·관계 옵션 실패를 확인한다. 저장·취소는 상세가 있으면 상세로, 없으면 목록으로 돌아가는지 확인한다. `pnpm check`, `pnpm build`, `pnpm test:e2e`를 차례로 실행하고 시작한 서버를 종료한다.
+11. 계약 조각 생성 테스트, 실제 목 데이터·Action 검사, DOM·E2E를 더한다. 권한별 메뉴·화면·직접 Action 호출, 필드 오류·403·404·429·관계 옵션 실패를 확인한다. 저장은 상세가 있으면 상세로, 없으면 목록으로 돌아가고 취소는 생성 폼에서 목록으로, 수정 폼에서 상세가 있으면 상세로, 없으면 목록으로 돌아가는지 확인한다. `pnpm check`, `pnpm build`, `pnpm test:e2e`를 차례로 실행하고 시작한 서버를 종료한다.
 
 리소스끼리 내부를 import하지 않는다. 화면은 등록 목록만 가져온다. 선언과 서버 모듈에는 `import "server-only"`를 둔다. 범용 화면 전체를 바꾸지 않고 필드 표시·입력만 바꾼다.
 

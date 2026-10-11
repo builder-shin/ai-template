@@ -177,7 +177,7 @@ it("다중 열거값의 서버 옵션은 실제 API에서 읽고 카탈로그 �
     fields: {
       permissions: {
         kind: "enum-many",
-        values: ["roles:read"],
+        values: ["roles:read", "outside:permission"],
         input: Options,
         loadValues: async (client) =>
           (await client.GET("/permissions")).data!.data.map((item) => item.id),

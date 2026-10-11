@@ -11,15 +11,21 @@ import en from "../../../messages/en.json";
 import { intlFixture } from "../../../scripts/test/intl-fixture";
 
 let originalGroupBy: PropertyDescriptor | undefined;
+let originalObjectGroupBy: PropertyDescriptor | undefined;
 beforeEach(() => {
   originalGroupBy = Object.getOwnPropertyDescriptor(Map, "groupBy");
+  originalObjectGroupBy = Object.getOwnPropertyDescriptor(Object, "groupBy");
   Reflect.deleteProperty(Map, "groupBy");
+  Reflect.deleteProperty(Object, "groupBy");
 });
 afterEach(() => {
   cleanup();
   if (originalGroupBy) Object.defineProperty(Map, "groupBy", originalGroupBy);
   else Reflect.deleteProperty(Map, "groupBy");
   expect(Object.getOwnPropertyDescriptor(Map, "groupBy")).toEqual(originalGroupBy);
+  if (originalObjectGroupBy) Object.defineProperty(Object, "groupBy", originalObjectGroupBy);
+  else Reflect.deleteProperty(Object, "groupBy");
+  expect(Object.getOwnPropertyDescriptor(Object, "groupBy")).toEqual(originalObjectGroupBy);
 });
 
 function show(locale: "ko" | "en" = "ko", overrides: Partial<InputProps> = {}) {
@@ -97,6 +103,29 @@ it.each(["ko", "en"] as const)(
     expect(new FormData(form).get("__present_permissions")).toBe("1");
   },
 );
+
+it("권한 그룹은 처음 본 순서를 유지한다", () => {
+  const values = ["users:read", "posts:manage", "roles:manage", "posts:create"] as const;
+  const form = show("ko", {
+    defaultValue: ["users:read", "posts:manage"],
+    options: values.map((value) => ({
+      value,
+      label: ko.resources.roles.enums.permissions[value],
+    })),
+  });
+  const picker = screen.getByRole("group", { name: "권한" });
+  expect(
+    within(picker)
+      .getAllByRole("group")
+      .map((group) => group.querySelector("legend")?.textContent),
+  ).toEqual(["users", "posts", "roles"]);
+  expect(
+    [...screen.getByRole("group", { name: "posts" }).querySelectorAll("label")].map(
+      (label) => label.htmlFor,
+    ),
+  ).toEqual(["permissions-posts:manage", "permissions-posts:create"]);
+  expect(new FormData(form).getAll("permissions")).toEqual(["users:read", "posts:manage"]);
+});
 
 it("빈 권한 옵션은 선택 없이 폼의 존재 표식을 유지한다", () => {
   const form = show("ko", { defaultValue: [], options: [] });

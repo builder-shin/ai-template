@@ -524,7 +524,7 @@ Docker가 필요한 확인은 PR CI에서만 한다(AD16).
 | 관계·폼 | 관계 대상·라벨·다중 여부는 계약 타입으로 제한한다. included로 현재값을 보충하고 관계 옵션 403은 그 입력만 막으며, enum의 표시 values와 입력 inputValues·loadValues를 분리한다. |
 | 로그인 복귀 | 안전한 경로·쿼리·hash는 계정 언어로 보존한다. 반복 로케일·대문자·끝 슬래시·중첩 인코딩을 판정해 login·session/clear·외부·모호한 값은 홈으로 보내고 폐기 쿠키도 정리한다. |
 | 사용자 | users:read와 users:manage를 나누고 이름 없는 사용자는 번역한 사용자/User로 보인다. 상태 입력은 active·deactivated, 표시·필터는 deleted도 포함하며 탈퇴 사용자 수정과 상위 권한 부여는 거절한다. |
-| 역할·권한 | 권한은 attributes의 enum-many이며 관계와 분리한다. 선언 values는 API의 모든 권한 코드와 같아야 하고 읽기 전용 관리자의 생성·수정 직접 URL은 forbidden이다. 권한 그룹은 지원 브라우저에서 동작하는 로컬 Map 순회로 만든다. |
+| 역할·권한 | 권한은 attributes의 enum-many이며 관계와 분리한다. 선언 values는 API의 모든 권한 코드와 같아야 하고 읽기 전용 관리자의 생성·수정 직접 URL은 forbidden이다. 권한 그룹은 지원 브라우저에서 동작하는 로컬 Map 순회로 만든다. API 권한 코드가 늘면 roles 선언 values와 ko/en 문구를 함께 늘린다. 빠지면 types 단계가 실패한다. |
 | Q3 역할 설명 | 사용자 계획 검토에서 선택 사항인 description(nullable, 최대 200자)을 생성·수정 textarea로 확정했다. |
 | 감사 로그 | 읽기 전용 목록·상세와 행위자·행위·대상·기간 필터를 둔다. 끝 날짜는 설정 시간대 다음 날 0시를 배타적 상한으로 보내고 metadata는 키·값, targetId는 등록·보기 권한이 있는 상세만 링크한다. |
 | 등록·초안 검토 | 등록 순서는 posts·users·roles·permissions·audit-logs다. 생성 초안의 권한·필드·관계·문구는 레시피대로 검토하고 골든은 posts, 폼 예시는 users·roles다. |
@@ -604,7 +604,7 @@ A2는 PR CI의 아홉 작업과 검토·main 병합을 완료했다. 사용자·
 
 ## 16. A3 구현 기록 (2026-10-11)
 
-사용자가 승인한 열두 태스크를 SDD로 구현하고 실제 검증·리뷰에서 확인한 보완을 반영했다. 이 기록의 Ruling1–18은 이번 SDD 결정이며 §15의 A2 결정 번호나 이전 참고 구현 번호와 별개다. Q1–Q4는 사용자 계획 검토에서 확정한 보충 결정(§12)이다.
+사용자가 승인한 열두 태스크를 SDD로 구현하고 실제 검증·리뷰에서 확인한 보완을 반영했다. 이 기록의 Ruling1–21은 이번 SDD 결정이며 §15의 A2 결정 번호나 이전 참고 구현 번호와 별개다. Q1–Q4는 사용자 계획 검토에서 확정한 보충 결정(§12)이다.
 
 | 태스크 | 구현 |
 | --- | --- |
@@ -621,7 +621,7 @@ A2는 PR CI의 아홉 작업과 검토·main 병합을 완료했다. 사용자·
 | 11 | --admin 조합, 잠금·workspace·계약 보존, admin 이미지·CI, gen 순서·없는 앱 검증과 Windows fixture 모드 보완 |
 | 12 | 실제 SDD 결정·확인 범위·이월 기록, 템플릿 안내, 60원본의 96제목과 sync 사본 정리 |
 
-최종 로컬 확인 범위는 루트 check 11단계, web check 9단계(0 캐시)·build·실제 목 Chromium E2E 20개, admin check 10단계(0 캐시)·build·목 E2E 18개다. 전체 Vitest는 web 105파일·929개, admin 89파일·801개 통과다. gen-feature의 중첩 96개 요약은 최상위 합계와 구분한다. Docker·FastAPI 인프라·조합 루트 setup/check/E2E·이미지·컨테이너는 PR CI에서 확인하며 로컬 개발 스택은 사용하지 않았다. 단독 admin setup/check와 실제 조합 frozen 생성·프론트 check/gen·Node 테스트는 앞 태스크에서 허용 범위로 확인했다.
+Task12까지의 로컬 확인 범위는 루트 check 11단계, web check 9단계(0 캐시)·build·실제 목 Chromium E2E 20개, admin check 10단계(0 캐시)·build·목 E2E 18개다. 당시 전체 Vitest는 web 105파일·929개, admin 89파일·801개 통과였다. Ruling20 최종 보완의 실제 합계는 아래에 구분한다. gen-feature의 중첩 96개 요약은 최상위 합계와 구분한다. Docker·FastAPI 인프라·조합 루트 setup/check/E2E·이미지·컨테이너는 PR CI에서 확인하며 로컬 개발 스택은 사용하지 않았다. 단독 admin setup/check와 실제 조합 frozen 생성·프론트 check/gen·Node 테스트는 앞 태스크에서 허용 범위로 확인했다.
 
 web의 기존 stderr 17블록은 layout 2, login-form 1, password-reset-form 2, signup-form 3, profile-upload 2, upload 2, deletion-form 1, me/forms 2, posts/editor 1, sessions/components 1이다. 블록 안 React act 17·Base UI defaultValue 2·nativeButton 1은 겹친다. 파일·제목·진단·횟수가 기준선과 같고 제목 매핑은 `세션이 있으면 마우스로 이름과 로그아웃 메뉴를 연다` → `세션이 있으면 (마우스)로 이름과 로그아웃 메뉴를 연다` 하나다. admin 경고는 0이다. 경고를 숨기거나 제품 assertion을 완화하지 않았다.
 
@@ -637,8 +637,8 @@ web의 기존 stderr 17블록은 layout 2, login-form 1, password-reset-form 2, 
 | Ruling4 | 생성 workflow는 이미지 빌드까지, 저장소 create-combo가 실제 컨테이너 HTTP smoke를 소유한다. 실제 Docker 확인은 CI에 남는다. |
 | Ruling5 | 생성 web→admin과 runtime api→admin→web을 고정했다. 실제 전체 조합의 web→admin→web gen 뒤 동일 계약·clean 상태를 확인했다. |
 | Ruling6 | 검사 자식·hook에 물리 TMPDIR를 명시했다. /var·/private/var 불일치 원본 실패는 보존했고 제품 변경으로 우회하지 않았다. |
-| Ruling7 | 긴 TMPDIR의 126바이트 IPC 실패를 보존하고 물리 OS-temp의 100바이트 미만 예측·tsx 시작을 먼저 확인했다. |
-| Ruling8 | Task2의 고정 종료 안내·한도 오류 문구는 구체적 요구대로 유지했다. 숫자 조사·다음 조치 문구는 최종 전체 검토와 별도 정리에 이월한다. |
+| Ruling7 | 긴 TMPDIR의 실측 120바이트 IPC 실패를 보존하고 물리 OS-temp의 100바이트 미만 예측·tsx 시작을 먼저 확인했다. |
+| Ruling8 | Task2의 고정 종료 안내·한도 오류 문구는 구체적 요구대로 유지했다. 숫자 조사·다음 조치 문구는 최종 전체 검토의 T2-I1 leave 판정으로 별도 문구 정리에 남긴다. |
 | Ruling9 | 공유 OS-temp의 소유 불명 fixture는 목록만 보존했다. 직접 만든 증거가 있는 경로만 정리하며 생성시각·snapshot만으로 삭제하지 않는다. |
 | Ruling10 | 검색형 다중 선택만 공개 Combobox로 좁게 보완했다. 열린 같은 검색 결과의 행 순서·키보드 대상·선택 라벨과 비동기 포커스를 여덟 회귀로 확인했다. |
 | Ruling11 | 같은 원 구현자를 새 문맥으로 재사용하고 단일 editor·기존 lifecycle 자원을 검토까지 유지했다. terminal 미지원 실패를 보존했으며 모델·계정·Run은 바꾸지 않았다. |
@@ -647,11 +647,199 @@ web의 기존 stderr 17블록은 layout 2, login-form 1, password-reset-form 2, 
 | Ruling14 | Map.groupBy를 로컬 Map 순회로 바꾸고 absent-API 인접 회귀를 확인했다. 그룹·옵션 순서와 선택·제출을 유지했고 구형 브라우저 실제 실행은 증명하지 않았다. |
 | Ruling15 | 등록에만 선택 mailLink를 추가하고 admin memberFixture를 공유 helper로 위임했다. 새 shared Scripts 실제 목 회귀와 두 sync 사본으로 focused web 50개·admin 75개, 전체 gate·목 E2E20/18을 확인했다. login 인터페이스·기본 목 오류·locale·userAgent는 유지한다. |
 | Ruling16 | 추가 설정·외부 계약 snapshot 오류만 제한 처리했다. 두 앱 실제 hook subprocess RED 각 8 실패·43 통과 뒤 covering 각 6파일·93개, 전체 gate·목 E2E20/18을 확인했다. 엄격한 생성기·JSON·정상 키·무변경 캐시를 유지하며 다른 파일 읽기·해싱 오류는 숨기지 않는다. |
-| Ruling17 | settings.json 실제 entry 없음만 hook을 생략한다. 새 dispatcher 19개·covering Node 66개·create 159개(7 skip)·실제 전체 생성 Node 66개·root11과 clean HEAD를 확인했다. invalid·unreadable·dangling settings와 실제 deny는 엄격하다. 프론트 gate 재실행은 없고 부모 .claude 링크/Windows 일반 파일 경계는 추가 Minor로 최종 전체 검토에 남는다. |
+| Ruling17 | settings.json 실제 entry 없음만 hook을 생략한다. 새 dispatcher 19개·covering Node 66개·create 159개(7 skip)·실제 전체 생성 Node 66개·root11과 clean HEAD를 확인했다. invalid·unreadable·dangling settings와 실제 deny는 엄격하다. 프론트 gate 재실행은 없고 부모 .claude 링크/Windows 일반 파일 경계는 최종 전체 검토의 T10-RR1-M1 leave 판정으로 비정상 상태의 수용 경계로 남긴다. |
 | Ruling18 | private admin-combo fixture에 core.filemode=false를 먼저 고정하고 원본 100755 인덱스 경로만 update-index로 보존했다. macOS RED4/5→GREEN9·create159(7 skip)·Node66·root11, 실제 Windows 고정 BASE4실패/5통과→FIX9통과를 확인했다. 기존 assertion·매개변수는 그대로며 프론트·Docker 재검증이나 Windows root/full/CI 증거가 아니다. |
+| Ruling19 | Task12의 create 설계 결정 참조에 §2·만 더한 5바이트 보완이다. 일반 hook 한 커밋, 루트 check11 커밋 전·깨끗한 HEAD 뒤, sync19·빈 상태를 확인했고 프론트·제품·assertion은 바꾸지 않았다. |
+| Ruling20 | 정식 전체 검토의 FW-I1과 FX1–FX6을 한 최종 보완으로 반영했다. 역할 전용 전수 타입 가드·음성 사례, 로그인 진입의 비문자열 정규화, 문서 교정, 기존 단언을 유지한 fixture·E2E 보강이다. 일반 리소스 타입·실행 값·순서·loadValues·changeLocaleAction·공유/web·계약·의존성·create 제품 코드·자산은 그대로다. |
+| Ruling21 | fresh root-pre exit1·67.129초의 기존 web-e2e 첫 PID marker JSON 경쟁을 좁게 교정했다. 직접 소유 helper의 빈 최종 파일/완성 tmp→rename 제어 대조 exit0 뒤 첫 writer의 atomic 게시와 직접 소유 .tmp 정리만 바꿨다. focused3 exit0·fresh root11을 확인했으며 기존 제목·종료 assertion·poll·timeout·다른 두 시험·production helper는 그대로다. 자동 재시도 예외는 확장하지 않았다. |
 
-Task10의 기존 Minor 여섯 개와 Ruling17 부모 경계 하나, Task11의 기존 Minor 다섯 개 등 이월 findings는 최종 전체 검토에서 판단한다. Task11 Ruling18 보완은 범위 재리뷰에서 C0/I0로 수락됐으며 새로 관찰한 계약 차이 행의 rejected-path 정규식 문제는 범위 밖 Minor로 최종 전체 검토에 남는다. Task11 Windows 검증 헬퍼 실패 둘은 준비 guard와 정리 audit의 별도 실패로 원본을 보존하고 교정했으며 성공 focused suite와 섞지 않는다. 문서·제목 범위는 이 Minor들의 제품 assertion을 바꾸도록 승인하지 않는다.
+Task1–12의 모든 이월 finding과 증거·운영 행은 아래 정식 전체 검토 처분으로 확정했다. Task11 Ruling18 보완은 범위 재리뷰에서 C0/I0로 수락됐으며 계약 차이 행의 rejected-path 문제는 FX5의 행별 경로 단언으로 해소했다. Task11 Windows 검증 헬퍼 실패 둘은 준비 guard와 정리 audit의 별도 실패로 원본을 보존하고 교정했으며 성공 focused suite와 섞지 않는다. 기존 제목·제품 assertion·fixture의 실행 권한은 유지했다.
 
 A2에서 빠른 메뉴 이동 중 관찰한 `The destination stream closed early` 진단은 UI/API assertion과 별도로 기록하며 원인은 확정하지 않았다. 이번 SDD 최종 로컬 검사에서는 이 스트림 close 진단과 기존 types 단계 무출력 exit1을 재현하지 못했다. 영구 flake 예외로 바꾸지 않으며 기존 web 진단 정리와 BFF 클라이언트 주소 전달은 별도 후속이다.
 
-A3는 PR CI 열 작업과 검토·병합을 남긴다. 대상은 check·fastapi·nextjs·nextjs-admin·nextjs-e2e-fastapi·nextjs-admin-e2e-fastapi·conformance-fastapi·conformance-mock·create-combo·create-standalone이며 main CI도 아직 확인하지 않았다. 이 로컬 기록으로 실제 FastAPI·Docker 또는 PR/main 성공을 대신하지 않는다.
+최종 범위 재검토와 병합은 코디네이터 절차로 남는다. 정확한 PR HEAD와 main fast-forward 뒤 정확한 main HEAD에서 check·fastapi·nextjs·nextjs-admin·nextjs-e2e-fastapi·nextjs-admin-e2e-fastapi·conformance-fastapi·conformance-mock·create-combo·create-standalone 열 작업을 모두 확인해야 한다. 실제 FastAPI·Docker 또는 PR/main 성공은 아직 확인하지 않았으며 이 로컬 기록으로 대신하지 않는다. Windows는 Task11의 실제 focused9만 역사적 증거로 유지하며 전체 root·admin·web은 미검증이다.
+
+### Ruling20·21 최종 보완의 실제 native 기록
+
+| 보완 | 반영·검증 |
+| --- | --- |
+| FX1 / FW-I1 | 역할 전용 permission-catalog의 Permission 전수 가드와 resource-types 음성 사례다. 가드 전 tsc exit2·TS2578, 실제 역할 helper의 posts:manage 누락 tsc exit2·TS2322/never, 복원 뒤 types exit0·진단0을 확인했다. API 타입·생성물은 고치지 않았다. |
+| FX2 / T4-M1 | loginAction 진입에서 비문자열 returnTo를 /로 정규화한다. 실제 목 ko/en 직접 호출 RED exit1·2실패/47통과(TypeError), GREEN은 계정 언어의 /·/en과 유효 세션·로케일 쿠키를 확인했다. 공개 타입과 FW-M3 changeLocaleAction은 그대로다. |
+| FX3 | T3-M7 생성 취소, T5-M6 inputValues/edit.visible, T7-M1 삭제된 감사 대상 404 한계, T7-M2 서버 표시 override/client 자식 직렬화, T7-M4 E2E 비활성 대 통합 안내, T8-M5 API_BASE_URL 형식을 실제 코드와 대조해 문서만 고쳤다. read-only 전·후 proof는 exit0이다. |
+| FX4 / FW-M1 | 단독 nextjs-admin 이름 허용, 생성 조합의 사본 범위, 실제 Ruling1–21·실측120바이트·정식 전체 처분·최종 합계·create 설계 참조를 기록했다. 무관한 설계 바이트는 유지했다. |
+| FX5 | T11-RR1의 네 계약 거절 행이 정확한 경로를 단언한다. 최초 root lint exit1의 any matcher를 원본 보존·코디네이터 판정 뒤 Error.message 단언으로 교정했고 focused lint exit0·fresh root11을 확인했다. 기존 거절 정규식·fixture 모드·빈 폴더 단언은 유지했다. T6-RR1-M1/M2는 사전순과 다른 최초 그룹 순서 및 Map/Object.groupBy 부재·복원, T6-M1은 API 밖 선언값으로 loadValues 교집합을 고정한다. |
+| FX6 | T5-M3은 비활성 옵션의 표시, T6-M4는 member 행의 표시를 먼저 기다리고 기존 부정 단언을 그대로 실행한다. 목 E2E18이 통과했다. |
+
+첫 root-initial은 FX5 matcher의 no-unsafe-assignment로 exit1·67.487초(root10/11), 그 교정 뒤 root-pre는 scripts/test/web-e2e/process.test.ts의 Unexpected end of JSON input 한 건으로 exit1·67.129초(root10/11)였다. 두 원본 스트림·실패 source는 보존하고 각각 코디네이터 판정에 따라 typed Error.message와 Ruling21 marker 게시로 고쳤다. 단순 gate 재시도는 하지 않았다. 이번 보완은 focused Vitest 4파일·74개, types 진단0, 루트 check11 뒤 admin check10(0 캐시) → build exit0 → 목 Chromium E2E18 → 전체 verbose Vitest 89파일·804개를 순차 실행해 native exit0·warnings0을 확인했다. 실제 전체 두 출력 스트림을 보존했다. 공유·web diff가 비어 새 web 실행은 하지 않았고 위 105파일·929개·정확한 17블록은 이전 Task12 증거다. create 시험은 루트 check가 덮으며 새 조합 생성·Windows 전체 실행은 추가하지 않았다. 실제 합계를 기록한 이 문서 변경 뒤 커밋 전 루트 check11과 커밋한 깨끗한 HEAD의 루트 check11, sync19·빈 상태·지정8포트 확인을 완료 게이트로 적용한다.
+
+### 최종 전체 검토의 전수 처분
+
+정식 원본: `.superpowers/sdd/2026-10-11-admin-a3/final-review.md`, SHA256 `e377633b02b4a8b9b2863289474af0d4747f7cf9a56f10f19265d9b41a26b9bd`, `Triage of earlier findings`의 Task1–12·공통 증거·운영 모든 행이다. 아래 행은 Ruling20에서 각각의 이유·매핑을 수락한 최종 처분이며 표 안 경로·줄번호는 고정 리뷰 HEAD의 정의다. 해소(FX1–FX6)는 위 native 기록, leave/resolved/증거 수용은 해당 정식 행의 이유·후속을 따른다. 원문은 수정하지 않았다.
+
+
+판정 기준:
+
+- 해소(FX1–FX6): 이번 최종 보완으로 반영·검증했다. 이유·세부 매핑은 아래 고정 리뷰의 각 행과 위 FX 검증 기록을 따른다.
+- leave: 이유와 후속을 남긴다.
+- resolved: 이미 반영한 커밋을 적는다.
+
+**Task 1** (fbbf7ad)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T1-M1 `shared/nextjs/scripts/process-tree.test.ts:250` finally의 `console.info` | leave | verbose 감사에서만 보이는 진단 출력이며 경고 grep(17/0)에는 영향이 없다. 공유 원본을 바꾸면 web·admin 전체 gate를 다시 돌려야 해 비용 대비 이익이 작다. 후속에 assertion 메시지로 옮긴다 |
+| T1-M2 같은 파일 `:208,243,246` 고정 800ms·100ms 여유(약 600ms) | leave | 계획이 정한 상수다. 2000ms 강제 대기와 묶여 단순히 늘릴 수 없다. macOS 부하에서만 드문 flake 위험이 있고 Linux CI는 이 assertion을 건너뛴다. 후속에 테스트가 해제를 정하는 프로토콜로 바꾼다 |
+| 증거: focused exit·helper 미러 공백 | 수용 | 필수 root·프론트 전체 gate의 native exit는 확인됐다 |
+| /var↔/private/var create 실패 이월 | resolved | Task 9 RF3(realpath 정규화)로 해소 |
+
+**Task 2** (16001a8)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T2-I1 [plan-mandated] 문구 규칙 충돌 | leave | Ruling 8에 동의한다. 저장소 내부 실행기의 기존 문구이며 기능 결함이 없다. 별도 문구 정리에서 다룬다 |
+| 범위 밖: 기존 검사가 TMPDIR에 남긴 비 `aitpl-` 폴더 71개 | leave | A3 이전 테스트의 위생 문제다. A3가 더한 임시 폴더는 모두 `aitpl-` 접두사이고 정리된다(직접 확인). 후속에 기존 테스트의 정리를 감사한다 |
+| 증거: 미러의 `.command.txt`·`.exit.txt` 일부 공백 | 수용 | primary가 원본을 확인했다 |
+
+**Task 3** (30ce5bb, dfad4bc, 258fa45)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T3-I1 [plan-mandated] 검색형 다중 선택 재배열 | resolved | Ruling 10, `search-multi-select.tsx`와 `select.test.tsx:47-198` |
+| T3-M1 ListScreen·FormScreen의 403 처리 중복 | leave | 동작이 같고 양쪽 모두 테스트가 있다. 리팩터는 범위 밖이다 |
+| T3-M2 순서·필터 빈 항목 assertion 없음 | resolved | `select.test.tsx:164-190`이 [전체,A,B]/[전체,B,A]를 고정한다 |
+| T3-M3 생성기의 첫 속성·라벨 없음 분기 미검사 | leave | 초안은 사람이 검토하는 수기 파일이다. 후속 시험 |
+| T3-M4 첫 페이지 밖 fixture 전제 미단언 | leave | 실제 생성이 지금 통과한다. 후속 시험 |
+| T3-M5 override의 notice describedBy 누락 | leave | `error`를 받는 override(관계 옵션 403)가 지금은 없다 |
+| T3-M6 `errors.map`의 `error` 가림 | leave | 표기 문제 |
+| T3-M7 생성 폼 취소 문서 | 해소(FX3) | `docs/architecture.md:35`, `docs/recipes/add-resource.md:17`이 실제 동작(생성 폼 취소는 항상 목록)과 다르다 |
+| T3-M8 `list.test.tsx` 중복 import | leave | 표기 문제 |
+| T3-RR1-I1 IME 조합 중 Enter | resolved | Ruling 13(258fa45) |
+| T3-RR1-M1 `role="textbox"`에 붙는 `aria-expanded` | leave | 고정 E2E의 textbox 질의를 지키려 승인한 절충이다. 접근 이름은 있다. 후속에 APG 정렬 |
+| T3-RR1-M2 방향키로 가리킨 항목의 Enter가 재검색 | leave | 문서화된 동작이며 Space로 토글한다. 후속에 APG 정렬 |
+| T3-RR1 범위 밖: Select 경로 Enter IME 가드 | leave | term이 입력마다 갱신되어 결함이 아니다 |
+| T3-RR1 증거: helper 원본 삭제 | 수용 | native exit와 원 로그로 확인됐다 |
+| T3-RR2-M1 Space 행의 keyCode 13 | leave | 판정 경로(`isComposing`·`key`)와 RED 판별력이 같다 |
+| T3-RR2 범위 밖: 진행 중 요청의 pending 차단 | leave | 느린 API에서만 Enter를 다시 눌러야 하는 UX 문제다. 후속 |
+| A2 이월(최종 리뷰 M3, T5 M1, T7 M2·M5·M6, A2 Ruling 18, FR-M2·M3) | resolved | Task 3 Step 1의 테스트(enum 제출, `$name` 표, Enter 포커스 등)로 구현됐다. 원 정의는 미러되지 않았지만 브리프 대응으로 확인됐다 |
+
+**Task 4** (1e40186, 6495b24)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T4-I1 [plan-mandated] 반복 접두사 | resolved | Ruling 12, `redirect.ts:15`와 표 세 행 |
+| T4-M1 비문자열 `returnTo`의 TypeError(쿠키 쓰기 뒤 500·세션 삭제) | 해소(FX2) | 공개 Action의 입력 검증 공백이다. 한 줄 정규화와 실제 목 표 한 행이면 된다. admin gate는 FX1로 어차피 돈다 |
+| T4-RR1 범위 밖: 정상 반복 접두사 복귀의 남는 로케일 | leave | 조작한 링크에서만 생기며 안전 영향이 없다. 공유 코드라 web gate가 필요하다 |
+| 증거: Windows·JS 브라우저 체인 미실행 | 수용 | proxy 실제 NextRequest 시험과 E2E가 있다. Windows는 아래 권고 |
+
+**Task 5** (e2422a6)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T5-M1 이름 없음 판정 중복 | leave | 결과가 같다. 리팩터 |
+| T5-M2 화면별 선언 선택 중복 | leave | 결과가 같다. 리팩터 |
+| T5-M3 [plan-mandated] `e2e/users.spec.ts:75` 부정 단언이 팝업 전에 끝남 | 해소(FX6) | 먼저 "비활성" 옵션의 표시를 기다린다. 완화가 아니라 강화다 |
+| T5-M4 [plan-mandated] 통합 선택자의 범위 | leave | 상세 단언(:343)이 특정 레코드를 본다 |
+| T5-M5 [plan-mandated] 이름 없는 사용자의 같은 라벨 | leave | 승인된 스펙 결정이다. 후속에 짧은 id 대체를 검토한다 |
+| T5-M6 inputValues와 `edit.visible` 짝 안내 없음 | 해소(FX3) | `docs/recipes/add-resource.md:15`에 한 문장 |
+| A2 이월 T6 M2, T7 M4(사용자), T7 RR-M1, T9 M4 | resolved | `task-5-carryin-review.md` 대응 표. 역할 삭제 403/409 부분은 Task 6의 `삭제 Action의 %s 거절` |
+| 증거: Windows junction 분기 미실행 | 수용 | Windows 권고 참조 |
+
+**Task 6** (8d2abfa, 1e0aa77)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T6-I1 [plan-mandated] `Map.groupBy` | resolved | Ruling 14 |
+| T6-M1 `loadValues` 연결을 판별하지 못하는 fixture | 해소(FX5) | `src/components/resource/form-screen.test.tsx:180`의 선언 values에 API에 없는 값을 하나 더한다. 제목·assertion은 그대로다. FW-I1이 이 교집합 경로를 다루므로 함께 고정한다 |
+| T6-M2 여러 쪽 권한 읽기 미실행 | leave | 단순 루프이고 권한은 8개다. 후속 단위 시험 |
+| T6-M3 / T7-M7 등록 import 위치·이름 | leave | 생성기가 import를 파일 맨 앞에 넣도록 설계됐다(`scripts/gen-resource/generate.ts:67`). index만 고치면 다음 생성에서 다시 생긴다. 후속은 생성기 개선 |
+| T6-M4 [plan-mandated] `e2e/roles.spec.ts:73-74` 행 표시 없이 부정 단언 | 해소(FX6) | 먼저 member 행의 표시를 단언한다 |
+| T6-M5 / T7-M8 / T8-M6 루트 AGENTS의 E2E 범주 | resolved | Task 12 고정 문장(`AGENTS.md:42`) |
+| T6-RR1-M1 선택기 fixture의 그룹 순서가 사전순과 같음 | 해소(FX5) | 처음 본 순서가 사전순과 다른 사례를 하나 더한다. 기존 assertion은 그대로다 |
+| T6-RR1-M2 `Object.groupBy`는 남아 있음 | 해소(FX5) | 같은 hook에서 함께 지우고 되돌린다 |
+| T6-RR1 범위 밖: override의 `Label htmlFor`가 div를 가리킴 | leave | `aria-label`이 접근 이름을 준다. 후속 접근성 |
+| 증거: 구형 브라우저 실제 실행 없음 | 수용 | 설치본 browserslist·polyfill 확인과 API 삭제 회귀가 있다 |
+
+**Task 7** (38490e0)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T7-M1 [plan-mandated] 삭제된 대상의 링크가 404 안내로 끝남 | 코드 leave, 문서 해소(FX3) | 완전한 해결은 행마다 존재 확인 요청이 필요하다. action 기준으로 막아도 이후 삭제된 대상은 남는다. `docs/architecture.md:59`·`docs/recipes/add-resource.md:23`에 한계를 적는다 |
+| T7-M2 `DisplayProps`의 함수 prop | 해소(FX3) | `docs/recipes/add-field-kind.md:5`에 "표시 override는 서버 컴포넌트, 상호작용은 직렬화 가능한 props의 client 자식"을 적는다 |
+| T7-M3 `…To]` 끝 판정 중복 | leave | `docs/conventions/jsonapi.md:62`의 기간 필터 반열린 규약과 같다. 중복은 작다 |
+| T7-M4 `e2e/AGENTS.md:9`의 403 안내 서술 | 해소(FX3) | E2E는 비활성만 보고 안내 문구는 통합 테스트가 본다고 고친다 |
+| T7-M5 metadata·target 분기 직접 시험 없음 | leave | 후속 시험 |
+| T7-M6 타입 중복·옵셔널 호출 | leave | 표기 |
+| A2 이월 T6M3 ISO 날짜 역변환 | resolved | `filterCalendarDate`와 `date.test.ts` |
+
+**Task 8** (6d51274, 4856847)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T8-I1 [plan-mandated] 가입 흐름 복사 | resolved | Ruling 15 |
+| T8-M1 `--keep` 안내의 실행 ID 변수 미검사 | leave | 실제 문자열 변경은 한 줄이며 CI에서 정리 경로가 돈다. 후속 시험 |
+| T8-M2 거절 사례의 왕복 기준 단언 없음 | leave | RED에서 왕복 문서가 통과함이 간접 확인됐다. 후속 |
+| T8-M3 `e2e-build.test.ts` 한 번·신호 미단언 | leave | 공유 원본이다(web gate 필요). 후속 |
+| T8-M4 [plan-mandated] 앱 설정의 두 기준 | leave | 세 번째 앱이 생길 때 `STACKS`의 명시 속성으로 정리한다 |
+| T8-M5 [plan-mandated] `API_BASE_URL` 경로 가정 | 해소(FX3) | `e2e/AGENTS.md:5`에 "`<Origin>/api/v1`이어야 한다"를 적는다 |
+| T8-RR1-M1 login 타입 고정의 위치 | leave | 공유 원본이며 동작 영향이 없다 |
+| 증거: FastAPI·Mailpit callback 경로 | CI 대기 | `nextjs-admin-e2e-fastapi` |
+
+**Task 9** (b8133e2, 5334547)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T9-I1 snapshot 예외로 Stop gate가 열림 | resolved | Ruling 16 |
+| T9-M1 PostToolUse의 contract 비포맷 사례 없음 | leave | `staged-format.mjs`의 `rootFiles`가 거른다. 후속 시험 |
+| T9-M2 새 필수 devDependencies 누락 경로 미검사 | leave | 후속 시험 |
+| T9-M3 조합 README의 support 문장 위치 | leave | 생성 자산 문서의 위치 문제다 |
+| T9-M4 `create/README.md:39` 저장소 사본 오해 | 해소(FX4) | "생성한 조합에서는"으로 범위를 밝히거나 지운다 |
+| T9-RR1-M1 `common.mjs:42` 주석 | leave | 공유 원본이며 동작 영향이 없다 |
+| 남는 한계: 실패 시 앱 파일 snapshot만 유지 | 수용 | Ruling 16 경계이며 BASE보다 나쁘지 않다 |
+| 증거: stdin 사본 여섯 개는 transcript 전용 | 수용 | 실행 원본과 구분해 기록됐다 |
+
+**Task 10** (f27d345, 3b77eaa)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T10-I1 [plan-mandated] 설정 없는 앱이 루트 세션을 막음 | resolved(dispatcher) | Ruling 17. setup·E2E의 발견 규칙은 조합 `AGENTS.md:36`에 문서화된 계획 규칙이라 leave |
+| T10-M1 `e2eOrigin`의 읽기·파싱 오류 문구 | leave | 생성 자산을 바꾸면 실제 조합 재확인이 필요하다. 후속 |
+| T10-M2 잠금 실패 문구의 "web" 고정 | 부분 resolved | Task 11의 병합·보존 문구에 앱 이름이 들어갔다. 남은 부분은 T11-M4로 leave |
+| T10-M3 `frontend-config.ts:12` 정규식 | leave | 현재 자산 CI에 해당 단계가 없는 잠재 문제다 |
+| T10-M4 / T11-M1 `%j` 행이 첫 값만 보임 | leave | CI 진단성 문제. 후속 |
+| T10-M5 실패 경로 넷 미검사 | leave | 후속 시험 |
+| T10-M6 그래프 증거의 전역 turbo | 수용 | 버전이 같아 결론이 유지된다 |
+| T10-RR1-M1 부모 `.claude` 끊어진 링크·Windows 일반 파일 | leave | 비정상 상태에서만 생긴다. settings.json 삭제와 같은 수준의 이미 수용한 경계다 |
+
+**Task 11** (c6f9770, 0194970)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T11-I1 [plan-mandated] Windows fixture 실행 권한 | resolved | Ruling 18 |
+| T11-M2 생성 문서에 선택하지 않은 프론트 문장이 남음 | leave | 정보성 문장이며 RF4 대상(작업·필터·CI·권한·hook·도구)은 모두 지워진다 |
+| T11-M3 [plan-mandated] dockerignore 시험이 web 경로만 봄 | leave | 두 파일이 바이트 동일하다 |
+| T11-M4 [plan-mandated] 잠금 오류에 앱 이름 없음 | leave | 후속 문구 |
+| T11-M5 RF4 lefthook·도움말 원문 시험 | leave | 생성물 lefthook은 web job이 생길 경로가 없다(`mergeLefthook`). 후속 |
+| T11-RR1 계약 차이 행의 정규식이 거절 경로를 고정하지 않음 | 해소(FX5) | `create/test/admin-combo.test.ts:140`이 행마다 기대 경로(`contract/typespec/main.tsp`, `contract/extra.txt`)를 단언하게 한다. 같은 fixture 회귀(I1 부류)를 직접 잡는다 |
+| 증거: Windows focused 9와 helper 실패 둘 | 수용 | 전체 Windows 증거가 아님을 기록했다 |
+
+**Task 12** (592e0cd, 2552594)
+
+| ID | 판정 | 이유·매핑 |
+| --- | --- | --- |
+| T12-M1 설계 스펙의 SDD 운영 기록 | 부분 해소(FX4) | 사실 오류와 낡는 문장만 고친다. 운영 Ruling 행 삭제는 코디네이터 지시라 요구하지 않는다 |
+| T12-M2 §2 참조 누락 | resolved | Ruling 19 |
+| T12-M3 [plan-mandated] `%[sjd]` 밖 자리표시자(`%i로`, `%i의`, `$nextKey는`) | leave | 계획의 고정 범위다. 후속에 규칙·검사를 확장한다 |
+| T12-M4 루트 `AGENTS.md:59` 단독 admin 누락 | 해소(FX4) | 코드(`create/src/arguments.ts:111`)와 create README(`:7`)는 단독 nextjs-admin의 `fastapi`를 허용한다 |
+| T12-M5 web 템플릿 문서의 W3·W4 | leave | A3 이전부터 있던 위반이다. web gate가 필요하므로 후속 정리 |
+| T12-M6 표 열 폭 | leave | 렌더링 영향 없음 |
+| 보고서 결함(`+` 잔존, format-cli-final) | 수용 | 보고서 표기 문제다 |
+
+**공통 증거·운영**
+
+| 항목 | 판정 | 이유 |
+| --- | --- | --- |
+| Ruling 9의 소유 불명 TEMP 후보(32→55) | leave | Ruling 9에 동의한다. 직접 소유 증거 없이 지우지 않는다. 필요하면 사용자가 자기 Mac TMPDIR을 직접 정리한다 |
+| 미러·provenance 한계(Task 3·7·9·10·11·12) | 수용 | 필수 gate의 native exit와 원 로그는 보존됐다. 코디네이터 보충 증명(e15bba60…)도 바이트 일치를 확인한다 |
+| PR·main CI 열 작업 | 필수, 미완 | 원격 브랜치가 없다. 프로토타입·계획 CI는 SDD 증거가 아니다 |
+
+FW-I1은 FX1로, FW-M1의 정확성 부분은 FX4로 해소했다. FW-M2(설명 null 왕복)는 범용 파서 변경이라 leave, FW-M3(기존 언어 Action)은 이전 범위라 leave, FW-M4(표시 열거값 전수 검사)는 데이터 손실이 없는 후속으로 leave다. Q1의 BFF 주소 전달과 Q4의 기존 web 진단 정리는 승인된 별도 후속이다. 정식 원본의 `계획이 정한 충돌`, `Ruling assessment`, `Declined to judge`, `Recommendations` 4–6의 각 행도 그대로 확정한다: 실행하지 않은 Docker/FastAPI·Linux·전체 Windows·실제 IME/구형 브라우저·flake 빈도는 미검증, unknown55와 기존 TEMP 위생·삭제 원본/전용 transcript의 provenance 경계는 수용, 나머지 범위 밖 동작·접근성·발견 규칙·문구와 CI는 명시한 후속/필수 미완 상태다.

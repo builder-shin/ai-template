@@ -62,7 +62,7 @@ Server Component가 읽고 Server Action이 쓰는 관리 BFF다. Node 24와 pnp
 
 - 골든은 `src/resources/posts/`다. 목록·상세·발행·발행 취소·삭제·실시간만 제공하며 작성·수정 화면은 없다. 목록과 상세는 작성자와 표지 이미지를 함께 읽고, 상세에서만 표지 이미지의 파일 이름을 보인다. 목록에는 coverImage 열이 없다.
 - 사용자는 `src/resources/users/`다. users:read로 목록·상세를 보고 users:manage로 상태·역할을 수정한다. 검색·상태·검색 가능한 역할 필터를 제공한다. 상태 입력은 active·deactivated만, 표시·필터는 deleted도 포함한다. 탈퇴 사용자의 수정은 숨기고 최신 상태가 바뀐 저장은 409로 알린다. 아바타는 표시하지 않는다. 메뉴 순서는 posts, users, roles, permissions, audit-logs다.
-- 역할은 roles:read로 목록·상세, roles:manage로 생성·수정·삭제한다. 이름·선택 사항인 설명 textarea·권한 선택기로 저장하며 시스템 역할 삭제는 숨긴다. 권한은 roles:read의 읽기 전용 목록이며 코드(id)·그룹·설명을 보인다. 권한 선택기는 서버의 /permissions 옵션을 코드 접두사로 묶고 카탈로그 이름으로 표시한다.
+- 역할은 roles:read로 목록·상세, roles:manage로 생성·수정·삭제한다. 이름·선택 사항인 설명 textarea·권한 선택기로 저장하며 시스템 역할 삭제는 숨긴다. 권한은 roles:read의 읽기 전용 목록이며 코드(id)·그룹·설명을 보인다. 권한 선택기는 서버의 /permissions 옵션을 코드 접두사로 묶고 카탈로그 이름으로 표시한다. API 권한 코드가 늘면 roles 선언 values와 ko/en 문구를 함께 늘린다. 빠지면 types 단계가 실패한다.
 - 감사 로그는 audit-logs:read의 읽기 전용 목록·상세다. 행위자·행위·대상 종류·기간으로 거르고 actor를 공개 이름으로 include한다. metadata는 키·값 목록, targetId는 등록한 상세와 보기 권한이 있을 때만 링크한다. 없는 행위자·대상과 빈 메타데이터는 빈 값으로 보인다. 기본 정렬은 -createdAt이다.
 - 실시간 채널이 있는 목록·상세만 구독한다. 구독 컴포넌트: `ResourceRealtime`. 첫 이벤트부터 1000ms 고정 창 안의 이벤트를 한 번의 갱신으로 묶으며 이후 이벤트로 예약을 미루지 않는다. 상세는 자신의 레코드 이벤트만 반영한다. 숨은 탭은 갱신을 보류하고 다시 보일 때 한 번 갱신한다. 채널·레코드 변경과 unmount 때 예약과 보류를 취소한다.
 - 리소스 하나는 `src/resources/<type>/resource.ts`의 선언 하나다. `src/resources/index.ts`의 등록 순서가 메뉴와 첫 화면 순서다. 선언의 권한이 있는 리소스만 보인다. 미등록 리소스와 선언에 없는 화면은 API 호출 전에 404다.

@@ -2,7 +2,7 @@
 
 먼저 `src/lib/resources/definition.ts`와 `src/components/resource/types.ts`를 읽는다. 기존 text·textarea·date·enum·enum-many·boolean·relation·relation-many·file로 표현되는지 확인한다. 필터는 text·enum·relation·date, 입력은 text·textarea·enum·enum-many·boolean·relation·relation-many다.
 
-1. 리소스 하나만 필요한 표시는 그 폴더의 컴포넌트를 최상위 `fields.<name>.display`에 둔다. 입력은 `input`에 둔다. `DisplayProps`는 name·value·record·included·locale·timeZone·linkable, `InputProps`는 name·label·kind·defaultValue·options·search·disabled·error를 받는다. linkable(type)은 등록한 상세와 현재 보기 권한을 함께 확인한다. options는 관계·열거값 입력에만 있고 search는 관계 입력에만 있다.
+1. 리소스 하나만 필요한 표시는 그 폴더의 컴포넌트를 최상위 `fields.<name>.display`에 둔다. 입력은 `input`에 둔다. 표시 override는 서버 컴포넌트로 두고 상호작용은 직렬화 가능한 props를 받는 client 자식에 둔다. `DisplayProps`는 name·value·record·included·locale·timeZone·linkable, `InputProps`는 name·label·kind·defaultValue·options·search·disabled·error를 받는다. linkable(type)은 등록한 상세와 현재 보기 권한을 함께 확인한다. options는 관계·열거값 입력에만 있고 search는 관계 입력에만 있다.
 2. 입력은 같은 name으로 제출하고 `useResourceField(name)`으로 오류·접근성 속성을 읽는다. 비운 관계·체크박스는 `__present_<name>`을 제출한다. 비활성 입력은 둘 다 제출하지 않는다. 범용 fieldset이 입력 override도 비활성화하며 사용자 정의 선택 부품에도 disabled를 전달한다. Server Action과 `useActionState`를 유지한다. 일반 컴포넌트 함수를 클라이언트 props로 넘기지 않는다.
 3. 공통 종류가 필요하면 definition의 DisplayKind·InputKind·FilterKind와 화면 types를 함께 늘린다. display.tsx·form.tsx·filters.tsx·screen.tsx의 실제 소비자를 맞춘다. 모든 종류를 세 위치에 무조건 추가하지 않는다.
 4. 쓰기 종류는 `src/lib/resources/values.ts`의 FormData 해석과 data.ts의 JSON:API attributes·relationships 분류도 맞춘다. 이름만 추가하면 문서가 달라지므로 실제 목의 요청·응답과 source.pointer를 검사한다.

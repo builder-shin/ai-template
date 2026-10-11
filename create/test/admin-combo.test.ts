@@ -125,19 +125,29 @@ it.each(["bytes", "missing", "extra", "mode"])(
     if (difference === "mode" && process.platform !== "win32") chmodSync(join(root, path), 0o755);
     git(root, "commit", "-m", "chore: different contract fixture");
     const parent = temporaryFolder();
-    expect(() =>
-      createProject(
-        {
-          target: join(parent, "aitpl-conflict"),
-          name: "aitpl-conflict",
-          template: "combo",
-          frontends: ["web", "admin"],
-          git: false,
-        },
-        root,
-        { pnpm: () => undefined },
-      ),
-    ).toThrow(/프론트 계약.*—.*맞추고 커밋/);
+    let rejection: unknown;
+    expect(() => {
+      try {
+        createProject(
+          {
+            target: join(parent, "aitpl-conflict"),
+            name: "aitpl-conflict",
+            template: "combo",
+            frontends: ["web", "admin"],
+            git: false,
+          },
+          root,
+          { pnpm: () => undefined },
+        );
+      } catch (error) {
+        rejection = error;
+        throw error;
+      }
+    }).toThrow(/프론트 계약.*—.*맞추고 커밋/);
+    expect(rejection).toBeInstanceOf(Error);
+    expect((rejection as Error).message).toContain(
+      difference === "extra" ? "contract/extra.txt" : "contract/typespec/main.tsp",
+    );
     expect(readdirSync(parent)).toEqual([]);
   },
 );

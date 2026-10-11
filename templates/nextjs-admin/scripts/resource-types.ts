@@ -3,10 +3,26 @@ import { createResourceData } from "../src/lib/resources/data";
 import type { createApiClient } from "../src/lib/api/client";
 import { resources } from "../src/resources";
 import type { TargetAttributeKey } from "../src/lib/resources/contract";
+import {
+  permissionCatalog,
+  type CompletePermissionCatalog,
+} from "../src/resources/roles/permission-catalog";
 
 // 실행하지 않는다. types 단계의 tsc가 오류 주석과 실제 진단을 함께 검사한다.
 export function resourceTypeChecks(client: ReturnType<typeof createApiClient>) {
   const permission: Permission = "posts:manage";
+  const missingPermission = [
+    "admin:access",
+    "users:read",
+    "users:manage",
+    "roles:read",
+    "roles:manage",
+    "audit-logs:read",
+    "posts:create",
+  ] satisfies readonly Permission[];
+  // @ts-expect-error 사유: API 권한 코드 하나가 빠진 역할 목록은 전수 검사를 통과할 수 없다.
+  missingPermission satisfies CompletePermissionCatalog<typeof missingPermission>;
+  permissionCatalog satisfies CompletePermissionCatalog<typeof permissionCatalog>;
   // @ts-expect-error 사유: 내보낸 권한 타입도 계약에 없는 코드를 거절해야 한다.
   const invalidPermission: Permission = "unknown";
   void invalidPermission;
