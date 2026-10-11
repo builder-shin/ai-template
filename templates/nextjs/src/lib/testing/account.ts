@@ -3,6 +3,9 @@ import type { components } from "../api/schema";
 
 type Account = components["schemas"]["RegistrationCreateAttributes"];
 type Options = { origin: string; locale: "ko" | "en"; account: Account; userAgent?: string };
+type RegistrationOptions = Options & {
+  mailLink?: (email: string, purpose: "verification") => Promise<string>;
+};
 type LoginOptions = Omit<Options, "account"> & {
   account: Pick<Account, "email" | "password">;
   userAgent?: string;
@@ -18,15 +21,25 @@ function client(origin: string, locale: "ko" | "en", accessToken?: string) {
 }
 
 /** 계정 데이터와 언어는 fixture가 정하고 HTTP 준비만 함께 쓴다. */
-export async function registerTestAccount({ origin, locale, account, userAgent }: Options) {
+export async function registerTestAccount({
+  origin,
+  locale,
+  account,
+  userAgent,
+  mailLink,
+}: RegistrationOptions) {
   const anonymous = client(origin, locale);
   await anonymous.POST("/registrations", {
     body: { data: { type: "registrations", attributes: account } },
   });
-  const response = await fetch(`${origin}/_test/mail?to=${encodeURIComponent(account.email)}`);
-  if (!response.ok) throw new Error("테스트 메일 조회 실패");
-  const { messages } = (await response.json()) as { messages: { text: string }[] };
-  const link = messages[0]?.text.match(/https?:\/\/\S+/)?.[0];
+  let link;
+  if (mailLink) link = await mailLink(account.email, "verification");
+  else {
+    const response = await fetch(`${origin}/_test/mail?to=${encodeURIComponent(account.email)}`);
+    if (!response.ok) throw new Error("테스트 메일 조회 실패");
+    const { messages } = (await response.json()) as { messages: { text: string }[] };
+    link = messages[0]?.text.match(/https?:\/\/\S+/)?.[0];
+  }
   const token = link ? new URL(link).searchParams.get("token") : null;
   if (!token) throw new Error("테스트 인증 메일에 토큰이 없다.");
   await anonymous.POST("/email-verifications", {

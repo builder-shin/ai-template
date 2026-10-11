@@ -1,10 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  registerTestAccount,
-  loginSeedAccount,
-  loginTestAccount,
-} from "../../src/lib/testing/account";
-import { createApiClient } from "../../src/lib/api/client";
+import { registerTestAccount, loginSeedAccount } from "../../src/lib/testing/account";
 import type { components } from "../../src/lib/api/schema";
 
 type PermissionCode = components["schemas"]["PermissionCode"];
@@ -25,20 +20,12 @@ export async function memberFixture(
     locale,
     password: "admin-test-password", // betterleaks:allow 사유: E2E·목 통합 테스트 계정
   };
-  let owner;
-  if (options.mailLink) {
-    const anonymous = createApiClient({ baseUrl: `${origin}/api/v1`, locale, log: () => {} });
-    await anonymous.POST("/registrations", {
-      body: { data: { type: "registrations", attributes: account } },
-    });
-    const link = await options.mailLink(account.email, "verification");
-    const token = new URL(link).searchParams.get("token");
-    if (!token) throw new Error("테스트 인증 메일에 토큰이 없다.");
-    await anonymous.POST("/email-verifications", {
-      body: { data: { type: "email-verifications", attributes: { token } } },
-    });
-    owner = await loginTestAccount({ origin, locale, account });
-  } else owner = await registerTestAccount({ origin, locale, account });
+  const owner = await registerTestAccount({
+    origin,
+    locale,
+    account,
+    ...(options.mailLink ? { mailLink: options.mailLink } : {}),
+  });
   const me = (await owner.client.GET("/me")).data!;
   return { account, owner, userId: me.data.id };
 }
