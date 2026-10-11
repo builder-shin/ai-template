@@ -67,7 +67,10 @@ def test_realtime_origins_become_the_origins_browsers_send(
 ) -> None:
     """경로, 쿼리, 조각, 계정과 기본 포트는 떼고 호스트는 소문자로 쓴다. 겹치는 값은 하나다."""
     write_dotenv(tmp_path)
-    assert load_settings().realtime_allowed_origins == {"http://localhost:3000"}
+    assert load_settings().realtime_allowed_origins == {
+        "http://localhost:3000",
+        "http://localhost:3001",
+    }
     monkeypatch.setenv(
         "REALTIME_ALLOWED_ORIGINS", " http://LOCALHOST:3000/, https://web.example.com:443,,"
     )
@@ -86,6 +89,16 @@ def test_realtime_origins_become_the_origins_browsers_send(
         "https://admin.example.com:8443",
         "http://[::1]",
         "http://127.0.0.1:3000",
+    }
+
+
+def test_realtime_origins_default_to_development_web_and_admin(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    write_dotenv(tmp_path, without="REALTIME_ALLOWED_ORIGINS")
+    assert load_settings().realtime_allowed_origins == {
+        "http://localhost:3000",
+        "http://localhost:3001",
     }
 
 

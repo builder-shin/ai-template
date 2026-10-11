@@ -2,9 +2,10 @@ import { randomUUID } from "node:crypto";
 import { admin, expect, login, test } from "./fixtures";
 
 test("감사 로그의 행위·서울 날짜 필터와 상세는 역할 생성 메타데이터를 표시한다", async ({
+  request,
   page,
 }) => {
-  const account = await admin("ko", ["admin:access", "audit-logs:read"]);
+  const account = await admin(request, "ko", ["admin:access", "audit-logs:read"]);
   const name = `감사역할-${randomUUID()}`;
   const { data } = await account.seed.client.POST("/roles", {
     body: { data: { type: "roles", attributes: { name, permissions: [] } } },

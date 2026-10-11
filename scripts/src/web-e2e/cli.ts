@@ -3,14 +3,17 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { validateCompose } from "./config.ts";
-import { createPlan, webCommand } from "./plan.ts";
+import { createPlan, appCommand, type App } from "./plan.ts";
 import { execute, probePorts } from "./process.ts";
 import { downStack, runStack } from "./run.ts";
 import { smoke, waitForServices } from "./smoke.ts";
 
-/** 루트에서만 스택을 소유한다. web 템플릿은 주소와 설정만 받는다. */
+/** 루트에서만 스택을 소유한다. 프론트 템플릿은 주소와 설정만 받는다. */
 async function main(): Promise<number> {
+  const app: App = process.argv[2] === "admin" ? "admin" : "web";
+  const args = process.argv.slice(process.argv[2] === "admin" ? 3 : 2);
   const { values, positionals } = parseArgs({
+    args,
     allowPositionals: true,
     options: {
       keep: { type: "boolean" },
@@ -26,11 +29,11 @@ async function main(): Promise<number> {
     (values.down === true && !values["run-id"])
   ) {
     throw new Error(
-      "사용법: pnpm web-e2e fastapi [--smoke] [--keep] [--run-id <ID>] [--print|--down]",
+      `사용법: pnpm ${app}-e2e fastapi [--smoke] [--keep] [--run-id <ID>] [--print|--down]`,
     );
   }
   const runId = values["run-id"] ?? `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
-  const plan = createPlan(runId);
+  const plan = createPlan(runId, undefined, app);
   const validate = () => {
     validateCompose(readFileSync(resolve(plan.root, plan.composeFile), "utf8"), plan);
   };
@@ -39,8 +42,8 @@ async function main(): Promise<number> {
   console.log(`compose 환경: ${JSON.stringify(plan.env)}`);
   for (const [name, argv] of Object.entries(plan.commands))
     console.log(`${name}: ${JSON.stringify(argv)}`);
-  if (values.smoke !== true) console.log(`web: ${JSON.stringify(webCommand(plan))}`);
-  console.log(`정리: pnpm web-e2e fastapi --run-id ${runId} --down`);
+  if (values.smoke !== true) console.log(`${app}: ${JSON.stringify(appCommand(plan))}`);
+  console.log(`정리: pnpm ${app}-e2e fastapi --run-id ${runId} --down`);
   if (values.print === true) return 0;
   if (values.down === true)
     return downStack(plan, {
@@ -64,12 +67,12 @@ async function main(): Promise<number> {
         validate,
         probe: () => probePorts(plan.ports),
         execute: (argv, options) => execute(argv, plan.env, options),
-        ready: waitForServices,
+        ready: (signal) => waitForServices(plan, signal),
         command: async (signal) =>
           values.smoke === true
             ? smoke(plan, signal)
             : (
-                await execute(webCommand(plan), plan.webEnv, {
+                await execute(appCommand(plan), plan.appEnv, {
                   ...(signal ? { signal } : {}),
                   tree: true,
                 })

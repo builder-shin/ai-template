@@ -8,8 +8,8 @@ async function role(account: Awaited<ReturnType<typeof admin>>, name: string) {
   });
   return data!.data;
 }
-test("역할 생성의 권한 선택기와 수정은 상세에 저장한 값을 표시한다", async ({ page }) => {
-  const account = await admin("ko", codes);
+test("역할 생성의 권한 선택기와 수정은 상세에 저장한 값을 표시한다", async ({ request, page }) => {
+  const account = await admin(request, "ko", codes);
   const name = `생성역할-${randomUUID()}`;
   await login(page, account.account);
   await expect(page).toHaveURL("/roles");
@@ -42,9 +42,10 @@ test("역할 생성의 권한 선택기와 수정은 상세에 저장한 값을 
   });
 });
 test("사용자 역할 삭제는 dialog를 거치고 시스템 역할은 삭제 없이 이름 변경을 거절한다", async ({
+  request,
   page,
 }) => {
-  const account = await admin("ko", codes);
+  const account = await admin(request, "ko", codes);
   const record = await role(account, `삭제역할-${randomUUID()}`);
   await login(page, account.account);
   await expect(page).toHaveURL("/roles");
@@ -81,8 +82,11 @@ test("사용자 역할 삭제는 dialog를 거치고 시스템 역할은 삭제 
   );
   await expect(page).toHaveURL(`/roles/${system.id}/edit`);
 });
-test("권한 목록은 모든 코드·그룹·설명을 보이며 쓰기와 상세 링크가 없다", async ({ page }) => {
-  const account = await admin("en", ["admin:access", "roles:read"]);
+test("권한 목록은 모든 코드·그룹·설명을 보이며 쓰기와 상세 링크가 없다", async ({
+  request,
+  page,
+}) => {
+  const account = await admin(request, "en", ["admin:access", "roles:read"]);
   await login(page, account.account);
   await expect(page).toHaveURL("/en/roles");
   await page
@@ -110,8 +114,8 @@ test("권한 목록은 모든 코드·그룹·설명을 보이며 쓰기와 상�
   await expect(page.getByRole("link", { name: "Create", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
 });
-test("역할 폼의 중복 이름 오류는 이름·설명·권한 선택을 유지한다", async ({ page }) => {
-  const account = await admin("ko", codes);
+test("역할 폼의 중복 이름 오류는 이름·설명·권한 선택을 유지한다", async ({ request, page }) => {
+  const account = await admin(request, "ko", codes);
   const name = `중복역할-${randomUUID()}`;
   await role(account, name);
   await login(page, account.account);

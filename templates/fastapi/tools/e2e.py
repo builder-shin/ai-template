@@ -115,7 +115,9 @@ def serve_settings(settings: Settings, web_url: str) -> Settings:
     )
 
 
-def child_environment(web_url: str, inherited: Mapping[str, str]) -> dict[str, str]:
+def child_environment(
+    web_url: str, inherited: Mapping[str, str], settings: Settings
+) -> dict[str, str]:
     """호출자의 환경에 백엔드가 아는 값만 더한다. web 변수로의 변환은 호출자가 맡는다."""
     return {
         **inherited,
@@ -125,6 +127,8 @@ def child_environment(web_url: str, inherited: Mapping[str, str]) -> dict[str, s
         "E2E_MAILPIT_URL": MAILPIT_URL,
         "E2E_OAUTH_URL": OAUTH_URL,
         "E2E_RECENT_LOGIN_SECONDS": str(RECENT_LOGIN_SECONDS),
+        "E2E_SEED_ADMIN_EMAIL": settings.seed_admin_email,
+        "E2E_SEED_ADMIN_PASSWORD": settings.seed_admin_password.get_secret_value(),
     }
 
 
@@ -273,7 +277,7 @@ def serve_main(args: Sequence[str] | None = None) -> int:
         code = run_command(
             options.command,
             cwd=cwd,
-            env=child_environment(options.web_url, os.environ),
+            env=child_environment(options.web_url, os.environ, settings),
             group=group,
         )
         exited = group.exited()

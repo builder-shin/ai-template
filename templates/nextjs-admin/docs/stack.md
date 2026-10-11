@@ -83,7 +83,7 @@ Node 24.19.0, TypeScript 6.0.3과 typescript-eslint 8.71.0을 유지한다. 의�
 
 [Dockerfile](../Dockerfile)은 Node `24.19.0-bookworm-slim`, pnpm 12.6.0과 UID/GID 10001을 쓴다. 이미지 빌드는 `NEXT_OUTPUT=standalone`, 일반 빌드·E2E는 `next start`다. 실행 설정은 [아키텍처](architecture.md#실행과-이미지)를 따른다. 환경 스키마는 서버 시작과 instrumentation에서 확인하며 빌드에는 비밀이 필요 없다.
 
-관리 E2E는 실제 목과 Playwright 1.63.0 Chromium의 인증·글·사용자·역할·권한·감사 로그·언어 시나리오 18개다. Docker 이미지 빌드는 CI에서 확인하며 admin의 FastAPI E2E는 후속 범위다.
+관리 E2E는 실제 목과 Playwright 1.63.0 Chromium의 인증·글·사용자·역할·권한·감사 로그·언어 시나리오 18개다. 같은 18개를 `E2E_TARGET=fastapi`로 외부 FastAPI에서도 실행한다. 호출자는 API·실시간·Mailpit 주소, 최근 로그인 창과 시드 관리자 두 변수를 준비한다. 가입·인증은 대상의 메일 어댑터를 쓰며 시드 계정은 API 역할 준비만 맡는다. [E2E 규칙](../e2e/AGENTS.md)을 따른다. Docker 이미지·FastAPI 검증은 CI에서 확인한다.
 
 ### 알려진 peer 경고
 
