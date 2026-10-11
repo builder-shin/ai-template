@@ -114,6 +114,10 @@ export function SearchMultiSelect({
                 aria-label={t("searchRelation")}
                 render={<Input />}
                 onKeyDown={(event) => {
+                  if (event.nativeEvent.isComposing || event.keyCode === 229) {
+                    event.preventBaseUIHandler();
+                    return;
+                  }
                   if (event.key === "Enter") {
                     event.preventDefault();
                     event.preventBaseUIHandler();

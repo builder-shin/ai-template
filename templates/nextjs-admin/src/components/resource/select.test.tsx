@@ -1,6 +1,14 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import {
+  act,
+  cleanup,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { ResourceSelect } from "./select";
@@ -186,5 +194,74 @@ it.each([false, true])(
     expect(rows().map((option) => option.textContent)).toEqual(
       searchable ? ["전체", "A", "B"] : ["전체", "B", "A"],
     );
+  },
+);
+
+const compositionKeys = [
+  { name: "isComposing", isComposing: true, keyCode: 13, which: 13 },
+  { name: "keyCode229", isComposing: false, keyCode: 229, which: 229 },
+];
+
+it.each(compositionKeys)(
+  "조합 중 Enter는 검색하지 않고 조합 종료 뒤 Enter가 최종 검색어를 보낸다: $name",
+  async ({ name: _name, ...key }) => {
+    const user = userEvent.setup();
+    const result = Promise.withResolvers<Option[]>();
+    const search = vi.fn((_term: string) => result.promise);
+    const { trigger, values } = show(["a"], search);
+    await user.click(trigger);
+    const input = await screen.findByRole("textbox", { name: "대상 검색" });
+    await user.type(input, "관리");
+    fireEvent.compositionStart(input, { data: "ㅈ" });
+    fireEvent.change(input, { target: { value: "관리자" } });
+    expect((input as HTMLInputElement).value).toBe("관리자");
+    const commit = createEvent.keyDown(input, { key: "Enter", code: "Enter", ...key });
+    fireEvent(input, commit);
+    expect.soft(commit.defaultPrevented).toBe(false);
+    expect.soft(search.mock.calls).toEqual([]);
+    expect.soft(document.activeElement).toBe(input);
+    expect.soft(values()).toEqual(["a"]);
+    fireEvent.compositionEnd(input, { data: "자" });
+    expect.soft(search.mock.calls).toEqual([]);
+    await user.keyboard("{Enter}");
+    expect.soft(search.mock.calls).toEqual([["관리자"]]);
+    expect.soft(document.activeElement).toBe(input);
+    await act(async () => result.resolve([{ value: "s", label: "관리자 역할" }]));
+    const role = await screen.findByRole("option", { name: "관리자 역할" });
+    expect.soft(document.activeElement).toBe(input);
+    expect.soft(values()).toEqual(["a"]);
+    await user.click(role);
+    expect(values()).toEqual(["a", "s"]);
+  },
+);
+
+it.each(compositionKeys)(
+  "조합 중 Space는 현재 키보드 대상과 제출값을 유지한다: $name",
+  async ({ name: _name, ...key }) => {
+    const user = userEvent.setup();
+    const search = vi.fn(async () => options);
+    const { trigger, values } = show(["a"], search);
+    await user.click(trigger);
+    const input = await screen.findByRole("textbox", { name: "대상 검색" });
+    await user.type(input, "관리");
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+    const target = focusedOption();
+    expect(target?.textContent).toContain("C");
+    const before = rows();
+    fireEvent.compositionStart(input);
+    const space = createEvent.keyDown(input, { key: " ", code: "Space", ...key });
+    fireEvent(input, space);
+    expect.soft(space.defaultPrevented).toBe(false);
+    expect.soft(values()).toEqual(["a"]);
+    expect.soft(rows()).toEqual(before);
+    expect.soft(focusedOption()).toBe(target);
+    expect.soft(document.activeElement).toBe(input);
+    expect.soft(search.mock.calls).toEqual([]);
+    fireEvent.compositionEnd(input, { target: { value: "" } });
+    const current = screen.getByRole("option", { name: "A" });
+    await waitFor(() => expect(focusedOption()).toBe(current));
+    await user.keyboard(" ");
+    expect.soft(focusedOption()).toBe(current);
+    expect(values()).toEqual([]);
   },
 );
