@@ -600,7 +600,7 @@ CRUD가 아닌 동작도 모두 리소스를 만들거나 고치는 것으로 �
 | 1. FastAPI | 모두 정했다. 결정은 [FastAPI 설계](2026-09-26-fastapi-template-design.md) §2와 §7에 있다 |
 | 2. web | API 클라이언트 생성기(openapi-fetch 또는 orval)와 JSON:API 역직렬화 헬퍼 설계, 데이터 패칭 패턴(RSC와 Server Actions, 클라이언트 쿼리의 역할 분담), 폼 라이브러리(TanStack Form 또는 React Hook Form), shadcn 기반(Base UI 또는 Radix), Next.js 관리 블록 처리(수용 또는 `agentRules: false`), i18n URL 전략, 목 서버 구현 방식, 단독 프론트에서 계약을 확장하는 방법(TypeSpec 원본 동봉 여부), TS 7 병용, Node 26 전환, 템플릿 안 계약 사본(`openapi.yaml`)을 비밀 스캔에서 빼는 방법 |
 | 3. create CLI | 모두 정했다. 로컬 clone 뒤 `pnpm new`, apps/api·apps/web 조합과 api 소유 인프라, 고정 포트다. 결정은 [create CLI 설계](2026-10-03-create-cli-design.md) §2·§5·§6에 있다 |
-| 4. admin      | 승인 설계와 A1·A2는 병합했다. A3는 리소스 다섯 개·FastAPI E2E·단독 admin·루트 계약 조합을 구현했다. 결정과 검증은 [admin 설계](2026-10-08-nextjs-admin-design.md) §12·§16에 있다. Q1–Q4는 사용자 계획 검토에서 확정했고 PR CI·검토·main 병합은 남는다                                                                                                                                                                                                               |
+| 4. admin      | 승인 설계와 A1·A2는 병합했다. A3는 리소스 다섯 개·FastAPI E2E·단독 admin·루트 계약 조합을 구현했다. 결정과 검증은 [admin 설계](2026-10-08-nextjs-admin-design.md) §2·§12·§16에 있다. Q1–Q4는 사용자 계획 검토에서 확정했고 PR CI·검토·main 병합은 남는다                                                                                                                                                                                                               |
 | 5. NestJS | ORM 최종 확인(Prisma 7), JSON:API DTO와 swagger 스키마 이름을 맞추는 방법, 린터 구성(TS 6 제약 아래 ESLint 또는 oxlint), `e2e:serve` 구현, 조합의 `--api nestjs` |
 | 나중 | 생성한 프로젝트 갱신, npm 배포, 포트 오프셋 |
 
