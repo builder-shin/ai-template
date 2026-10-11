@@ -57,7 +57,7 @@ export type RelationshipKey<T extends ResourceType> = Extract<
   keyof Relationships<ResourceRecord<T>>,
   string
 >;
-export type FieldKey<T extends ResourceType> = AttributeKey<T> | RelationshipKey<T>;
+export type FieldKey<T extends ResourceType> = "id" | AttributeKey<T> | RelationshipKey<T>;
 type RelationshipData<R, K extends keyof Relationships<R>> = NonNullable<
   NonNullable<Relationships<R>[K]> extends { data: infer D } ? D : never
 >;

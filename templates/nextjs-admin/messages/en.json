@@ -107,6 +107,38 @@
           "deleted": "Deleted"
         }
       }
+    },
+    "roles": {
+      "title": "Roles",
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "permissions": "Permissions",
+        "isSystem": "System role",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "q": "Search"
+      },
+      "enums": {
+        "permissions": {
+          "admin:access": "Access admin app",
+          "users:read": "Read users",
+          "users:manage": "Manage users",
+          "roles:read": "Read roles and permissions",
+          "roles:manage": "Manage roles",
+          "audit-logs:read": "Read audit logs",
+          "posts:create": "Write posts",
+          "posts:manage": "Manage all posts"
+        }
+      }
+    },
+    "permissions": {
+      "title": "Permissions",
+      "fields": {
+        "id": "Code",
+        "group": "Group",
+        "description": "Description"
+      }
     }
   }
 }

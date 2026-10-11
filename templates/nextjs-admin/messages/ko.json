@@ -107,6 +107,38 @@
           "deleted": "탈퇴"
         }
       }
+    },
+    "roles": {
+      "title": "역할",
+      "fields": {
+        "name": "이름",
+        "description": "설명",
+        "permissions": "권한",
+        "isSystem": "시스템 역할",
+        "createdAt": "생성 시각",
+        "updatedAt": "수정 시각",
+        "q": "검색"
+      },
+      "enums": {
+        "permissions": {
+          "admin:access": "관리 앱 접근",
+          "users:read": "사용자 조회",
+          "users:manage": "사용자 관리",
+          "roles:read": "역할과 권한 조회",
+          "roles:manage": "역할 관리",
+          "audit-logs:read": "감사 로그 조회",
+          "posts:create": "글 작성",
+          "posts:manage": "전체 글 관리"
+        }
+      }
+    },
+    "permissions": {
+      "title": "권한",
+      "fields": {
+        "id": "코드",
+        "group": "그룹",
+        "description": "설명"
+      }
     }
   }
 }

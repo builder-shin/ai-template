@@ -70,6 +70,16 @@ export function FieldDisplay({
         {translate(`resources.${record.type}.enums.${name}.${String(value)}`)}
       </Badge>
     );
+  if (kind === "enum-many" && Array.isArray(value))
+    return (
+      <span className="inline-flex flex-wrap gap-2">
+        {value.map((item: unknown, index) => (
+          <Badge key={index} variant="secondary">
+            {translate(`resources.${record.type}.enums.${name}.${String(item)}`)}
+          </Badge>
+        ))}
+      </span>
+    );
   if (["relation", "relation-many", "file"].includes(kind)) {
     const identifiers = Array.isArray(value) ? value : [value];
     return (

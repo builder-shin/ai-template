@@ -21,3 +21,18 @@ export const postsFixture = defineResource({
   },
   delete: { permission: "posts:manage" },
 });
+
+export const rolesFixture = defineResource({
+  type: "roles",
+  permission: "roles:read",
+  fields: {
+    permissions: { kind: "enum-many", values: ["posts:create", "posts:manage"] },
+  },
+  list: { columns: ["id", "name"] },
+  detail: { fields: ["id", "permissions"] },
+  create: {
+    permission: "roles:manage",
+    fields: { name: "text", permissions: "enum-many" },
+  },
+  edit: { permission: "roles:manage", fields: { permissions: "enum-many" } },
+});

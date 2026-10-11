@@ -14,6 +14,7 @@ const record = {
     createdAt: "2026-10-08T00:00:00Z",
     status: "draft",
     enabled: true,
+    permissions: ["posts:create", "posts:manage"],
   },
   relationships: {
     author: { data: { type: "users", id: "u" } },
@@ -27,7 +28,12 @@ const included = [
   { type: "files", id: "f", attributes: { filename: "파일.png" } },
 ];
 const translate = (key: string) =>
-  ({ "resource.yes": "예", "resources.posts.enums.status.draft": "초안" })[key] ?? key;
+  ({
+    "resource.yes": "예",
+    "resources.posts.enums.status.draft": "초안",
+    "resources.posts.enums.permissions.posts:create": "글 작성",
+    "resources.posts.enums.permissions.posts:manage": "글 관리",
+  })[key] ?? key;
 function show(
   name: string,
   kind: NonNullable<Parameters<typeof FieldDisplay>[0]["field"]["kind"]>,
@@ -66,6 +72,13 @@ it("날짜는 설정 시간대로, 열거값과 참거짓은 번역으로 표시
   expect(screen.getByText("초안").getAttribute("data-slot")).toBe("badge");
   expect(screen.getByText("예")).toBeDefined();
   expect(screen.getByText(/줄1/).textContent).toBe("줄1\n줄2");
+});
+it("다중 열거값은 값마다 번역한 배지를 표시하고 id 열은 식별자를 표시한다", () => {
+  show("permissions", "enum-many");
+  show("id", "text");
+  expect(screen.getByText("글 작성").getAttribute("data-slot")).toBe("badge");
+  expect(screen.getByText("글 관리").getAttribute("data-slot")).toBe("badge");
+  expect(screen.getByText("1")).toBeDefined();
 });
 it("선언의 표시 override는 원래 값과 레코드를 받는다", () => {
   render(

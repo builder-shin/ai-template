@@ -15,6 +15,20 @@ export function resourceTypeChecks(client: ReturnType<typeof createApiClient>) {
   void unknownLabel;
   const data = createResourceData(client);
   defineResource({
+    type: "roles",
+    permission: "roles:read",
+    fields: { id: { kind: "text" } },
+    list: { columns: ["id", "name"] },
+    detail: { fields: ["id", "permissions"] },
+  });
+  defineResource({
+    type: "roles",
+    permission: "roles:read",
+    list: { columns: ["id"] },
+    // @ts-expect-error 사유: id 표시를 허용해도 쓰기 계약 밖 필드는 보낼 수 없다.
+    edit: { permission: "roles:manage", fields: { id: "text" } },
+  });
+  defineResource({
     type: "users",
     permission: "users:read",
     list: {
