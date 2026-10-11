@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { api, db } from "../helpers.js";
+import { api, codes, db } from "../helpers.js";
 import {
   domainSuite,
   actor,
@@ -17,6 +17,7 @@ import {
 import { RolesService } from "../../../src/modules/roles/index.js";
 import { UnitOfWork } from "../../../src/core/db/unit-of-work.js";
 import { FileDocument } from "../../../src/modules/files/index.js";
+import { UserMeDocument } from "../../../src/modules/users/index.js";
 domainSuite("posts-read");
 it("follows draft visibility, own-author filters, manager filters and 404/403 writes", async () => {
   const owner = await actor(),
@@ -152,17 +153,43 @@ it("loads deduplicated author/cover includes with only public author attributes 
 it("enforces posts:create and keeps Unicode supplementary code-point100000/100001 boundaries", async () => {
   expect((await createPost("", { title: "Anonymous", body: "Body" })).status).toBe(401);
   const owner = await actor();
-  await app.get(UnitOfWork).run((tx) => app.get(RolesService).assign(tx, owner.user.id, []));
-  expect((await createPost(owner.authorization)).status).toBe(403);
+  const where = { userId: owner.user.id };
+  expect(await db.userRole.count({ where })).toBe(1);
+  // Role assignment is additive; remove this actor's memberships to exercise permission denial.
+  const removed = await app.get(UnitOfWork).run((tx) => tx.userRole.deleteMany({ where }));
+  expect(removed.count).toBe(1);
+  expect(await db.userRole.findMany({ where })).toEqual([]);
+  const withoutRoles = await api()
+    .get("/api/v1/me?include=roles")
+    .set("Authorization", owner.authorization);
+  expect(withoutRoles.status).toBe(200);
+  const withoutRolesDocument = UserMeDocument.parse(withoutRoles.body);
+  expect(withoutRolesDocument.data.relationships.roles.data).toEqual([]);
+  expect(withoutRolesDocument.included).toEqual([]);
+  expect(withoutRolesDocument.meta.permissions).toEqual([]);
+  const denied = await createPost(owner.authorization);
+  expect(denied.status).toBe(403);
+  expect(codes(denied)).toEqual(["permission.denied"]);
   await app
     .get(UnitOfWork)
     .run((tx) => app.get(RolesService).assign(tx, owner.user.id, ["member"]));
-  const longest = postData(
-    await createPost(owner.authorization, {
-      title: "Supplementary",
-      body: "\u{10400}".repeat(100_000),
-    }),
+  const restoredRoles = await db.userRole.findMany({ where, include: { role: true } });
+  expect(restoredRoles.map((membership) => membership.role.name)).toEqual(["member"]);
+  const restored = await api()
+    .get("/api/v1/me?include=roles")
+    .set("Authorization", owner.authorization);
+  expect(restored.status).toBe(200);
+  const restoredDocument = UserMeDocument.parse(restored.body);
+  expect(restoredDocument.data.relationships.roles.data).toEqual(
+    restoredRoles.map((membership) => ({ type: "roles", id: membership.roleId })),
   );
+  expect(restoredDocument.meta.permissions).toEqual(["posts:create"]);
+  const created = await createPost(owner.authorization, {
+    title: "Supplementary",
+    body: "\u{10400}".repeat(100_000),
+  });
+  expect(created.status).toBe(201);
+  const longest = postData(created);
   expect(Array.from(longest.attributes.body)).toHaveLength(100_000);
   expect(longest.attributes.body.length).toBe(200_000);
   const oversized = await createPost(owner.authorization, {

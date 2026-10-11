@@ -220,5 +220,23 @@ differences and passes seven check stages/124 tests. AWS3.1149.0 no-network sign
 content-length;content-type;host, use SigV4 and omit optional checksum query fields; the default
 comparison retains content-length;host plus CRC32 fields. Actual Nest/Supertest10/20-way loopback
 requests preserve startup listener counts/max10 and close explicitly without observed warnings.
-These are local signature/lifecycle observations; the real storage rejection, SQL/query snapshot,
-quota20-way race and29 integration tests remain exact-head CI gates. See [Task4 evidence](task-4.md).
+These are local signature/lifecycle observations. The first real integration execution in
+[run38184340281](https://github.com/builder-shin/ai-template/actions/runs/38184340281) at commit7ced12
+exited1 after14.30 seconds:28/29 passed. Its permission fixture used additive assign([]), leaving
+the member role and posts:create intact; POST returned201 where403 was required. Unicode100000/
+100001 assertions were not reached and remain unproved in real CI.
+
+That failed run separately proved auth13/refresh1+1+8, Seaweed signed4/transmitted5-byte rejection
+with403 SignatureDoesNotMatch/no object, constant4 SELECTs/5 statements at page sizes1/20, an actual
+service repeatable-read snapshot (reader196/writer205, externally committed2/stable1), quota20
+(ten201/ten422,1024 bytes/11 pending rows), and two preserving storage:setup executions. Seven
+fresh suite lifecycles explicitly closed with warnings[]/maxListeners10 and zero raw MaxListeners
+warnings. The historical six warnings in each Task3 run remain unchanged.
+
+The test-only correction removes this user's role rows in the real transaction, checks persisted
+absence and /me roles/permissions, asserts403 permission.denied, restores member, then checks the
+persisted role and /me posts:create before requiring201 at the original Unicode100000 boundary.
+The100001422 code/pointer/max and seed assertions, all29 case declarations, auth13 and quota20 remain.
+Runtime additive role semantics, guard/auth/domain, schema/migrations, versions and workflow are
+unchanged. Local checks do not prove real permission or Unicode acceptance; fresh corrected exact-head
+all twelve CI jobs remain pending before the next prototype phase. See [Task4 evidence](task-4.md).
