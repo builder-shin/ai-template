@@ -78,6 +78,9 @@ it.each([
   ["en", "/forbidden?view=all", "/en/forbidden?view=all"],
   ["en", "/en/session/clear", "/en"],
   ["ko", "/EN/session/clear/", "/"],
+  ["ko", "/ko/en/login", "/"],
+  ["ko", "/en/ko/session/clear", "/"],
+  ["en", "/en/en/login", "/en"],
 ] as const)("로그인 복귀: 계정 언어 %s, 경로 %s", async (locale, returnTo, target) => {
   const { account } = await partialAdminFixture(inject("mockBaseUrl"), locale);
   const props = await loginPage(returnTo);

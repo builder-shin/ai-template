@@ -12,7 +12,7 @@ export function safeLoginReturnTo(value: string | null | undefined): string {
       pathname = decoded;
     }
     pathname = new URL(pathname, "https://return-to.invalid").pathname
-      .replace(/^\/(ko|en)(?=\/|$)/i, "")
+      .replace(/^(?:\/(?:ko|en)(?=\/|$))+/i, "")
       .replace(/\/+$/, "");
   } catch {
     return "/";
