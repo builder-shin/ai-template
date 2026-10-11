@@ -21,11 +21,12 @@ installed 7.10.0 generator successfully producing and importing ESM files with .
 under tsc, SWC and Vitest-SWC. The schema uses @default(uuid(7)). PrismaPg has an explicit
 connectionTimeoutMillis of 5000 and shutdown disconnects the client.
 
-The generated client occupies **513741 bytes in 15 files** on macOS. It is ignored:
-this size and the unverified Linux byte equality do not justify committing the output.
+The generated client occupies **513741 bytes in 15 files** on macOS. It remains ignored
+because of its size. The first Linux integration CI run produced the same count, bytes
+and aggregate digest; that log did not print a per-file manifest for independent comparison.
 `gen`, `check` and `setup` recreate it. A manifest records each file's SHA-256, total bytes
 and aggregate digest in ignored .cache/prisma-manifest.json. Linux generation and import
-will run in the exact-head CI jobs; no platform equality is claimed before that evidence.
+passed in that integration job; fresh exact-head acceptance of the correction remains pending.
 `gen --check` separately rejects stale OpenAPI. Prisma receives only DATABASE_URL from
 validated loadSettings/process environment through the scripts; prisma.config.ts uses env.
 No dotenv direct dependency or implicit .env reader was added.
@@ -59,9 +60,9 @@ library input-path observation, not a general Nest product defect.
 Local HTTP rejects a constrained lone-surrogate registration password with 422
 validation.invalid_format at /data/attributes/password, before database work. Login accepts
 the input for byte comparison. The account-level U+FFFD-versus-surrogate login collision
-HTTP test requires actual registration, Mailpit and PostgreSQL, so its result is **unverified
-until CI**. It must give 401 auth.invalid_credentials, while the original password gives
-201; malformed registration must give 422 and none may give 500.
+HTTP test requires actual registration, Mailpit and PostgreSQL. The first integration CI
+run passed its assertions: 401 auth.invalid_credentials for cross-login, 201 for the original
+password, and 422 for malformed registration, with no 500. No local infrastructure ran.
 
 JWT checks require HS256 signature, exp/iat/sub/sid and UUID identifiers. A post-signature
 future-iat check retains FastAPI's 30-second allowance without imposing a maximum token age.
@@ -96,7 +97,7 @@ corrects this contradicted expectation: frozen FastAPI checks revoked_at before 
 The CI test requires exactly one 201, one first-reuser 401 auth.refresh_token_reused, then
 eight 401 auth.token_invalid, a revoked session and 401 for the winning new access and
 refresh tokens. Sequential first reuse, WWW-Authenticate Bearer and no-500 remain required.
-The ordering is a static-source inference until the actual PostgreSQL race passes.
+The first actual PostgreSQL CI race confirmed those counts and revocation assertions.
 
 The infrastructure-only compose project uses the folder name nestjs, fixed baseline ports
 and postgres 18.6-alpine TCP pg_isready, Valkey 9.1.2, SeaweedFS 4.47 mini, Mailpit v1.31.2
@@ -111,14 +112,15 @@ DB 15 FLUSHDB before each test, plus Mailpit cleanup. They exercise mail/verific
 audit persistence, logout/permissions, Unicode, three ten-way races, two actual lock
 connections, actual commit/rollback hooks and foreign DB rejection. The preflight stops with
 “setup을 실행하라” if DB/Valkey are unavailable. Test durations and TRUNCATE samples/mean are
-written to .cache/integration/measurements.json and CI output. Those costs are **pending CI**.
+written to .cache/integration/measurements.json and CI output. The first CI measurements
+are recorded below; they do not establish acceptance of all twelve jobs.
 An outer transaction plus SAVEPOINT cannot cover committed hooks and competing connections;
 it remains an alternative for different tests, not this isolation strategy.
 
 Live drift is placed in CI integration. Installed migrate diff supports
 --from-config-datasource --to-schema --exit-code (0 empty, 2 drift). This selected comparison
 does not replay migrations into a shadow database; migration deploy precedes it. Its actual
-PostgreSQL result and fresh-runner engine behavior remain pending. Revision uses migrate dev
+PostgreSQL comparison reported no differences in the first integration CI run. Revision uses migrate dev
 --create-only, which can require a shadow database, so it is outside local checks.
 
 ## Observed local phases and remaining acceptance
@@ -146,3 +148,54 @@ Task 4. Existing ten baseline jobs and the predecessor prototype job bytes are u
 No push/PR/merge is performed by this worker. Tasks 4–7 and the full Opus design/plan with
 NEW user approval remain required before final NestJS SDD. The existing route-shadow and
 optional-peer limitations, web 17/admin 0 warnings and deferred BFF notes remain unchanged.
+
+## First CI observations and corrective check
+
+The [first Task 3 CI run](https://github.com/builder-shin/ai-template/actions/runs/38180398117)
+tested the original commit `9033bb5f83e16a654e5f8aadd9e50a1afe014cde`. Its integration job
+passed thirteen real tests and live drift, but the prototype job failed at lint with
+**340 errors** before Prisma generation. The complete twelve-job gate was not accepted.
+These observations belong to that original commit; the corrective commit needs fresh CI.
+
+Linux generation produced 15 files/513741 bytes with aggregate SHA-256
+`f8ce637dce0d5893e717690d98e2408447567b4078b6dd14cc7660d854406eb5`, matching macOS.
+SWC compiled 98 files. The ten-way refresh race returned one 201, one
+401 auth.refresh_token_reused and eight 401 auth.token_invalid. Lock tests recorded
+distinct PostgreSQL connections 151/132 and order first-lock → first-end → second-lock.
+Live drift reported “No difference detected.”
+
+| Real integration test                    | Milliseconds |
+| ---------------------------------------- | ------------ |
+| Registration, mail, verification and /me | 582.836      |
+| Resend responses                         | 189.817      |
+| Failed and successful audit persistence  | 194.935      |
+| Social-only and deactivated accounts     | 237.695      |
+| Unicode cross-login and registration     | 336.436      |
+| Logout and live permissions              | 164.066      |
+| Sequential refresh reuse                 | 166.262      |
+| Ten-way refresh race                     | 243.109      |
+| Ten-way same-email registration          | 526.040      |
+| Ten-way verification consumption         | 130.202      |
+| Transaction locks and connection order   | 175.939      |
+| Actual commit, rollback and hook failure | 47.586       |
+| Foreign database refusal                 | 201.550      |
+
+The thirteen TRUNCATE samples averaged **24.451384 ms**. CI also emitted six
+MaxListenersExceededWarning observations: listening/error pairs three times on Server
+with eleven listeners and a limit of ten. Their cause requires later focused diagnosis;
+this ordering correction neither fixes nor suppresses them.
+
+The corrected `check` runs format → Prisma → lint → typecheck → size → test → generated.
+Generation still uses `gen --check`, so a stale OpenAPI comparison fails rather than writing
+the tracked file; the final independent OpenAPI check remains. Only this stage ordering changes.
+The clean-output reproduction preserved the ignored local client in an owned OS-temp backup,
+verified ignore rules, exact path and ownership, then ran `pnpm --dir prototypes/nestjs check`.
+Before correction it exited **1 in 4.191 s**, with 340 lint errors and no client generated.
+After correction, with the client still absent, it exited **0 in 10.115 s**, generated the
+fifteen-file manifest and passed all seven checks/118 tests. Each regenerated file matches
+the backup. The original report, failed logs and original commit remain unchanged.
+An owned standalone copy with an altered OpenAPI title also passed format, generated the
+client and then exited 1 at the Prisma stage in 3.564 seconds with the stale-file message;
+lint never ran. The first fixture attempt exited 1 before checks because pnpm rejected a
+symlinked node_modules directory. An owned filesystem clone corrected that fixture, and
+the fixture was removed after retaining its actual rejection receipts.

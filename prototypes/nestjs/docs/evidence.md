@@ -191,3 +191,20 @@ eleven required jobs. Task 2 is now documented separately in
 Actual infrastructure acceptance and Tasks 4–7, conformance, images, frontend E2E and generated combinations remain outstanding.
 The BFF shared-IP fairness limitation, timing/socket notes and web
 warning baseline 17/admin 0 remain deferred and unchanged.
+
+## Task 3 — clean generated-client check correction
+
+The first Task 3 CI run failed the prototype check with 340 lint errors: frozen installation
+did not create the ignored Prisma client, and `check` ran typed lint before generation.
+Earlier local checks had an existing generated client. The narrow correction moves the
+existing Prisma stage ahead of lint: format → Prisma generation/OpenAPI comparison → lint
+→ types → size → tests → OpenAPI comparison. All seven checks and their exit handling remain.
+
+With only the ignored `src/generated/prisma/` moved to a verified owned OS-temp backup,
+the original command exited 1 at lint in 4.191 seconds and left that directory absent.
+The same command after the ordering correction started with the directory still absent,
+generated 15 files/513741 bytes plus the manifest, and passed all seven checks and 118 tests
+in 10.115 seconds. Every regenerated file matches the backup; the temporary backup is removed
+only after that verification. Detailed CI observations and remaining acceptance are recorded
+in [Task 3 measurements](task-3.md). The original failed CI gate remains unaccepted; the
+corrective commit still requires a fresh exact-head result for all twelve jobs before Task 4.

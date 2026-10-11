@@ -26,8 +26,8 @@ function sizeProblems(): string[] {
 
 const stages = [
   ["format", ["prettier", "--check", "."]],
-  ["lint", ["eslint", "."]],
   ["prisma", ["node", "scripts/preflight-tmp.mjs", "scripts/gen.ts", "--check"]],
+  ["lint", ["eslint", "."]],
   ["typecheck", ["tsc", "--noEmit"]],
   ["size", []],
   ["test", ["vitest", "run"]],
