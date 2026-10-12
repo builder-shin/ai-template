@@ -22,6 +22,8 @@ interface Difference {
   before?: unknown;
   after?: unknown;
 }
+const apiMergeRefusal =
+  /프론트 잠금 파일의 해석이 다르다\((?:web|admin), api\): |api: .+: 해석 결과가 바뀌었다/;
 const hash = (raw: string) => createHash("sha256").update(raw).digest("hex");
 const object = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value)
@@ -259,7 +261,9 @@ export function captureLockResolution(input: CaptureOptions): void {
         ? "inconclusive-boundary-stop"
         : error instanceof CreateError && error.problem.includes("importer의 해석 결과가 바뀌었다")
           ? "strict-refusal"
-          : "diagnostic-failure",
+          : error instanceof CreateError && apiMergeRefusal.test(error.problem)
+            ? "strict-api-merge-refusal"
+            : "diagnostic-failure",
       error: errorReason(error),
       exitCode: error instanceof CreateError ? error.exitCode : 1,
       targetAbsent: !existsSync(options.target),
@@ -318,7 +322,8 @@ export function diagnoseImporterFailure(
 ): never {
   if (
     observed.nativeExit === 1 &&
-    /(?:web|admin): \. importer의 해석 결과가 바뀌었다/.test(observed.stderr)
+    (/(?:web|admin): \. importer의 해석 결과가 바뀌었다/.test(observed.stderr) ||
+      apiMergeRefusal.test(observed.stderr))
   ) {
     let result: unknown = null,
       error: unknown = null;

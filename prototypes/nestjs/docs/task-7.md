@@ -243,3 +243,51 @@ OTel HTTP 1·Express 0·pg 6·Redis 0과 completeness=false, DI의 tsx 미지원
 19 operation·83 schema·41/94 conformance는 유지된다. 전체 39/126/94와 web 20·admin 18,
 관측 완전성·process 신뢰성은 미완료다. 이 프로토타입 수정은 최종 NestJS 설계·계획이나 SDD
 승인이 아니며, 공개된 구체적 최종 계획에 대한 새 사용자 승인이 필요하다.
+
+## API 병합 거절 뒤의 관측 전용 진단
+
+현재 기준 HEAD `a5dd891`의 CI `38281471605`는 13개 성공·생성 프로브 1개 실패로
+끝났다. 단독은 완료했고, web의 정상 035 호출은 첫 단계 프런트 검증을 통과한 뒤
+`packages.@typescript-eslint/eslint-plugin@8.71.0`의 엄격한 API 병합에서 실패했다.
+036 진단과 after lock은 없으며 admin·두 프런트 조합은 시작하지 않았다. 현재 해석 후
+실제 필드 값은 UNKNOWN이다. 이전 `6cc4da6` 진단의 실제 후보와 이 호출을 구분한다.
+
+R37은 Stage A 관측만 허용한다. 기존 `diagnoseImporterFailure`의 native 1 조건에
+`(web, api)`·`(admin, api)` 병합 거절과 API verifier의
+`해석 결과가 바뀌었다` 메시지를 더한다. 기존 importer 조건과 모든 생성 코드는 유지한다.
+일치하는 CreateError의 외부 `failure.json` outcome만 `strict-api-merge-refusal`로
+분류하며 boundary stop이 먼저이고 기존 `strict-refusal`·`diagnostic-failure`도 유지한다.
+프런트끼리 거절·무관한 실패와 native 0·null·2는 새 진단을 실행하지 않는다.
+
+정상 CLI가 먼저 실행되며 그때 측정한 실패 객체를 항상 그대로 다시 던진다. 별도 진단이나
+보고 자체의 실패도 정상 실패를 대체하지 않는다. 진단 대상·이름·binding·argv·출력 모드와
+첫 lockfile-only 직후의 경계, finally와 소유 정리는 유지한다. 생성·peer 허용·API 입력
+정규화·검증 완화와 Stage B는 이번 범위에 없다.
+
+새 테스트 두 개는 실제 진단 함수와 captureLockResolution이 호출하는 기존 createProject를
+사용한다. 변경 전 RED(native 1)는 진단 기록이 빈 배열인 assertion과 실패 outcome이
+diagnostic-failure인 assertion에서만 실패했다. 같은 테스트 바이트의 GREEN(native 0)은
+web·admin API 거절과 verifier, 음성 native 제어, 진단·보고 오류의 원래 객체 보존을 확인했다.
+설치된 fixture의 공유 기록을 첫 단계에서 바꾼 순수 원본 기반 delegate 대역으로 실제 엄격한
+둘째 단계 거절까지 실행하고, 외부 before/after·공유 기록 diff·readonly 모드·대상과 staging
+제거를 확인했다. 이 대역은 실제 pnpm resolver 실험이 아니며 실제 여섯 기록의 측정값을
+대신하지 않는다. 전체 create 검사는 Vitest 201개 성공·기존 7개 skip(208개, 27파일)과
+Node 자산 테스트 66개 성공이었다. 기존 모든 테스트 바이트를 유지한다.
+
+pnpm 12.6.0 원본의 override hook과 cycle 재해석 규칙에서 예상한 여섯 TypeScript peer
+기록의 변화는 추론이다. 현재 after 값·다른 메타데이터·첫 거절 뒤의 충돌은 측정하지 않았다.
+다음 변경 HEAD의 전체 14개 CI는 13 성공·1 실패와 별도 036 관측을 예상하며, 이 예상은
+실행 결과나 호환 수용이 아니다. 별도 진단은 두 번째 실제 후보이며
+`retrospectiveOriginalCandidate=false`를 유지한다. 그 after 바이트를 원래 035 후보라고
+소급하지 않고 정상 실패는 계속 치명적이다.
+
+향후 비교 도구에는 resolved·api·pin·out.json 네 인자가 필요하다. Root가 실제 모든 차이,
+동일한 도구 문서·settings, 원본 프런트 importer·snapshot·resolution과 R19의 정확한
+override 메타데이터만을 독립 검토한 뒤에야 새로운 Stage B 결정을 할 수 있다. 생성 호환,
+네 runtime 변형, Task 7과 전체 NestJS 계획·SDD는 아직 수용하지 않는다.
+
+R1의 이후 add·remove·update·새 resolving install 드리프트와 R2의 hidden hoist 런타임
+도달성은 미해결이다. OTel HTTP 1·Express 0·pg 6·Redis 0, completeness=false와
+tsx DI 미지원, 부분 19 operation·83 schema·41/94 conformance를 유지한다.
+전체 39/126/94·web 20·admin 18·관측 완전성·process 신뢰성은 후속 전체 제품 계획의
+검증 항목이며, 새로 공개한 구체적 최종 계획에 대한 사용자 승인 뒤에 SDD를 진행한다.
