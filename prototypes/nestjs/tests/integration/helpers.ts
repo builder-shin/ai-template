@@ -13,6 +13,9 @@ import { SessionWithTokensDocument } from "../../src/modules/auth/schemas.js";
 import { assertTestDatabase, guardDatabase } from "../../scripts/db-guard.js";
 import { valkey } from "../../scripts/valkey.js";
 import { Storage } from "../../src/core/storage/client.js";
+import { JobQueue } from "../../src/core/jobs/queue.js";
+import { RuntimeRealtimePublisher } from "../../src/core/realtime/emitter.js";
+import { RealtimeService } from "../../src/modules/realtime/index.js";
 import { RecordingRealtimePublisher } from "../../src/core/realtime/publisher.js";
 import { listenTestServer } from "../http-server.js";
 import type { Server } from "node:http";
@@ -30,13 +33,18 @@ export async function start(name = "auth"): Promise<void> {
   suite = name;
   assertTestDatabase(settings.DATABASE_URL, settings.REDIS_URL);
   await guardDatabase(settings.DATABASE_URL);
-  app = await createApp();
+  app = await createApp(undefined, true);
   app.useLogger(false);
   process.on("warning", warningListener);
   server = await listenTestServer(app);
   db = app.get(PrismaService);
+  app.get(RuntimeRealtimePublisher).observer = (event) =>
+    app.get(RecordingRealtimePublisher).events.push(event);
+  await app.get(RealtimeService).start();
+  await app.get(JobQueue).startWorker();
 }
 export async function reset(): Promise<void> {
+  await app.get(JobQueue).stopWorker();
   await guardDatabase(settings.DATABASE_URL);
   const start = performance.now();
   await db.$executeRaw`TRUNCATE audit_logs, account_tokens, refresh_tokens, sessions, user_roles, roles, users, posts, files RESTART IDENTITY CASCADE`;
@@ -47,6 +55,7 @@ export async function reset(): Promise<void> {
   await app.get(UnitOfWork).run((tx) => app.get(RolesService).seed(tx));
   await app.get(Storage).clear();
   app.get(RecordingRealtimePublisher).events.length = 0;
+  await app.get(JobQueue).startWorker();
 }
 export async function stop(): Promise<void> {
   await app.get(Storage).clear();

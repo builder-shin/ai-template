@@ -240,3 +240,20 @@ The100001422 code/pointer/max and seed assertions, all29 case declarations, auth
 Runtime additive role semantics, guard/auth/domain, schema/migrations, versions and workflow are
 unchanged. Local checks do not prove real permission or Unicode acceptance; fresh corrected exact-head
 all twelve CI jobs remain pending before the next prototype phase. See [Task4 evidence](task-4.md).
+
+## Task5 local implementation and pending real CI
+
+The corrected Task4 predecessor at dee9bb08241dc6bc2e0fd656178013c97976c122 passed all twelve
+required jobs in [run38185336644](https://github.com/builder-shin/ai-template/actions/runs/38185336644),
+including all29 real integration cases. Earlier original failed-run observations remain historical.
+Task5 now implements Redis jobs/mail, the pinned Nest gateway, adapter/emitter/control delivery,
+rate limits and typed readiness, completing nineteen mounted operations with83 schemas.
+Actual local tests currently pass131 cases; generation, SWC and repository comparison pass.
+The first actual18-row gateway probe exited0 in0.959460s and observed zero payload as undefined,
+arrays preserved and no nil-return ACK within100ms. Production always returns RealtimeAck and
+preserves permission-free unsubscribe, distinct from the transport dummy's symmetric403.
+The initial optional-native build installation failure remains exit1; msgpackr-extract is explicitly
+disabled and frozen installation passes. The earlier unused peer mismatch still exits1.
+Fourteen new CI-only cases retain all original29/auth13/quota20. No local real infrastructure
+acceptance is claimed. See [Task5 evidence](task-5.md) for decisions, observed scope and exact-head
+CI requirements; Tasks6–7 and full final design approval remain later.

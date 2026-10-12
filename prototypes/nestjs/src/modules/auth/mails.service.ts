@@ -21,27 +21,20 @@ export class VerificationMailService implements OnModuleInit {
     @Inject(SETTINGS) private readonly settings: Settings,
   ) {}
   onModuleInit(): void {
-    this.jobs.register("auth.send-verification", ({ id }) => this.send(id));
+    this.jobs.register("auth.send_verification_mail", ({ id }) => this.send(id));
   }
   async send(id: string): Promise<void> {
-    await this.uow.run(async (tx, afterCommit) => {
+    const mail = await this.uow.run(async (tx) => {
       const user = await this.users.get(id, tx);
       if (!user?.email || user.status !== "active" || user.emailVerifiedAt !== null) return;
       const email = user.email;
       const token = newToken();
       await this.repository.issueVerification(tx, id, digest(token));
-      afterCommit(async () => {
-        const mail = renderVerification(
-          resolve(import.meta.dirname, "templates"),
-          user.locale,
-          email,
-          {
-            name: user.name ?? "",
-            link: `${this.settings.FRONTEND_URL.replace(/\/$/, "")}/verify-email?token=${token}`,
-          },
-        );
-        await this.sender.send(mail);
+      return renderVerification(resolve(import.meta.dirname, "templates"), user.locale, email, {
+        name: user.name ?? "",
+        link: `${this.settings.FRONTEND_URL.replace(/\/$/, "")}/verify-email?token=${token}`,
       });
     });
+    if (mail) await this.sender.send(mail);
   }
 }

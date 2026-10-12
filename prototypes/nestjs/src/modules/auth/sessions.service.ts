@@ -1,3 +1,5 @@
+import { RealtimePublisher } from "../../core/realtime/publisher.js";
+import { ControlChannel } from "../../core/realtime/control-channel.js";
 import { Injectable, Inject } from "@nestjs/common";
 import { SETTINGS } from "../../core/config/settings.js";
 import type { Settings } from "../../core/config/settings.js";
@@ -16,6 +18,8 @@ import type { SessionGrant } from "./schemas.js";
 @Injectable()
 export class SessionsService {
   constructor(
+    private readonly publisher: RealtimePublisher,
+    private readonly control: ControlChannel,
     private readonly uow: UnitOfWork,
     private readonly repository: AuthRepository,
     private readonly users: UsersService,
@@ -87,8 +91,12 @@ export class SessionsService {
     return result.document;
   }
   async logout(principal: Principal): Promise<void> {
-    await this.uow.run(async (tx) => {
+    await this.uow.run(async (tx, afterCommit) => {
       await this.repository.revoke(tx, principal.sessionId);
+      this.publisher.queue(afterCommit, "session.revoked", [`user:${principal.userId}`], () => ({
+        meta: { reason: "logout" },
+      }));
+      this.control.queue(afterCommit, principal.userId);
     });
   }
   private async document(

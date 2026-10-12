@@ -18,6 +18,9 @@ const suites = [
   "files-upload",
   "files-quota",
   "storage-setup",
+  "jobs",
+  "realtime",
+  "ratelimit",
 ];
 const directory = resolve(".cache/integration");
 mkdirSync(directory, { recursive: true });
@@ -81,7 +84,7 @@ if (
   result.status === 0 &&
   (measured.length !== suites.length ||
     measured.find((s) => s.suite === "auth")?.testCount !== 13 ||
-    measurements.testCount !== 29)
+    measurements.testCount !== 43)
 )
   throw new Error("Integration measurements omitted a required suite or test.");
 process.exitCode = result.status ?? 1;

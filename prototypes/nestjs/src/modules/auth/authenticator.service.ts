@@ -18,15 +18,17 @@ export class Authenticator {
     const match = /^Bearer (\S+)$/i.exec(bearer);
     if (!match?.[1]) throw new ApiError(401, "auth.token_invalid");
     const claims = await verifyAccessToken(this.settings.JWT_SECRET, match[1]);
-    const session = await this.repository.activeSession(
-      claims.sessionId,
-      claims.userId,
-      new Date(),
-    );
-    if (!session) throw new ApiError(401, "auth.token_invalid");
+    const principal = await this.principalFor(claims.userId, claims.sessionId);
+    if (!principal) throw new ApiError(401, "auth.token_invalid");
+    return principal;
+  }
+  async principalFor(userId: string, sessionId: string): Promise<Principal | null> {
+    const session = await this.repository.activeSession(sessionId, userId, new Date());
+    if (!session) return null;
     return {
-      ...claims,
-      permissions: await this.users.permissions(claims.userId),
+      userId,
+      sessionId,
+      permissions: await this.users.permissions(userId),
       sessionCreatedAt: session.createdAt,
     };
   }

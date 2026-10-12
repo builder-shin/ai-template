@@ -24,7 +24,7 @@ export class AccountsService {
           ...data,
           locale: data.locale ?? (language?.toLowerCase().startsWith("en") ? "en" : "ko"),
         });
-        this.jobs.enqueueAfterCommit(afterCommit, "auth.send-verification", { id: user.id });
+        this.jobs.enqueueAfterCommit(afterCommit, "auth.send_verification_mail", { id: user.id });
         return user;
       });
       return {
@@ -50,7 +50,7 @@ export class AccountsService {
     await this.uow.run(async (tx, afterCommit) => {
       const user = await this.users.find(email, tx);
       if (user?.status === "active" && user.emailVerifiedAt === null)
-        this.jobs.enqueueAfterCommit(afterCommit, "auth.send-verification", { id: user.id });
+        this.jobs.enqueueAfterCommit(afterCommit, "auth.send_verification_mail", { id: user.id });
     });
   }
   async verify(token: string) {

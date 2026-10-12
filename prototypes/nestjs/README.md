@@ -21,7 +21,7 @@ eight static permissions with pagination, sparse fields and an Authenticator por
 
 Task 2 declares the nineteen-operation slice and registers all 83 reachable contract-named
 schemas, including realtime payloads and all 39 error codes. App-free `gen` emits OpenAPI
-3.1 for the seventeen mounted operations. Edit declarations and Zod schemas, then run `gen`;
+3.1 for the nineteen mounted operations. Edit declarations and Zod schemas, then run `gen`;
 the generated artifact must not be edited by hand. The input schema exporter preserves
 explicit constraints; a small measured normalizer handles equivalent representations.
 
@@ -42,8 +42,8 @@ Negative fixture directories are excluded from normal lint/typecheck and checked
 through the ESLint API. Positive fixtures cover the allowed layers and module DAG.
 
 The prototype CI job is additive. Existing root checks and CI jobs retain their behavior.
-Tasks 1–4 are implemented locally. Task3 corrected-head all-twelve-job CI passed before Task4.
-Task4 real infrastructure acceptance and Tasks5–7, conformance, images, frontend E2E and
+Tasks 1–5 are implemented locally. Task4 corrected-head all-twelve-job CI passed before Task5.
+Task5 real infrastructure acceptance and Tasks6–7, conformance, images, frontend E2E and
 generated combinations remain outstanding. Final product SDD needs new user approval
 after the full Opus design and plan. CI acceptance remains pending exact-head verification.
 See [the evidence ledger](docs/evidence.md) for observed results and limitations.
@@ -64,5 +64,6 @@ foreign tables; reset additionally permits only localhost/127.0.0.1. Run drift o
 CI, because its live datasource comparison requires PostgreSQL. See [Task 3 evidence](docs/task-3.md) and [posts/storage evidence](docs/task-4.md).
 
 `storage:setup` creates a missing bucket and overwrites CORS without clearing objects.
-Post/file API operations use the same JSON:API declarations; the recording publisher is
-replaced by actual Socket.IO transport only in the next phase.
+Post/file API operations use the same JSON:API declarations; actual API transport uses Socket.IO with Redis, while worker/scheduler use the Redis emitter.
+The recording observer is installed only by integration helpers. See [Redis evidence](docs/task-5.md).
+Run `pnpm worker` and exactly one `pnpm scheduler` after building.

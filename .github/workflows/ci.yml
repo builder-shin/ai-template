@@ -390,6 +390,7 @@ jobs:
       - run: pnpm --dir prototypes/nestjs install --frozen-lockfile
       - run: pnpm --dir prototypes/nestjs setup
       - run: pnpm --dir prototypes/nestjs db:drift
+      - run: pnpm --dir prototypes/nestjs build
       - run: pnpm --dir prototypes/nestjs test:integration
       - name: Integration measurements
         if: always()
@@ -397,7 +398,7 @@ jobs:
           if [ -f prototypes/nestjs/.cache/integration/measurements.json ]; then
             cat prototypes/nestjs/.cache/integration/measurements.json
           fi
-          for file in prisma-manifest.json integration/tampered-put.json integration/query-count.json; do
+          for file in prisma-manifest.json integration/tampered-put.json integration/query-count.json integration/jobs-evidence.json integration/realtime-evidence.json integration/ratelimit-evidence.json integration/processes-evidence.json; do
             if [ -f "prototypes/nestjs/.cache/$file" ]; then
               cat "prototypes/nestjs/.cache/$file"
             fi
