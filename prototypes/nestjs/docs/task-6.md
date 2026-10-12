@@ -51,3 +51,23 @@ worker 분기는 installed emitter의 publish 포트에서 실제 Redis Promise�
 적합성은 공유 shellCommand가 selector 끝의 달러를 거절해 compose/Vitest 사례 전에 native2로 끝났고 wrapper의 missing JSON ENOENT가 native1로 이를 가렸다. 실제 선택 사례는0개이며41pass/53skip을 아직 수용하지 않고 두 frontend smoke도 skipped다. 실제 기존 guard의 native RED 뒤 selector 끝만 엄격한 `(?![\s\S])`로 바꿨다. 모든 실제 인자·Node shell argv 왕복·suite prefix/Unicode/구두점·접미 제목 거절·변경하지 않은94선언의41/53분류와 기존 selection unit이 통과했다. CASE_NAMES와 공유 보안 guard는 그대로다.
 
 prototype wrapper는 이전 reporter/count 파일을 호출 전에 지우고, 누락·읽기 실패는 명시적으로 보고하면서 child 비정상 종료를 보존한다. child0과 missing 결과도 실패하며 새 실패 보고서의 count와 기존 success count/name assertion을 유지한다. 소유한 Node fake command·native driver의 새 repository differential13개로 검사했고 ordinary unit175는 늘리지 않았다. 대역의 synthetic report는 실제 적합성 증거가 아니다. 반환한 로컬 gate 시간은 evidence에 보충하며 새 변경 HEAD의 WHOLE13·실제41/53·두 smoke와 Task7·최종 제품 계획·새 사용자 승인은 계속 별도다.
+
+## frontend stack backend namespace guard 수정
+
+`77e392e4`의 [실제 CI 38202891381](https://github.com/builder-shin/ai-template/actions/runs/38202891381)는 최종12성공·stack1실패였다. 실제 적합성은 native0/41pass·53skip·0fail·94total이며 기존 count와 전체41개 이름 동일성 assertion을 통과했다. 실제 통합43/43과10개 수명 주기의 명시적 close·maxListeners10·새 listener 경고0, processFlows native0/API·별도 worker 이벤트/업로드·내려받기23바이트도 통과했다. 과거 Task3의6개 경고와 dd/4c/cff 실패·보고 기록은 유지한다. 프로세스 증거는 최상위4개 그룹의 종료이며, 통합 process 파일은 마지막 rate suite의5개 child 종료·연결0만 기록한다. 이를 전체 누적 중첩 PID 증거로 확대하지 않는다.
+
+이번 이미지는713,079,978바이트/UID10001/Node24.19.0/Prisma7.10.0이었다. Prisma 패키지 자체42,052,481바이트에는 전이 의존성이 빠진다. app profile의 migrate/storage-init0/API ready/worker·scheduler 실행과 개발 app/Redis0 표식 보존·app_e2e/Redis14 표식 제거·18000 포트 종료도 확인했다. 실제 OTel은 HTTP1/Express0/pg6/ioredis0/healthDelta0/complete=false이며 완전한 계측이 아니다. 프로토타입의 비차단 관찰로 유지하되 최종 제품 계획에서 loader hook 실측 또는 명시적 span으로 해결해야 한다.
+
+web smoke step16은 올바른 NestJS 프로젝트를 출력한 다음 시작 전에 거절됐고 admin smoke는 skipped였다. createPlan과 validateCompose는 backend를 전달했지만 runStack의 사전 namespace guard는 projectName의 기본 FastAPI를 사용했다. production 변경은 이 호출에 plan.backend를 전달하는 한 곳뿐이다. 프로젝트·이미지·포트·환경·기존 자원 거절·신호·실패 진단·정리·--down·기본 FastAPI 동작은 그대로다.
+
+기존 NestJS regression16개를 그대로 보존하고 web/admin × fastapi/nestjs의 정상4개와 교차 namespace 거절4개를 추가했다. 실제 runStack에 소유한 inert Dependencies를 주고 정상 실행의 validate/probe/config/containers/volumes/up/ready/worker/command/down/image/removeImage 순서와 정확한 namespace·backend 인자·capture·signal을 확인한다. FastAPI 정상 사례는 backend 인자를 생략해 기존 기본값을 검사한다. 교차 namespace는 code1과 유용한 오류를 내고 validate/probe/execute/ready/command·cleanup을 전혀 호출하지 않아야 한다. Docker·네트워크·실제 backend는 실행하지 않았다.
+
+수정 전 새24개를 실제로 실행한 RED는 native1/20통과·4실패였다. 정상 NestJS web/admin의 code0 기대가 code1로 실패했고, 교차 NestJS web/admin는 사전 guard를 지나 validate가 호출돼 실패했다. 단일 호출 수정 뒤 같은 테스트 바이트로 GREEN native0/24통과였다. 기존 stack/admin/process/smoke115개도 변경 없이 native0으로 통과했다. 이 대역 lifecycle 검증은 실제 Docker·BFF smoke 수용을 대신하지 않는다. 새 변경 HEAD의 WHOLE13 전체 성공과 web/admin 실제 smoke, Task7과 최종39operations/126schemas/14flows94cases/web20admin18/four creation variants/15jobs 계획·새 사용자 제품 승인은 여전히 별도 게이트다.
+
+### 변경하지 않은 로컬 프로세스 정리의 관찰
+
+이번 로컬 자체 check의 변경하지 않은 fake-process suite는 두 번174/175로 실패했다. 첫 SIGTERM 정리는 native1/18.931579417초, 다음 정상 전체 검사의 SIGINT 정리는 native1/17.797633250초로 process-tree의 kill EPERM을 기록했다. 변경하지 않은 SIGTERM 한 사례만 재검사한 결과는 native0/0.510094250초/1pass·8skip이며 전체175 통과를 대신하지 않는다. 두 실패의 raw·cache와 소유한 fixture JSON을 보존했고 각각 기록된6개 PID·3개 그룹의 ESRCH를 확인한 뒤 그 임시 폴더만 지웠다. 실패 artifact에는 command PID가 없으므로 이것을 모든 자식의 누적 종료 증거로 부르지 않는다. Darwin reaping은 후보이며 원인을 확정하거나 실패를 면제하지 않는다. process helper·테스트·assertion·기본값을 바꾸지 않았고 serial override·경고 억제·timeout 변경을 하지 않았다. 이 로컬 Darwin 정리 신뢰성은 최종 제품 계획에 미결 사항으로 전달한다. 다음 정상 전체 검사는 소유 자원 확인 뒤 허용된 한 번만 실행하며 다시 실패하면 반복·커밋 없이 실패로 보고한다.
+
+### 허용한 한 번의 정상 전체 검사 결과
+
+소유 자원 확인 후 허용된 정상 전체 check 한 번은 native0/175pass·21files·7단계를 통과했다. 이후 repo check4/36·83schemas diff0, SWC134, 선택 tsc/SWC/Vitest-SWC DI, compiled lazy ESM19/init/close/listening=false, 루트 check11을 순차로 통과했다. 앞선 두174/175 실패와 targeted1pass·8skip은 삭제하거나 성공으로 바꾸지 않는다. 최종 통과는 Darwin 정리 신뢰성 해결을 증명하지 않는다. 이후 변경은 이 반환된 결과·시간 보충뿐이며 guard와 테스트 바이트는 그대로다.

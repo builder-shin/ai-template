@@ -443,3 +443,87 @@ prototype wrapper는 호출 전에 이전 reporter JSON과 count 산출물을 �
 | 루트 check11                                   | 0           | 73.890196125 |
 
 모든 최종 gate를 순차로 한 번씩 실행했고 이후에는 이 반환된 시간 표만 보충했다. 선택 tsc/SWC/Vitest-SWC metadata와 graph 검사는 통과했고 탐색 Oxc도 동작했다. tsx graph verified=false는 기존 제한으로 유지한다. 일반 format/lint/secrets hook과 새 일반 커밋 뒤의 실제 WHOLE13은 여전히 별도 수용 단계다.
+
+### frontend stack의 backend namespace guard 후속 수정
+
+`77e392e4`의 [실제 CI 38202891381](https://github.com/builder-shin/ai-template/actions/runs/38202891381)는 최종12성공·stack1실패였다. 실제 적합성은 native0/41pass·53skip·0fail·94total이며 기존 count와 전체41개 이름 동일성 assertion을 통과했다. 실제 통합43/43과10개 수명 주기의 명시적 close·maxListeners10·새 listener 경고0, processFlows native0/API·별도 worker 이벤트/업로드·내려받기23바이트도 통과했다. 과거 Task3의6개 경고와 dd/4c/cff 실패·보고 기록은 유지한다. 프로세스 증거는 최상위4개 그룹의 종료이며, 통합 process 파일은 마지막 rate suite의5개 child 종료·연결0만 기록한다. 이를 전체 누적 중첩 PID 증거로 확대하지 않는다.
+
+이번 이미지는713,079,978바이트/UID10001/Node24.19.0/Prisma7.10.0이었다. Prisma 패키지 자체42,052,481바이트에는 전이 의존성이 빠진다. app profile의 migrate/storage-init0/API ready/worker·scheduler 실행과 개발 app/Redis0 표식 보존·app_e2e/Redis14 표식 제거·18000 포트 종료도 확인했다. 실제 OTel은 HTTP1/Express0/pg6/ioredis0/healthDelta0/complete=false이며 완전한 계측이 아니다. 프로토타입의 비차단 관찰로 유지하되 최종 제품 계획에서 loader hook 실측 또는 명시적 span으로 해결해야 한다.
+
+web smoke step16은 올바른 NestJS 프로젝트를 출력한 다음 시작 전에 거절됐고 admin smoke는 skipped였다. createPlan과 validateCompose는 backend를 전달했지만 runStack의 사전 namespace guard는 projectName의 기본 FastAPI를 사용했다. production 변경은 이 호출에 plan.backend를 전달하는 한 곳뿐이다. 프로젝트·이미지·포트·환경·기존 자원 거절·신호·실패 진단·정리·--down·기본 FastAPI 동작은 그대로다.
+
+기존 NestJS regression16개를 그대로 보존하고 web/admin × fastapi/nestjs의 정상4개와 교차 namespace 거절4개를 추가했다. 실제 runStack에 소유한 inert Dependencies를 주고 정상 실행의 validate/probe/config/containers/volumes/up/ready/worker/command/down/image/removeImage 순서와 정확한 namespace·backend 인자·capture·signal을 확인한다. FastAPI 정상 사례는 backend 인자를 생략해 기존 기본값을 검사한다. 교차 namespace는 code1과 유용한 오류를 내고 validate/probe/execute/ready/command·cleanup을 전혀 호출하지 않아야 한다. Docker·네트워크·실제 backend는 실행하지 않았다.
+
+수정 전 새24개를 실제로 실행한 RED는 native1/20통과·4실패였다. 정상 NestJS web/admin의 code0 기대가 code1로 실패했고, 교차 NestJS web/admin는 사전 guard를 지나 validate가 호출돼 실패했다. 단일 호출 수정 뒤 같은 테스트 바이트로 GREEN native0/24통과였다. 기존 stack/admin/process/smoke115개도 변경 없이 native0으로 통과했다. 이 대역 lifecycle 검증은 실제 Docker·BFF smoke 수용을 대신하지 않는다. 새 변경 HEAD의 WHOLE13 전체 성공과 web/admin 실제 smoke, Task7과 최종39operations/126schemas/14flows94cases/web20admin18/four creation variants/15jobs 계획·새 사용자 제품 승인은 여전히 별도 게이트다.
+
+수정 전후 실제 로컬 명령 비용(반환 후 monotonic wall seconds; CPU·토큰·과금이 아님):
+
+| 명령                                                          | native exit | wall seconds |
+| ------------------------------------------------------------- | ----------- | ------------ |
+| `pnpm install --frozen-lockfile` (prototype)                  | 0           | 0.133348458  |
+| `pnpm --dir scripts test test/web-e2e/nestjs.test.ts` (RED24) | 1           | 0.463187542  |
+| 같은 명령 (GREEN24)                                           | 0           | 0.367553375  |
+| 기존 stack/admin/process/smoke regression115                  | 0           | 0.831615791  |
+
+최종 자체 check7/175단위21파일·repo check4/36·83schemas diff0·SWC134·선택 DI·compiled lazy ESM19/init/close·루트 check11과 일반 format/lint/secrets hook은 이번 새 커밋의 완료 기준이다. tsx graph verified=false는 기존 한계로 유지한다. 아래 목록은 위 실제 CI reporter가 통과로 기록한 전체41개 이름이며, 새 로컬 대역 결과와 구분한다.
+
+- /api/v1 아래의 없는 경로는 404 에러 문서다
+- 1 MiB(1,048,576바이트)를 넘는 본문은 413 jsonapi.content_too_large이다
+- JSON:API가 아닌 Content-Type으로 본문을 보내면 415다
+- JSON이 아니거나 구조가 틀린 문서는 400이다
+- fields[type]을 주면 그 타입의 리소스에 요청한 필드만 담는다
+- posts는 발행된 글의 이벤트만, posts:all은 초안의 이벤트까지 받는다
+- refresh token은 한 번만 쓴다. 쓴 것을 다시 쓰면 그 세션을 통째로 폐기한다
+- roles:read가 없으면 권한 목록을 보지 못한다
+- 가입하면 인증 메일이 오고, 인증을 마쳐야 로그인할 수 있다
+- 남의 파일은 보지도 고치지도 못하고, 소유자가 지우면 사라진다
+- 등록된 권한을 코드 순으로 보고, 역순으로도 정렬한다
+- 로그아웃한 세션의 연결은 서버가 끊고, 같은 사용자의 다른 세션 연결은 남는다
+- 만들면 pending이고, meta.upload에 스토리지로 보낼 PUT 요청이 있다
+- 매개변수가 붙은 JSON:API 미디어 타입만 받는 Accept는 406이다
+- 목록은 발행된 글만 보이고, 작성자 필터가 나면 내 초안도 보인다
+- 발행을 취소하면 posts는 post.unpublished(식별자)를, posts:all은 post.updated를 받는다
+- 발행하거나 발행을 취소하면 공개 목록의 첫 페이지에 바로 드러난다
+- 본문은 100,000자까지이고, 넘으면 422 validation.too_long이다
+- 비밀번호에 짝 없는 서로게이트가 있어도 계정이 있든 없든 틀린 비밀번호와 같은 401이다
+- 새 글은 작성자만 보는 초안이고, 발행하면 누구나 보며, 발행을 취소하면 다시 숨는다
+- 생성 요청의 type이 엔드포인트와 다르면 409, 클라이언트가 만든 id가 있으면 403이다
+- 선언과 크기가 다른 본문은 스토리지가 받지 않고, 완료를 알리면 file.upload_incomplete다
+- 없는 계정으로 재발송을 요청해도 202다(계정이 있는지 드러내지 않는다)
+- 에러 문서는 status, code, title과 meta.traceId를 담는다
+- 올리고 완료를 알리면 ready가 되고 downloadUrl로 내려받는다
+- 이미 쓰는 이메일로는 가입하지 못한다
+- 익명 연결은 posts만 구독한다. 모르는 채널은 validation.invalid_choice다
+- 인증 메일을 다시 받으면 새 토큰으로 인증하고, 같이 발급된 토큰은 더 쓰지 못한다
+- 작성자와 커버 이미지를 포함하고, 볼 수 있는 글의 커버는 누구나 읽는다
+- 정수 자리에 숫자 문자열이나 불리언을 보내면 422 validation.invalid_format이다
+- 제목과 본문으로 찾고, 제목으로 정렬하고, 페이지로 나눈다
+- 컬렉션은 페이지 메타와 요청 경로 기준의 상대 페이지 링크를 담는다
+- 틀린 비밀번호로는 로그인하지 못한다
+- 틀린 토큰으로는 인증하지 못한다
+- 티켓은 로그인해야 받고, 한 번만 쓴다
+- 판별 유니온(grant)의 필드 오류는 grant 종류와 이름이 같은 필드가 있어도 본문의 위치를 가리킨다
+- 페이로드가 없거나 둘 이상인 subscribe·unsubscribe는 틀린 페이로드라 validation.invalid_choice다
+- 허용하지 않는 타입과 한도를 넘는 크기는 만들지 않는다
+- 허용하지 않은 Origin의 연결은 거부하고, 허용한 Origin의 연결은 받는다
+- 헬스체크가 계약대로 응답한다
+- 현재 세션에서 로그아웃하면 그 access token은 더 쓰지 못한다
+
+### 변경하지 않은 로컬 프로세스 정리의 관찰
+
+이번 로컬 자체 check의 변경하지 않은 fake-process suite는 두 번174/175로 실패했다. 첫 SIGTERM 정리는 native1/18.931579417초, 다음 정상 전체 검사의 SIGINT 정리는 native1/17.797633250초로 process-tree의 kill EPERM을 기록했다. 변경하지 않은 SIGTERM 한 사례만 재검사한 결과는 native0/0.510094250초/1pass·8skip이며 전체175 통과를 대신하지 않는다. 두 실패의 raw·cache와 소유한 fixture JSON을 보존했고 각각 기록된6개 PID·3개 그룹의 ESRCH를 확인한 뒤 그 임시 폴더만 지웠다. 실패 artifact에는 command PID가 없으므로 이것을 모든 자식의 누적 종료 증거로 부르지 않는다. Darwin reaping은 후보이며 원인을 확정하거나 실패를 면제하지 않는다. process helper·테스트·assertion·기본값을 바꾸지 않았고 serial override·경고 억제·timeout 변경을 하지 않았다. 이 로컬 Darwin 정리 신뢰성은 최종 제품 계획에 미결 사항으로 전달한다. 다음 정상 전체 검사는 소유 자원 확인 뒤 허용된 한 번만 실행하며 다시 실패하면 반복·커밋 없이 실패로 보고한다.
+
+### 허용한 한 번의 정상 전체 검사 결과
+
+소유 자원 확인 후 허용된 정상 전체 check 한 번은 native0/175pass·21files·7단계를 통과했다. 이후 repo check4/36·83schemas diff0, SWC134, 선택 tsc/SWC/Vitest-SWC DI, compiled lazy ESM19/init/close/listening=false, 루트 check11을 순차로 통과했다. 앞선 두174/175 실패와 targeted1pass·8skip은 삭제하거나 성공으로 바꾸지 않는다. 최종 통과는 Darwin 정리 신뢰성 해결을 증명하지 않는다. 이후 변경은 이 반환된 결과·시간 보충뿐이며 guard와 테스트 바이트는 그대로다.
+
+실제 반환 후 벽시계 시간이며 CPU·토큰·과금이 아니다.
+
+| 검사                                           | native exit | wall seconds |
+| ---------------------------------------------- | ----------- | ------------ |
+| 자체 check7/175/21                             | 0           | 18.441832125 |
+| repo check4/36/83diff0                         | 0           | 2.091473792  |
+| SWC134                                         | 0           | 0.374565750  |
+| 선택 DI                                        | 0           | 2.569021667  |
+| compiled lazy ESM19/init/close/listening=false | 0           | 0.329721333  |
+| 루트 check11                                   | 0           | 69.308306125 |
