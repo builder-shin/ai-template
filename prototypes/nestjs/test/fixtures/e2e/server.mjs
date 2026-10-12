@@ -10,12 +10,20 @@ const server = createServer((_req, res) => {
 });
 server.listen(Number(port), "127.0.0.1");
 console.error("HEAD-" + "x".repeat(10000) + "-TAIL");
+let shutdownRequested = false;
+let childClosed = false;
+function closeOwnedServer() {
+  server.close(() => process.exit(0));
+  server.closeAllConnections();
+}
+child.once("close", () => {
+  childClosed = true;
+  if (shutdownRequested) closeOwnedServer();
+});
 process.on("SIGTERM", () => {
-  child.once("close", () => {
-    server.close(() => process.exit(0));
-    server.closeAllConnections();
-  });
-  child.kill("SIGTERM");
+  shutdownRequested = true;
+  if (childClosed) closeOwnedServer();
+  else child.kill("SIGTERM");
 });
 if (mode === "die")
   setTimeout(() => {

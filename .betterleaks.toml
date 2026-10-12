@@ -48,3 +48,19 @@ condition = "AND"
 targetRules = ["generic-password"]
 paths = ['''^prototypes/nestjs/test/fixtures/conformance-flows/(?:me|sessions|registration|passwords|jsonapi)\.test\.ts\.txt$''']
 regexes = ['''^(?:PASSWORD|NEW_PASSWORD|LONE_SURROGATE)$''']
+
+# CI 임시 사본도 원본과 같은 상수 참조만 허용한다.
+[[allowlists]]
+description = "CI에 복사한 적합성 흐름의 비밀번호 상수 참조"
+condition = "AND"
+targetRules = ["generic-password"]
+paths = ['''^templates/nestjs/test/fixtures/conformance-flows/(?:me|sessions|registration|passwords|jsonapi)\.test\.ts\.txt$''']
+regexes = ['''^(?:PASSWORD|NEW_PASSWORD|LONE_SURROGATE)$''']
+
+[[allowlists]]
+description = "CI에 복사한 NestJS 잠금 파일의 @inquirer/password 패키지 이름"
+condition = "AND"
+targetRules = ["generic-password"]
+paths = ['''^templates/nestjs/pnpm-lock\.yaml$''']
+regexTarget = "line"
+regexes = ['''@inquirer/password''']

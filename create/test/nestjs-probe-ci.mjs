@@ -1,16 +1,9 @@
-import {
-  chmodSync,
-  existsSync,
-  globSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  writeFileSync,
-} from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, globSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { parse, parseAllDocuments } from "yaml";
 import { isDeepStrictEqual } from "node:util";
 import { verifyAppResolutions } from "../src/lockfile.ts";
+import { materializePrototype } from "./nestjs-probe-materialization.ts";
 import {
   immutable,
   measures,
@@ -90,43 +83,7 @@ if (mode === "cleanup") {
     ["commit.gpgsign", "false"],
   ])
     run("clone-identity", "git", ["config", key, value], { cwd: clone });
-  const tracked = run(
-    "prototype-tracked",
-    "git",
-    ["ls-files", "--stage", "-z", "--", "prototypes/nestjs"],
-    { cwd: clone },
-  )
-    .stdout.split("\0")
-    .filter(Boolean);
-  const materialized = [];
-  for (const row of tracked) {
-    const tab = row.indexOf("\t"),
-      path = row.slice(tab + 1),
-      mode = row.slice(0, 6);
-    if (!["100644", "100755"].includes(mode)) throw Error("Unsupported source mode");
-    const target = join(clone, "templates/nestjs", path.slice("prototypes/nestjs/".length));
-    mkdirSync(dirname(target), { recursive: true });
-    const bytes = readFileSync(join(clone, path));
-    writeFileSync(target, bytes);
-    chmodSync(target, mode === "100755" ? 0o755 : 0o644);
-    materialized.push({ path, bytes: bytes.length, sha256: sha(bytes), mode });
-  }
-  writeFileSync(
-    join(clone, "templates/nestjs/template.json"),
-    JSON.stringify({
-      name: "nestjs",
-      kind: "backend",
-      runner: "pnpm",
-      goldenModule: "src/modules/posts",
-    }) + "\n",
-  );
-  run("clone-add", "git", ["add", "--", "templates/nestjs"], { cwd: clone });
-  run(
-    "clone-only-ordinary-commit",
-    "git",
-    ["commit", "-m", "chore: materialize tracked NestJS probe template"],
-    { cwd: clone },
-  );
+  const materialized = materializePrototype(clone, run);
   const materializationHead = run("clone-head", "git", ["rev-parse", "HEAD"], {
     cwd: clone,
   }).stdout.trim();
