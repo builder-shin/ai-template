@@ -291,3 +291,56 @@ R1의 이후 add·remove·update·새 resolving install 드리프트와 R2의 hi
 tsx DI 미지원, 부분 19 operation·83 schema·41/94 conformance를 유지한다.
 전체 39/126/94·web 20·admin 18·관측 완전성·process 신뢰성은 후속 전체 제품 계획의
 검증 항목이며, 새로 공개한 구체적 최종 계획에 대한 사용자 승인 뒤에 SDD를 진행한다.
+
+## 실제 신호와 로그인 시험의 비동기 준비 확인
+
+부모 b12a2bb의 실제 CI 38293140909는 전체 14개 중 12개 성공·2개 실패였다.
+생성 프로브의 단독 API check 021은 native 1·49.533271064초로 176/177개를 통과한 뒤
+real OS SIGTERM 시험에서 worker.json ENOENT로 실패했다. 단독 생성·frozen·setup은
+성공했지만 완료/result는 없고 web·admin·두 프런트 변형은 시작하지 않았다.
+035·036·after lock도 없다. 기존 a5dd891의 38281471605 phase 2 package 거절은
+별도 실패로 보존하며 현재 CI 실패를 그 해석 결과와 혼동하지 않는다.
+
+real OS signal 시험은 command marker 하나만 기다렸다. runner는 API HTTP readiness 뒤
+command onStart를 기록하므로 worker·scheduler fixture의 준비를 보장하지 않는다.
+fixture의 기존 PID marker도 종료 handler 설치보다 앞섰다. 이번 수정은 기존 10초 poll에서
+api·worker·scheduler·command marker 모두를 기다리고, fixture의 child-close·SIGTERM
+처리 설치 뒤 listen callback에서 같은 PID 배열을 기록한다. 실제 운영 runner의 readiness,
+종료·그룹 정리 구현과 CI 관측 capture는 바꾸지 않는다.
+
+변경 전 부모 바이트 그대로인 두 코드 파일에 private Node preload를 적용했다.
+정확한 server.mjs argv·worker.json basename·aitpl-nestjs-proto-signal- 부모 이름이
+모두 맞는 worker만 1200ms 늦춘다. 다른 250ms readiness·로그 tail 시험과 API·command·
+다른 Node·자식에는 적용하지 않는다. 이 좁은 조건은 별도 승인받았고 최종 소스에 넣지 않는다.
+기존 9개 중 두 real OS SIGINT·SIGTERM 시험이 worker.json ENOENT로만 실패한 native 1
+RED를 확인했다. 같은 hook 바이트·환경·argv의 변경 뒤 9개는 native 0 GREEN이었다.
+기존 130/143 종료 코드, 세 서버·자식·command PID ESRCH, 세 detached 서버 그룹과
+command 그룹 ESRCH, finally cleanup·evidence와 포트 검증을 그대로 유지한다.
+고정 sleep·timeout 증가·skip·ESRCH 대체 판정을 추가하지 않았다.
+
+같은 CI의 기본 create-combo web check는 929/930개를 통과하고 로그인 폼의 마지막
+line 159에서 이전 재발송 성공 문구의 부재 assertion에 실패했다. queryByText가 반환한
+role=status DOM에는 실제 한국어 성공 문구가 남아 있었다. 빈 문구나 queryByRole
+시험이 아니다. useActionState의 새 결과가 commit되기 전 즉시 검사한 경합으로,
+앱 소유 login-form.test.tsx의 named import에 waitFor를 더하고 그 마지막 같은
+부재 assertion 하나만 기본 timeout의 await waitFor로 감싼다. 제품 로그인 폼·feedback·
+로딩 UX·번역·shared와 다른 시험은 유지한다. 기존 7개 local 시험과 web 전체
+9단계 검사는 native 0이었다. web check는 성공한 자식 출력을 보존하지 않아 로컬 전체
+시험 수는 UNKNOWN이며, 실제 CI의 929/930개와 별도로 기록한다. 실제 CI RED의 내부 PID·native wall은 미측정이며
+로그의 Vitest 표시 시간이나 다운로드 비용을 native 측정으로 바꾸지 않는다.
+
+web 의존성이 없어 승인받은 기존 설치 트리를 격리 복사해 검사했다. 첫 pnpm exec가
+예상 밖 locked pre-run install과 native postinstall을 실행한 사실과 resolution 생략 로그를
+보존하고 즉시 별도 판단을 받았다. 원본·locks·pins·guard는 그대로이며 후속 명령은
+두 대소문자 환경 변수의 verifyDepsBeforeRun=error로 불일치 때 설치하지 않고 실패하게 했다.
+이 로컬 prerequisite와 지연 장치는 실제 Linux resolver나 생성 네 변형 호환 증거가 아니다.
+전체 create는 201개 성공·원래 7개 skip(208개, 27파일)과 Node 자산 66개 성공이었다.
+정상 환경의 prototype 7단계·177개·23파일과 정확한 다섯 파일 staging 뒤 root 11단계를
+완료 기준으로 유지한다. 두 문서는 부모 바이트를 prefix로 보존하는 append만 한다.
+
+로컬 R38 시험 수정의 완료와 CI·Task 7·네 실제 runtime 변형·Stage B·최종 계획·SDD
+수용은 구분한다. Root의 전체 소스·diff·보고·native·자원 검토와 정확한 worker 종료 뒤에만
+변경 HEAD의 새 전체 14개 CI를 관측한다. 실제 lock 값과 새 prospective ruling 전
+Stage B를 진행하지 않는다. R1 resolving drift·R2 hidden hoist, OTel completeness=false,
+tsx DI 미지원·부분 19/83·41/94와 전체 39/126/94·web 20·admin 18의 후속 범위는 유지한다.
+최종 SDD는 새로 공개한 구체적 전체 계획에 대한 사용자 승인 뒤에 진행한다.

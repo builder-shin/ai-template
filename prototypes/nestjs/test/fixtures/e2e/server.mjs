@@ -3,12 +3,10 @@ import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 const [port, file, mode = "ready"] = process.argv.slice(2);
 const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
-writeFileSync(file, JSON.stringify([process.pid, child.pid]));
 const server = createServer((_req, res) => {
   res.writeHead(mode === "unready" ? 503 : 200);
   res.end("{}");
 });
-server.listen(Number(port), "127.0.0.1");
 console.error("HEAD-" + "x".repeat(10000) + "-TAIL");
 let shutdownRequested = false;
 let childClosed = false;
@@ -24,6 +22,9 @@ process.on("SIGTERM", () => {
   shutdownRequested = true;
   if (childClosed) closeOwnedServer();
   else child.kill("SIGTERM");
+});
+server.listen(Number(port), "127.0.0.1", () => {
+  writeFileSync(file, JSON.stringify([process.pid, child.pid]));
 });
 if (mode === "die")
   setTimeout(() => {

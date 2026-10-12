@@ -180,7 +180,13 @@ it.each(["SIGINT", "SIGTERM"] as const)(
     );
     try {
       await expect
-        .poll(() => existsSync(resolve(dir, "command.json")), { timeout: 10000 })
+        .poll(
+          () =>
+            ["api", "worker", "scheduler", "command"].every((n) =>
+              existsSync(resolve(dir, `${n}.json`)),
+            ),
+          { timeout: 10000 },
+        )
         .toBe(true);
       if (!runner.child.pid) throw new Error("No runner PID.");
       process.kill(runner.child.pid, signal);
