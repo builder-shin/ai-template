@@ -815,3 +815,74 @@ web 의존성이 없어 승인받은 기존 설치 트리를 격리 복사해 �
 Stage B를 진행하지 않는다. R1 resolving drift·R2 hidden hoist, OTel completeness=false,
 tsx DI 미지원·부분 19/83·41/94와 전체 39/126/94·web 20·admin 18의 후속 범위는 유지한다.
 최종 SDD는 새로 공개한 구체적 전체 계획에 대한 사용자 승인 뒤에 진행한다.
+
+## R39: 파생 TypeScript peer의 정확한 메모리 정렬
+
+부모 acf60171의 CI 38299683750은 전체 14개 중 13개 성공·생성 프로브 1개 실패였다.
+원래 035 web 생성은 native 1·6.994370299초로 phase 2의
+packages.@typescript-eslint/eslint-plugin@8.71.0에서 거절됐다.
+그 뒤 별도로 실행한 새 036 진단은 native 1·3.543255998초로 같은 엄격 병합 거절을
+기록하고 after 잠금을 보존했다. 036은 원래 035 후보를 사후에 복원한 것이 아니다.
+단독 API의 생성·frozen·setup·check·build·E2E·이미지·정리는 완료됐지만 web은 실패했고
+admin·두 프런트 변형은 시작하지 않았다. 이 전체 14개 실패 관측은 Task 7 수용이 아니다.
+
+현재 캡처를 설치된 TypeScript YAML 파서로 대조한 실제 측정은 공유 API package 511개,
+snapshot 484개다. 도구 문서·importer는 같고 기존 optional 정규화 뒤 snapshot 차이는 0개다.
+메타데이터 차이는 파생 overrides {typescript: 6.0.3} 하나뿐이며, 공유 API 레코드 다섯 개는
+기존 peerDependencies.typescript 문자열 `>=4.8.4 <6.1.0`만 6.0.3으로 바뀌었다.
+대상은 @typescript-eslint의 eslint-plugin·parser·type-utils·utils와 typescript-eslint이며
+모두 8.71.0이다. 실제 프런트 재표현은 이 다섯 개와 eslint-config-next@16.3.8의
+`>=3.3.1` → 6.0.3을 합친 여섯 개다. override hook과 cycle에 따른 재해석 설명은
+고정 pnpm 소스·순수 그래프 분석의 근거이며 이번 값은 현재 036에서 측정됐다.
+내부 runPnpm PID·native exit·wall은 여전히 UNKNOWN이다. 0.466245083초는 캡처를
+감싼 wrapper의 wall만 뜻하며 내부 native 측정으로 바꾸지 않는다.
+
+새 R39 구현은 기존 R19 파생 override 조건 아래 공유 API 레코드의 기존 문자열 peer만
+신뢰 pin으로 바꿨을 때 전체 객체가 같아지는 경우를 허용한다. API YAML 문서는 병합 직전
+메모리에서만 정렬하고, 조건이 없거나 맞는 공유 변화가 없으면 원본 문자열을 그대로 반환한다.
+원본 잠금 파일은 쓰지 않는다. peer 추가·삭제, 틀린 pin, engines·integrity·다른 peer·
+peerDependenciesMeta·추가 override와 두 번째 변화는 계속 fatal이다. 패키지별 허용 목록이나
+포괄적 메타데이터 예외는 없다. 두 검증 루프는 계속 raw API 원본을 검증한다.
+
+mergeApiLock과 기존 R35 세 번째 음성 시험은 그대로이며 raw 입력의 TypeScript peer
+재표현을 계속 거절한다. 제품 경로에서만 새 R39의 메모리 정렬과 동일한 전체 레코드 조건의
+API 검증을 거친다. importer·도구·메타데이터·snapshot·optional 그래프와 프런트 비교,
+FastAPI 대조군·기존 모든 시험·골든·고정 버전·minimumReleaseAge 1440은 유지한다.
+@nestjs/schematics@12.0.6·@prisma/client@7.10.0·prisma@7.10.0·valibot@1.4.2의
+API 전용 레코드도 원본 그대로다.
+
+새 시험은 실제 소스 잠금을 바이트 그대로 격리 fixture에 복사하고 현재 036의 여섯 변화만
+순수 double로 만든다. 실제 resolver·생성 프로젝트 설치·setup·runtime 실험이 아니다.
+첫 실행은 두 의도한 양성 실패 외에 기존 fixture의 의도된 무추적 파일을 깨끗하다고 오판한
+세 assertion도 실패해 5실패·8통과였고 유효한 전체 RED로 인정하지 않았다.
+새 시험만 시작 porcelain과 종료 상태를 비교하도록 승인받아 고친 뒤 같은 명령의
+native 1·23.67831099999603초에서 정확한 병합·raw 검증 오류 두 개와 음성 11개 통과를
+확인했다. 같은 시험의 GREEN은 native 0·26.308169208001345초, 13개 모두 통과였다.
+새 시험 callback의 린트 스타일 오류 12개도 별도 실패로 보존하고 기대값 변경 없이 고쳤다.
+전체 create는 실제 214개 성공·기존 7개 skip(221개·28파일), Node 자산 66개 성공이었다.
+로컬 완료 gate는 prototype 7단계·177개·23파일과 정확한 다섯 파일 staging 뒤 root 11단계를
+포함한다. 두 문서는 부모 전체 바이트를 prefix로 보존한 portable append만 한다.
+
+이 로컬 변경은 CI·Task 7·네 실제 runtime 변형·전체 Nest 계획·SDD 수용이 아니다.
+Root의 소스·보고·native·보호 파일·자원 전체 검토, worker release와 새 정확한 positive exit,
+변경 HEAD의 새 전체 14개 CI와 standalone·web·admin·both의 실제 생성·frozen·setup·
+runtime·E2E·이미지·정리 확인이 남아 있다. 기존 모든 실패 관측과 UNKNOWN은 보존한다.
+R1 resolving drift·R2 hidden hoist는 미해결이며 OTel 관측은 불완전하고 tsx DI는 미지원이다.
+부분 19/83·41/94를 유지하며 전체 39/126/94·web 20·admin 18의 후속 범위는 별도다.
+최종 SDD는 새로 공개한 구체적 전체 계획에 대한 새 사용자 승인 뒤에 진행한다.
+
+최초 prototype 검사는 native 1·1.4488776669604704초로 두 문서 포맷에서 멈췄다.
+private cache의 suffix가 ignore 정책에 걸린 앞선 native 0 명령은 실제 포맷 증거가 아니었다.
+suffix만 ignore 경로를 명시해 고정 Prettier로 처리하고 부모 prefix를 그대로 보존해 적용했다.
+
+그 다음 prototype는 7단계 통과를 출력했지만 private 관측자가 포트 bind에서 실패해
+외부 native 1·16.200977125088684초로 기록됐다. 미보존 내부 top PID·exit·wall은 UNKNOWN이고
+당시 EADDRINUSE 원인도 UNKNOWN이다. 기존 관측자 바이트를 보존하고 승인된 새 관측자는
+포트 검사 전에 실제 자식 정보를 저장하며 SO_REUSEADDR만 쓰고 실제 bind·listen·close를
+요구한다. SO_REUSEPORT·포트 변경·검사 생략·소유 미확인 프로세스 종료는 하지 않았다.
+기존 새 단위 기록의 52개 PID·명시된 두 그룹·기록된 두 포트만 별도 확인했으며, 승인된
+새 관측 gate는 native 0·15.830062792054377초로 7단계·177개·23파일을 통과했다.
+미기록 자원 신원과 ephemeral 포트는 UNKNOWN이며 요청값 0을 실제 과거 포트로 세지 않는다.
+
+문서 range의 line-start가 인용문으로 해석된 표현 오류도 새 suffix의 code span으로 고쳤다.
+원래 프런트 범위는 `>=3.3.1`이며 TypeScript pin 6.0.3으로의 실제 재표현이라는 뜻을 유지한다.

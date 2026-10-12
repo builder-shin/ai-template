@@ -230,6 +230,46 @@ function derivedTypeScriptOverride(
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
+  );
+}
+
+function derivedTypeScriptPeer(before: unknown, after: unknown, pin: string): boolean {
+  if (!isRecord(before) || !isRecord(after) || !isRecord(before.peerDependencies)) return false;
+  const peers = before.peerDependencies;
+  return (
+    Object.hasOwn(peers, "typescript") &&
+    typeof peers.typescript === "string" &&
+    peers.typescript !== pin &&
+    isDeepStrictEqual(after, { ...before, peerDependencies: { ...peers, typescript: pin } })
+  );
+}
+
+export function alignDerivedTypeScriptPeers(resolved: string, api: string, pin: string): string {
+  const docs = documents(api);
+  const { doc } = dependencyDocument(docs);
+  const apiData = doc.toJS() as LockGraph & Record<string, unknown>;
+  const resolvedData = dependencyDocument(documents(resolved)).doc.toJS() as LockGraph &
+    Record<string, unknown>;
+  if (!derivedTypeScriptOverride(apiData, resolvedData, pin)) return api;
+  let changed = false;
+  for (const [key, value] of Object.entries(apiData.packages)) {
+    if (
+      Object.hasOwn(resolvedData.packages, key) &&
+      derivedTypeScriptPeer(value, resolvedData.packages[key], pin)
+    ) {
+      doc.setIn(["packages", key, "peerDependencies", "typescript"], pin);
+      changed = true;
+    }
+  }
+  return changed ? docs.map((item) => item.toString({ lineWidth: 0 })).join("\n") : api;
+}
+
 export function verifyAppResolutions(
   original: string,
   combined: string,
@@ -270,7 +310,15 @@ export function verifyAppResolutions(
       fail(`${path} importer`);
   }
   for (const [key, value] of Object.entries(before.packages)) {
-    if (!Object.hasOwn(after.packages, key) || !isDeepStrictEqual(value, after.packages[key]))
+    if (
+      !Object.hasOwn(after.packages, key) ||
+      !(
+        isDeepStrictEqual(value, after.packages[key]) ||
+        (derivedOverride &&
+          expectedTypeScript !== undefined &&
+          derivedTypeScriptPeer(value, after.packages[key], expectedTypeScript))
+      )
+    )
       fail(key);
   }
   for (const [key, value] of Object.entries(before.snapshots)) {

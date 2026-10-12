@@ -1,6 +1,7 @@
 import { copyFileSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
+  alignDerivedTypeScriptPeers,
   mergeApiLock,
   mergeFrontendLocks,
   verifyAppResolutions,
@@ -228,7 +229,11 @@ export function writeCombo(
     );
     writeFileSync(
       join(root, "pnpm-lock.yaml"),
-      mergeApiLock({ app: first.name, source: resolved }, apiLock, typescript),
+      mergeApiLock(
+        { app: first.name, source: resolved },
+        { app: "api", source: alignDerivedTypeScriptPeers(resolved, apiLock.source, typescript) },
+        typescript,
+      ),
     );
     locks.push(apiLock);
   }
