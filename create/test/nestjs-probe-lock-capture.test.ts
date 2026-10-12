@@ -108,6 +108,26 @@ it("retains external synthetic lock evidence through strict refusal and original
   ]);
   expect(diff.sourceImporters).toEqual([
     {
+      app: "api",
+      importer: ".",
+      differences: [
+        {
+          kind: "removed",
+          pointer: "",
+          before: (() => {
+            const source = parseAllDocuments(
+              readFileSync(join(repository, "templates/nestjs/pnpm-lock.yaml"), "utf8"),
+            )
+              .at(-1)
+              ?.toJS() as { importers?: Record<string, unknown> } | undefined;
+            const importer = source?.importers?.["."];
+            if (importer === undefined) throw Error("Missing original API importer.");
+            return importer;
+          })(),
+        },
+      ],
+    },
+    {
       app: "web",
       importer: ".",
       differences: [

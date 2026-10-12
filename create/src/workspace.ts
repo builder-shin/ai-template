@@ -6,6 +6,7 @@ export function mergeWorkspace(
   sources: readonly { app: string; source: string }[],
   typescript: string,
   backend?: { app: string; source: string },
+  options: { includeApi?: boolean } = {},
 ): string {
   const first = sources[0];
   if (!first) throw new CreateError("프론트 workspace가 없다", "프론트 앱을 하나 이상 지정한다.");
@@ -31,7 +32,7 @@ export function mergeWorkspace(
         );
     }
   }
-  if (backend) {
+  if (backend && options.includeApi !== false) {
     const incoming = document(backend.source).toJS() as Record<string, unknown>;
     const current = merged.toJS() as Record<string, unknown>;
     for (const key of ["minimumReleaseAge", "overrides"]) {
@@ -54,7 +55,11 @@ export function mergeWorkspace(
     }
     merged.set("allowBuilds", builds);
   }
-  merged.set("packages", ["apps/api", ...sources.map(({ app }) => `apps/${app}`), "contract/*"]);
+  merged.set("packages", [
+    ...(options.includeApi === false ? [] : ["apps/api"]),
+    ...sources.map(({ app }) => `apps/${app}`),
+    "contract/*",
+  ]);
   // workspace 이동 뒤에도 계약 패키지의 TypeScript peer를 템플릿 버전으로 유지한다.
   merged.setIn(["overrides", "typescript"], typescript);
   return merged.toString();

@@ -146,20 +146,36 @@ export function mergeAppLocks(sources: readonly FrontendLock[]): string {
   if (apis.length !== 1 || !api)
     throw new CreateError("api 잠금 파일을 하나만 지정한다", "백엔드 importer 입력을 확인한다.");
   const frontends = sources.filter(({ app }) => app !== "api");
-  const merged = documents(mergeFrontendLocks(frontends));
+  const resolved = mergeFrontendLocks(frontends);
+  for (const source of sources)
+    optionalGraph(dependencyDocument(documents(source.source)).doc.toJS() as LockGraph);
+  const combined = mergeApiLock({ app: String(frontends[0]?.app), source: resolved }, api);
+  for (const source of sources) verifyAppResolutions(source.source, combined, source.app);
+  return combined;
+}
+
+/** 해석된 프런트 잠금은 그대로 두고 원본 api만 엄격히 추가한다. */
+export function mergeApiLock(
+  resolved: FrontendLock,
+  api: FrontendLock,
+  expectedTypeScript?: string,
+): string {
+  const merged = documents(resolved.source);
   const target = dependencyDocument(merged).doc;
   const initial = target.toJS() as LockGraph & Record<string, unknown>;
-  const incomingDocs = documents(rewriteImporters(api.source, api.app));
+  const original = dependencyDocument(documents(api.source)).doc.toJS() as LockGraph &
+    Record<string, unknown>;
+  const incomingDocs = documents(rewriteImporters(api.source, "api"));
   const incoming = dependencyDocument(incomingDocs).doc.toJS() as LockGraph &
     Record<string, unknown>;
   const fail = (key: string): never => {
     throw new CreateError(
-      `프론트 잠금 파일의 해석이 다르다(${String(frontends[0]?.app)}, api): ${key}`,
+      `프론트 잠금 파일의 해석이 다르다(${resolved.app}, api): ${key}`,
       "같은 계약·패키지·도구 해석으로 잠금 파일을 맞추고 커밋한다.",
     );
   };
-  for (const source of sources)
-    optionalGraph(dependencyDocument(documents(source.source)).doc.toJS() as LockGraph);
+  optionalGraph(initial);
+  optionalGraph(original);
   if (
     merged.length !== incomingDocs.length ||
     !isDeepStrictEqual(
@@ -170,6 +186,8 @@ export function mergeAppLocks(sources: readonly FrontendLock[]): string {
     fail("도구 설치 문서");
   for (const key of new Set([...Object.keys(initial), ...Object.keys(incoming)])) {
     if (["importers", "packages", "snapshots"].includes(key)) continue;
+    if (key === "overrides" && derivedTypeScriptOverride(original, initial, expectedTypeScript))
+      continue;
     if (!isDeepStrictEqual(initial[key], incoming[key])) fail(key);
   }
   for (const section of ["importers", "packages", "snapshots"] as const) {
@@ -187,9 +205,29 @@ export function mergeAppLocks(sources: readonly FrontendLock[]): string {
   applyOptionalGraph(initial);
   for (const section of ["importers", "packages", "snapshots"])
     target.set(section, initial[section]);
-  const combined = merged.map((doc) => doc.toString({ lineWidth: 0 })).join("\n");
-  for (const source of sources) verifyAppResolutions(source.source, combined, source.app);
-  return combined;
+  return merged.map((doc) => doc.toString({ lineWidth: 0 })).join("\n");
+}
+
+function derivedTypeScriptOverride(
+  before: LockGraph & Record<string, unknown>,
+  after: LockGraph & Record<string, unknown>,
+  expectedTypeScript?: string,
+): boolean {
+  const importer = before.importers["."] as
+    | {
+        dependencies?: { typescript?: { specifier?: string; version?: string } };
+        devDependencies?: { typescript?: { specifier?: string; version?: string } };
+      }
+    | undefined;
+  const originalTypeScript =
+    importer?.devDependencies?.typescript ?? importer?.dependencies?.typescript;
+  return (
+    expectedTypeScript !== undefined &&
+    !Object.hasOwn(before, "overrides") &&
+    originalTypeScript?.specifier === expectedTypeScript &&
+    originalTypeScript.version === expectedTypeScript &&
+    isDeepStrictEqual(after.overrides, { typescript: expectedTypeScript })
+  );
 }
 
 export function verifyAppResolutions(
@@ -219,20 +257,7 @@ export function verifyAppResolutions(
     )
   )
     fail("도구 설치 문서");
-  const importer = before.importers["."] as
-    | {
-        dependencies?: { typescript?: { specifier?: string; version?: string } };
-        devDependencies?: { typescript?: { specifier?: string; version?: string } };
-      }
-    | undefined;
-  const originalTypeScript =
-    importer?.devDependencies?.typescript ?? importer?.dependencies?.typescript;
-  const derivedOverride =
-    expectedTypeScript !== undefined &&
-    !Object.hasOwn(before, "overrides") &&
-    originalTypeScript?.specifier === expectedTypeScript &&
-    originalTypeScript.version === expectedTypeScript &&
-    isDeepStrictEqual(after.overrides, { typescript: expectedTypeScript });
+  const derivedOverride = derivedTypeScriptOverride(before, after, expectedTypeScript);
   for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
     if (["importers", "packages", "snapshots"].includes(key)) continue;
     if (key === "overrides" && derivedOverride) continue;

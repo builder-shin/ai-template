@@ -651,3 +651,66 @@ R33 변경은 정확히 다섯 경로다. 루트에 private 진단용 `probe:nes
 로컬 전체 `pnpm --dir create check`는 exit 0/46.470731375초였다. Vitest 195 PASS + 기존 7 SKIP = 202개, 24 passed/1 skipped 파일과 기존 Node 66 PASS를 확인했다. 기존 capture·Zod 회귀와 원래 201개 선언은 유지한다. 최종 완료 기준은 다섯 파일 전체 staging 뒤 새로운 루트 `pnpm check` 11단계와 일반 hook 커밋이다. 이 절은 그 최종 실행 전 staging용 기록이며 실제 최종 native 결과는 커밋 검증에서 별도로 확인한다. 변경 없는 prototype/SWC/DI/lazy gate는 재실행하지 않는다.
 
 새 exact-head CI는 아직 대기다. 다음 진단 CI도 정상 035에서 실패하면서 before/after를 남길 수 있다. capture 성공은 호환 생성이나 Task 7 성공이 아니다. 실제 diff에 근거한 별도 최소 수정 뒤 네 생성 variant 모두 호환되고 새로운 전체 14개 작업이 성공해야 Task 7을 수용한다. draft PR 12는 병합하지 않으며 전체 Windows 설계·계획, MAIN 두 문서 검증·게시와 새 구체적 사용자 계획 승인은 후속 단계다.
+
+## 프런트 잠금 검증 뒤 API를 합치는 생성 순서
+
+`6cc4da6`의 CI `38261926884`는 13개 성공·생성 프로브 1개 실패로 끝났다. 단독은
+완료했지만 web은 원래 CLI의 importer 보존 검사에서 실패했고, 별도 진단도 resolver가 정상
+반환한 뒤 같은 엄격한 검사에서 실패했다. admin과 두 프런트 조합은 시작하지 않았다.
+별도 진단의 후보를 원래 실패 호출의 후보라고 소급하지 않는다.
+
+실제 before 545190바이트와 after 527592바이트의 119개 고유 변경은 다음과 같다.
+
+| 기제 | 고유 변경 수 | 관측                                                                            |
+| ---- | -----------: | ------------------------------------------------------------------------------- |
+| M1   |           47 | importer 사이 optional peer 공급으로 OTel·hashes·SWC 등의 peer 문맥 추가        |
+| M2   |           11 | workspace 전체의 패키지별 children 소유로 chai·ignore·magic-string·resolve 변경 |
+| M3   |           39 | API 원본에서 도달하지 않는 package 19개·snapshot 20개 제거                      |
+| M4   |            6 | 전역 TypeScript override가 package의 peer 선언을 6.0.3으로 재표현               |
+| M5   |           16 | 예상한 루트 importer·turbo 계열·전역 override 추가                              |
+
+이 설명은 pnpm 12.6.0의 Rust 소스 `a959dce`에 한정한다. npm 배포 tarball의 SHA1·SHA512,
+registry integrity·SLSA subject와 tag가 같은 버전·commit을 가리키며, 추출한 소스 553개의
+archive 바이트 일치에 근거한다. 서명 암호학 검증과 Linux 실행 배포 tarball digest의 별도
+검증은 하지 않았다. 기존 합친 lock에는 루트 importer와 override가 없어 freshness 검사를
+통과하지 못하고 모든 importer를 함께 다시 해석하는 경로로 갔다.
+
+생성 순서를 두 단계로 바꾼다. 첫 단계는 API 원본 workspace·lock을 메모리에 보존하고,
+API package와 빌드 정책 없이 프런트 workspace·원본 lock만 쓴다. 기존 lockfile-only 호출
+한 번 뒤 즉시 모든 원본 프런트 해석을 엄격히 확인한다. 둘째 단계는 최종 API·프런트
+workspace와 충돌 없는 allowBuilds 합집합을 복원하고, 실제 첫 단계 결과의 루트·프런트·계약
+importer와 override를 그대로 두고 원본 API의 `.`만 `apps/api`로 옮겨 합친다. API의 모든
+transitive·orphan 기록을 보존하며, 합친 직후와 기존 frozen 호출 뒤 원본들을 다시 검증한다.
+FastAPI 생성 바이트·호출 순서, minimumReleaseAge 1440, TypeScript 6.0.3과 기존 엄격한
+부정 제어를 유지한다. API 원본 pin으로 검증한 기존 전역 TypeScript 파생 override만 예외이며,
+공유 package의 M4 peer 선언 재표현과 M2 children 변경은 계속 치명적인 오류다.
+
+로컬 새 회귀 4개는 실제 createProject와 추적 원본 API·web lock을 사용한다. 첫 해석 단계의
+API 부재, frozen 이전 API 전체 보존·orphan·루트 상태·호출 순서, 실제 CI next importer 변화의
+원래 오류 1·대상 정리, 엄격한 병합·workspace 부정 제어를 확인한다. 외부 실행만 PnpmRunner로
+대체하고 원본에서 가져온 루트 도구와 정확한 전역 override만 더하므로 실제 pnpm resolver
+실험이 아니다. 기존 코드의 API 노출 assertion에서 RED를 확인한 뒤 새 4개가 GREEN이었다.
+
+첫 전체 create 검사는 198개 성공·1개 실패·7개 skip이었다. 보호된 capture 테스트가 web 변경
+하나만 기대했지만, 새 첫 단계에서 API importer가 없는 사실도 진단에 나타났기 때문이다.
+이 실패를 보존하고 별도 좁은 승인을 받아 기존 sourceImporters 배열 맨 앞에 API 원본 importer의
+정확한 removed 항목 하나만 추가했다. 원본 fixture lock에서 기대값을 독립적으로 읽고 원래 web
+항목과 나머지 모든 assertion·바이트, capture helper와 CLI 우선 치명적 실패 경로를 유지했다.
+변경 뒤 전체 create는 199개 성공·7개 skip(206개, 26파일)과 기존 Node 자산 66개 성공이었다.
+프로토타입의 기존 177개·23파일·7단계와 루트 11단계를 완료 검사로 유지한다.
+
+H1(실제 프런트만 해석했을 때 보존), H2(공유 package에서 M4가 발생하지 않음),
+H3(원본 API를 합친 lock의 실제 frozen materialization), H4(setup·runtime·build·이미지)는
+새 CI에서만 결정한다. 로컬 GREEN으로 네 변형 완료나 CI 성공을 주장하지 않는다. 첫 단계의
+진단에 API importer가 없다고 기록하는 것은 그 단계의 실제 상태이며 API 비교를 숨기지 않는다.
+기존 실패한 13/1 CI는 그대로 실패다.
+
+R1: 하나의 공유 lock은 이후 add·remove·update나 새 resolving install 때 importer 사이 변경을
+다시 만들 수 있다. R2: 기본 hidden hoist가 API 전용 패키지를 프런트에서 런타임에 도달하게
+할 수 있어 lock 보존만으로 독립 프런트와 런타임이 같다고 증명하지 못한다. 최종 제품 계획에서
+분리된 설치 범위까지 판단해야 한다. 실제 공유 M4 충돌은 중단 조건이며 허용 범위를 넓히지 않는다.
+
+OTel HTTP 1·Express 0·pg 6·Redis 0과 completeness=false, DI의 tsx 미지원, 부분
+19 operation·83 schema·41/94 conformance는 유지된다. 전체 39/126/94와 web 20·admin 18,
+관측 완전성·process 신뢰성은 미완료다. 이 프로토타입 수정은 최종 NestJS 설계·계획이나 SDD
+승인이 아니며, 공개된 구체적 최종 계획에 대한 새 사용자 승인이 필요하다.

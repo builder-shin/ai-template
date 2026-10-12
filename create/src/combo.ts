@@ -1,7 +1,7 @@
 import { copyFileSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
-  mergeAppLocks,
+  mergeApiLock,
   mergeFrontendLocks,
   verifyAppResolutions,
   verifyFrontendResolutions,
@@ -202,27 +202,36 @@ export function writeCombo(
       app: app.name,
       source: readFileSync(join(root, "apps", app.name, file), "utf8"),
     }));
+  const workspaces = sources("pnpm-workspace.yaml");
+  const apiWorkspace = descriptor.ownsPackageJson
+    ? { app: "api", source: readFileSync(join(api, "pnpm-workspace.yaml"), "utf8") }
+    : undefined;
+  const locks = sources("pnpm-lock.yaml");
+  const apiLock = descriptor.ownsPackageJson
+    ? { app: "api", source: readFileSync(join(api, "pnpm-lock.yaml"), "utf8") }
+    : undefined;
   writeFileSync(
     join(root, "pnpm-workspace.yaml"),
-    mergeWorkspace(
-      sources("pnpm-workspace.yaml"),
-      typescript,
-      descriptor.ownsPackageJson
-        ? { app: "api", source: readFileSync(join(api, "pnpm-workspace.yaml"), "utf8") }
-        : undefined,
-    ),
+    mergeWorkspace(workspaces, typescript, undefined, { includeApi: !descriptor.ownsPackageJson }),
   );
-  const locks = sources("pnpm-lock.yaml");
-  if (descriptor.ownsPackageJson)
-    locks.push({ app: "api", source: readFileSync(join(api, "pnpm-lock.yaml"), "utf8") });
-  writeFileSync(
-    join(root, "pnpm-lock.yaml"),
-    descriptor.ownsPackageJson ? mergeAppLocks(locks) : mergeFrontendLocks(locks),
-  );
+  writeFileSync(join(root, "pnpm-lock.yaml"), mergeFrontendLocks(locks));
   for (const app of [...frontends, ...(descriptor.ownsPackageJson ? [{ name: "api" }] : [])])
     for (const file of ["pnpm-lock.yaml", "pnpm-workspace.yaml"])
       rmSync(join(root, "apps", app.name, file));
   pnpm(root, ["install", "--lockfile-only"]);
+  if (apiLock) {
+    const resolved = readFileSync(join(root, "pnpm-lock.yaml"), "utf8");
+    for (const lock of locks) verifyFrontendResolutions(lock.source, resolved, lock.app);
+    writeFileSync(
+      join(root, "pnpm-workspace.yaml"),
+      mergeWorkspace(workspaces, typescript, apiWorkspace),
+    );
+    writeFileSync(
+      join(root, "pnpm-lock.yaml"),
+      mergeApiLock({ app: first.name, source: resolved }, apiLock, typescript),
+    );
+    locks.push(apiLock);
+  }
   for (const lock of locks)
     (descriptor.ownsPackageJson ? verifyAppResolutions : verifyFrontendResolutions)(
       lock.source,
