@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1
+# The combo workspace is the build context; standalone uses its own Dockerfile.
+FROM node:24.19.0-bookworm-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install --global pnpm@12.6.0
+WORKDIR /app
+
+FROM base AS build
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN cd apps/api && DATABASE_URL=postgresql://unused:unused@127.0.0.1:5432/unused pnpm exec prisma generate && pnpm build # betterleaks:allow nonconnecting codegen credential
+
+FROM base AS production-deps
+COPY . .
+RUN pnpm install --prod --frozen-lockfile
+
+FROM base AS runtime
+RUN groupadd --gid 10001 app && useradd --uid 10001 --gid 10001 --create-home app
+COPY --from=production-deps --chown=10001:10001 /app/node_modules ./node_modules
+COPY --from=production-deps --chown=10001:10001 /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=build --chown=10001:10001 /app/apps/api/dist ./apps/api/dist
+COPY --chown=10001:10001 package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY --chown=10001:10001 apps/api/package.json apps/api/prisma.config.ts ./apps/api/
+COPY --chown=10001:10001 apps/api/prisma ./apps/api/prisma
+WORKDIR /app/apps/api
+ENV NODE_ENV=production
+USER 10001:10001
+EXPOSE 8000
+CMD ["node", "dist/main.js"]

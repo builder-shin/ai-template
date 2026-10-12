@@ -1,6 +1,12 @@
 import { isDeepStrictEqual } from "node:util";
 import { isMap, parseAllDocuments } from "yaml";
 import { CreateError } from "./errors.ts";
+import {
+  applyOptionalGraph,
+  optionalGraph,
+  withoutOptional,
+  type LockGraph,
+} from "./lock-graph.ts";
 
 function documents(source: string) {
   const docs = parseAllDocuments(source);
@@ -129,5 +135,124 @@ export function verifyFrontendResolutions(original: string, combined: string, ap
           "프론트 잠금 파일의 의존성 해석을 보존한다.",
         );
     }
+  }
+}
+
+/** NestJS api만 전역 optional 도달성으로 통합하고 프론트끼리는 기존 엄격 비교를 쓴다. */
+export function mergeAppLocks(sources: readonly FrontendLock[]): string {
+  const apis = sources.filter(({ app }) => app === "api");
+  if (!apis.length) return mergeFrontendLocks(sources);
+  const api = apis[0];
+  if (apis.length !== 1 || !api)
+    throw new CreateError("api 잠금 파일을 하나만 지정한다", "백엔드 importer 입력을 확인한다.");
+  const frontends = sources.filter(({ app }) => app !== "api");
+  const merged = documents(mergeFrontendLocks(frontends));
+  const target = dependencyDocument(merged).doc;
+  const initial = target.toJS() as LockGraph & Record<string, unknown>;
+  const incomingDocs = documents(rewriteImporters(api.source, api.app));
+  const incoming = dependencyDocument(incomingDocs).doc.toJS() as LockGraph &
+    Record<string, unknown>;
+  const fail = (key: string): never => {
+    throw new CreateError(
+      `프론트 잠금 파일의 해석이 다르다(${String(frontends[0]?.app)}, api): ${key}`,
+      "같은 계약·패키지·도구 해석으로 잠금 파일을 맞추고 커밋한다.",
+    );
+  };
+  for (const source of sources)
+    optionalGraph(dependencyDocument(documents(source.source)).doc.toJS() as LockGraph);
+  if (
+    merged.length !== incomingDocs.length ||
+    !isDeepStrictEqual(
+      merged.slice(0, -1).map((d) => d.toJS() as unknown),
+      incomingDocs.slice(0, -1).map((d) => d.toJS() as unknown),
+    )
+  )
+    fail("도구 설치 문서");
+  for (const key of new Set([...Object.keys(initial), ...Object.keys(incoming)])) {
+    if (["importers", "packages", "snapshots"].includes(key)) continue;
+    if (!isDeepStrictEqual(initial[key], incoming[key])) fail(key);
+  }
+  for (const section of ["importers", "packages", "snapshots"] as const) {
+    for (const [key, value] of Object.entries(incoming[section])) {
+      const current = initial[section][key];
+      if (Object.hasOwn(initial[section], key)) {
+        const equal =
+          section === "snapshots"
+            ? isDeepStrictEqual(withoutOptional(current), withoutOptional(value))
+            : isDeepStrictEqual(current, value);
+        if (!equal) fail(`${section}.${key}`);
+      } else initial[section][key] = value;
+    }
+  }
+  applyOptionalGraph(initial);
+  for (const section of ["importers", "packages", "snapshots"])
+    target.set(section, initial[section]);
+  const combined = merged.map((doc) => doc.toString({ lineWidth: 0 })).join("\n");
+  for (const source of sources) verifyAppResolutions(source.source, combined, source.app);
+  return combined;
+}
+
+export function verifyAppResolutions(
+  original: string,
+  combined: string,
+  app: string,
+  expectedTypeScript?: string,
+): void {
+  if (app !== "api") {
+    verifyFrontendResolutions(original, combined, app);
+    return;
+  }
+  const originalDocs = documents(original),
+    combinedDocs = documents(combined);
+  const before = dependencyDocument(originalDocs).doc.toJS() as LockGraph & Record<string, unknown>;
+  const after = dependencyDocument(combinedDocs).doc.toJS() as LockGraph & Record<string, unknown>;
+  const fail = (key: string): never => {
+    throw new CreateError(
+      `${app}: ${key}: 해석 결과가 바뀌었다`,
+      "앱 잠금 파일의 의존성 해석을 보존한다.",
+    );
+  };
+  if (
+    !isDeepStrictEqual(
+      originalDocs.slice(0, -1).map((d) => d.toJS() as unknown),
+      combinedDocs.slice(0, -1).map((d) => d.toJS() as unknown),
+    )
+  )
+    fail("도구 설치 문서");
+  const importer = before.importers["."] as
+    | {
+        dependencies?: { typescript?: { specifier?: string; version?: string } };
+        devDependencies?: { typescript?: { specifier?: string; version?: string } };
+      }
+    | undefined;
+  const originalTypeScript =
+    importer?.devDependencies?.typescript ?? importer?.dependencies?.typescript;
+  const derivedOverride =
+    expectedTypeScript !== undefined &&
+    !Object.hasOwn(before, "overrides") &&
+    originalTypeScript?.specifier === expectedTypeScript &&
+    originalTypeScript.version === expectedTypeScript &&
+    isDeepStrictEqual(after.overrides, { typescript: expectedTypeScript });
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (["importers", "packages", "snapshots"].includes(key)) continue;
+    if (key === "overrides" && derivedOverride) continue;
+    if (!isDeepStrictEqual(before[key], after[key])) fail(`metadata.${key}`);
+  }
+  optionalGraph(before);
+  optionalGraph(after);
+  for (const [path, importer] of Object.entries(before.importers)) {
+    if (!isDeepStrictEqual(importer, after.importers[path === "." ? `apps/${app}` : path]))
+      fail(`${path} importer`);
+  }
+  for (const [key, value] of Object.entries(before.packages)) {
+    if (!Object.hasOwn(after.packages, key) || !isDeepStrictEqual(value, after.packages[key]))
+      fail(key);
+  }
+  for (const [key, value] of Object.entries(before.snapshots)) {
+    if (
+      !Object.hasOwn(after.snapshots, key) ||
+      !isDeepStrictEqual(withoutOptional(value), withoutOptional(after.snapshots[key]))
+    )
+      fail(key);
   }
 }

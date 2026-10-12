@@ -527,3 +527,36 @@ web smoke step16은 올바른 NestJS 프로젝트를 출력한 다음 시작 전
 | 선택 DI                                        | 0           | 2.569021667  |
 | compiled lazy ESM19/init/close/listening=false | 0           | 0.329721333  |
 | 루트 check11                                   | 0           | 69.308306125 |
+
+## NestJS 생성 프로브
+
+`--template nestjs`와 `--api nestjs`의 web·admin·두 프론트 경로를 추가했다.
+API의 직접 pin과 importer, 기존 package/integrity를 유지하면서 다섯 부모의 하위 해석을 기존 프론트와 정렬했다.
+추가한 37 package·38 snapshot과 두 optional 표식 외의 원본 lock 의미는 보존한다.
+API만 그래프 도달성에 따라 전역 optional 표식을 비교하며 패키지·간선·peer·문서 metadata는 엄격하다.
+minimumReleaseAge 1440, 프론트 정책 동등성과 TypeScript 6.0.3 override를 유지하고 API allowBuilds는 충돌 없는 합집합으로 만든다.
+
+원본 도구 문서 표식을 잃은 첫 frozen 설치 실패를 보존했다.
+원본 4,555바이트 prefix 복원 뒤 한 번의 변경 frozen 설치는 native 0이었다.
+네 변형의 실제 생성·설치·setup·API check·build·e2e:serve·이미지는 새 CI에서 별도로 측정한다.
+로컬 inert 생성과 원본 잠금 그래프 검사는 실제 인프라 성공을 대신하지 않는다.
+
+기존 선택 테스트의 경로 세 개만 바꾸고 14개 계약 흐름을 바이트 동일한 plain-text fixture로 보관했다.
+전체 파일 집합·바이트와 생성된 단독·조합 API 내부 경로를 검사한다.
+175개 기존 단위 선언·assertion, 43개 통합 선언, auth 13개, quota 20개 요청과 선택 41/제외 53 이름은 보존한다.
+FastAPI의 세 조합은 변경 전 전체 파일 바이트·실행 권한과 비교한다.
+
+API 19 operation·83 schema와 원본 39 operation·126 schema의 차이를 실제 CI frontend gen 출력과 함께 기록한다.
+전체 frontend check·브라우저 E2E 20/18 및 전체 conformance 94 성공은 아직 주장하지 않는다.
+기존 13개 workflow job을 바이트 그대로 두고 네 변형을 맡는 한 job만 추가했다.
+자세한 범위와 남은 제품 결정은 [생성 프로브 기록](task-7.md)에 있다.
+
+API 해석 검증은 호출자가 원본 pin을 명시한 TypeScript 6.0.3의 파생 override 추가만 허용한다.
+기존 override·다른 metadata·peer snapshot은 계속 엄격히 보존한다.
+선택 검사의 pinned 포맷 실패와 기존 준비 제한 사례의 174/175 실패를 원시 출력 그대로 보존했다.
+실패한 검사에서 생성물 검증 단계의 이전 캐시는 새 성공 증거가 아니다.
+
+통제한 빈 TCP peer를 둔 가짜 fixture 종료의 새 사례 한 개는 원본 RED 5,036.205ms/native 1에서
+정확한 close→closeAllConnections 수정 뒤 같은 테스트 GREEN 27.768ms/native 0이었다.
+175개 기존 assertion·제한값·실제 프로세스 helper를 보존하며 새 전체 검사 대상은 176개다.
+앞선 준비 실패의 peer 상태는 미측정이고 제품 종료·EPERM 신뢰성은 후속 계획에서 해결해야 한다.

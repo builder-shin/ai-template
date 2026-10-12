@@ -39,3 +39,12 @@ regexes = ['''@inquirer/password''']
 description = "계획 문서에 옮겨 적은 코드의 비밀번호 필드와 테스트 상수"
 targetRules = ["generic-password"]
 paths = ['''^docs/superpowers/plans/.+\.md$''']
+
+# 바이트 그대로 복사한 TypeScript 흐름의 상수 참조는 비밀 값이 아니다.
+# 이 다섯 fixture의 generic-password와 세 식별자가 모두 맞을 때만 허용한다.
+[[allowlists]]
+description = "복사한 적합성 흐름의 비밀번호 상수 참조"
+condition = "AND"
+targetRules = ["generic-password"]
+paths = ['''^prototypes/nestjs/test/fixtures/conformance-flows/(?:me|sessions|registration|passwords|jsonapi)\.test\.ts\.txt$''']
+regexes = ['''^(?:PASSWORD|NEW_PASSWORD|LONE_SURROGATE)$''']

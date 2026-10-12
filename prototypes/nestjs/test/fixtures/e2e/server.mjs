@@ -11,7 +11,10 @@ const server = createServer((_req, res) => {
 server.listen(Number(port), "127.0.0.1");
 console.error("HEAD-" + "x".repeat(10000) + "-TAIL");
 process.on("SIGTERM", () => {
-  child.once("close", () => server.close(() => process.exit(0)));
+  child.once("close", () => {
+    server.close(() => process.exit(0));
+    server.closeAllConnections();
+  });
   child.kill("SIGTERM");
 });
 if (mode === "die")

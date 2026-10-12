@@ -3,18 +3,15 @@ import { globSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CASE_NAMES, CASE_PATTERN } from "../scripts/conformance-selection.js";
 it("selects exactly the accepted 41 of the unchanged 94 declarations", () => {
-  const root = resolve(import.meta.dirname, "../../..");
-  const all = globSync("contract/conformance/test/flows/*.test.ts", { cwd: root }).flatMap((p) =>
+  const root = resolve(import.meta.dirname, "fixtures/conformance-flows");
+  const all = globSync("*.test.ts.txt", { cwd: root }).flatMap((p) =>
     [...readFileSync(resolve(root, p), "utf8").matchAll(/\bit\("([^"\n]+)"/g)].map(
       (m) => m[1] ?? "",
     ),
   );
   // OAuth declares three provider rows and two verification rows through it.each.
   // They are all outside this prototype slice; no flow setup or infrastructure runs here.
-  const oauth = readFileSync(
-    resolve(root, "contract/conformance/test/flows/oauth.test.ts"),
-    "utf8",
-  );
+  const oauth = readFileSync(resolve(root, "oauth.test.ts.txt"), "utf8");
   const providers = /const PROVIDERS[^=]*=\s*\[([^\]]+)\]/.exec(oauth)?.[1] ?? "";
   const table = /it\.each\(\[([\s\S]*?)\] as const\)/.exec(oauth)?.[1] ?? "";
   const parameterized =
