@@ -1,0 +1,431 @@
+# NestJS 생성 프로브
+
+독립 NestJS, NestJS+web, NestJS+admin, NestJS+web+admin 네 변형의 생성 경로를 추가했다.
+실제 생성 프로젝트의 설치·인프라·실행·이미지 검증은 `create-combo-nestjs-probe` CI에서만 실행한다.
+현재 문서는 구현과 로컬 증거이며 새 HEAD의 전체 14개 CI 성공은 별도 확인해야 한다.
+
+## 백엔드와 생성물
+
+`Backend`는 fastapi·nestjs이며 서술자는 package.json 소유, setup 도구, 조합 이미지 문맥과 예약 이름을 정한다.
+FastAPI의 uv 래퍼와 세 조합의 전체 생성 파일 바이트·실행 권한은 변경 전 고정 기준과 비교한다.
+기준은 web 69개, admin 68개, 두 프론트 85개 파일이다. 검사에서 기준을 다시 만들지 않는다.
+NestJS는 자신의 package.json을 유지하고 조합에서 name만 api로 바꾼다.
+두 백엔드는 원래 compose 내용에 같은 설명·프로젝트 이름을 붙이고 앱 image 값의 바이트 범위만 바꾼다.
+nestjs 이름은 이를 포함한 단독과 조합에서 예약한다.
+
+생성된 NestJS setup의 실제 진입점은 apps/api/pyproject.toml 존재로 백엔드를 고르고 uv를 확인하지 않는다.
+프론트 E2E 진입점도 이 구분을 E2E_TARGET에 전달한다. 기존 helper 호출의 FastAPI 기본값은 보존한다.
+프론트가 NestJS 대상을 받아 실제 브라우저 흐름을 실행하도록 하는 작업은 최종 제품 범위다.
+
+## 잠금 파일과 정책
+
+API의 직접 의존성과 도구 버전·importer·기존 package/integrity는 유지했다.
+다섯 부모 snapshot의 하위 해석을 기존 프론트 버전에 맞췄다. 실제 부모의 semver 범위 25개와 바뀐 간선 16개를 확인했다.
+원래 package/snapshot 삭제 없이 package 37개·snapshot 38개를 더하고, 기존 API 전용 노드 두 개의 optional 표식을 도달성에 맞췄다.
+
+각 원본의 모든 importer에서 regular·optional 간선을 순환에 안전하게 따라가 선택 의존성 분류를 검증한다.
+합친 그래프에서 required 경로가 생긴 API 노드는 optional 표식을 없앤다. 현재 공통 API 표식 91개가 이 경우다.
+API 전용 두 노드는 optional-only로 남는다. 간선, peer 키, transitive metadata, 패키지 전체 metadata와 문서 설정은 엄격하게 비교한다.
+프론트끼리의 비교와 FastAPI 경로는 기존 규칙 그대로다.
+설치 전후의 실제 importer·package·snapshot을 다시 검증한다. 다른 metadata 해석이 필요하면 실패를 보존하고 별도 판정을 받는다.
+
+minimumReleaseAge 1440과 override 동등성을 유지한다.
+프론트 allowBuilds 동등성도 유지하며 API와는 같은 키의 값이 다르면 거절하고 나머지는 합친다.
+루트 TypeScript override는 6.0.3이다.
+호출자가 원본 프론트 pin을 명시하고 API importer의 specifier·version도 그 pin과 정확히 같을 때만,
+없던 overrides를 {typescript: 6.0.3}로 더하는 파생 설정을 허용한다.
+기존 override 변경, 다른 키·버전·settings·패키지 metadata와 peer snapshot 변경은 거절한다.
+lockfile-only 뒤와 frozen 설치 뒤 모두 이 검증을 수행한다.
+TypeScript 6.0.3, Zod 4.6.5, Node 타입 24.13.6, Vitest 5.0.1, socket.io-client 4.8.4, SWC 1.16.12는 각각 하나의 package 버전을 기록한다.
+Vitest·socket.io-client·SWC에는 서로 다른 원본 peer snapshot이 있다. package 키 하나를 물리적 중복 제거 증거로 취급하지 않는다.
+
+처음 적용한 YAML 후보는 의미가 같아도 첫 도구 문서의 명시적 시작 표식이 없어서 frozen 설치가 실패했다.
+원본 도구 문서 4,555바이트를 그대로 복원한 한 번의 변경 설치는 성공했다.
+이 결과는 프로토타입 설치 증거이며 생성된 네 프로젝트의 설치 성공은 CI에서 따로 측정한다.
+
+## 선택 흐름의 독립성
+
+기존 선택 검사에는 단독 프로젝트 밖의 계약 경로가 있었다.
+`test/fixtures/conformance-flows/*.test.ts.txt`의 14개 파일은 원래 계약 흐름의 바이트 동일 100644 사본이다.
+실행하거나 import하는 테스트가 아니다. 기존 선택 검사는 경로 문자열 세 개를 바꾸고 pinned Prettier의 정규 포맷을 적용했다.
+모든 기존 175개 선언·assertion, 41개 선택 이름과 53개 제외 이름, 94개 선언 계수 규칙을 보존한다.
+create 검사는 전체 fixture 이름 집합과 바이트를 원본과 비교하고 단독·조합 API 안의 경로를 확인한다.
+
+## 측정 범위
+
+CI는 정확히 테스트한 HEAD를 소유한 임시 clone으로 복제한다.
+그 안에서만 추적한 프로토타입과 template.json을 templates/nestjs로 materialize하고 별도의 일반 clone-only 커밋을 만든다.
+네 프로젝트는 clone 밖의 서로 다른 폴더와 예약되지 않은 compose 이름을 사용한다.
+
+각 변형은 frozen 설치와 해석 보존, 실제 setup, API check·SWC build, e2e:serve 자식 환경과 /health/ready, 이미지 빌드, 깨끗한 생성 Git을 기록한다.
+세 조합에는 루트 Node 검사와 turbo dry JSON도 있다.
+단독 이미지는 앱 문맥, 조합 이미지는 `docker build -f apps/api/Dockerfile .`의 루트 문맥이다.
+기존 compose의 build 항목은 그대로이며 이 프로브는 별도 명시적 이미지 빌드를 측정한다.
+항상 정리 단계는 미리 없음을 확인한 소유 compose 자원과 정확한 이미지 태그·폴더만 정리한다.
+원시 native 출력과 실제 반환 UTC·종료·wall·hash를 CI artifact에 보존한다.
+CI helper 측정과 로컬 증거 수집기의 형식은 별개다.
+
+API 부분 계약은 19 operation·83 schema, 원래 계약은 39 operation·126 schema다.
+CI는 프론트 gen의 실제 파일 차이와 빠진 operation·schema를 기록한다.
+전체 프론트 check·web 20개/admin 18개 브라우저 E2E·전체 conformance 94개 성공은 이 프로브의 주장이 아니다.
+
+## 후속 제품 범위
+
+전체 계약과 제외한 53개 흐름, 프론트 대상·생성·검사·브라우저 흐름, 개발 실행 하네스와 이미지 운용을 완성해야 한다.
+ESM OpenTelemetry의 미완성 계측, 선언 peer 제한, Darwin 프로세스 신호 경합의 기존 실패도 최종 계획에서 해결한다.
+새 전체 CI 성공과 완성한 설계·계획에 대한 새 사용자 승인이 최종 SDD 전에 필요하다.
+
+## 보존한 로컬 실패
+
+새 생성 fixture의 초기 CI 이미지 선택 순서 오류와 원본 도구 문서 표식 손실을 각각 수정한 변경 검사로 확인했다.
+선택 테스트의 포맷 단계 실패도 원래 출력과 함께 보존하고 정규 포맷만 적용했다.
+이후 기존 준비 제한 단위 사례가 5.288초로 3초 미만의 제한을 넘겨 174/175에서 실패했다.
+이 실패와 소유 자식·그룹·임시 폴더 정리 증거를 보존했다. 프로세스 helper나 제한을 바꾸지 않았으며 신뢰성 해결을 주장하지 않는다.
+
+가짜 서버의 소유 TCP peer가 HTTP 요청을 보내지 않고 연결된 경우를 새 단위 사례 한 개로 재현했다.
+원본 fixture는 기존 정리 함수에서 5,036.205ms와 강제 종료 코드 1을 기록했다.
+소유 grandchild 종료 뒤 server.close를 호출하고 이어 closeAllConnections로 연결을 닫는 fixture 수정은
+같은 바이트의 테스트에서 27.768ms·부모 종료 코드 0을 기록했다.
+두 단계 모두 peer 종료·자식과 그룹 ESRCH·실제 포트 재바인딩·정확한 임시 폴더 제거를 확인했다.
+이것은 통제한 fake 연결의 종료 증거이며, 앞선 두 Vitest 실패의 실제 peer 상태나 제품 프로세스 신뢰성의 해결 증거가 아니다.
+기존 175개 테스트와 제한값·프로세스 스크립트는 유지하고 새 사례를 포함한 전체 검사는 176개를 실행한다.
+
+## Task 7 CI clone materialization correction
+
+The original generation probe stopped at the clone-only ordinary commit before any generated variant started. Its root workspace frozen installation succeeded, but the newly copied independent `templates/nestjs` workspace had no installation: ESLint 10.11 could not resolve `eslint-plugin-boundaries` from its boundary configuration. The normal secret hook also reported twelve already reviewed bare constant references in copied conformance fixtures and one `@inquirer/password` package-key line in the copied lock file. Always-cleanup reported no remaining folders, an empty variant list and closed ports. The original workflow subsequently completed with thirteen successful jobs and the generation probe failed; this is preserved failure evidence.
+
+Preparation now copies the same tracked files with their Git modes, writes the same template definition, runs measured `pnpm install --frozen-lockfile` and `pnpm run gen` inside the copied workspace, verifies every copied tracked SHA and filesystem mode, then stages and makes the same ordinary commit. A failure in installation, generation or preservation prevents staging and commit. The root format, lint and secret hooks remain enabled. All four variant runtime gates, resolution checks, resource ownership, cleanup, image and frontend-difference measurements retain their original code.
+
+The scanner configuration preserves its complete 2,712-byte prefix and appends the exact two AND allowlists: `generic-password` with the five anchored copied conformance paths and the three anchored identifiers `PASSWORD`, `NEW_PASSWORD`, `LONE_SURROGATE`; and `generic-password` with the exact copied lock path and its package-key line. Other rules and existing policies are preserved.
+
+| Local check                         |  Native exit | Wall seconds | Observed scope                                                                                                                                         |
+| ----------------------------------- | -----------: | -----------: | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Materialization RED                 |            1 |  0.910321959 | Four behavioral cases fail because ordinary commit occurs before copied-workspace bootstrap                                                            |
+| Same-test GREEN                     |            0 |  0.906307750 | Four cases pass: preparation order, actual tracked byte/mode copying and ordinary Git commit, installation/generation failures, changed-byte rejection |
+| Index-only scanner boundary control | 1 (expected) |  0.546942250 | All eight controls pass; scanner child 0.282450542 seconds, eleven intended positive findings                                                          |
+
+The scanner ignores all three symbols on all five allowed paths and the package key only at the exact copied lock path. A different literal and bare identifier, all three symbols on an unlisted fixture and another path, another rule on an allowed path, a different password-looking lock line and the same package key on another lock remain detected. Only rule/file/line/fingerprint metadata is retained; candidate fields are discarded. The owned scanner fixture is removed and its recorded process has exited. Tests use owned Git/files and inert install/gen commands; they do not prove a real copied workspace installation or generated service acceptance.
+
+Normal create, prototype, repository/schema, SWC, DI, compiled lazy ESM, staged root check and ordinary hooks are required for local completion. Real copied installation/gen, all four generated variants and complete changed-head fourteen-job CI remain pending. This remains the partial 19-operation/83-schema probe with the existing 41-pass/53-skip selection of 94 cases; full 39/126/94 and web 20/admin 18 coverage, incomplete telemetry and cross-platform process reliability remain future product gates.
+
+### Local verification failure and POSIX mode scope
+
+The first ordinary prototype check for this correction exited 1 in 19.140801500 seconds: 175 passed and one failed out of the preserved 176 tests in 22 files. The existing controlled pending-peer cleanup case observed 5,049.293ms against its unchanged 3,000ms bound and fixture exit 1. The protected fake fixture, process code, assertions and deadlines are unchanged. All eight fresh owned cleanup observations confirm recorded processes/groups gone and temporary folders absent; the recorded peer port was rebound. The failed cache is retained, and its old generated-stage record is stale because the test stage stopped first. Actual termination ordering and the broader process reliability cause remain unresolved.
+
+The full create check passed with 188 tests, seven existing skips, 195 total in 21 files and 66 Node tests. The initial four-case GREEN remains the original test-byte measurement. A subsequent measured Windows Node 24.19 filesystem probe reports mode 0666 after either chmod 0755 or 0644. Only the new positive executable-mode case now skips Windows; its complete assertions and all four Mac/Linux cases are retained. Executable-mode proof is POSIX and Ubuntu CI scope; this does not establish Windows generated-project acceptance. Installation/generation failure and changed-byte rejection cases remain portable inert controls. New checks for this narrowly changed test are recorded separately, while all prior successful and failed results remain preserved.
+
+### Controlled close-order correction
+
+A separate controlled experiment observed the fake grandchild's close event before requesting parent shutdown, while the parent and an incomplete owned TCP peer remained alive. The prior fake shutdown handler registered its close listener only after SIGTERM and therefore missed that already completed event. The measured private pair reproduced 5,047.168875ms / exit 1 and 27.953833ms / exit 0. The original failed whole-check run did not record this event order, so that run's exact timing cause remains unproven.
+
+A new POSIX regression reads the actual fixture at execution time, inserts exactly one passive close-marker observer into an owned temporary copy, closes the owned grandchild first and observes its marker before calling the unchanged production cleanup helper. The fake fixture now registers close handling early and remembers both child completion and shutdown request, preserving its other bytes and behavior. The original 176 tests, all deadlines and production process helpers are unchanged.
+
+The new test's native RED exited 1 in 5.561657875 seconds with measured 5,037.622959ms and fixture exit 1. After the exact fake shutdown-block change, the same test bytes passed native 0 in 0.457737584 seconds with measured 27.618125ms and fixture exit 0. Both runs prove the chosen event order, peer closure, two owned PIDs and group gone, owned port rebound and temporary folder absence. A separate Python rebind reader failed with address-in-use; the actual test and a fresh Node net.Server reader prove rebinding, and the Python-specific cause remains unmeasured. No test replay was used to repair that reader.
+
+The local unit suite now comprises the preserved 176 cases plus one close-order case: 177 cases in 23 files. Final seven-stage, repository/schema, SWC, DI, compiled lazy graph, staged root and ordinary hook gates remain required; their actual outputs are retained in the correction report. The accepted changed create check remains 188 passed with seven existing skips / 195 total and Node 66. This proves fake-source cleanup only; production process reliability, all four real generated variants and new complete changed-head fourteen-job CI remain separate gates. Full product coverage and telemetry limitations remain as previously recorded.
+
+## Task 7 real tracked harness inputs correction
+
+The exact `f55f2259f16a9b1d12ba0a6bbdf76b563963e42d` workflow `38237468681` completed with thirteen successful jobs and one generation failure. Clone preparation independently installed and generated the copied workspace, and its ordinary commit `013` passed the existing format, lint and secret hooks. Standalone generation, frozen installation, setup, seven-stage 177-case check, SWC build, actual API child readiness, image build, clean Git and owned compose/image cleanup completed. Web generation `035` then failed with native 1 in 0.640899746 seconds, at 10:40:15.186Z–10:40:15.826Z, because `apps/api/.claude/settings.json` was missing. Cleanup at 10:40:17.859Z recorded standalone completed/cleaned, web incomplete/cleaned with no owned infrastructure or image, folders absent and ports closed. Admin and both never started. These are preserved failed-CI results, without an independent fresh check of all 35 historical command PIDs.
+
+The real 366 tracked prototype files had none of `.claude/settings.json`, `lefthook.yml` or `.betterleaks.toml`. Production `writeHarness` requires all three API inputs. The older `nestjsFixture` copied a FastAPI fixture that fabricated empty settings and hook jobs, masking the actual missing NestJS inputs. Production CLI requirements, existing fixtures, 195 create cases, 177 prototype cases, all manifests/locks/goldens and the fourteen-job workflow remain unchanged.
+
+The three new tracked inputs use existing prototype Node/pnpm tools. Settings allow the existing source checks, build, tests, generation, DI and scoped formatter/linter commands, explicitly deny private environment reads and generated/OpenAPI edits, and retain dangerous-command denies. The Lefthook input has staged Prettier and ESLint jobs and pre-push `pnpm check`. Betterleaks contains only `extend.useDefault = true`, without allowlists, prefilters or rule disabling. The existing 3,390-byte repository scanner configuration remains byte-identical.
+
+The new parameterized `create/test/nestjs-probe-harness.test.ts` materializes actual tracked prototype inputs, selected real frontend inputs and tracked combo assets into owned Git/file fixtures. It calls the real `createProject` and combo `writeHarness` paths for standalone, web, admin and both. Only pnpm installation/format/generation calls are inert; no generated installation, setup, check, runtime or infrastructure runs locally. The test verifies required API input bytes and tracking, functional format/lint definitions, merged API/frontend jobs and the existing frontend-backed secret job, default scanner protection without API exceptions, moved environment/generated-source denies, ordinary fixture first commits and clean Git. It uses the existing Windows copy behavior and no new test skip; Windows runtime acceptance remains unmeasured.
+
+| Local gate | Native exit | Wall seconds | Observed scope                                                                         |
+| ---------- | ----------: | -----------: | -------------------------------------------------------------------------------------- |
+| RED        |           1 | 17.253618750 | Four real missing-input failures; three combo failures originate in writeHarness       |
+| GREEN      |           0 | 26.620075167 | Same 8,107-byte test, four variants pass after only the three tracked inputs are added |
+| create     |           0 | 42.730691417 | 192 passed plus seven existing skips, 199 total / 22 files; all 66 Node cases pass     |
+| prototype  |           0 | 16.857593166 | All seven normal stages and unchanged 177 cases / 23 files                             |
+| repo       |           0 |  2.218515333 | Four stages, 36 cases / three files, 83 schemas with zero differences                  |
+| SWC        |           0 |  0.371007667 | 134 compiled files                                                                     |
+| DI         |           0 |  2.679976500 | tsc, SWC and Vitest SWC verify the graph and reject invalid type imports               |
+| lazy       |           0 |  0.367011000 | Compiled ESM init/close, 19 operations, listening=false and infrastructure=false       |
+
+RED and GREEN used identical test bytes, SHA256 `a15b4b50b94f8a5d0b113db05841f69976413b909b659464633914b667ff1f66`. Their twelve owned folders each were removed and their emitted owner PIDs were checked absent. Full create cleanup verified 299 recorded folders and emitted fixture owners; unrecorded inner Git/Node-test PIDs remain unknown. Source checks preserve the fresh nine fake-process observations, emitted PIDs, two explicit groups, mock/lazy process closure and four numeric port rebindings. The initial new-test lint diagnostic found an empty inert callback and a possibly undefined frontend expression; both were corrected before RED, without changing old tests. The first read-only follow-up proof reader incorrectly assumed mode 0444 for a coordinator file whose actual mode is 0644; the actual mode and failed reader were preserved. Native walls are command measurements, not CPU, model-token or currency estimates.
+
+The DI exploratory tsx graph remains verified=false with erased metadata; it is not an accepted app runtime. Existing negative-test error/warning logs and older process/telemetry failures remain preserved. The final complete six-path staging precedes one root eleven-stage gate and one ordinary normal-hook commit; their actual outcomes belong to the correction report.
+
+These files supply partial prototype generation inputs, not full standalone security or agent-harness acceptance. Standalone Lefthook/secret-tool installation and invocation have not been implemented or measured here. The default scanner input adds no exception for the copied source references; the full product must separately design and validate standalone secret tooling and narrowly justified source-reference handling. Migration-aware, tool-edit, stop and session agent hooks are absent from this prototype input and remain full-product planning gates. Combo hooks and frontend-backed scanner wiring are configuration evidence, not measured generated-runtime security acceptance. No tool download, dependency/pin change, scanner exemption or CLI fallback was added. All four real changed-head generated variants, their runtime/images/cleanup and a new exact whole fourteen-job CI remain pending. Full 39-operation/126-schema/94-flow and web 20/admin 18 coverage, complete telemetry, process reliability and a new concrete full-plan approval remain separate product gates.
+
+## R31·R32: 정상 CLI 이후 잠금 관측과 원본 Zod 집합 보존
+
+시작 HEAD `ef9fca4fb98bba0e840218b51a21f83575ac76d8`의 CI `38241941310`은 14개 작업 중 13개 성공, 생성 프로브 1개 실패로 끝났다. 정상 web 생성은 `11:22:10.671Z`–`11:22:17.732Z`, native 1, 7.060851838초였으며 실제 lockfile-only 해석 뒤 web 루트 importer 보존을 거절했다. standalone은 완료·정리했고 admin·both는 시작하지 않았다. 거절된 after 잠금 파일은 남지 않아 실제 변경 필드는 여전히 **UNKNOWN**이다. 다섯 peer 문맥 차이는 원본 비교의 가설이며 실제 실패 원인으로 확정하지 않는다.
+
+R31은 정상 `pnpm new`의 모든 인자·환경·순서와 fatal 결과를 유지한다. 실제 조합 importer 거절 뒤에만 별도 이름·대상의 CI 진단을 한 번 실행한다. 기존 `createProject`와 `runPnpm`을 그대로 쓰고 주입 경계에서 원본 잠금, 생성 manifest·workspace, before·after 원문과 해시 및 전체 구조 차이를 staging 밖에 독점 생성한다. 파일 허용 목록은 잠금·manifest·workspace뿐이며 환경·설치물·캐시는 담지 않는다. 기존 verifier와 정리를 유지하고 진단이 재현되지 않아도 다음 runner 호출에서 멈춰 frozen·format·gen·setup·runtime·image로 진행하지 않는다. 외부 진단 native 측정과 runPnpm을 감싼 UTC·wall 측정은 별개이고, 노출되지 않은 내부 pnpm PID·native exit·자체 wall은 null이다. 이 자료는 별도 재현 자료이며 기존 실패의 소급 candidate가 아니다. 진단 성공·실패·비재현·기록 실패 모두 동일한 원래 CLI 오류 객체를 다시 전파한다.
+
+R32는 별도로 승인한 잠재 검사 오류 수정이다. 변경하지 않은 프론트 원본은 `zod@3.25.76`과 `zod@4.6.5`를 함께 갖지만 이전 overlap 검사는 Zod 하나만 허용했다. 선택한 원본들의 정확히 정렬한 Zod package-key 합집합과 direct 4.6.5를 요구하며 새 버전·원본 Zod3 삭제·Zod4 삭제·direct pin 변경을 거절한다. 다른 다섯 overlap 검사와 모든 원본 해석 verifier는 그대로다. Zod 수정은 위 실제 importer 실패의 원인이나 해석 수정이 아니다.
+
+로컬은 실제 Git·파일 생성과 inert pnpm callback만 썼다. 최종 capture 단일 사례는 컴파일되는 pass-through에서 외부 before 자료 누락으로 RED(native 1, 1.315900459초), 동일 테스트 바이트에서 GREEN(native 0, 1.876886458초)이다. SHA256은 `7a725413436d561498c793d07471855f7c2e95643bd284312dcac66d310a2bef`이며 synthetic importer version만 바꾸고 specifier·strict exit 1·한 번의 lock delegate·후속 호출 금지·정리·외부 원문/해시/444 모드·원래 오류 객체 identity를 확인한다. Zod 단일 사례는 실제 원본 `mergeAppLocks`에서 이전 assertion으로 RED(native 1, 1.854597875초), 동일 바이트에서 GREEN(native 0, 1.876776458초)이며 SHA256은 `ce11d231532cf4736d4612161f2fa98ac5c9f173e18896758b90797af627a9b6`이다. 원본·pin 음성 대조도 같은 사례에서 확인했다.
+
+초기 capture GREEN은 마지막 새 fixture 상태 assertion에서 실패했다(native 1, 1.446396500초). 기존 fixture가 의도적으로 남기는 무추적 파일을 깨끗한 상태로 잘못 가정했으며, 승인받아 새 테스트의 초기 상태와 최종 상태를 비교하도록 고쳤다. 원래 RED·실패·정리 자료는 유지했다. 새 파일의 typed lint 오류와 CI 파일 400줄 제한 피드백도 유지하고, 승인된 타입·문법·동일 오류 identity 검사 뒤 최종 동일 바이트 RED/GREEN을 새로 측정했다. lint 면제·기존 fixture 변경·새 skip은 없다.
+
+완전한 create check는 native 0, 45.858688375초로 끝났다. 기존 199개(192 PASS+기존 7 SKIP)에 새 두 사례를 더해 201개(194 PASS+7 SKIP), Vitest 24개 파일과 기존 Node 66 PASS이며 FastAPI golden 대조도 유지했다. 이 기록 뒤 정확한 일곱 파일을 stage하고 루트 11단계와 일반 hook 커밋을 확인한다. 변경하지 않은 prototype 177·통합 43·auth 13·quota 20·적합성 선택 41/94 및 이전 SWC·DI·lazy 결과는 역사적 증거이며 이번에 재실행하지 않았다. 실제 resolution·frozen 설치나 생성 API runtime·Docker·DB·Redis·메일·스토리지는 로컬에서 실행하지 않았다.
+
+새 HEAD의 실제 CI capture는 아직 **pending**이다. 다음 CI가 원래 strict 거절로 실패하며 자료만 남겨도 Task7 수락이 아니다. 실제 before/after로 확인한 최소 해석 수정 뒤 네 생성 변형의 실제 호환 결과와 새 exact-head 14개 작업 성공이 필요하다. 전체 39 operation·126 schema·94 적합성·web 20/admin 18·완전한 OTel·운영 프로세스 신뢰성·standalone 보안 도구/agent hook은 후속 전체 제품 게이트로 남긴다. draft PR은 병합하지 않으며 전체 설계·계획의 게시와 새로운 구체적 사용자 승인이 있어야 SDD를 시작한다.
+
+## Task 7 R33 — 별도 lock 진단의 pnpm 라이프사이클
+
+`675b07699fc43fa51186321c3ae95100f5f52957`의 CI `38251366271`은 14개 작업 중 13개 성공, `create-combo-nestjs-probe` 하나 실패로 완료했다. 정상 035 `pnpm new --api nestjs --web`은 2026-10-12 12:51:20.102–12:51:29.366 UTC, native exit 1, 9.264155219초에 기존 `web: . importer의 해석 결과가 바뀌었다` 거절을 유지했다. 별도 036 진단은 12:51:29.386–12:51:29.824 UTC, exit 1, 0.437705323초에 `pnpm을 찾을 수 없다 — pnpm 12.6.0으로 pnpm new를 실행한다`로 끝났다.
+
+036은 기존 `runPnpm`이 요구하는 `npm_execpath`가 없는 `pnpm exec tsx` 진입이었다. failure의 staging은 null이고 원본 API·web lock 사본과 failure/evidence만 남았다. `capture.json`, before/after lock, diff는 없으므로 실제 해석 후 변경 필드는 여전히 UNKNOWN이다. 원본·native 증거 검증은 tested 675와 materialization `50855ea3358aefd99bca4687d0704f8998ead878`의 125 artifact 파일, 36 native 명령·72 stream, 369 추적 prototype 파일을 묶는다. 265,348바이트 job log의 해시·메타데이터 검증을 전체 수동 열람으로 표현하지 않는다.
+
+R33 변경은 정확히 다섯 경로다. 루트에 private 진단용 `probe:nestjs:lock-capture = tsx create/test/nestjs-probe-lock-capture.ts` 하나를 더하고, `diagnosticPlan`의 실행 prefix만 `run probe:nestjs:lock-capture`로 바꾼다. evidence·binding·separator·target·API·frontend·name 인자는 그대로다. 새 운영 회귀 한 개와 이 두 문서의 append가 나머지다. pnpm 자체 라이프사이클이 진입점을 공급하며 production `runPnpm`, capture 본문·버전 preflight·불변 출력·엄격한 거절·원래 오류 객체·CI guard·후속 phase 중단·소유 정리는 유지한다. pin·lock·resolver·정책·importer guard 변경 근거는 없다.
+
+새 회귀는 `npm_execpath` 없는 직접 CI 호출 형태에서 실제 `diagnosticPlan` launcher를 소유한 inert package/script fixture로 실행한다. stub은 실제 변경 없는 `runPnpm(cwd, ["--version"])`만 호출하고 실제 나머지 인자를 전달받았음을 확인한다. root script key/value와 연결하며 설치·해석·frozen·gen·backend 호출은 없다. 동일한 4,670바이트 테스트 SHA256 `873e12ca2bcee65dbe396c484463e54bd20e1c1fc07f46a1a87633889eeca913`으로 원래 exec launch RED는 native 1/0.757070459초, 수정 후 GREEN은 native 0/0.903759125초였다. RED는 실제 missing-entry 분기까지 도달했고 GREEN은 버전 probe를 완료했다. 각 소유 fixture 제거와 기록된 자식 PID의 종료를 확인했다. 이 시간은 enclosing 테스트 명령이며 `runPnpm` 내부 자식 PID·exit·wall은 공개되지 않아 UNKNOWN이다.
+
+로컬 전체 `pnpm --dir create check`는 exit 0/46.470731375초였다. Vitest 195 PASS + 기존 7 SKIP = 202개, 24 passed/1 skipped 파일과 기존 Node 66 PASS를 확인했다. 기존 capture·Zod 회귀와 원래 201개 선언은 유지한다. 최종 완료 기준은 다섯 파일 전체 staging 뒤 새로운 루트 `pnpm check` 11단계와 일반 hook 커밋이다. 이 절은 그 최종 실행 전 staging용 기록이며 실제 최종 native 결과는 커밋 검증에서 별도로 확인한다. 변경 없는 prototype/SWC/DI/lazy gate는 재실행하지 않는다.
+
+새 exact-head CI는 아직 대기다. 다음 진단 CI도 정상 035에서 실패하면서 before/after를 남길 수 있다. capture 성공은 호환 생성이나 Task 7 성공이 아니다. 실제 diff에 근거한 별도 최소 수정 뒤 네 생성 variant 모두 호환되고 새로운 전체 14개 작업이 성공해야 Task 7을 수용한다. draft PR 12는 병합하지 않으며 전체 Windows 설계·계획, MAIN 두 문서 검증·게시와 새 구체적 사용자 계획 승인은 후속 단계다.
+
+## 프런트 잠금 검증 뒤 API를 합치는 생성 순서
+
+`6cc4da6`의 CI `38261926884`는 13개 성공·생성 프로브 1개 실패로 끝났다. 단독은
+완료했지만 web은 원래 CLI의 importer 보존 검사에서 실패했고, 별도 진단도 resolver가 정상
+반환한 뒤 같은 엄격한 검사에서 실패했다. admin과 두 프런트 조합은 시작하지 않았다.
+별도 진단의 후보를 원래 실패 호출의 후보라고 소급하지 않는다.
+
+실제 before 545190바이트와 after 527592바이트의 119개 고유 변경은 다음과 같다.
+
+| 기제 | 고유 변경 수 | 관측                                                                            |
+| ---- | -----------: | ------------------------------------------------------------------------------- |
+| M1   |           47 | importer 사이 optional peer 공급으로 OTel·hashes·SWC 등의 peer 문맥 추가        |
+| M2   |           11 | workspace 전체의 패키지별 children 소유로 chai·ignore·magic-string·resolve 변경 |
+| M3   |           39 | API 원본에서 도달하지 않는 package 19개·snapshot 20개 제거                      |
+| M4   |            6 | 전역 TypeScript override가 package의 peer 선언을 6.0.3으로 재표현               |
+| M5   |           16 | 예상한 루트 importer·turbo 계열·전역 override 추가                              |
+
+이 설명은 pnpm 12.6.0의 Rust 소스 `a959dce`에 한정한다. npm 배포 tarball의 SHA1·SHA512,
+registry integrity·SLSA subject와 tag가 같은 버전·commit을 가리키며, 추출한 소스 553개의
+archive 바이트 일치에 근거한다. 서명 암호학 검증과 Linux 실행 배포 tarball digest의 별도
+검증은 하지 않았다. 기존 합친 lock에는 루트 importer와 override가 없어 freshness 검사를
+통과하지 못하고 모든 importer를 함께 다시 해석하는 경로로 갔다.
+
+생성 순서를 두 단계로 바꾼다. 첫 단계는 API 원본 workspace·lock을 메모리에 보존하고,
+API package와 빌드 정책 없이 프런트 workspace·원본 lock만 쓴다. 기존 lockfile-only 호출
+한 번 뒤 즉시 모든 원본 프런트 해석을 엄격히 확인한다. 둘째 단계는 최종 API·프런트
+workspace와 충돌 없는 allowBuilds 합집합을 복원하고, 실제 첫 단계 결과의 루트·프런트·계약
+importer와 override를 그대로 두고 원본 API의 `.`만 `apps/api`로 옮겨 합친다. API의 모든
+transitive·orphan 기록을 보존하며, 합친 직후와 기존 frozen 호출 뒤 원본들을 다시 검증한다.
+FastAPI 생성 바이트·호출 순서, minimumReleaseAge 1440, TypeScript 6.0.3과 기존 엄격한
+부정 제어를 유지한다. API 원본 pin으로 검증한 기존 전역 TypeScript 파생 override만 예외이며,
+공유 package의 M4 peer 선언 재표현과 M2 children 변경은 계속 치명적인 오류다.
+
+로컬 새 회귀 4개는 실제 createProject와 추적 원본 API·web lock을 사용한다. 첫 해석 단계의
+API 부재, frozen 이전 API 전체 보존·orphan·루트 상태·호출 순서, 실제 CI next importer 변화의
+원래 오류 1·대상 정리, 엄격한 병합·workspace 부정 제어를 확인한다. 외부 실행만 PnpmRunner로
+대체하고 원본에서 가져온 루트 도구와 정확한 전역 override만 더하므로 실제 pnpm resolver
+실험이 아니다. 기존 코드의 API 노출 assertion에서 RED를 확인한 뒤 새 4개가 GREEN이었다.
+
+첫 전체 create 검사는 198개 성공·1개 실패·7개 skip이었다. 보호된 capture 테스트가 web 변경
+하나만 기대했지만, 새 첫 단계에서 API importer가 없는 사실도 진단에 나타났기 때문이다.
+이 실패를 보존하고 별도 좁은 승인을 받아 기존 sourceImporters 배열 맨 앞에 API 원본 importer의
+정확한 removed 항목 하나만 추가했다. 원본 fixture lock에서 기대값을 독립적으로 읽고 원래 web
+항목과 나머지 모든 assertion·바이트, capture helper와 CLI 우선 치명적 실패 경로를 유지했다.
+변경 뒤 전체 create는 199개 성공·7개 skip(206개, 26파일)과 기존 Node 자산 66개 성공이었다.
+프로토타입의 기존 177개·23파일·7단계와 루트 11단계를 완료 검사로 유지한다.
+
+H1(실제 프런트만 해석했을 때 보존), H2(공유 package에서 M4가 발생하지 않음),
+H3(원본 API를 합친 lock의 실제 frozen materialization), H4(setup·runtime·build·이미지)는
+새 CI에서만 결정한다. 로컬 GREEN으로 네 변형 완료나 CI 성공을 주장하지 않는다. 첫 단계의
+진단에 API importer가 없다고 기록하는 것은 그 단계의 실제 상태이며 API 비교를 숨기지 않는다.
+기존 실패한 13/1 CI는 그대로 실패다.
+
+R1: 하나의 공유 lock은 이후 add·remove·update나 새 resolving install 때 importer 사이 변경을
+다시 만들 수 있다. R2: 기본 hidden hoist가 API 전용 패키지를 프런트에서 런타임에 도달하게
+할 수 있어 lock 보존만으로 독립 프런트와 런타임이 같다고 증명하지 못한다. 최종 제품 계획에서
+분리된 설치 범위까지 판단해야 한다. 실제 공유 M4 충돌은 중단 조건이며 허용 범위를 넓히지 않는다.
+
+OTel HTTP 1·Express 0·pg 6·Redis 0과 completeness=false, DI의 tsx 미지원, 부분
+19 operation·83 schema·41/94 conformance는 유지된다. 전체 39/126/94와 web 20·admin 18,
+관측 완전성·process 신뢰성은 미완료다. 이 프로토타입 수정은 최종 NestJS 설계·계획이나 SDD
+승인이 아니며, 공개된 구체적 최종 계획에 대한 새 사용자 승인이 필요하다.
+
+## API 병합 거절 뒤의 관측 전용 진단
+
+현재 기준 HEAD `a5dd891`의 CI `38281471605`는 13개 성공·생성 프로브 1개 실패로
+끝났다. 단독은 완료했고, web의 정상 035 호출은 첫 단계 프런트 검증을 통과한 뒤
+`packages.@typescript-eslint/eslint-plugin@8.71.0`의 엄격한 API 병합에서 실패했다.
+036 진단과 after lock은 없으며 admin·두 프런트 조합은 시작하지 않았다. 현재 해석 후
+실제 필드 값은 UNKNOWN이다. 이전 `6cc4da6` 진단의 실제 후보와 이 호출을 구분한다.
+
+R37은 Stage A 관측만 허용한다. 기존 `diagnoseImporterFailure`의 native 1 조건에
+`(web, api)`·`(admin, api)` 병합 거절과 API verifier의
+`해석 결과가 바뀌었다` 메시지를 더한다. 기존 importer 조건과 모든 생성 코드는 유지한다.
+일치하는 CreateError의 외부 `failure.json` outcome만 `strict-api-merge-refusal`로
+분류하며 boundary stop이 먼저이고 기존 `strict-refusal`·`diagnostic-failure`도 유지한다.
+프런트끼리 거절·무관한 실패와 native 0·null·2는 새 진단을 실행하지 않는다.
+
+정상 CLI가 먼저 실행되며 그때 측정한 실패 객체를 항상 그대로 다시 던진다. 별도 진단이나
+보고 자체의 실패도 정상 실패를 대체하지 않는다. 진단 대상·이름·binding·argv·출력 모드와
+첫 lockfile-only 직후의 경계, finally와 소유 정리는 유지한다. 생성·peer 허용·API 입력
+정규화·검증 완화와 Stage B는 이번 범위에 없다.
+
+새 테스트 두 개는 실제 진단 함수와 captureLockResolution이 호출하는 기존 createProject를
+사용한다. 변경 전 RED(native 1)는 진단 기록이 빈 배열인 assertion과 실패 outcome이
+diagnostic-failure인 assertion에서만 실패했다. 같은 테스트 바이트의 GREEN(native 0)은
+web·admin API 거절과 verifier, 음성 native 제어, 진단·보고 오류의 원래 객체 보존을 확인했다.
+설치된 fixture의 공유 기록을 첫 단계에서 바꾼 순수 원본 기반 delegate 대역으로 실제 엄격한
+둘째 단계 거절까지 실행하고, 외부 before/after·공유 기록 diff·readonly 모드·대상과 staging
+제거를 확인했다. 이 대역은 실제 pnpm resolver 실험이 아니며 실제 여섯 기록의 측정값을
+대신하지 않는다. 전체 create 검사는 Vitest 201개 성공·기존 7개 skip(208개, 27파일)과
+Node 자산 테스트 66개 성공이었다. 기존 모든 테스트 바이트를 유지한다.
+
+pnpm 12.6.0 원본의 override hook과 cycle 재해석 규칙에서 예상한 여섯 TypeScript peer
+기록의 변화는 추론이다. 현재 after 값·다른 메타데이터·첫 거절 뒤의 충돌은 측정하지 않았다.
+다음 변경 HEAD의 전체 14개 CI는 13 성공·1 실패와 별도 036 관측을 예상하며, 이 예상은
+실행 결과나 호환 수용이 아니다. 별도 진단은 두 번째 실제 후보이며
+`retrospectiveOriginalCandidate=false`를 유지한다. 그 after 바이트를 원래 035 후보라고
+소급하지 않고 정상 실패는 계속 치명적이다.
+
+향후 비교 도구에는 resolved·api·pin·out.json 네 인자가 필요하다. Root가 실제 모든 차이,
+동일한 도구 문서·settings, 원본 프런트 importer·snapshot·resolution과 R19의 정확한
+override 메타데이터만을 독립 검토한 뒤에야 새로운 Stage B 결정을 할 수 있다. 생성 호환,
+네 runtime 변형, Task 7과 전체 NestJS 계획·SDD는 아직 수용하지 않는다.
+
+R1의 이후 add·remove·update·새 resolving install 드리프트와 R2의 hidden hoist 런타임
+도달성은 미해결이다. OTel HTTP 1·Express 0·pg 6·Redis 0, completeness=false와
+tsx DI 미지원, 부분 19 operation·83 schema·41/94 conformance를 유지한다.
+전체 39/126/94·web 20·admin 18·관측 완전성·process 신뢰성은 후속 전체 제품 계획의
+검증 항목이며, 새로 공개한 구체적 최종 계획에 대한 사용자 승인 뒤에 SDD를 진행한다.
+
+## 실제 신호와 로그인 시험의 비동기 준비 확인
+
+부모 b12a2bb의 실제 CI 38293140909는 전체 14개 중 12개 성공·2개 실패였다.
+생성 프로브의 단독 API check 021은 native 1·49.533271064초로 176/177개를 통과한 뒤
+real OS SIGTERM 시험에서 worker.json ENOENT로 실패했다. 단독 생성·frozen·setup은
+성공했지만 완료/result는 없고 web·admin·두 프런트 변형은 시작하지 않았다.
+035·036·after lock도 없다. 기존 a5dd891의 38281471605 phase 2 package 거절은
+별도 실패로 보존하며 현재 CI 실패를 그 해석 결과와 혼동하지 않는다.
+
+real OS signal 시험은 command marker 하나만 기다렸다. runner는 API HTTP readiness 뒤
+command onStart를 기록하므로 worker·scheduler fixture의 준비를 보장하지 않는다.
+fixture의 기존 PID marker도 종료 handler 설치보다 앞섰다. 이번 수정은 기존 10초 poll에서
+api·worker·scheduler·command marker 모두를 기다리고, fixture의 child-close·SIGTERM
+처리 설치 뒤 listen callback에서 같은 PID 배열을 기록한다. 실제 운영 runner의 readiness,
+종료·그룹 정리 구현과 CI 관측 capture는 바꾸지 않는다.
+
+변경 전 부모 바이트 그대로인 두 코드 파일에 private Node preload를 적용했다.
+정확한 server.mjs argv·worker.json basename·aitpl-nestjs-proto-signal- 부모 이름이
+모두 맞는 worker만 1200ms 늦춘다. 다른 250ms readiness·로그 tail 시험과 API·command·
+다른 Node·자식에는 적용하지 않는다. 이 좁은 조건은 별도 승인받았고 최종 소스에 넣지 않는다.
+기존 9개 중 두 real OS SIGINT·SIGTERM 시험이 worker.json ENOENT로만 실패한 native 1
+RED를 확인했다. 같은 hook 바이트·환경·argv의 변경 뒤 9개는 native 0 GREEN이었다.
+기존 130/143 종료 코드, 세 서버·자식·command PID ESRCH, 세 detached 서버 그룹과
+command 그룹 ESRCH, finally cleanup·evidence와 포트 검증을 그대로 유지한다.
+고정 sleep·timeout 증가·skip·ESRCH 대체 판정을 추가하지 않았다.
+
+같은 CI의 기본 create-combo web check는 929/930개를 통과하고 로그인 폼의 마지막
+line 159에서 이전 재발송 성공 문구의 부재 assertion에 실패했다. queryByText가 반환한
+role=status DOM에는 실제 한국어 성공 문구가 남아 있었다. 빈 문구나 queryByRole
+시험이 아니다. useActionState의 새 결과가 commit되기 전 즉시 검사한 경합으로,
+앱 소유 login-form.test.tsx의 named import에 waitFor를 더하고 그 마지막 같은
+부재 assertion 하나만 기본 timeout의 await waitFor로 감싼다. 제품 로그인 폼·feedback·
+로딩 UX·번역·shared와 다른 시험은 유지한다. 기존 7개 local 시험과 web 전체
+9단계 검사는 native 0이었다. web check는 성공한 자식 출력을 보존하지 않아 로컬 전체
+시험 수는 UNKNOWN이며, 실제 CI의 929/930개와 별도로 기록한다. 실제 CI RED의 내부 PID·native wall은 미측정이며
+로그의 Vitest 표시 시간이나 다운로드 비용을 native 측정으로 바꾸지 않는다.
+
+web 의존성이 없어 승인받은 기존 설치 트리를 격리 복사해 검사했다. 첫 pnpm exec가
+예상 밖 locked pre-run install과 native postinstall을 실행한 사실과 resolution 생략 로그를
+보존하고 즉시 별도 판단을 받았다. 원본·locks·pins·guard는 그대로이며 후속 명령은
+두 대소문자 환경 변수의 verifyDepsBeforeRun=error로 불일치 때 설치하지 않고 실패하게 했다.
+이 로컬 prerequisite와 지연 장치는 실제 Linux resolver나 생성 네 변형 호환 증거가 아니다.
+전체 create는 201개 성공·원래 7개 skip(208개, 27파일)과 Node 자산 66개 성공이었다.
+정상 환경의 prototype 7단계·177개·23파일과 정확한 다섯 파일 staging 뒤 root 11단계를
+완료 기준으로 유지한다. 두 문서는 부모 바이트를 prefix로 보존하는 append만 한다.
+
+로컬 R38 시험 수정의 완료와 CI·Task 7·네 실제 runtime 변형·Stage B·최종 계획·SDD
+수용은 구분한다. Root의 전체 소스·diff·보고·native·자원 검토와 정확한 worker 종료 뒤에만
+변경 HEAD의 새 전체 14개 CI를 관측한다. 실제 lock 값과 새 prospective ruling 전
+Stage B를 진행하지 않는다. R1 resolving drift·R2 hidden hoist, OTel completeness=false,
+tsx DI 미지원·부분 19/83·41/94와 전체 39/126/94·web 20·admin 18의 후속 범위는 유지한다.
+최종 SDD는 새로 공개한 구체적 전체 계획에 대한 사용자 승인 뒤에 진행한다.
+
+## R39: 파생 TypeScript peer의 정확한 메모리 정렬
+
+부모 acf60171의 CI 38299683750은 전체 14개 중 13개 성공·생성 프로브 1개 실패였다.
+원래 035 web 생성은 native 1·6.994370299초로 phase 2의
+packages.@typescript-eslint/eslint-plugin@8.71.0에서 거절됐다.
+그 뒤 별도로 실행한 새 036 진단은 native 1·3.543255998초로 같은 엄격 병합 거절을
+기록하고 after 잠금을 보존했다. 036은 원래 035 후보를 사후에 복원한 것이 아니다.
+단독 API의 생성·frozen·setup·check·build·E2E·이미지·정리는 완료됐지만 web은 실패했고
+admin·두 프런트 변형은 시작하지 않았다. 이 전체 14개 실패 관측은 Task 7 수용이 아니다.
+
+현재 캡처를 설치된 TypeScript YAML 파서로 대조한 실제 측정은 공유 API package 511개,
+snapshot 484개다. 도구 문서·importer는 같고 기존 optional 정규화 뒤 snapshot 차이는 0개다.
+메타데이터 차이는 파생 overrides {typescript: 6.0.3} 하나뿐이며, 공유 API 레코드 다섯 개는
+기존 peerDependencies.typescript 문자열 `>=4.8.4 <6.1.0`만 6.0.3으로 바뀌었다.
+대상은 @typescript-eslint의 eslint-plugin·parser·type-utils·utils와 typescript-eslint이며
+모두 8.71.0이다. 실제 프런트 재표현은 이 다섯 개와 eslint-config-next@16.3.8의
+`>=3.3.1` → 6.0.3을 합친 여섯 개다. override hook과 cycle에 따른 재해석 설명은
+고정 pnpm 소스·순수 그래프 분석의 근거이며 이번 값은 현재 036에서 측정됐다.
+내부 runPnpm PID·native exit·wall은 여전히 UNKNOWN이다. 0.466245083초는 캡처를
+감싼 wrapper의 wall만 뜻하며 내부 native 측정으로 바꾸지 않는다.
+
+새 R39 구현은 기존 R19 파생 override 조건 아래 공유 API 레코드의 기존 문자열 peer만
+신뢰 pin으로 바꿨을 때 전체 객체가 같아지는 경우를 허용한다. API YAML 문서는 병합 직전
+메모리에서만 정렬하고, 조건이 없거나 맞는 공유 변화가 없으면 원본 문자열을 그대로 반환한다.
+원본 잠금 파일은 쓰지 않는다. peer 추가·삭제, 틀린 pin, engines·integrity·다른 peer·
+peerDependenciesMeta·추가 override와 두 번째 변화는 계속 fatal이다. 패키지별 허용 목록이나
+포괄적 메타데이터 예외는 없다. 두 검증 루프는 계속 raw API 원본을 검증한다.
+
+mergeApiLock과 기존 R35 세 번째 음성 시험은 그대로이며 raw 입력의 TypeScript peer
+재표현을 계속 거절한다. 제품 경로에서만 새 R39의 메모리 정렬과 동일한 전체 레코드 조건의
+API 검증을 거친다. importer·도구·메타데이터·snapshot·optional 그래프와 프런트 비교,
+FastAPI 대조군·기존 모든 시험·골든·고정 버전·minimumReleaseAge 1440은 유지한다.
+@nestjs/schematics@12.0.6·@prisma/client@7.10.0·prisma@7.10.0·valibot@1.4.2의
+API 전용 레코드도 원본 그대로다.
+
+새 시험은 실제 소스 잠금을 바이트 그대로 격리 fixture에 복사하고 현재 036의 여섯 변화만
+순수 double로 만든다. 실제 resolver·생성 프로젝트 설치·setup·runtime 실험이 아니다.
+첫 실행은 두 의도한 양성 실패 외에 기존 fixture의 의도된 무추적 파일을 깨끗하다고 오판한
+세 assertion도 실패해 5실패·8통과였고 유효한 전체 RED로 인정하지 않았다.
+새 시험만 시작 porcelain과 종료 상태를 비교하도록 승인받아 고친 뒤 같은 명령의
+native 1·23.67831099999603초에서 정확한 병합·raw 검증 오류 두 개와 음성 11개 통과를
+확인했다. 같은 시험의 GREEN은 native 0·26.308169208001345초, 13개 모두 통과였다.
+새 시험 callback의 린트 스타일 오류 12개도 별도 실패로 보존하고 기대값 변경 없이 고쳤다.
+전체 create는 실제 214개 성공·기존 7개 skip(221개·28파일), Node 자산 66개 성공이었다.
+로컬 완료 gate는 prototype 7단계·177개·23파일과 정확한 다섯 파일 staging 뒤 root 11단계를
+포함한다. 두 문서는 부모 전체 바이트를 prefix로 보존한 portable append만 한다.
+
+이 로컬 변경은 CI·Task 7·네 실제 runtime 변형·전체 Nest 계획·SDD 수용이 아니다.
+Root의 소스·보고·native·보호 파일·자원 전체 검토, worker release와 새 정확한 positive exit,
+변경 HEAD의 새 전체 14개 CI와 standalone·web·admin·both의 실제 생성·frozen·setup·
+runtime·E2E·이미지·정리 확인이 남아 있다. 기존 모든 실패 관측과 UNKNOWN은 보존한다.
+R1 resolving drift·R2 hidden hoist는 미해결이며 OTel 관측은 불완전하고 tsx DI는 미지원이다.
+부분 19/83·41/94를 유지하며 전체 39/126/94·web 20·admin 18의 후속 범위는 별도다.
+최종 SDD는 새로 공개한 구체적 전체 계획에 대한 새 사용자 승인 뒤에 진행한다.
+
+최초 prototype 검사는 native 1·1.4488776669604704초로 두 문서 포맷에서 멈췄다.
+private cache의 suffix가 ignore 정책에 걸린 앞선 native 0 명령은 실제 포맷 증거가 아니었다.
+suffix만 ignore 경로를 명시해 고정 Prettier로 처리하고 부모 prefix를 그대로 보존해 적용했다.
+
+그 다음 prototype는 7단계 통과를 출력했지만 private 관측자가 포트 bind에서 실패해
+외부 native 1·16.200977125088684초로 기록됐다. 미보존 내부 top PID·exit·wall은 UNKNOWN이고
+당시 EADDRINUSE 원인도 UNKNOWN이다. 기존 관측자 바이트를 보존하고 승인된 새 관측자는
+포트 검사 전에 실제 자식 정보를 저장하며 SO_REUSEADDR만 쓰고 실제 bind·listen·close를
+요구한다. SO_REUSEPORT·포트 변경·검사 생략·소유 미확인 프로세스 종료는 하지 않았다.
+기존 새 단위 기록의 52개 PID·명시된 두 그룹·기록된 두 포트만 별도 확인했으며, 승인된
+새 관측 gate는 native 0·15.830062792054377초로 7단계·177개·23파일을 통과했다.
+미기록 자원 신원과 ephemeral 포트는 UNKNOWN이며 요청값 0을 실제 과거 포트로 세지 않는다.
+
+문서 range의 line-start가 인용문으로 해석된 표현 오류도 새 suffix의 code span으로 고쳤다.
+원래 프런트 범위는 `>=3.3.1`이며 TypeScript pin 6.0.3으로의 실제 재표현이라는 뜻을 유지한다.
+
+## R40: 조합 루트의 공유 프런트 계약 관찰
+
+로컬 create 검사는 221성공·기존 7skip/228·29파일과 Node 자산 66성공을 확인했다. 새 시험의 void 화살표 표기 린트 실패(native 1)를 보존하고 승인된 중괄호 수정 뒤 scoped 포맷·린트를 통과했다.
+
+시작 HEAD `3d4877a`의 새 전체 CI는 14개 완료 중 13개 성공, `create-combo-nestjs-probe` 하나 실패다. baseline 10개는 모두 성공했다. 원래 web 생성 035는 native 0·21.381738213초였고 frozen·setup·API check·build·inert E2E 자식·API 이미지도 native 0이었다. Git 049도 native 0·0.004583875초였지만 그 뒤 순수 비교 함수가 `Missing frontend generated file: apps/web/contract/mock/src/generated/api.ts`로 멈췄다. 생성 native 실패나 별도 잠금 진단이 아니다. standalone은 완료됐고 web은 미완료, admin·both는 시작하지 않았다. 마지막 소유 폴더·compose·이미지·포트 정리는 네 변형의 완료와 별개다.
+
+현재 생성기는 첫 프런트의 `contract/*`를 조합 루트에 한 번 복사하며 각 앱의 `gen.config.json`도 `../../contract`를 가리킨다. 기존 probe의 모든 생성물을 `apps/<app>/`에서 찾던 가정만 고쳤다. 템플릿 상대 경로가 정확히 `contract/`로 시작하면 루트에서, 나머지는 각 앱에서 읽는다. 모든 추적 생성 소스의 출처·원본/결과 byte 수·SHA-256·changed를 유지하고 portable `generatedPath`도 남긴다. both는 하나의 공유 계약 결과를 두 템플릿 출처와 각각 비교한다. 파일 생략·누락 허용·다른 위치 fallback은 없다.
+
+새 회귀 시험은 실제 부분/전체 계약 문서와 격리 파일, 명시한 순수 추적 목록 대역으로 web·admin·both의 모든 행·경로·byte·SHA·changed를 확인한다. 루트 계약이 없으면 이전 앱 계약 사본이 있어도, 앱 생성물이 없으면 루트나 다른 앱 사본이 있어도 실패해야 한다. 같은 명령의 RED는 경로 처리에 따른 7개 실패, 동일 시험의 GREEN은 7개 성공이었다. 이는 fixture 관측이며 실제 생성 CI 측정을 대신하지 않는다. 기존 시험·골든·음성 대조군·생성 CLI·잠금 정렬/검증·R19·optional 그래프·고정 버전·release age 1440은 그대로다.
+
+현재 CI artifact의 186파일·56 native receipt·112 raw stream·369 소스 바인딩은 전송된 byte 검증 범위다. 완전한 printed 기록은 44개이며 12개가 없으므로 전체 printed-log equality는 계속 FALSE다. v2 실패를 보존하고 v3의 독립 artifact/source 검증으로 이 차이를 덮지 않는다. 큰 raw 로그 전체를 수동으로 읽었다고 주장하지 않는다. 현재 stack OTel은 `complete:false`·`Unexpected end of JSON input`이며 현재 trace 수는 UNKNOWN이다. 이전 HTTP·Express·pg·ioredis 수는 역사적 관측으로 남긴다.
+
+통합은 43성공·10파일·WARN 0, 선택 적합성은 41성공·53skip/94의 부분 범위다. API 부분 19 operation·83 schema, R1 resolving drift·R2 hidden hoist 미해결, tsx DI 미지원도 유지한다. Task 7·CI·all-four·전체 Nest 계획·SDD gate는 모두 FALSE다. Root의 전체 소스/시험/문서 suffix/patch·native·보호 자원 검토와 worker release·새 정확한 positive exit 뒤 변경 HEAD의 새 전체 14개 CI, standalone·web·admin·both의 실제 전체 검증이 남아 있다. 전체 39/126/94·web 20·admin 18 및 최종 SDD는 구체적인 전체 계획에 대한 새 사용자 승인 뒤의 범위다.

@@ -54,7 +54,7 @@ export async function runStack(
   let attempted = false;
   const commandOptions: CommandOptions = options.signal ? { signal: options.signal } : {};
   try {
-    if (plan.project !== projectName(plan.runId, plan.app))
+    if (plan.project !== projectName(plan.runId, plan.app, plan.backend))
       throw new Error("전용 프로젝트 이름을 쓴다.");
     deps.validate();
     await deps.probe();

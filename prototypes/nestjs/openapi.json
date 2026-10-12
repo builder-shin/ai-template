@@ -1,0 +1,3029 @@
+{
+  "x-generated": "Do not edit. Run pnpm gen.",
+  "openapi": "3.1.0",
+  "info": { "title": "Platform API", "version": "0.1.0" },
+  "servers": [{ "url": "http://localhost:8000" }],
+  "tags": [
+    { "name": "health" },
+    { "name": "permissions" },
+    { "name": "me" },
+    { "name": "registrations" },
+    { "name": "email-verifications" },
+    { "name": "sessions" },
+    { "name": "files" },
+    { "name": "posts" },
+    { "name": "realtime" }
+  ],
+  "paths": {
+    "/health/ready": {
+      "get": {
+        "operationId": "Health_ready",
+        "tags": ["health"],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "200 response.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/HealthReport" } }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/HealthReport" } }
+            }
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "Health_live",
+        "tags": ["health"],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "200 response.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/HealthReport" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/permissions": {
+      "get": {
+        "operationId": "Permissions_list",
+        "tags": ["permissions"],
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "roles:read",
+        "x-jsonapi-sort": ["id"],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "minimum": 1, "default": 1 },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[permissions]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/PermissionCollectionDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "Me_get",
+        "tags": ["me"],
+        "security": [{ "BearerAuth": [] }],
+        "x-jsonapi-include": ["roles", "avatar"],
+        "parameters": [
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[roles]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/UserMeDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/registrations": {
+      "post": {
+        "operationId": "Registrations_create",
+        "tags": ["registrations"],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/RegistrationCreateDocument" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "201 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/RegistrationDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "409 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "413 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "415 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "422 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/email-verification-requests": {
+      "post": {
+        "operationId": "EmailVerificationRequests_create",
+        "tags": ["email-verifications"],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/EmailVerificationRequestCreateDocument" }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "202 response." },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "409 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "413 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "415 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "422 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/email-verifications": {
+      "post": {
+        "operationId": "EmailVerifications_create",
+        "tags": ["email-verifications"],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/EmailVerificationCreateDocument" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "201 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/EmailVerificationDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "409 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "413 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "415 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "422 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions": {
+      "post": {
+        "operationId": "Sessions_create",
+        "tags": ["sessions"],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/SessionCreateDocument" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "201 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/SessionWithTokensDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "409 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "413 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "415 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "422 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/current": {
+      "delete": {
+        "operationId": "Sessions_deleteCurrent",
+        "tags": ["sessions"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [],
+        "responses": {
+          "204": { "description": "204 response." },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files": {
+      "post": {
+        "operationId": "Files_create",
+        "tags": ["files"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/FileCreateDocument" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "201 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/FileDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "409 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "413 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "415 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "422 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files/{id}": {
+      "get": {
+        "operationId": "Files_get",
+        "tags": ["files"],
+        "security": [{ "BearerAuth": [] }, {}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/FileDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "404 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "Files_update",
+        "tags": ["files"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/FileUpdateDocument" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "200 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/FileDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "404 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "409 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "413 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "415 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "422 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Files_delete",
+        "tags": ["files"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "204 response." },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "404 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/posts": {
+      "get": {
+        "operationId": "Posts_list",
+        "tags": ["posts"],
+        "security": [{ "BearerAuth": [] }, {}],
+        "x-jsonapi-include": ["author", "coverImage"],
+        "x-jsonapi-sort": ["createdAt", "publishedAt", "title"],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "minimum": 1, "default": 1 },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[posts]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "filter[status]",
+            "in": "query",
+            "required": false,
+            "schema": { "$ref": "#/components/schemas/PostStatus" },
+            "explode": false
+          },
+          {
+            "name": "filter[author]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" },
+            "explode": false
+          },
+          {
+            "name": "filter[q]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/PostCollectionDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "Posts_create",
+        "tags": ["posts"],
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "posts:create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/PostCreateDocument" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "201 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/PostDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "404 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "409 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "413 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "415 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "422 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{id}": {
+      "get": {
+        "operationId": "Posts_get",
+        "tags": ["posts"],
+        "security": [{ "BearerAuth": [] }, {}],
+        "x-jsonapi-include": ["author", "coverImage"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[posts]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/PostDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "404 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "Posts_update",
+        "tags": ["posts"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/PostUpdateDocument" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "200 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/PostDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "404 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "409 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "413 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "415 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "422 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Posts_delete",
+        "tags": ["posts"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "204 response." },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "404 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/realtime-tickets": {
+      "post": {
+        "operationId": "RealtimeTickets_create",
+        "tags": ["realtime"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/RealtimeTicketCreateDocument" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "201 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/RealtimeTicketDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "401 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "403 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "406 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "409 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "413 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "415 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "422 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "429 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "required": true,
+                "schema": { "type": "integer", "format": "int32" }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "503 response.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CollectionMeta": {
+        "type": "object",
+        "properties": { "page": { "$ref": "#/components/schemas/PageMeta" } },
+        "required": ["page"]
+      },
+      "EmailVerificationAttributes": {
+        "type": "object",
+        "properties": { "verifiedAt": { "type": "string", "format": "date-time" } },
+        "required": ["verifiedAt"]
+      },
+      "EmailVerificationCreateAttributes": {
+        "type": "object",
+        "properties": { "token": { "type": "string" } },
+        "required": ["token"]
+      },
+      "EmailVerificationCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["email-verifications"] },
+              "attributes": { "$ref": "#/components/schemas/EmailVerificationCreateAttributes" }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "EmailVerificationDocument": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/EmailVerificationResource" } },
+        "required": ["data"]
+      },
+      "EmailVerificationRequestCreateAttributes": {
+        "type": "object",
+        "properties": { "email": { "type": "string", "format": "email" } },
+        "required": ["email"]
+      },
+      "EmailVerificationRequestCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["email-verification-requests"] },
+              "attributes": {
+                "$ref": "#/components/schemas/EmailVerificationRequestCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "EmailVerificationResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["email-verifications"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/EmailVerificationAttributes" }
+        },
+        "required": ["type", "id", "attributes"]
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "jsonapi.unsupported_media_type",
+          "jsonapi.not_acceptable",
+          "jsonapi.content_too_large",
+          "jsonapi.invalid_document",
+          "jsonapi.invalid_query",
+          "jsonapi.unsupported_include",
+          "jsonapi.unsupported_sort",
+          "validation.required",
+          "validation.too_short",
+          "validation.too_long",
+          "validation.invalid_format",
+          "validation.out_of_range",
+          "validation.invalid_choice",
+          "validation.already_taken",
+          "auth.unauthenticated",
+          "auth.invalid_credentials",
+          "auth.token_expired",
+          "auth.token_invalid",
+          "auth.refresh_token_reused",
+          "auth.oauth_code_invalid",
+          "auth.reauthentication_required",
+          "auth.oauth_denied",
+          "auth.oauth_failed",
+          "auth.email_not_verified",
+          "auth.account_deactivated",
+          "auth.verification_token_invalid",
+          "permission.denied",
+          "role.system_role_protected",
+          "role.last_admin_protected",
+          "resource.not_found",
+          "resource.conflict",
+          "post.invalid_transition",
+          "file.too_large",
+          "file.type_not_allowed",
+          "file.upload_incomplete",
+          "file.quota_exceeded",
+          "rate_limit.exceeded",
+          "internal.unexpected",
+          "service.unavailable"
+        ]
+      },
+      "ErrorDocument": {
+        "type": "object",
+        "properties": {
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ErrorObject" } },
+          "meta": {
+            "type": "object",
+            "properties": { "traceId": { "type": "string" } },
+            "required": ["traceId"]
+          }
+        },
+        "required": ["errors", "meta"]
+      },
+      "ErrorObject": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "code": { "$ref": "#/components/schemas/ErrorCode" },
+          "title": { "type": "string" },
+          "detail": { "type": "string" },
+          "source": { "$ref": "#/components/schemas/ErrorSource" },
+          "meta": {
+            "type": "object",
+            "properties": { "params": { "type": "object", "unevaluatedProperties": {} } }
+          }
+        },
+        "required": ["status", "code", "title"]
+      },
+      "ErrorSource": {
+        "type": "object",
+        "properties": { "pointer": { "type": "string" }, "parameter": { "type": "string" } }
+      },
+      "FileAttributes": {
+        "type": "object",
+        "properties": {
+          "filename": { "type": "string" },
+          "contentType": { "type": "string" },
+          "size": { "type": "integer", "format": "int64" },
+          "status": { "$ref": "#/components/schemas/FileStatus" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["filename", "contentType", "size", "status", "createdAt"]
+      },
+      "FileCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "filename": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "contentType": { "type": "string" },
+          "size": { "type": "integer", "minimum": 1, "format": "int64" }
+        },
+        "required": ["filename", "contentType", "size"]
+      },
+      "FileCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["files"] },
+              "attributes": { "$ref": "#/components/schemas/FileCreateAttributes" }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "FileDocument": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/FileResource" } },
+        "required": ["data"]
+      },
+      "FileMeta": {
+        "type": "object",
+        "properties": {
+          "upload": { "$ref": "#/components/schemas/FileUpload" },
+          "downloadUrl": { "type": "string", "format": "uri" },
+          "downloadUrlExpiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "FileRelationships": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["users"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["owner"]
+      },
+      "FileResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["files"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/FileAttributes" },
+          "relationships": { "$ref": "#/components/schemas/FileRelationships" },
+          "meta": { "$ref": "#/components/schemas/FileMeta" }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "FileStatus": { "type": "string", "enum": ["pending", "ready"] },
+      "FileUpdateAttributes": {
+        "type": "object",
+        "properties": { "status": { "type": "string", "enum": ["ready"] } }
+      },
+      "FileUpdateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["files"] },
+              "id": { "type": "string" },
+              "attributes": { "$ref": "#/components/schemas/FileUpdateAttributes" }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
+      },
+      "FileUpload": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string", "format": "uri" },
+          "method": { "type": "string", "enum": ["PUT"] },
+          "headers": { "type": "object", "unevaluatedProperties": { "type": "string" } },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["url", "method", "headers", "expiresAt"]
+      },
+      "HealthReport": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["ok", "unavailable"] },
+          "checks": {
+            "type": "object",
+            "unevaluatedProperties": { "type": "string", "enum": ["ok", "unavailable"] }
+          }
+        },
+        "required": ["status", "checks"]
+      },
+      "Locale": { "type": "string", "enum": ["ko", "en"] },
+      "PageMeta": {
+        "type": "object",
+        "properties": {
+          "number": { "type": "integer", "format": "int32" },
+          "size": { "type": "integer", "format": "int32" },
+          "total": { "type": "integer", "format": "int32" },
+          "totalPages": { "type": "integer", "format": "int32" }
+        },
+        "required": ["number", "size", "total", "totalPages"]
+      },
+      "PaginationLinks": {
+        "type": "object",
+        "properties": {
+          "first": { "type": "string", "format": "uri-reference" },
+          "last": { "type": "string", "format": "uri-reference" },
+          "prev": {
+            "format": "uri-reference",
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "next": { "format": "uri-reference", "anyOf": [{ "type": "string" }, { "type": "null" }] }
+        },
+        "required": ["first", "last", "prev", "next"]
+      },
+      "PermissionAttributes": {
+        "type": "object",
+        "properties": { "description": { "type": "string" }, "group": { "type": "string" } },
+        "required": ["description", "group"]
+      },
+      "PermissionCode": {
+        "type": "string",
+        "enum": [
+          "admin:access",
+          "users:read",
+          "users:manage",
+          "roles:read",
+          "roles:manage",
+          "audit-logs:read",
+          "posts:create",
+          "posts:manage"
+        ]
+      },
+      "PermissionCollectionDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PermissionResource" }
+          },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" },
+          "meta": { "$ref": "#/components/schemas/CollectionMeta" }
+        },
+        "required": ["data", "links", "meta"]
+      },
+      "PermissionResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["permissions"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/PermissionAttributes" }
+        },
+        "required": ["type", "id", "attributes"]
+      },
+      "PostAttributes": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "body": { "type": "string", "maxLength": 100000 },
+          "status": { "$ref": "#/components/schemas/PostStatus" },
+          "publishedAt": {
+            "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["title", "body", "status", "publishedAt", "createdAt", "updatedAt"]
+      },
+      "PostCollectionDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/PostResource" } },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" },
+          "meta": { "$ref": "#/components/schemas/CollectionMeta" },
+          "included": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "$ref": "#/components/schemas/UserPublicResource" },
+                { "$ref": "#/components/schemas/FileResource" }
+              ]
+            }
+          }
+        },
+        "required": ["data", "links", "meta"]
+      },
+      "PostCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "body": { "type": "string", "maxLength": 100000 },
+          "status": { "$ref": "#/components/schemas/PostStatus" }
+        },
+        "required": ["title", "body"]
+      },
+      "PostCreatedEventDocument": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/PostResource" } },
+        "required": ["data"]
+      },
+      "PostCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["posts"] },
+              "attributes": { "$ref": "#/components/schemas/PostCreateAttributes" },
+              "relationships": { "$ref": "#/components/schemas/PostWriteRelationships" }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PostDeletedEventDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["posts"] },
+              "id": { "type": "string" }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PostDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PostResource" },
+          "included": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "$ref": "#/components/schemas/UserPublicResource" },
+                { "$ref": "#/components/schemas/FileResource" }
+              ]
+            }
+          }
+        },
+        "required": ["data"]
+      },
+      "PostPublishedEventDocument": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/PostResource" } },
+        "required": ["data"]
+      },
+      "PostRelationships": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["users"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          },
+          "coverImage": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["files"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["author", "coverImage"]
+      },
+      "PostResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["posts"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/PostAttributes" },
+          "relationships": { "$ref": "#/components/schemas/PostRelationships" }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "PostStatus": { "type": "string", "enum": ["draft", "published"] },
+      "PostUnpublishedEventDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["posts"] },
+              "id": { "type": "string" }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PostUpdateAttributes": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "body": { "type": "string", "maxLength": 100000 },
+          "status": { "$ref": "#/components/schemas/PostStatus" }
+        }
+      },
+      "PostUpdatedEventDocument": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/PostResource" } },
+        "required": ["data"]
+      },
+      "PostUpdateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["posts"] },
+              "id": { "type": "string" },
+              "attributes": { "$ref": "#/components/schemas/PostUpdateAttributes" },
+              "relationships": { "$ref": "#/components/schemas/PostWriteRelationships" }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PostWriteRelationships": {
+        "type": "object",
+        "properties": {
+          "coverImage": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["files"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        }
+      },
+      "RealtimeAck": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "error": { "$ref": "#/components/schemas/ErrorObject" }
+        },
+        "required": ["ok"]
+      },
+      "RealtimeChannel": { "type": "string", "enum": ["posts", "posts:all"] },
+      "RealtimeSubscription": {
+        "type": "object",
+        "properties": { "channel": { "$ref": "#/components/schemas/RealtimeChannel" } },
+        "required": ["channel"]
+      },
+      "RealtimeTicketAttributes": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["token", "expiresAt"]
+      },
+      "RealtimeTicketCreateAttributes": { "type": "object" },
+      "RealtimeTicketCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["realtime-tickets"] },
+              "attributes": { "$ref": "#/components/schemas/RealtimeTicketCreateAttributes" }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "RealtimeTicketDocument": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/RealtimeTicketResource" } },
+        "required": ["data"]
+      },
+      "RealtimeTicketResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["realtime-tickets"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/RealtimeTicketAttributes" }
+        },
+        "required": ["type", "id", "attributes"]
+      },
+      "RegistrationAttributes": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["email", "createdAt"]
+      },
+      "RegistrationCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8, "maxLength": 128 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "locale": { "$ref": "#/components/schemas/Locale" }
+        },
+        "required": ["email", "password", "name"]
+      },
+      "RegistrationCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["registrations"] },
+              "attributes": { "$ref": "#/components/schemas/RegistrationCreateAttributes" }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "RegistrationDocument": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/RegistrationResource" } },
+        "required": ["data"]
+      },
+      "RegistrationRelationships": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["users"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["user"]
+      },
+      "RegistrationResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["registrations"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/RegistrationAttributes" },
+          "relationships": { "$ref": "#/components/schemas/RegistrationRelationships" }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "RoleAttributes": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "permissions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PermissionCode" }
+          },
+          "isSystem": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["name", "description", "permissions", "isSystem", "createdAt", "updatedAt"]
+      },
+      "RoleResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["roles"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/RoleAttributes" }
+        },
+        "required": ["type", "id", "attributes"]
+      },
+      "SessionCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["sessions"] },
+              "attributes": { "$ref": "#/components/schemas/SessionGrant" }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "SessionGrant": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/SessionPasswordGrant" },
+          { "$ref": "#/components/schemas/SessionRefreshTokenGrant" },
+          { "$ref": "#/components/schemas/SessionOAuthCodeGrant" }
+        ],
+        "type": "object",
+        "discriminator": {
+          "propertyName": "grantType",
+          "mapping": {
+            "password": "#/components/schemas/SessionPasswordGrant",
+            "refreshToken": "#/components/schemas/SessionRefreshTokenGrant",
+            "oauthCode": "#/components/schemas/SessionOAuthCodeGrant"
+          }
+        }
+      },
+      "SessionOAuthCodeGrant": {
+        "type": "object",
+        "properties": {
+          "grantType": { "type": "string", "enum": ["oauthCode"] },
+          "code": { "type": "string" },
+          "codeVerifier": { "type": "string" }
+        },
+        "required": ["grantType", "code", "codeVerifier"]
+      },
+      "SessionPasswordGrant": {
+        "type": "object",
+        "properties": {
+          "grantType": { "type": "string", "enum": ["password"] },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        },
+        "required": ["grantType", "email", "password"]
+      },
+      "SessionRefreshTokenGrant": {
+        "type": "object",
+        "properties": {
+          "grantType": { "type": "string", "enum": ["refreshToken"] },
+          "refreshToken": { "type": "string" }
+        },
+        "required": ["grantType", "refreshToken"]
+      },
+      "SessionRelationships": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["users"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["user"]
+      },
+      "SessionRevokedEventDocument": {
+        "type": "object",
+        "properties": {
+          "meta": {
+            "type": "object",
+            "properties": { "reason": { "$ref": "#/components/schemas/SessionRevokedReason" } },
+            "required": ["reason"]
+          }
+        },
+        "required": ["meta"]
+      },
+      "SessionRevokedReason": {
+        "type": "string",
+        "enum": [
+          "logout",
+          "password_reset",
+          "account_deactivated",
+          "revoked",
+          "password_changed",
+          "refresh_token_reused",
+          "account_deleted"
+        ]
+      },
+      "SessionWithTokensAttributes": {
+        "type": "object",
+        "properties": {
+          "userAgent": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "lastUsedAt": { "type": "string", "format": "date-time" },
+          "current": { "type": "boolean" },
+          "accessToken": { "type": "string" },
+          "accessTokenExpiresAt": { "type": "string", "format": "date-time" },
+          "refreshToken": { "type": "string" },
+          "refreshTokenExpiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "userAgent",
+          "createdAt",
+          "lastUsedAt",
+          "current",
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "refreshTokenExpiresAt"
+        ]
+      },
+      "SessionWithTokensDocument": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/SessionWithTokensResource" } },
+        "required": ["data"]
+      },
+      "SessionWithTokensResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["sessions"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/SessionWithTokensAttributes" },
+          "relationships": { "$ref": "#/components/schemas/SessionRelationships" }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "UserAttributes": {
+        "type": "object",
+        "properties": {
+          "email": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "locale": { "$ref": "#/components/schemas/Locale" },
+          "status": { "$ref": "#/components/schemas/UserStatus" },
+          "emailVerifiedAt": {
+            "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "email",
+          "name",
+          "locale",
+          "status",
+          "emailVerifiedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UserMeDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/UserResource" },
+          "included": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "$ref": "#/components/schemas/RoleResource" },
+                { "$ref": "#/components/schemas/FileResource" }
+              ]
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "permissions": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/PermissionCode" }
+              }
+            },
+            "required": ["permissions"]
+          }
+        },
+        "required": ["data", "meta"]
+      },
+      "UserMeUpdatedEventDocument": {
+        "type": "object",
+        "properties": {
+          "meta": {
+            "type": "object",
+            "properties": {
+              "changed": {
+                "type": "array",
+                "items": { "type": "string", "enum": ["roles", "status", "profile"] }
+              }
+            },
+            "required": ["changed"]
+          }
+        },
+        "required": ["meta"]
+      },
+      "UserPublicAttributes": {
+        "type": "object",
+        "properties": { "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] } },
+        "required": ["name"]
+      },
+      "UserPublicRelationships": {
+        "type": "object",
+        "properties": {
+          "avatar": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["files"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["avatar"]
+      },
+      "UserPublicResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["users"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/UserPublicAttributes" },
+          "relationships": { "$ref": "#/components/schemas/UserPublicRelationships" }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "UserRelationships": {
+        "type": "object",
+        "properties": {
+          "roles": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string", "enum": ["roles"] },
+                    "id": { "type": "string" }
+                  },
+                  "required": ["type", "id"]
+                }
+              }
+            },
+            "required": ["data"]
+          },
+          "avatar": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["files"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["roles", "avatar"]
+      },
+      "UserResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["users"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/UserAttributes" },
+          "relationships": { "$ref": "#/components/schemas/UserRelationships" }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "UserStatus": { "type": "string", "enum": ["active", "deactivated", "deleted"] }
+    },
+    "securitySchemes": { "BearerAuth": { "type": "http", "scheme": "Bearer" } }
+  },
+  "x-realtime-channels": [
+    {
+      "name": "posts",
+      "permission": null,
+      "description": "발행된 글의 이벤트. 익명 연결도 구독할 수 있다."
+    },
+    { "name": "posts:all", "permission": "posts:manage", "description": "모든 글의 이벤트." }
+  ],
+  "x-realtime-events": [
+    {
+      "name": "session.revoked",
+      "rooms": ["user:{userId}"],
+      "payload": "SessionRevokedEventDocument"
+    },
+    { "name": "me.updated", "rooms": ["user:{userId}"], "payload": "UserMeUpdatedEventDocument" },
+    {
+      "name": "post.created",
+      "rooms": ["posts:all", "user:{authorId}"],
+      "payload": "PostCreatedEventDocument"
+    },
+    {
+      "name": "post.updated",
+      "rooms": ["posts:all", "user:{authorId}"],
+      "conditionalRooms": [{ "room": "posts", "when": "published" }],
+      "payload": "PostUpdatedEventDocument"
+    },
+    {
+      "name": "post.published",
+      "rooms": ["posts", "posts:all", "user:{authorId}"],
+      "payload": "PostPublishedEventDocument"
+    },
+    { "name": "post.unpublished", "rooms": ["posts"], "payload": "PostUnpublishedEventDocument" },
+    {
+      "name": "post.deleted",
+      "rooms": ["posts:all", "user:{authorId}"],
+      "conditionalRooms": [{ "room": "posts", "when": "wasPublished" }],
+      "payload": "PostDeletedEventDocument"
+    }
+  ],
+  "x-realtime-messages": [
+    { "name": "subscribe", "payload": "RealtimeSubscription", "ack": "RealtimeAck" },
+    { "name": "unsubscribe", "payload": "RealtimeSubscription", "ack": "RealtimeAck" }
+  ]
+}

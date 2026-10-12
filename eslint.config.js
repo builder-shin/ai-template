@@ -8,6 +8,7 @@ export default defineConfig(
       "**/node_modules/**",
       "**/generated/**",
       "templates/**",
+      "prototypes/**",
       "shared/**",
       "**/test/fixtures/**",
       "contract/api-style/dist/**",

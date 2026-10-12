@@ -1,0 +1,11 @@
+minimumReleaseAge: 1440
+allowBuilds:
+  "@swc/core": true
+  esbuild: true
+  unrs-resolver: true
+  "@prisma/engines": true
+  prisma: true
+  argon2: true
+  msgpackr-extract: false
+  # protobufjs postinstall only warns about dependent version declarations; no build output.
+  protobufjs: false

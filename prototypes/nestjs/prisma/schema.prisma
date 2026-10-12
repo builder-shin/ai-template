@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+  moduleFormat = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id String @id @default(uuid(7)) @db.Uuid
+  email String? @unique(map: "uq_users_email") @db.VarChar(320)
+  name String? @db.VarChar(100)
+  locale String @default("ko") @db.VarChar(2)
+  status String @default("active") @db.VarChar(16)
+  passwordHash String? @map("password_hash") @db.VarChar(255)
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  avatarId String? @map("avatar_id") @db.Uuid
+  avatar File? @relation("Avatar", fields: [avatarId], references: [id], onDelete: SetNull)
+  files File[] @relation("FileOwner")
+  posts Post[]
+  roles UserRole[]
+  sessions LoginSession[]
+  accountTokens AccountToken[]
+  audits AuditLog[]
+  @@index([status])
+  @@index([avatarId])
+  @@map("users")
+}
+
+model File {
+  id String @id @default(uuid(7)) @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
+  filename String @db.VarChar(255)
+  contentType String @map("content_type") @db.VarChar(255)
+  size BigInt
+  status String @default("pending") @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  owner User @relation("FileOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  avatars User[] @relation("Avatar")
+  covers Post[]
+  @@index([ownerId])
+  @@index([status, createdAt])
+  @@map("files")
+}
+
+model Post {
+  id String @id @default(uuid(7)) @db.Uuid
+  authorId String @map("author_id") @db.Uuid
+  title String @db.VarChar(200)
+  body String @db.Text
+  status String @default("draft") @db.VarChar(16)
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  coverImageId String? @map("cover_image_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  coverImage File? @relation(fields: [coverImageId], references: [id], onDelete: SetNull)
+  @@index([authorId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([createdAt])
+  @@index([coverImageId])
+  @@map("posts")
+}
+
+model Role {
+  id String @id @default(uuid(7)) @db.Uuid
+  name String @unique(map: "uq_roles_name") @db.VarChar(50)
+  description String? @db.VarChar(200)
+  permissions String[] @default([])
+  isSystem Boolean @default(false) @map("is_system")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users UserRole[]
+  @@map("roles")
+}
+
+model UserRole {
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model LoginSession {
+  id String @id @default(uuid(7)) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  userAgent String? @map("user_agent") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt DateTime @default(now()) @map("last_used_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id String @id @default(uuid(7)) @db.Uuid
+  sessionId String @map("session_id") @db.Uuid
+  tokenHash String @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  usedAt DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  session LoginSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  @@index([sessionId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model AccountToken {
+  id String @id @default(uuid(7)) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  purpose String @db.VarChar(32)
+  tokenHash String @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("account_tokens")
+}
+
+model AuditLog {
+  id String @id @default(uuid(7)) @db.Uuid
+  action String @db.VarChar(64)
+  actorId String? @map("actor_id") @db.Uuid
+  targetType String? @map("target_type") @db.VarChar(32)
+  targetId String? @map("target_id") @db.Uuid
+  ipAddress String? @map("ip_address") @db.VarChar(45)
+  metadata Json @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([createdAt])
+  @@map("audit_logs")
+}

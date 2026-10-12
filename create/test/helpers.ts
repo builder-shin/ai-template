@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import {
+  appendFileSync,
   chmodSync,
   copyFileSync,
   existsSync,
@@ -16,10 +17,25 @@ import { afterEach, beforeEach, vi } from "vitest";
 import { gitEnvironment } from "../../scripts/src/files/git-environment.ts";
 
 const folders: string[] = [];
+function resource(event: string, path: string): void {
+  const evidence = process.env.AITPL_CREATE_RESOURCE_EVIDENCE;
+  if (evidence)
+    appendFileSync(
+      evidence,
+      JSON.stringify({
+        event,
+        path,
+        ownerPID: process.pid,
+        utc: new Date().toISOString(),
+        absent: !existsSync(path),
+      }) + "\n",
+    );
+}
 
 export function temporaryFolder(): string {
   const folder = realpathSync.native(mkdtempSync(join(tmpdir(), "aitpl-create-test-")));
   folders.push(folder);
+  resource("created", folder);
   return folder;
 }
 
@@ -86,6 +102,7 @@ export function cleanupFolders(): void {
   for (const folder of folders.splice(0)) {
     try {
       rmSync(folder, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      resource("removed", folder);
     } catch {
       leftovers.push(folder);
     }

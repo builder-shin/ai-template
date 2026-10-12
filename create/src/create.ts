@@ -96,13 +96,13 @@ export function createProject(
   }));
   const apps =
     options.template === "combo"
-      ? [{ name: "api", template: "fastapi" as const }, ...frontends]
+      ? [{ name: "api", template: options.api ?? ("fastapi" as const) }, ...frontends]
       : [{ name: "", template: options.template }];
   const plans = apps.map((app) => ({ ...app, files: templateFiles(root, app.template) }));
   if (options.template === "combo")
     verifyContracts(
       root,
-      plans.filter((plan) => plan.template !== "fastapi"),
+      plans.filter((plan) => plan.template !== "fastapi" && plan.template !== "nestjs"),
     );
   const inputs =
     options.template === "combo"
@@ -123,7 +123,8 @@ export function createProject(
     for (const { name: app, template, files } of plans)
       for (const file of files) {
         const appPath = `apps/${app}`;
-        const comboFrontend = options.template === "combo" && template !== "fastapi";
+        const comboFrontend =
+          options.template === "combo" && template !== "fastapi" && template !== "nestjs";
         const prefixes = options.template === "combo" ? [appPath] : [""];
         if (comboFrontend && file.path.startsWith("contract/")) {
           if (app !== frontends[0]?.name) continue;

@@ -11,6 +11,17 @@ export const URLS = {
 } as const;
 
 export type App = "web" | "admin";
+export type Backend = "fastapi" | "nestjs";
+export const BACKENDS = {
+  fastapi: {
+    context: "../../templates/fastapi",
+    databaseUrl: "postgresql+psycopg://app:app@postgres:5432/app",
+  },
+  nestjs: {
+    context: "../../prototypes/nestjs",
+    databaseUrl: "postgresql://app:app@postgres:5432/app", // betterleaks:allow public local/test credential
+  },
+} as const;
 export const STACKS = {
   web: { composeFile: COMPOSE_FILE, runIdVariable: "WEB_E2E_RUN_ID", urls: URLS },
   admin: {
@@ -30,20 +41,27 @@ export const ADMIN_SEED = {
   password: "admin-e2e-only-admin-password", // betterleaks:allow 전용 스택의 가짜 비밀번호
 } as const;
 
-export function projectName(runId: string, app: App = "web"): string {
+export function projectName(runId: string, app: App = "web", backend: Backend = "fastapi"): string {
   if (["fastapi", "joon"].includes(runId) || !/^[a-z0-9][a-z0-9-]{0,39}$/.test(runId)) {
     throw new Error("실행 ID는 보호 이름을 피하고 영문 소문자·숫자·하이픈 1~40자로 적는다.");
   }
-  return `ai-template-${app}-e2e-${runId}`;
+  return `ai-template-${app}-${backend === "nestjs" ? "nestjs-" : ""}e2e-${runId}`;
 }
 
-export function createPlan(runId: string, root = ROOT, app: App = "web") {
-  const project = projectName(runId, app);
-  const { composeFile, runIdVariable, urls } = STACKS[app];
+export function createPlan(
+  runId: string,
+  root = ROOT,
+  app: App = "web",
+  backend: Backend = "fastapi",
+) {
+  const project = projectName(runId, app, backend);
+  const { runIdVariable, urls } = STACKS[app];
+  const composeFile = STACKS[app].composeFile.replace(/fastapi(?=\.yaml$)/, backend);
   const base = ["docker", "compose", "-p", project, "-f", composeFile];
-  const image = `ai-template-${app}-e2e-fastapi:${runId}`;
+  const image = `ai-template-${app}-e2e-${backend}:${runId}`;
   return {
     app,
+    backend,
     urls,
     runIdVariable,
     root,
@@ -52,7 +70,7 @@ export function createPlan(runId: string, root = ROOT, app: App = "web") {
     composeFile,
     env: { [runIdVariable]: runId, COMPOSE_DISABLE_ENV_FILE: "1" },
     appEnv: {
-      E2E_TARGET: "fastapi",
+      E2E_TARGET: backend,
       APP_URL: urls.web,
       API_BASE_URL: `${urls.api}/api/v1`,
       NEXT_PUBLIC_REALTIME_URL: urls.api,

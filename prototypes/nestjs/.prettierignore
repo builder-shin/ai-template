@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+node_modules/
+dist/
+.cache/
+coverage/
+test/fixtures/lint/
+**/generated/**
+
+src/generated/prisma/

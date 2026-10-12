@@ -1,0 +1,202 @@
+[
+  {
+    "name": "private-module",
+    "entry": "src/modules/posts/service.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "private-module-assembly",
+    "entry": "src/main.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "controller-repository",
+    "entry": "src/modules/posts/controller.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "repository-service",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "core-module",
+    "entry": "src/core/config/settings.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "service-prisma",
+    "entry": "src/modules/posts/service.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "outside-dag",
+    "entry": "src/modules/roles/service.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "private-module-registration",
+    "entry": "src/modules/posts/service.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "core-prisma",
+    "entry": "src/core/config/settings.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "schemas-repository",
+    "entry": "src/modules/posts/schemas.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "repository-prisma-ok",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": null
+  },
+  {
+    "name": "core-db-prisma-ok",
+    "entry": "src/core/db/client.ts",
+    "rule": null
+  },
+  {
+    "name": "controller-service-ok",
+    "entry": "src/modules/posts/controller.ts",
+    "rule": null
+  },
+  {
+    "name": "service-repository-ok",
+    "entry": "src/modules/posts/service.ts",
+    "rule": null
+  },
+  {
+    "name": "controller-schemas-ok",
+    "entry": "src/modules/posts/controller.ts",
+    "rule": null
+  },
+  {
+    "name": "service-policies-ok",
+    "entry": "src/modules/posts/service.ts",
+    "rule": null
+  },
+  {
+    "name": "service-events-ok",
+    "entry": "src/modules/posts/service.ts",
+    "rule": null
+  },
+  {
+    "name": "users-roles-ok",
+    "entry": "src/modules/users/service.ts",
+    "rule": null
+  },
+  {
+    "name": "auth-users-ok",
+    "entry": "src/modules/auth/service.ts",
+    "rule": null
+  },
+  {
+    "name": "realtime-auth-ok",
+    "entry": "src/modules/realtime/service.ts",
+    "rule": null
+  },
+  {
+    "name": "posts-users-ok",
+    "entry": "src/modules/posts/service.ts",
+    "rule": null
+  },
+  {
+    "name": "posts-files-ok",
+    "entry": "src/modules/posts/service.ts",
+    "rule": null
+  },
+  {
+    "name": "core-core-ok",
+    "entry": "src/core/config/settings.ts",
+    "rule": null
+  },
+  {
+    "name": "assembly-index-ok",
+    "entry": "src/main.ts",
+    "rule": null
+  },
+  {
+    "name": "query-unsafe",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/unsafe-sql"
+  },
+  {
+    "name": "execute-unsafe",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/unsafe-sql"
+  },
+  {
+    "name": "eslint-suppression",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/suppression-reason"
+  },
+  {
+    "name": "ts-suppression",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/suppression-reason"
+  },
+  {
+    "name": "fake-suppression-reason",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/suppression-reason"
+  },
+  {
+    "name": "eslint-suppression-ok",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": null
+  },
+  {
+    "name": "ts-suppression-ok",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": null
+  },
+  {
+    "name": "tagged-sql-ok",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": null
+  },
+  {
+    "name": "text-suppression-ok",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": null
+  },
+  {
+    "name": "blanket-suppression",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/suppression-reason"
+  },
+  {
+    "name": "self-suppression",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/suppression-reason"
+  },
+  {
+    "name": "fake-any-reason",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/suppression-reason"
+  },
+  {
+    "name": "ts-ignore-suppression",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/suppression-reason"
+  },
+  {
+    "name": "ts-nocheck-suppression",
+    "entry": "src/modules/posts/repository.ts",
+    "rule": "prototype/suppression-reason"
+  },
+  {
+    "name": "assembly-prisma",
+    "entry": "src/main.ts",
+    "rule": "boundaries/dependencies"
+  },
+  {
+    "name": "index-prisma",
+    "entry": "src/modules/posts/index.ts",
+    "rule": "boundaries/dependencies"
+  }
+]

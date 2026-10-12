@@ -43,6 +43,17 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
       CONFORMANCE_ADMIN_PASSWORD: "compose-app-profile-admin-password", // betterleaks:allow compose app 프로필의 시드 관리자
     },
   },
+  nestjs: {
+    kind: "compose",
+    name: "nestjs",
+    composeFile: "prototypes/nestjs/compose.yaml",
+    baseUrl: "http://localhost:8000",
+    env: {
+      CONFORMANCE_MAILPIT_URL: "http://localhost:28025",
+      CONFORMANCE_ADMIN_EMAIL: "compose-admin@example.com",
+      CONFORMANCE_ADMIN_PASSWORD: "compose-app-profile-admin-password", // betterleaks:allow compose app 프로필의 시드 관리자
+    },
+  },
   mock: {
     kind: "process",
     name: "mock",
@@ -85,7 +96,14 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
 
 /** 대상 스택을 app 프로필로 띄우거나 내리는 docker 인자. up은 헬스체크가 통과할 때까지 기다린다. */
 export function composeArgs(target: ComposeTarget, action: "up" | "down"): string[] {
-  const base = ["compose", "-f", target.composeFile, "--profile", "app"];
+  const base = [
+    "compose",
+    ...(target.name === "nestjs" ? ["-p", "nestjs"] : []),
+    "-f",
+    target.composeFile,
+    "--profile",
+    "app",
+  ];
   return action === "up" ? [...base, "up", "-d", "--build", "--wait"] : [...base, "down"];
 }
 

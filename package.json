@@ -9,6 +9,7 @@
   "scripts": {
     "prepare": "lefthook install",
     "new": "tsx create/src/cli.ts",
+    "probe:nestjs:lock-capture": "tsx create/test/nestjs-probe-lock-capture.ts",
     "check": "tsx scripts/src/check/cli.ts",
     "check:format": "prettier --check .",
     "check:lint": "eslint .",

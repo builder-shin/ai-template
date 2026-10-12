@@ -5,6 +5,8 @@ import { CreateError } from "./errors.ts";
 export function mergeWorkspace(
   sources: readonly { app: string; source: string }[],
   typescript: string,
+  backend?: { app: string; source: string },
+  options: { includeApi?: boolean } = {},
 ): string {
   const first = sources[0];
   if (!first) throw new CreateError("프론트 workspace가 없다", "프론트 앱을 하나 이상 지정한다.");
@@ -30,7 +32,34 @@ export function mergeWorkspace(
         );
     }
   }
-  merged.set("packages", ["apps/api", ...sources.map(({ app }) => `apps/${app}`), "contract/*"]);
+  if (backend && options.includeApi !== false) {
+    const incoming = document(backend.source).toJS() as Record<string, unknown>;
+    const current = merged.toJS() as Record<string, unknown>;
+    for (const key of ["minimumReleaseAge", "overrides"]) {
+      if (!isDeepStrictEqual(current[key], incoming[key]))
+        throw new CreateError(
+          `백엔드 workspace 설정이 다르다: ${key}`,
+          "pnpm-workspace.yaml 설정과 잠금 파일을 맞추고 커밋한다.",
+        );
+    }
+    const builds = { ...(current.allowBuilds as Record<string, boolean> | undefined) };
+    for (const [key, value] of Object.entries(
+      (incoming.allowBuilds ?? {}) as Record<string, unknown>,
+    )) {
+      if (typeof value !== "boolean" || (Object.hasOwn(builds, key) && builds[key] !== value))
+        throw new CreateError(
+          `백엔드 workspace 설정이 다르다: allowBuilds.${key}`,
+          "충돌하는 빌드 정책을 맞추고 커밋한다.",
+        );
+      builds[key] = value;
+    }
+    merged.set("allowBuilds", builds);
+  }
+  merged.set("packages", [
+    ...(options.includeApi === false ? [] : ["apps/api"]),
+    ...sources.map(({ app }) => `apps/${app}`),
+    "contract/*",
+  ]);
   // workspace 이동 뒤에도 계약 패키지의 TypeScript peer를 템플릿 버전으로 유지한다.
   merged.setIn(["overrides", "typescript"], typescript);
   return merged.toString();

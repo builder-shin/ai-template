@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.cache/
+coverage/
+.env
+.env.*
+!.env.example
+
+src/generated/prisma/

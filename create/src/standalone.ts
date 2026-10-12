@@ -18,7 +18,8 @@ export function renameStandalone(
     const pkg = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
     pkg.name = name;
     writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
-  } else {
+  }
+  if (template === "fastapi" || template === "nestjs") {
     const path = join(root, "compose.yaml");
     const source = readFileSync(path, "utf8");
     const doc = parseDocument(source);

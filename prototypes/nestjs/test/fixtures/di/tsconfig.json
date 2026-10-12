@@ -1,0 +1,6 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": { "rootDir": ".", "outDir": "../../../.cache/di/tsc", "allowJs": false },
+  "include": ["**/*.ts"],
+  "exclude": ["probe.vitest.ts"]
+}

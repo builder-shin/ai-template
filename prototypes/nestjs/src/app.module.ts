@@ -1,0 +1,24 @@
+import { Module } from "@nestjs/common";
+import { RedisModule } from "./core/redis/redis.module.js";
+import { RealtimeModule } from "./modules/realtime/index.js";
+import { DbModule } from "./core/db/db.module.js";
+import { HealthModule } from "./modules/health/index.js";
+import { RolesModule } from "./modules/roles/index.js";
+import { UsersModule } from "./modules/users/index.js";
+import { AuthModule } from "./modules/auth/index.js";
+import { FilesModule } from "./modules/files/index.js";
+import { PostsModule } from "./modules/posts/index.js";
+@Module({
+  imports: [
+    DbModule,
+    RedisModule,
+    RealtimeModule,
+    HealthModule,
+    RolesModule,
+    UsersModule,
+    AuthModule,
+    FilesModule,
+    PostsModule,
+  ],
+})
+export class AppModule {}

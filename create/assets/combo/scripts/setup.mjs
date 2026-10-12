@@ -1,6 +1,11 @@
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { frontendNames } from "./apps.mjs";
 import { exitCode, gitEnvironment, isGitRoot, isMain, run, runnerMain } from "./process.mjs";
+
+export function backendOf(apiFolder) {
+  return existsSync(resolve(apiFolder, "pyproject.toml")) ? "fastapi" : "nestjs";
+}
 
 export function setup(
   root,
@@ -9,6 +14,7 @@ export function setup(
     nodeVersion = process.versions.node,
     output = console.error,
     frontends = frontendNames(root),
+    backend = "fastapi",
   } = {},
 ) {
   if (nodeVersion.split(".")[0] !== "24") {
@@ -19,7 +25,7 @@ export function setup(
     ["pnpm", "pnpm 12.6.0"],
     ["uv", "uv"],
     ["docker", "Docker"],
-  ]) {
+  ].filter(([tool]) => backend !== "nestjs" || tool !== "uv")) {
     const result = execute(tool, ["--version"], { cwd: root });
     if (exitCode(result) !== 0) {
       output(`${hint} 실행 파일이 없다 — ${hint} 설치 후 PATH에 추가한다.`);
@@ -50,5 +56,8 @@ export function setup(
   return 0;
 }
 
-if (isMain(import.meta.url))
-  process.exitCode = runnerMain(() => setup(resolve(import.meta.dirname, "..")));
+if (isMain(import.meta.url)) {
+  const root = resolve(import.meta.dirname, "..");
+  const backend = backendOf(resolve(root, "apps/api"));
+  process.exitCode = runnerMain(() => setup(root, { backend }));
+}

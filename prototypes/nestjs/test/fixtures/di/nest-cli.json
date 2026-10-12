@@ -1,0 +1,4 @@
+{
+  "sourceRoot": "test/fixtures/di",
+  "compilerOptions": { "deleteOutDir": true }
+}

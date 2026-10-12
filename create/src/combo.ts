@@ -1,12 +1,19 @@
 import { copyFileSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { mergeFrontendLocks, verifyFrontendResolutions } from "./lockfile.ts";
+import {
+  alignDerivedTypeScriptPeers,
+  mergeApiLock,
+  mergeFrontendLocks,
+  verifyAppResolutions,
+  verifyFrontendResolutions,
+} from "./lockfile.ts";
 import { mergeWorkspace } from "./workspace.ts";
 import { renameStandalone } from "./standalone.ts";
 import type { PnpmRunner } from "./pnpm.ts";
 import { writeHarness } from "./harness.ts";
 import { CreateError } from "./errors.ts";
 import type { Template } from "./arguments.ts";
+import { backendOf, backends, type Backend } from "./backends.ts";
 import { writeFrontendConfiguration } from "./frontend-config.ts";
 import { trackedContents } from "./repository.ts";
 
@@ -50,7 +57,7 @@ export function readComboInputs(repository: string, assets: string): ComboInput[
 
 export interface ComboFrontend {
   readonly name: string;
-  readonly template: Exclude<Template, "fastapi">;
+  readonly template: Exclude<Template, Backend>;
 }
 
 export function writeCombo(
@@ -64,7 +71,9 @@ export function writeCombo(
   const first = frontends[0];
   if (!first) throw new CreateError("조합 프론트 앱이 없다", "프론트 앱을 하나 이상 지정한다.");
   const frontend = join(root, "apps", first.name);
-  renameStandalone(api, "fastapi", name, `${name}-api`);
+  const backend = backendOf(api);
+  const descriptor = backends[backend];
+  renameStandalone(api, descriptor.template, name, `${name}-api`);
   for (const app of frontends)
     renameStandalone(join(root, "apps", app.name), app.template, app.name);
   for (const app of ["api", ...frontends.map((item) => item.name)]) {
@@ -76,11 +85,17 @@ export function writeCombo(
   const json = (path: string, value: unknown) => {
     writeFileSync(path, JSON.stringify(value, null, 2) + "\n");
   };
-  json(join(api, "package.json"), {
-    name: "api",
-    private: true,
-    scripts: Object.fromEntries(commands.map((command) => [command, `uv run poe ${command}`])),
-  });
+  if (descriptor.ownsPackageJson) {
+    const packagePath = join(api, "package.json");
+    const apiPackage = JSON.parse(readFileSync(packagePath, "utf8")) as Record<string, unknown>;
+    apiPackage.name = "api";
+    json(packagePath, apiPackage);
+  } else
+    json(join(api, "package.json"), {
+      name: "api",
+      private: true,
+      scripts: Object.fromEntries(commands.map((command) => [command, `uv run poe ${command}`])),
+    });
   for (const app of frontends) {
     const folder = join(root, "apps", app.name);
     writeFileSync(
@@ -151,11 +166,20 @@ export function writeCombo(
   for (const { path, content } of inputs) {
     const app = /^apps\/([^/]+)\//.exec(path)?.[1];
     if (app && app !== "api" && !frontends.some((item) => item.name === app)) continue;
-    const destination = join(root, path);
+    if (
+      path.startsWith("apps/api/Dockerfile.nestjs") &&
+      descriptor.apiDockerfile !== "root-context"
+    )
+      continue;
+    const destinationPath = path.replace(/^apps\/api\/Dockerfile\.nestjs/, "apps/api/Dockerfile");
+    const destination = join(root, destinationPath);
     mkdirSync(dirname(destination), { recursive: true });
     writeFileSync(
       destination,
-      content.replace(/\{\{(\w+)\}\}/g, (whole: string, key: string) => variables[key] ?? whole),
+      backendAsset(path, content, backend).replace(
+        /\{\{(\w+)\}\}/g,
+        (whole: string, key: string) => variables[key] ?? whole,
+      ),
     );
   }
   copyFileSync(join(frontend, ".prettierrc.json"), join(root, ".prettierrc.json"));
@@ -163,29 +187,72 @@ export function writeCombo(
     root,
     frontends.map((app) => app.name),
   );
+  if (backend === "nestjs") {
+    const workflow = join(root, ".github/workflows/ci.yml");
+    writeFileSync(
+      workflow,
+      readFileSync(workflow, "utf8").replace(
+        "docker build apps/api",
+        "docker build -f apps/api/Dockerfile .",
+      ),
+    );
+  }
   writeHarness(root, ["api", ...frontends.map((app) => app.name)]);
   const sources = (file: string) =>
     frontends.map((app) => ({
       app: app.name,
       source: readFileSync(join(root, "apps", app.name, file), "utf8"),
     }));
+  const workspaces = sources("pnpm-workspace.yaml");
+  const apiWorkspace = descriptor.ownsPackageJson
+    ? { app: "api", source: readFileSync(join(api, "pnpm-workspace.yaml"), "utf8") }
+    : undefined;
+  const locks = sources("pnpm-lock.yaml");
+  const apiLock = descriptor.ownsPackageJson
+    ? { app: "api", source: readFileSync(join(api, "pnpm-lock.yaml"), "utf8") }
+    : undefined;
   writeFileSync(
     join(root, "pnpm-workspace.yaml"),
-    mergeWorkspace(sources("pnpm-workspace.yaml"), typescript),
+    mergeWorkspace(workspaces, typescript, undefined, { includeApi: !descriptor.ownsPackageJson }),
   );
-  const locks = sources("pnpm-lock.yaml");
   writeFileSync(join(root, "pnpm-lock.yaml"), mergeFrontendLocks(locks));
-  for (const app of frontends)
+  for (const app of [...frontends, ...(descriptor.ownsPackageJson ? [{ name: "api" }] : [])])
     for (const file of ["pnpm-lock.yaml", "pnpm-workspace.yaml"])
       rmSync(join(root, "apps", app.name, file));
   pnpm(root, ["install", "--lockfile-only"]);
+  if (apiLock) {
+    const resolved = readFileSync(join(root, "pnpm-lock.yaml"), "utf8");
+    for (const lock of locks) verifyFrontendResolutions(lock.source, resolved, lock.app);
+    writeFileSync(
+      join(root, "pnpm-workspace.yaml"),
+      mergeWorkspace(workspaces, typescript, apiWorkspace),
+    );
+    writeFileSync(
+      join(root, "pnpm-lock.yaml"),
+      mergeApiLock(
+        { app: first.name, source: resolved },
+        { app: "api", source: alignDerivedTypeScriptPeers(resolved, apiLock.source, typescript) },
+        typescript,
+      ),
+    );
+    locks.push(apiLock);
+  }
   for (const lock of locks)
-    verifyFrontendResolutions(
+    (descriptor.ownsPackageJson ? verifyAppResolutions : verifyFrontendResolutions)(
       lock.source,
       readFileSync(join(root, "pnpm-lock.yaml"), "utf8"),
       lock.app,
+      descriptor.ownsPackageJson ? typescript : undefined,
     );
   pnpm(root, ["install", "--frozen-lockfile"]);
+  if (descriptor.ownsPackageJson)
+    for (const lock of locks)
+      verifyAppResolutions(
+        lock.source,
+        readFileSync(join(root, "pnpm-lock.yaml"), "utf8"),
+        lock.app,
+        typescript,
+      );
   pnpm(root, [
     "exec",
     "prettier",
@@ -200,4 +267,53 @@ export function writeCombo(
     "README.md",
   ]);
   for (const app of frontends) pnpm(root, ["--filter", app.name, "run", "gen"]);
+}
+
+function backendAsset(path: string, content: string, backend: Backend): string {
+  if (backend === "nestjs") {
+    if (path === "scripts/setup.mjs")
+      return content.replace(
+        'backend !== "nestjs" || tool !== "uv"',
+        'backend !== "nestjs" || ' +
+          JSON.stringify(backends.nestjs.setupTools).replaceAll(",", ", ") +
+          ".includes(tool)",
+      );
+    if (path === ".github/workflows/ci.yml") {
+      content = content.replace(
+        / {6}- uses: astral-sh\/setup-uv[^\n]*\n {8}with:\n {10}version: "0\.12\.19"\n {10}working-directory: apps\/api\n/,
+        "",
+      );
+      return content;
+    }
+    if (["README.md", "AGENTS.md"].includes(path))
+      return content
+        .replaceAll("FastAPI", "NestJS")
+        .replaceAll("Python 잠금 파일", "Node 잠금 파일")
+        .replaceAll("pnpm 12.6.0과 uv", "pnpm 12.6.0")
+        .replaceAll("Docker·uv·", "Docker·");
+    return content;
+  }
+  // 기존 FastAPI 생성물은 런타임 분기 도입 전의 파일 바이트를 보존한다.
+  if (path === "scripts/setup.mjs")
+    return content
+      .replace('import { existsSync } from "node:fs";\n', "")
+      .replace(
+        'export function backendOf(apiFolder) {\n  return existsSync(resolve(apiFolder, "pyproject.toml")) ? "fastapi" : "nestjs";\n}\n\n',
+        "",
+      )
+      .replace('    backend = "fastapi",\n', "")
+      .replace('.filter(([tool]) => backend !== "nestjs" || tool !== "uv")', "")
+      .replace(
+        'if (isMain(import.meta.url)) {\n  const root = resolve(import.meta.dirname, "..");\n  const backend = backendOf(resolve(root, "apps/api"));\n  process.exitCode = runnerMain(() => setup(root, { backend }));\n}',
+        'if (isMain(import.meta.url))\n  process.exitCode = runnerMain(() => setup(resolve(import.meta.dirname, "..")));',
+      );
+  if (path === "scripts/frontend-e2e.mjs")
+    return content
+      .replace('import { backendOf } from "./setup.mjs";\n', "")
+      .replace('E2E_TARGET: source.E2E_TARGET ?? "fastapi",', 'E2E_TARGET: "fastapi",')
+      .replace(
+        '    const root = resolve(import.meta.dirname, "..");\n    process.exitCode = frontendE2e(root, app, {\n      ...process.env,\n      E2E_TARGET: backendOf(resolve(root, "apps/api")),\n    });',
+        '    process.exitCode = frontendE2e(resolve(import.meta.dirname, ".."), app);',
+      );
+  return content;
 }

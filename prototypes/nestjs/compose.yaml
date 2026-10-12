@@ -1,0 +1,175 @@
+# App profile uses the single built image; infrastructure remains the default profile.
+x-app: &app
+  build: .
+  image: nestjs-template-app
+  profiles: [app]
+  environment:
+    NODE_ENV: production
+    PORT: "8000"
+    DATABASE_URL: postgresql://app:app@postgres:5432/app # betterleaks:allow public compose credential
+    REDIS_URL: redis://valkey:6379/0
+    JWT_SECRET: compose-app-only-jwt-signing-key-32 # betterleaks:allow compose-only secret
+    IDENTIFIER_HASH_SECRET: compose-app-only-identifier-key-32 # betterleaks:allow compose-only secret
+    SMTP_URL: smtp://mailpit:1025
+    MAILPIT_URL: http://mailpit:8025
+    MAIL_FROM: "AI Template <no-reply@example.com>"
+    FRONTEND_URL: http://localhost:3000
+    SEED_ADMIN_EMAIL: compose-admin@example.com
+    SEED_ADMIN_PASSWORD: compose-app-profile-admin-password # betterleaks:allow compose-only credential
+    S3_ENDPOINT_URL: http://seaweedfs:8333
+    S3_PUBLIC_ENDPOINT_URL: http://127.0.0.1:28333
+    S3_REGION: us-east-1
+    S3_BUCKET: app
+    S3_ACCESS_KEY_ID: app
+    S3_SECRET_ACCESS_KEY: app-secret # betterleaks:allow public compose credential
+    STORAGE_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+    REALTIME_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+    RATE_LIMIT_GLOBAL: "1000000"
+    RATE_LIMIT_STRICT: "1000000"
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      - "127.0.0.1:25432:5432"
+    volumes:
+      # PostgreSQL 18 이미지는 /var/lib/postgresql 아래에 버전별 폴더를 만든다.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      # 초기화 임시 서버의 Unix 소켓 대신 최종 서버의 TCP 준비를 확인한다.
+      test: ["CMD", "pg_isready", "--host", "127.0.0.1", "--username", "app", "--dbname", "app"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  valkey:
+    image: valkey/valkey:9.1.2
+    ports:
+      - "127.0.0.1:26379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47
+    # weed mini: master, volume, filer, S3를 한 프로세스로 띄운다. 시작할 때 버킷(S3_BUCKET과 같은
+    # 이름)이 없으면 만든다. 브라우저 업로드용 CORS는 setup이 S3 API로 건다.
+    command: ["mini", "-dir=/data", "-bucket=app"]
+    environment:
+      AWS_ACCESS_KEY_ID: app
+      AWS_SECRET_ACCESS_KEY: app-secret
+    ports:
+      - "127.0.0.1:28333:8333"
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8333/healthz"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    environment:
+      # E2E가 SMTP 오류를 일부러 내서 메일 잡의 재시도를 본다(tools/mailpit.py의 fail_senders).
+      MP_ENABLE_CHAOS: "true"
+    ports:
+      - "127.0.0.1:21025:1025" # SMTP
+      - "127.0.0.1:28025:8025" # 웹 화면과 API
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  oauth:
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.3
+    ports:
+      - "127.0.0.1:28080:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://localhost:8080/default/.well-known/openid-configuration",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  migrate:
+    <<: *app
+    command: ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/seed.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  storage-init:
+    <<: *app
+    command: ["node", "dist/storage-init.js"]
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8000/health/ready').then(r => { if (r.status !== 200) process.exit(1); }).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 12
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      oauth:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ["node", "dist/worker.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  scheduler:
+    <<: *app
+    command: ["node", "dist/scheduler.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  seaweedfs-data:
