@@ -194,12 +194,15 @@ export function frontendDifferences(clone, target, api, frontends, run, director
       .stdout.split("\0")
       .filter((p) => p.includes("/generated/"))) {
       const original = readFileSync(join(clone, row)),
-        destination = join(target, "apps", app, row.slice(("templates/" + template + "/").length));
+        path = row.slice(("templates/" + template + "/").length),
+        generatedPath = path.startsWith("contract/") ? path : "apps/" + app + "/" + path,
+        destination = join(target, generatedPath);
       if (!existsSync(destination)) throw Error("Missing frontend generated file: " + destination);
       const generated = readFileSync(destination);
       differences.generatedFrontendDifferences.push({
         app,
-        path: row.slice(("templates/" + template + "/").length),
+        path,
+        generatedPath,
         originalBytes: original.length,
         generatedBytes: generated.length,
         originalSHA256: sha(original),

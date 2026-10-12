@@ -415,3 +415,17 @@ suffix만 ignore 경로를 명시해 고정 Prettier로 처리하고 부모 pref
 
 문서 range의 line-start가 인용문으로 해석된 표현 오류도 새 suffix의 code span으로 고쳤다.
 원래 프런트 범위는 `>=3.3.1`이며 TypeScript pin 6.0.3으로의 실제 재표현이라는 뜻을 유지한다.
+
+## R40: 조합 루트의 공유 프런트 계약 관찰
+
+로컬 create 검사는 221성공·기존 7skip/228·29파일과 Node 자산 66성공을 확인했다. 새 시험의 void 화살표 표기 린트 실패(native 1)를 보존하고 승인된 중괄호 수정 뒤 scoped 포맷·린트를 통과했다.
+
+시작 HEAD `3d4877a`의 새 전체 CI는 14개 완료 중 13개 성공, `create-combo-nestjs-probe` 하나 실패다. baseline 10개는 모두 성공했다. 원래 web 생성 035는 native 0·21.381738213초였고 frozen·setup·API check·build·inert E2E 자식·API 이미지도 native 0이었다. Git 049도 native 0·0.004583875초였지만 그 뒤 순수 비교 함수가 `Missing frontend generated file: apps/web/contract/mock/src/generated/api.ts`로 멈췄다. 생성 native 실패나 별도 잠금 진단이 아니다. standalone은 완료됐고 web은 미완료, admin·both는 시작하지 않았다. 마지막 소유 폴더·compose·이미지·포트 정리는 네 변형의 완료와 별개다.
+
+현재 생성기는 첫 프런트의 `contract/*`를 조합 루트에 한 번 복사하며 각 앱의 `gen.config.json`도 `../../contract`를 가리킨다. 기존 probe의 모든 생성물을 `apps/<app>/`에서 찾던 가정만 고쳤다. 템플릿 상대 경로가 정확히 `contract/`로 시작하면 루트에서, 나머지는 각 앱에서 읽는다. 모든 추적 생성 소스의 출처·원본/결과 byte 수·SHA-256·changed를 유지하고 portable `generatedPath`도 남긴다. both는 하나의 공유 계약 결과를 두 템플릿 출처와 각각 비교한다. 파일 생략·누락 허용·다른 위치 fallback은 없다.
+
+새 회귀 시험은 실제 부분/전체 계약 문서와 격리 파일, 명시한 순수 추적 목록 대역으로 web·admin·both의 모든 행·경로·byte·SHA·changed를 확인한다. 루트 계약이 없으면 이전 앱 계약 사본이 있어도, 앱 생성물이 없으면 루트나 다른 앱 사본이 있어도 실패해야 한다. 같은 명령의 RED는 경로 처리에 따른 7개 실패, 동일 시험의 GREEN은 7개 성공이었다. 이는 fixture 관측이며 실제 생성 CI 측정을 대신하지 않는다. 기존 시험·골든·음성 대조군·생성 CLI·잠금 정렬/검증·R19·optional 그래프·고정 버전·release age 1440은 그대로다.
+
+현재 CI artifact의 186파일·56 native receipt·112 raw stream·369 소스 바인딩은 전송된 byte 검증 범위다. 완전한 printed 기록은 44개이며 12개가 없으므로 전체 printed-log equality는 계속 FALSE다. v2 실패를 보존하고 v3의 독립 artifact/source 검증으로 이 차이를 덮지 않는다. 큰 raw 로그 전체를 수동으로 읽었다고 주장하지 않는다. 현재 stack OTel은 `complete:false`·`Unexpected end of JSON input`이며 현재 trace 수는 UNKNOWN이다. 이전 HTTP·Express·pg·ioredis 수는 역사적 관측으로 남긴다.
+
+통합은 43성공·10파일·WARN 0, 선택 적합성은 41성공·53skip/94의 부분 범위다. API 부분 19 operation·83 schema, R1 resolving drift·R2 hidden hoist 미해결, tsx DI 미지원도 유지한다. Task 7·CI·all-four·전체 Nest 계획·SDD gate는 모두 FALSE다. Root의 전체 소스/시험/문서 suffix/patch·native·보호 자원 검토와 worker release·새 정확한 positive exit 뒤 변경 HEAD의 새 전체 14개 CI, standalone·web·admin·both의 실제 전체 검증이 남아 있다. 전체 39/126/94·web 20·admin 18 및 최종 SDD는 구체적인 전체 계획에 대한 새 사용자 승인 뒤의 범위다.
