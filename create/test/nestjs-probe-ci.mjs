@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { parse, parseAllDocuments } from "yaml";
 import { isDeepStrictEqual } from "node:util";
 import { verifyAppResolutions } from "../src/lockfile.ts";
+import { diagnoseImporterFailure, diagnosticPlan } from "./nestjs-probe-lock-capture.ts";
 import { materializePrototype } from "./nestjs-probe-materialization.ts";
 import {
   immutable,
@@ -13,6 +14,7 @@ import {
   cleanupVariant,
   removeOwnedFolders,
   frontendDifferences,
+  assertZodOverlap,
 } from "./nestjs-probe-ci-support.mjs";
 
 if (process.env.GITHUB_ACTIONS !== "true")
@@ -139,6 +141,56 @@ if (mode === "cleanup") {
         ],
         { cwd: clone, env: publicEnvironment },
       );
+    } catch (originalError) {
+      const originalRow = rows.at(-1);
+      if (!frontends.length || !originalRow?.id.endsWith(id + "-generate")) throw originalError;
+      const originalStderr = readFileSync(
+        join(evidence, "run-commands", originalRow.id + ".stderr.log"),
+        "utf8",
+      );
+      diagnoseImporterFailure(
+        originalError,
+        { nativeExit: originalRow.nativeExit, stderr: originalStderr },
+        () => {
+          const plan = diagnosticPlan(runnerTemp, id, name, directory, frontends);
+          immutable(plan.bindingPath, {
+            testedHead: head,
+            sourceHead: head,
+            materializationHead,
+            originalNativeFailure: originalRow,
+            originalStderrSHA256: sha(originalStderr),
+            originalFailure: String(originalError),
+            originalTarget: target,
+            originalName: name,
+            diagnosticTarget: plan.target,
+            diagnosticName: plan.name,
+            retrospectiveOriginalCandidate: false,
+          });
+          state.folders.push(plan.target);
+          save();
+          const diagnosticBefore = new Set(readdirSync(runnerTemp));
+          try {
+            return run(plan.label, "pnpm", plan.args, { cwd: clone, env: publicEnvironment });
+          } finally {
+            for (const file of readdirSync(runnerTemp))
+              if (!diagnosticBefore.has(file) && file.startsWith("aitpl-" + plan.name + "-"))
+                state.folders.push(join(runnerTemp, file));
+            save();
+          }
+        },
+        ({ error }) => {
+          const diagnosticRow = rows.at(-1);
+          immutable(join(directory, "lock-diagnostic-result.json"), {
+            originalNativeFailure: originalRow,
+            diagnosticOuterNative: diagnosticRow?.id.endsWith(id + "-lock-diagnostic")
+              ? diagnosticRow
+              : null,
+            diagnosticError: error === null ? null : String(error),
+            originalFailureRemainsFatal: true,
+            compatibleResolutionAccepted: false,
+          });
+        },
+      );
     } finally {
       for (const file of readdirSync(runnerTemp))
         if (!before.has(file) && file.startsWith("aitpl-" + name + "-"))
@@ -189,6 +241,18 @@ if (mode === "cleanup") {
           ["socket.io-client", "4.8.4"],
           ["@swc/core", "1.16.12"],
         ].map(([pkg, version]) => {
+          if (pkg === "zod")
+            return [
+              pkg,
+              assertZodOverlap(
+                data,
+                originalSources.map(({ app, path }) => ({
+                  app,
+                  data: parseAllDocuments(readFileSync(path, "utf8")).at(-1).toJS(),
+                })),
+                frontends.length > 0,
+              ),
+            ];
           const packages = Object.keys(data.packages).filter((k) => k.startsWith(pkg + "@"));
           const snapshots = Object.keys(data.snapshots).filter((k) => k.startsWith(pkg + "@"));
           if (packages.length !== 1 || packages[0] !== pkg + "@" + version)

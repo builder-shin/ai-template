@@ -216,3 +216,39 @@ export function frontendDifferences(clone, target, api, frontends, run, director
   );
   immutable(join(directory, "frontend-gen-differences.json"), differences);
 }
+
+export function assertZodOverlap(data, sources, combo) {
+  const packages = Object.keys(data.packages)
+    .filter((k) => k.startsWith("zod@"))
+    .sort();
+  const snapshots = Object.keys(data.snapshots)
+    .filter((k) => k.startsWith("zod@"))
+    .sort();
+  const expected = [
+    ...new Set(
+      sources.flatMap(({ data: source }) =>
+        Object.keys(source.packages).filter((k) => k.startsWith("zod@")),
+      ),
+    ),
+  ].sort();
+  if (!expected.includes("zod@4.6.5") || packages.join("\n") !== expected.join("\n"))
+    throw Error("Overlap version changed: zod");
+  for (const { app, data: source } of sources) {
+    const original = source.importers["."];
+    const actual = data.importers[combo ? "apps/" + app : "."];
+    const pin = original?.dependencies?.zod ?? original?.devDependencies?.zod;
+    const resolved = actual?.dependencies?.zod ?? actual?.devDependencies?.zod;
+    if (
+      pin?.specifier !== "4.6.5" ||
+      pin.version !== "4.6.5" ||
+      resolved?.specifier !== "4.6.5" ||
+      resolved.version !== "4.6.5"
+    )
+      throw Error("Required direct Zod pin changed");
+  }
+  return {
+    packageKeys: packages,
+    snapshotKeys: snapshots,
+    meaning: "exact selected-source Zod versions; direct4.6.5 retained, no physical-dedup claim",
+  };
+}
