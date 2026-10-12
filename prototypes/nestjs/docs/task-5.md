@@ -127,3 +127,57 @@ an incorrect inference; the diagnostic identifies mail.test.ts, generic-password
 The original failed hook and diagnostic are retained. The first private lock audit selected the
 pnpm tool document and exited1; the corrected reader selects the dependency importer and proves
 all864 old package/snapshot entries, original importer resolutions and the tool document unchanged.
+
+## First CI setup failure and narrow seed correction
+
+The first exact Task5 head53d46658 reached setup in
+[run38188140211](https://github.com/builder-shin/ai-template/actions/runs/38188140211/job/114614865223).
+The three owned databases' migrations, the17-file/693199-byte Prisma client generation and
+131-file SWC build succeeded. `setup.ts` then invoked `node dist/seed.js`, which exited1 before
+the integration command: **0/43 cases executed**, with the test step skipped. The seed subprocess
+wall duration and detailed child error were not logged. Observed CI Node24.21.0 differs from
+Mac Node24.19.0; this is an environment observation, not a demonstrated cause.
+
+The predecessor PostsModule supplied RealtimePublisher itself. Task5 moved that provider into
+global RedisModule, and AppModule includes it. SeedModule still imported only DbModule,
+RolesModule, UsersModule and PostsModule, so PostEvents could not resolve RealtimePublisher.
+A private reconstructed compiled graph first reproduced the missing provider. Its initial
+candidate compile logged a shutdown error because the inert Redis subscriber omitted `off`;
+that was an incomplete test double, not real Redis behavior. A separate complete subscriber
+probe compiled and closed cleanly; both original observations remain preserved.
+
+The regression now imports **the actual exported SeedModule** rather than repeating its import
+list. Inert SETTINGS/Prisma/Storage/Redis overrides keep the production services and publisher
+binding real while avoiding infrastructure constructors. It compiles only, resolves PostsService,
+RolesService, UsersService, UnitOfWork and the runtime RealtimePublisher, then closes with complete
+subscriber `off`/`unsubscribe` methods. No module init, seed, query or network call occurs.
+Export alone preserved the original graph and produced the missing-RealtimePublisher failure
+(exit1,0.585752s); the sole RedisModule import correction made the test pass (exit0,0.631470s).
+
+Only seed wiring, this regression and portable evidence changed. All43 integration cases,
+original29/auth13/quota20 and API/jobs/transport/settings/schema/migrations/versions/workflow
+remain unchanged. Task4's corrected real29-case success and historical Task3 six warnings are
+retained. BullMQ6.3.12+ioredis6.0.0 remains candidate A with real compatibility unproved; this
+provider failure does not authorize a candidate-B switch. New exact corrected-head ALL12 CI,
+real seed, SMTP/Redis/process results and43 integration cases remain pending before Task6.
+
+### Corrective local verification
+
+These commands ran sequentially on Mac Node24.19.0/pnpm12.6.0. Seconds are actual parent
+command wall durations; they do not measure CI seed or infrastructure behavior.
+
+| Command from `prototypes/nestjs/` | Native exit | Seconds   | Observation                                                               |
+| --------------------------------- | ----------- | --------- | ------------------------------------------------------------------------- |
+| `pnpm install --frozen-lockfile`  | 0           | 0.068097  | Existing pins and policies preserved                                      |
+| `pnpm check`                      | 0           | 13.442671 | All7 stages;132 tests in17 files                                          |
+| `pnpm check:repo`                 | 0           | 1.932346  | All4 stages;23 tests;83 schemas/difference0                               |
+| `pnpm build`                      | 0           | 0.399856  | SWC131 files                                                              |
+| `pnpm probe:di`                   | 0           | 2.655774  | Selected tsc/SWC/Vitest-SWC graphs match; earlier tsx limitation retained |
+| Compiled actual SeedModule probe  | 0           | 0.274826  | Inert infrastructure, compile only, clean close                           |
+| Compiled ESM app probe            | 0           | 0.317334  | Lazy infrastructure,19 operations, clean close                            |
+| Repository-root `pnpm check`      | 0           | 67.652640 | All11 stages                                                              |
+
+The complete unit suite retains deliberate rate-limit failure and after-commit-hook error
+fixture logs; these are passing negative cases. The seed regression and compiled seed probe
+had empty stderr. Physical OS tmp conservative tsx IPC length was80 UTF-8 bytes, below100,
+with TMPDIR passed only to child commands. No local setup, seed or real infrastructure ran.

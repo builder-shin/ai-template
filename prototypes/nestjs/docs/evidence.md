@@ -248,7 +248,7 @@ required jobs in [run38185336644](https://github.com/builder-shin/ai-template/ac
 including all29 real integration cases. Earlier original failed-run observations remain historical.
 Task5 now implements Redis jobs/mail, the pinned Nest gateway, adapter/emitter/control delivery,
 rate limits and typed readiness, completing nineteen mounted operations with83 schemas.
-Actual local tests currently pass131 cases; generation, SWC and repository comparison pass.
+The original local tests passed131 cases; generation, SWC and repository comparison passed.
 The first actual18-row gateway probe exited0 in0.959460s and observed zero payload as undefined,
 arrays preserved and no nil-return ACK within100ms. Production always returns RealtimeAck and
 preserves permission-free unsubscribe, distinct from the transport dummy's symmetric403.
@@ -257,3 +257,27 @@ disabled and frozen installation passes. The earlier unused peer mismatch still 
 Fourteen new CI-only cases retain all original29/auth13/quota20. No local real infrastructure
 acceptance is claimed. See [Task5 evidence](task-5.md) for decisions, observed scope and exact-head
 CI requirements; Tasks6–7 and full final design approval remain later.
+
+## Task5 CI seed-provider correction
+
+The first Task5 integration job failed during setup in
+[run38188140211](https://github.com/builder-shin/ai-template/actions/runs/38188140211/job/114614865223)
+at commit53d46658. Migration deployment to app/app_test/app_e2e succeeded, Prisma generated
+17 files/693199 bytes and SWC compiled131 files, but setup's `node dist/seed.js` child returned1.
+The integration step was skipped: **0 of43 declared cases executed**. CI used Node24.21.0;
+local measurements used Mac Node24.19.0. Neither this setup failure nor the earlier local
+success establishes BullMQ6/ioredis6 compatibility.
+
+Task5 moved RealtimePublisher from PostsModule into the global RedisModule. AppModule imported
+RedisModule, but the narrower SeedModule still omitted it, leaving PostEvents' dependency
+unresolved. The correction imports RedisModule into SeedModule and exports the actual SeedModule
+for a regression in `test/seed-graph.test.ts`. That test compiles the production module with inert
+DB/storage/Redis overrides and closes it; it does not initialize the module, execute seed, issue
+queries or connect to infrastructure. The complete corrected local check passes132 tests in17 files. With only the export added, it failed at missing
+RealtimePublisher (exit1,0.585752s). Adding RedisModule passed the same test (exit0,0.631470s).
+
+All43 integration declarations and original29/auth13/quota20 are preserved. Corrected Task4's
+successful29-case observations and the historical six Task3 listener warnings remain separate.
+Production API/jobs/transport/settings, schema/migrations, versions and workflow are unchanged.
+A **new exact corrected-head all-twelve-job CI result is pending**, including real seed and43
+integration cases; the original failed run remains evidence. See [Task5 details](task-5.md).

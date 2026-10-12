@@ -7,9 +7,10 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { NestFactory } from "@nestjs/core";
 import { DbModule } from "./core/db/db.module.js";
+import { RedisModule } from "./core/redis/redis.module.js";
 import { Module } from "@nestjs/common";
-@Module({ imports: [DbModule, RolesModule, UsersModule, PostsModule] })
-class SeedModule {}
+@Module({ imports: [DbModule, RedisModule, RolesModule, UsersModule, PostsModule] })
+export class SeedModule {}
 export async function seed(): Promise<void> {
   const app = await NestFactory.createApplicationContext(SeedModule, { logger: false });
   try {
