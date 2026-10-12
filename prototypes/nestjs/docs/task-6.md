@@ -23,3 +23,13 @@ OpenTelemetry는 기본 꺼져 있다. CI는 `OTEL_ENABLED=true node --import ./
 새 직접 계측 pin은 SDK Node/HTTP 0.223.0, sdk-trace-base 2.12.0, Express/ioredis 0.71.0, pg 0.75.0이다. 조회한 공개일은 모두 24시간보다 이전이고 minimumReleaseAge=1440을 유지한다. 최초 설치의 protobufjs build-policy 실패와 정책 placeholder 중복 오류를 보존했다. 설치한 protobufjs 7.6.6 postinstall은 버전 선언 경고만 내므로 allowBuilds에서 false로 명시했다. 프론트 override나 peer 억제를 추가하지 않았다. 기존 optional ESLint peer 제한은 그대로다.
 
 로컬 최종 검사와 실제 명령 시간은 evidence 원장에 보충한다. 이미지 크기/UID/migrate, 실제 격리·SMTP·S3·41 적합성·smoke·OTel과 새 13개 CI 작업 전체 수용은 코디네이터의 exact-head 확인 전까지 pending이다.
+
+## 최초 CI와 발행 fixture 진단
+
+원래 `dd798660`의 [PR CI 실행](https://github.com/builder-shin/ai-template/actions/runs/38194991406)은 13작업 중 12성공·stack 1실패로 끝났다. `flows.ts:84`의 별도 발행 worker 종료 코드가 기대 0 대신 1이었다. 원래 caller는 저장한 child tail을 assertion에 전달하지 않았으므로 그 worker의 stderr나 정확한 원인을 검토했다고 주장하지 않는다. 가입·메일·인증·로그인·API 발행의 진행은 순차 소스와 실패 위치에서 추론한 것이며 최종 processFlows 산출물은 없다.
+
+같은 실행의 실제 이미지는 713,078,917바이트, UID10001, Node24.19.0, Prisma7.10.0이었다. Prisma 패키지 자체 42,052,481바이트는 전이 의존성을 제외한 값이다. 개발 app/Redis0 표식은 보존되고 app_e2e/Redis14 표식은 제거됐으며 소유한 최상위 프로세스 그룹 4개와 18000 포트가 닫혔다. 별도의 실제 통합 작업은 43/43과 10개 수명 주기의 명시적 종료·maxListeners10·새 listener 경고 0을 기록했다. 과거 Task3의 경고 기록은 유지한다. 마지막 suite의 프로세스 산출물을 전체 suite의 누적 PID 증거로 부르지 않는다.
+
+현재 변경은 원인을 고쳤다는 주장이 아니라 다음 CI의 실패 진단이다. fixture는 bootstrap/register/update/close의 고정된 공개 단계 이름을 실패할 때만 출력하며 조용한 native1과 thrown error를 포함한다. 성공 출력에는 식별자를 넣지 않는다. caller는 실패할 때만 기존 8192자 child tail을 실제 child와 inherited command 양쪽의 알려진 비밀값을 가린 뒤 assertion에 넣는다. 실행에 준 같은 child 환경을 redaction에도 사용하므로 app_e2e/DB14로 바뀐 URL도 가린다. 실제 worker context·PostsService.update·commit·별도 프로세스의 Socket.IO 전달과 23바이트 업로드/다운로드, 종료 코드 0 등 기존 assertion은 유지한다.
+
+로컬에서 새 SWC 산출물의 실제 AppModule을 인프라 대역으로 compile/register/close했고, 기존 fixture와 실제 compiled PostsService·Repository·UnitOfWork·PostEvents·Emitter를 제어된 transaction/Redis 포트로 실행했다. 둘 다 native0이어서 원인은 아직 미확정이다. 이 검사는 실제 DB commit이나 Redis/Socket.IO·worker 기동의 수용 증거가 아니다. 새로운 exact-head ALL13, 발행 worker의 실제 흐름·업로드/다운로드·OTel·app profile·41 적합성·web/admin smoke는 여전히 pending이며 Task7은 그 전체 CI 성공 뒤에만 시작한다.

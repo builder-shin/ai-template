@@ -359,3 +359,28 @@ OTel은 기본 꺼짐이다. CI가 실제 --import 등록 API의 HTTP/Express/pg
 실패 원본도 보존한다. 최초 runner table의 배열 행 분해 오류, OAuth typed provider/parameterized count를 놓친 정적 audit 오류, 새 파일 포맷·타입 린트 오류, 새 대상 도움말 기대 변경, 기존12jobs prefix audit의 여분 개행 오류는 각각 구체적으로 고친 뒤 검사했다. prefix 바이트 불변은 올바른 startsWith 비교로 확인했다. 원래13auth/43 통합 assertions나41 대상 이름을 빼서 성공시킨 것이 아니다.
 
 새 nestjs-prototype-stack을 더했다. 실제 이미지/UID/migrate, process E2E, app/Redis0 보존, app_e2e/Redis14 clearing, 실제41 적합성, web/admin smoke와 OTel 관측은 새 exact-head ALL13 PR CI가 확인하기 전까지 pending이다. 이후 Task7, 완성한 전체39operations/126schemas/94cases/web20/admin18/four creation variants/harness15 계획, 새 제품 승인도 남아 있다.
+
+### 최초 Task6 CI 실패와 진단 전용 후속 변경
+
+위 문단은 최초 로컬 완료 당시의 pending 기록이다. 원래 `dd798660`의 [CI 38194991406](https://github.com/builder-shin/ai-template/actions/runs/38194991406)은 최종 12성공·stack 1실패였다. `flows.ts:84`는 발행 worker의 native1에 대해 명시한 0을 기대했다. 기존 caller가 child tail을 전달하지 않아 해당 worker stderr와 실제 원인은 미확정이다. API 가입·메일·인증·로그인·발행까지의 진행은 순차 소스/실패 위치 추론이며 최종 processFlows 산출물은 없다.
+
+실제 이미지 713,078,917바이트/UID10001/Node24.19.0/Prisma7.10.0과 Prisma 패키지 자체 42,052,481바이트를 기록했다. 패키지 값은 전이 의존성을 제외한다. 실제 app·Redis0 표식 보존과 app_e2e·Redis14 clearing, 소유한 최상위 4개 그룹 종료·18000 폐쇄는 통과했다. 실제 통합43/43·10개 수명 주기의 명시적 close/maxListeners10/새 경고0도 별도 성공 증거다. 과거 실패·Task3 경고를 지우지 않으며 마지막 suite의 5개 프로세스 기록을 전체 누적 종료 증거로 해석하지 않는다.
+
+후속 변경은 diagnostic-only다. fixture의 고정 bootstrap/register/update/close 실패 단계와 caller의 비밀값을 가린 기존 bounded tail만 추가하고 성공 출력의 식별자를 제거한다. 실행에 준 같은 child 환경과 inherited command 양쪽의 값을 가려 app_e2e/DB14로 바뀐 URL도 보호한다. 종료 코드0, published 상태, commit, Socket.IO의 별도 프로세스 전달과 23바이트 업로드/내려받기 assertion은 유지한다. 실제 runtime/provider/settings/의존성·workflow·43 통합·167 단위 사례는 바꾸지 않는다. 원본 CI RED는 성공으로 바꾸거나 같은 HEAD로 재실행하지 않는다.
+
+현재 소스의 SWC134 빌드 후 실제 compiled AppModule의 inert compile/register/close와 기존 fixture의 실제 PostsService/Repository/UnitOfWork/PostEvents/Emitter·제어된 transaction/Redis 포트 실행이 각각 native0이었다. 이는 실제 worker 기동·DB commit·Redis/Socket.IO의 GREEN이 아니며 원인은 미확정이다. 새로운 exact-head ALL13과 실제 발행·업로드/다운로드, 원래 도달하지 못한 OTel/app profile/41 적합성/web/admin smoke가 남아 있다. Task7과 최종 전체 제품 계획·새 승인은 계속 게이트 뒤에 둔다.
+
+진단 변경의 실제 로컬 결과(반환 후 monotonic wall seconds; 실제 인프라 수용과 구분):
+
+| 검사                                                                | native exit | wall seconds |
+| ------------------------------------------------------------------- | ----------- | ------------ |
+| frozen 설치                                                         | 0           | 0.108093083  |
+| 최종 자체 check 7단계/167사례/20파일                                | 0           | 20.719106708 |
+| 자체 repo check 4단계/23사례/83schemas diff0                        | 0           | 2.189888000  |
+| SWC134                                                              | 0           | 0.367210500  |
+| 선택 DI                                                             | 0           | 2.628160542  |
+| 인프라 없는 compiled ESM19/init/close                               | 0           | 0.345309167  |
+| 실제 caller assertion/가짜 child/서로 다른 child·inherited URL 가림 | 0           | 0.163119792  |
+| 검토 보완 후 루트 check11                                           | 0           | 72.150209334 |
+
+단계 probe의 조용한 종료/예외 8개와 잘못된 published 상태 1개는 실제 native1로 보존됐고 각각 올바른 실패 단계를 냈다. 성공 대역은 native0·빈 stderr였다. caller 대역도 child1을 여전히 assertion 실패로, child0을 성공으로 처리했고 8192자 tail·비밀값 가림을 검사했다. 이것은 원래 CI child stderr를 복원한 결과가 아니다. 일반 hook과 별도 커밋 이후의 새로운 실제 CI 판정은 계속 남아 있다.

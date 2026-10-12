@@ -74,14 +74,40 @@ try {
   );
   assert.equal(draft.response.status, 201);
   const workerId = string(object(object(draft.body).data).id);
+  const workerEnvironment = e2eEnvironment(
+    process.env.E2E_WEB_URL ?? "http://localhost:3000",
+    process.env,
+  ).server;
   const worker = start(
     [process.execPath, resolve(import.meta.dirname, "publish.mjs"), userId, workerId],
-    e2eEnvironment(process.env.E2E_WEB_URL ?? "http://localhost:3000", process.env).server,
+    workerEnvironment,
     resolve(import.meta.dirname, "../.."),
     "e2e-worker-publish",
   );
   try {
-    assert.equal(await worker.exited, 0, "Worker context must commit publication.");
+    const code = await worker.exited;
+    let message = "Worker context must commit publication.";
+    if (code !== 0) {
+      let tail = worker.tail.replaceAll(password, "[redacted]");
+      for (const key of [
+        "E2E_SEED_ADMIN_PASSWORD",
+        "SEED_ADMIN_PASSWORD",
+        "JWT_SECRET",
+        "IDENTIFIER_HASH_SECRET",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "SMTP_URL",
+      ]) {
+        for (const environment of [workerEnvironment, process.env]) {
+          const value = environment[key];
+          if (value) tail = tail.replaceAll(value, "[redacted]");
+        }
+      }
+      message += `\nWorker log tail:\n${tail.slice(-8192)}`;
+    }
+    assert.equal(code, 0, message);
     await wait(
       () => Promise.resolve(events),
       (values) => values.some((v) => object(object(v).data).id === workerId),
