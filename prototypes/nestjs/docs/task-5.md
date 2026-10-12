@@ -181,3 +181,66 @@ The complete unit suite retains deliberate rate-limit failure and after-commit-h
 fixture logs; these are passing negative cases. The seed regression and compiled seed probe
 had empty stderr. Physical OS tmp conservative tsx IPC length was80 UTF-8 bytes, below100,
 with TMPDIR passed only to child commands. No local setup, seed or real infrastructure ran.
+
+## Seed-corrected CI failure and asynchronous resend wait
+
+Earlier pending statements above describe the initial Task5 implementation and seed correction.
+The subsequent exact072274d6 integration job in
+[run38189421106](https://github.com/builder-shin/ai-template/actions/runs/38189421106/job/114618758109)
+completed setup, drift and build, then executed43 cases in ten suites:42 passed,1 failed,
+native exit1, Vitest-reported114.95 seconds. Exact child process wall duration was not separately
+logged. The original53d46658 setup failure still executed0/43 and remains distinct.
+
+All14 new jobs4/realtime5/rate-limit5 cases passed with the pinned candidate-A stack, including
+real SMTP retry/exhaustion, schedulers, Redis delivery, limits and readiness assertions.
+That is actual case evidence on the failed072274d6 job; it does not establish a43-case pass or
+complete twelve-job acceptance. Historical local-only observations above retain their scope.
+
+The original auth13 resend test remained byte-identical to Task4 and failed at line77:
+expected accountToken count2, observed1 after the new@example.com resend202. Static source
+tracing shows the old in-process broker awaited its handler after commit. The real BullMQ
+after-commit hook awaits queue.add; the separate worker issues each verification token in
+UnitOfWork before SMTP. Thus202 acknowledges enqueue independently of token processing.
+FastAPI's resend test waits for mail and the contract test waits for a newer mailbox message;
+these are static comparisons, with no local FastAPI execution.
+
+The sole fixture correction imports the existing waitFor from processes.js and waits for
+the actual database count to equal2 immediately before the original
+expect(await db.accountToken.count()).toBe(2). It uses the existing10-second deadline and20ms
+condition polling, propagates query errors and fails on timeout. Every original202/201 response,
+explicit count2, all43 case declarations, auth13 assertions and twenty-way quota remain.
+No production synchronization, arbitrary sleep, timeout increase, queue retry, skip, suppression,
+new helper or mirrored test was added. Seed wiring/regression, runtime, versions and CI are protected.
+
+The ten fresh072274d6 suite lifecycles record warnings[], explicitlyClosed:true and maxListeners10.
+Historical Task3 six warnings in each auth run stay unchanged; these observations do not prove
+their original cause. The critical failure lines and all nine source snapshots were read.
+No full raw-log manual review or provider-transcript review is claimed.
+
+The actual failed job is this regression's RED. The corrected fixture's real GREEN is pending
+a new changed-head CI execution; local pure gates cannot substitute for PostgreSQL/worker behavior.
+The previous workflow finishes independently without cancellation or an unchanged rerun.
+Task6 remains gated by a new43-case pass and complete twelve-job success. Tasks6–7, full39
+operations/126 schemas/94 conformance flows/web20/admin18/four creation variants, final design
+and writing plan, publication CI and new user product-plan approval remain future work.
+
+### Asynchronous fixture correction: local pure gates
+
+These commands ran sequentially on Mac Node24.19.0/pnpm12.6.0. Times are actual parent
+command wall seconds, separate from the prior failed CI's Vitest114.95s and its unknown child wall.
+
+| Command from prototypes/nestjs unless noted         | Native exit | Seconds   | Observation                                                   |
+| --------------------------------------------------- | ----------- | --------- | ------------------------------------------------------------- |
+| pnpm install --frozen-lockfile                      | 0           | 0.168697  | Existing pins and policies                                    |
+| pnpm check                                          | 0           | 13.942065 | 7 stages;132 tests/17 files                                   |
+| pnpm check:repo                                     | 0           | 1.923780  | 4 stages;23 tests;83 schemas/difference0                      |
+| pnpm build                                          | 0           | 0.382342  | SWC131 files                                                  |
+| pnpm probe:di                                       | 0           | 2.526589  | Selected tsc/SWC/Vitest-SWC valid graphs and misuse rejection |
+| Compiled ESM createApp/init/emitOpenApi/close probe | 0           | 0.377170  | 19 operations; lazy infrastructure; closed                    |
+| Repository-root pnpm check                          | 0           | 67.931928 | 11 stages                                                     |
+
+The check retains the existing132 tests in17 files, including the actual SeedModule regression.
+No mirrored wait helper test or extra case was added. Physical Node OS tmp conservative tsx
+IPC measured80 UTF-8 bytes below100; TMPDIR was set only for children, including root tooling.
+The generated Prisma client remains17 files/693199 bytes with the predecessor digest.
+These pure gates do not establish a real corrected43-case or twelve-job CI pass.

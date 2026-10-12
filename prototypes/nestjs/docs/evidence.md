@@ -281,3 +281,39 @@ successful29-case observations and the historical six Task3 listener warnings re
 Production API/jobs/transport/settings, schema/migrations, versions and workflow are unchanged.
 A **new exact corrected-head all-twelve-job CI result is pending**, including real seed and43
 integration cases; the original failed run remains evidence. See [Task5 details](task-5.md).
+
+## Task5 asynchronous resend fixture correction
+
+The seed-corrected head072274d6 ran all43 cases in
+[run38189421106](https://github.com/builder-shin/ai-template/actions/runs/38189421106/job/114618758109).
+Setup, drift and build succeeded; integration returned exit1 with42 passed and1 failed across
+ten suites, Vitest-reported114.95s. This follows the original53d46658 setup failure with0/43
+executed. All fourteen new jobs/realtime/rate-limit cases passed on072274d6, but that result
+does not accept its failed integration job or whole workflow.
+
+The unchanged resend case asserted two committed tokens immediately after HTTP202 and observed
+one at auth.test.ts77. Previously the in-process after-commit broker awaited the mail handler;
+BullMQ now awaits queue.add, with token creation committed later by the separate worker.
+These are source-trace findings, consistent with the observed early assertion. FastAPI and
+contract resend tests already await mailbox completion; they were inspected statically only.
+
+The fixture now uses the existing waitFor to await actual accountToken count2, then retains
+the original explicit count2 assertion and every202/201 response. Its existing10-second deadline
+and20ms condition polling are unchanged; query errors propagate and timeout fails the case.
+Only the wait/import and portable evidence change. All43 case declarations, auth13 assertions
+and twenty-way quota remain; production auth/jobs/mail/UoW, seed, dependencies and CI are unchanged.
+The failed real CI is the regression RED; corrected real CI GREEN remains pending.
+No local DB, worker, broker, mail or mirrored-helper execution is claimed.
+
+The072274d6 log records ten suite lifecycles with warnings[], explicitlyClosed:true and
+maxListeners10. Historical Task3 six warnings in each auth run remain separate, unchanged evidence;
+no suppression or listener-limit change was added. Critical failure lines and source snapshots
+were read; no complete raw-log manual review or provider-transcript review is claimed.
+A new changed-head43-case pass and complete twelve-job success remain required before Task6;
+Tasks6–7 and full product design/plan approval remain future work.
+
+The corrected fixture passes the local seven-stage check with the unchanged132 tests/17 files,
+repository four-stage check/23 tests/schema83 difference0, SWC131, selected DI, lazy compiled
+app19 initialization/close and root eleven-stage check. Actual command times are in
+[Task5 local correction gates](task-5.md#asynchronous-fixture-correction-local-pure-gates).
+No real corrected integration result is claimed from these pure checks.

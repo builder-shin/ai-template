@@ -14,6 +14,7 @@ import {
   verificationToken,
   testDurations,
 } from "./helpers.js";
+import { waitFor } from "./processes.js";
 import { UnitOfWork } from "../../src/core/db/unit-of-work.js";
 import { advisoryXactLock, lockForUpdate } from "../../src/core/db/locks.js";
 import { Pool } from "pg";
@@ -73,6 +74,10 @@ it("keeps resend responses 202 for unknown, unverified and already-verified user
   ).toBe(201);
   expect((await post("email-verification-requests", { email: "new@example.com" })).status).toBe(
     202,
+  );
+  await waitFor(
+    () => db.accountToken.count(),
+    (count) => count === 2,
   );
   expect(await db.accountToken.count()).toBe(2);
 });
