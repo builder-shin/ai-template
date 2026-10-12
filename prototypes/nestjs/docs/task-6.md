@@ -43,3 +43,11 @@ OpenTelemetry는 기본 꺼져 있다. CI는 `OTEL_ENABLED=true node --import ./
 worker 분기는 installed emitter의 publish 포트에서 실제 Redis Promise를 관찰하고 await한다. 패킷 인코딩·namespace/key·룸 union은 emitter가 계속 맡으며 server 분기의 emit/ping·observer·payload·빈 룸과 기존 UnitOfWork의 commit 후 오류 containment는 유지한다. 새 DB 없는 테스트8개가 게시 완료까지 대기, 거부 전달과 commit 결과 보존·후속 훅, 겹친 게시, 기존 패킷/룸/서버 동작을 검사한다. timer/sleep, fixture 대기나 ping 추가, close 지연, 전역 오류 억제는 없다. 기존 즉시 app.close와 모든 process E2E assertion은 바이트 그대로다.
 
 제어된 native RED/GREEN과 최종 로컬 gate 시간은 evidence 원장에 기록한다. Redis PUBLISH 완료가 실제 별도 프로세스 Socket.IO 전달을 대신 증명하지 않는다. 새 변경 HEAD의 WHOLE13·실제 발행/업로드·OTel/app profile/41·web/admin smoke가 필요하며 Task7과 최종 전체 제품 계획·새 사용자 승인은 계속 별도 게이트다.
+
+## 적합성 selector와 reporter 결과 처리의 수정
+
+`cffb2f52`의 [실제 CI 38200517499](https://github.com/builder-shin/ai-template/actions/runs/38200517499)는12성공·stack1실패였다. 이번43/43 통합과 processFlows native0/API·별도 worker 이벤트 전달/23바이트 업로드·내려받기, 개발·E2E 표식 격리와18000 포트·최상위 소유4그룹 종료는 통과했다. migrate/storage-init0/API ready/worker·scheduler 실행도 확인했다. 이미지는713,079,962바이트/UID10001/Node24.19.0/Prisma7.10.0이며 최초dd713,078,917·진단4c713,078,918 기록을 유지한다. Prisma 패키지42,052,481바이트는 전이 의존성을 제외한다. HTTP1/Express0/pg6/ioredis0/healthDelta0/OTel complete=false는 완전한 계측이 아니며 최종 제품 계획의 미결 과제다.
+
+적합성은 공유 shellCommand가 selector 끝의 달러를 거절해 compose/Vitest 사례 전에 native2로 끝났고 wrapper의 missing JSON ENOENT가 native1로 이를 가렸다. 실제 선택 사례는0개이며41pass/53skip을 아직 수용하지 않고 두 frontend smoke도 skipped다. 실제 기존 guard의 native RED 뒤 selector 끝만 엄격한 `(?![\s\S])`로 바꿨다. 모든 실제 인자·Node shell argv 왕복·suite prefix/Unicode/구두점·접미 제목 거절·변경하지 않은94선언의41/53분류와 기존 selection unit이 통과했다. CASE_NAMES와 공유 보안 guard는 그대로다.
+
+prototype wrapper는 이전 reporter/count 파일을 호출 전에 지우고, 누락·읽기 실패는 명시적으로 보고하면서 child 비정상 종료를 보존한다. child0과 missing 결과도 실패하며 새 실패 보고서의 count와 기존 success count/name assertion을 유지한다. 소유한 Node fake command·native driver의 새 repository differential13개로 검사했고 ordinary unit175는 늘리지 않았다. 대역의 synthetic report는 실제 적합성 증거가 아니다. 반환한 로컬 gate 시간은 evidence에 보충하며 새 변경 HEAD의 WHOLE13·실제41/53·두 smoke와 Task7·최종 제품 계획·새 사용자 승인은 계속 별도다.

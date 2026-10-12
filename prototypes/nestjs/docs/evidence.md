@@ -412,3 +412,34 @@ worker 분기만 installed emitter의 publish 포트에서 실제 Redis Promise�
 | 루트 check11                                  | 0           | 80.679905292 |
 
 선택 tsc/SWC/Vitest-SWC의 DI metadata/graph 일치와 잘못된 type import 거절을 확인했다. 탐색 Oxc도 동작했으며 tsx graph verified=false는 기존 한계로 유지한다. 최종 코드의 자체·repo·build·DI·ESM·루트 gate는 순차로 한 번씩 실행했고, 이후에는 반환된 시간 표만 보충했다. 일반 포맷·린트·비밀 hook과 별도 커밋을 요구하며 새 실제 CI 수용은 여전히 남아 있다.
+
+### 적합성 인자와 reporter 실패 처리의 후속 수정
+
+위 게시 완료 수정 후 `cffb2f52`의 [CI 38200517499](https://github.com/builder-shin/ai-template/actions/runs/38200517499)는 최종 12성공·stack 1실패였다. 이번 실제 통합43/43과 processFlows native0, API·별도 worker의 이벤트 전달, 업로드·내려받기23바이트는 통과했다. 개발 app/Redis0 표식 보존, app_e2e/Redis14 표식 제거와18000 포트·소유 최상위 프로세스 그룹4개의 종료도 확인됐다. 이 네 그룹을 모든 중첩 자식의 누적 PID 증거로 부르지 않는다. app profile의 migrate/storage-init은 종료0, API는 ready, worker·scheduler는 실행 중이었다.
+
+이번 cff 이미지는713,079,962바이트, UID10001/Node24.19.0/Prisma7.10.0이었다. 최초 dd713,078,917바이트·진단4c713,078,918바이트 기록은 유지한다. Prisma 패키지 자체42,052,481바이트는 전이 의존성을 제외하며 CLI 없는 전체 이미지 비교가 아니다. 실제 ESM OTel은 HTTP1/Express0/pg6/ioredis0/healthDelta0/complete=false였다. probe native0이 완전한 계측을 뜻하지 않으며 이 불완전성은 프로토타입의 비차단 관찰과 최종 제품 계획의 미결 과제로 남긴다.
+
+적합성 실패는 API assertion 실패가 아니다. 공유 shellCommand가 CASE_PATTERN 끝의 달러 문자를 실행 전에 거절해 child가 native2로 끝났고, wrapper가 존재하지 않는 JSON을 읽어 ENOENT/native1로 원래 종료를 가렸다. 실행한 사례는0개이며41통과·53건너뜀을 수용하지 않는다. web·admin smoke도 둘 다 skipped였다. 이전 pending 스냅샷은 위 완료 결과와 실제 정리 기록으로 보충한다.
+
+수정 전에 기존 selector와 실제 변경하지 않은 공유 guard를 새 repository differential 검사로 실행해 native1/0.390252250초,4개 중2실패로 재현했다. CASE_NAMES 바이트는 그대로 두고 끝의 달러를 어떤 문자도 뒤따를 수 없는 `(?![\s\S])`로 바꿨다. 실제 공유 guard의 모든 forwarded 인자 검사와 순수 Node argv child의 shell 왕복이 통과했고, 변경하지 않은94개 선언을 실제 suite prefix·Unicode·구두점과 함께 분류해41선택/53비선택을 확인했다. 접미 글자·구두점·줄바꿈을 붙인 제목과 공유 guard의 위험 문자 거절도 검사한다. 이 분류는 실제 인프라 적합성 실행 결과가 아니다.
+
+prototype wrapper는 호출 전에 이전 reporter JSON과 count 산출물을 지운다. 새 결과가 없거나 읽을 수 없으면 명시적으로 실패를 기록하고 child 비정상 종료를 유지하며, child0이어도 결과가 없으면1로 실패한다. 새 정상 형식의 실패 보고서와 실제 count는 그대로 남긴다. 기존94total/41passed/53pending/0failed·이름 동일성 success assertion도 그대로다. 새 differential13개는 소유한 Node fake command와 실제 wrapper를 실행하는 Node driver로 native2/누락·stale/child0·누락/새 실패 보고서/잘못된 count와 이름을 검사했다. synthetic 보고서는 이 대역 테스트에만 쓰며 실제 count 증거로 쓰지 않는다. native GREEN0/1.147340959초와 기존 selection unit0/0.320991708초였다. 임시 child/보고서 폴더는 각각 finally에서 제거했다.
+
+기존175 단위·43 통합·41개 제목·94 선언, 공유 guard와 실행기·workflow·runtime·의존성·계약 바이트는 유지한다. 변경 HEAD의 새 WHOLE13과 실제41/53·web/admin smoke 수용은 코디네이터의 후속 CI에 남는다. Task7과 최종39operations/126schemas/14flows94cases/web20admin18/four creation variants/15jobs 전체 계획·새 사용자 제품 승인은 별도 게이트다.
+
+이번 수정의 반환 후 실제 로컬 gate 비용(벽시계 시간이며 CPU·토큰·과금이 아니다):
+
+| 검사                                           | native exit | wall seconds |
+| ---------------------------------------------- | ----------- | ------------ |
+| frozen 설치                                    | 0           | 0.084816792  |
+| 실제 guard RED/2실패                           | 1           | 0.390252250  |
+| 새 differential GREEN13                        | 0           | 1.147340959  |
+| 기존 정확41 선택 unit                          | 0           | 0.320991708  |
+| 자체 check7/175단위21파일                      | 0           | 18.960812959 |
+| repo check4/기존23+새13/83schemas diff0        | 0           | 2.125486667  |
+| SWC134                                         | 0           | 0.383134167  |
+| 선택 DI                                        | 0           | 2.577326875  |
+| compiled lazy ESM19/init/close/listening=false | 0           | 0.360268083  |
+| 루트 check11                                   | 0           | 73.890196125 |
+
+모든 최종 gate를 순차로 한 번씩 실행했고 이후에는 이 반환된 시간 표만 보충했다. 선택 tsc/SWC/Vitest-SWC metadata와 graph 검사는 통과했고 탐색 Oxc도 동작했다. tsx graph verified=false는 기존 제한으로 유지한다. 일반 format/lint/secrets hook과 새 일반 커밋 뒤의 실제 WHOLE13은 여전히 별도 수용 단계다.

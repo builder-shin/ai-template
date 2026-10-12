@@ -45,4 +45,5 @@ export const CASE_NAMES = [
 export const CASE_PATTERN =
   "(?:^| )(?:" +
   CASE_NAMES.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") +
-  ")$";
+  // No following character: strict end assertion accepted by the shared shell guard.
+  ")(?![\\s\\S])";
