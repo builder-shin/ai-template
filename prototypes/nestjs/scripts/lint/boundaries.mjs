@@ -112,7 +112,7 @@ export function architectureConfig(root) {
           capture: ["module"],
           mode: "file",
         },
-        ...["main", "app.module", "worker", "scheduler", "seed"].map((file) => ({
+        ...["main", "app.module", "worker", "scheduler", "seed", "storage-init"].map((file) => ({
           type: "assembly",
           pattern: `src/${file}.ts`,
           mode: "file",

@@ -1,5 +1,5 @@
 import { parse } from "yaml";
-import { ADMIN_SEED, STACKS, type Plan, projectName } from "./plan.ts";
+import { ADMIN_SEED, BACKENDS, STACKS, type Plan, projectName } from "./plan.ts";
 
 export function record(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -15,8 +15,12 @@ function equal(actual: unknown, expected: unknown, label: string): void {
 
 /** 환경 파일과 외부 자원을 해석하기 전에 수기 compose의 안전 경계를 확인한다. */
 export function validateCompose(text: string, plan: Plan): void {
-  equal(plan.project, projectName(plan.runId, plan.app), "프로젝트");
-  equal(plan.composeFile, STACKS[plan.app].composeFile, "compose 파일");
+  equal(plan.project, projectName(plan.runId, plan.app, plan.backend), "프로젝트");
+  equal(
+    plan.composeFile,
+    STACKS[plan.app].composeFile.replace(/fastapi(?=\.yaml$)/, plan.backend),
+    "compose 파일",
+  );
   const urls = STACKS[plan.app].urls;
   const document = record(parse(text, { merge: true }) as unknown);
   equal(Object.keys(document).sort(), ["services", "volumes", "x-app"], "compose 구조");
@@ -63,10 +67,10 @@ export function validateCompose(text: string, plan: Plan): void {
     equal(service.ports ?? [], publications[name] ?? [], `${name} 포트`);
     equal(service.volumes ?? [], mounts[name] ?? [], `${name} 볼륨`);
     if (apps.includes(name)) {
-      equal(service.build, { context: "../../templates/fastapi" }, `${name} 빌드`);
+      equal(service.build, { context: BACKENDS[plan.backend].context }, `${name} 빌드`);
       equal(
         service.image,
-        `ai-template-${plan.app}-e2e-fastapi:\${${STACKS[plan.app].runIdVariable}:?실행 ID를 지정한다}`,
+        `ai-template-${plan.app}-e2e-${plan.backend}:\${${STACKS[plan.app].runIdVariable}:?실행 ID를 지정한다}`,
         `${name} 이미지`,
       );
       const env = record(service.environment);
@@ -78,11 +82,16 @@ export function validateCompose(text: string, plan: Plan): void {
         STORAGE_ALLOWED_ORIGINS: urls.web,
         S3_ENDPOINT_URL: "http://seaweedfs:8333",
         S3_PUBLIC_ENDPOINT_URL: urls.s3,
-        DATABASE_URL: "postgresql+psycopg://app:app@postgres:5432/app",
+        DATABASE_URL: BACKENDS[plan.backend].databaseUrl,
         REDIS_URL: "redis://valkey:6379/0",
         SMTP_URL: "smtp://mailpit:1025",
         RECENT_LOGIN_SECONDS: "10",
       };
+      if (plan.backend === "nestjs") {
+        settings.NODE_ENV = "production";
+        settings.RATE_LIMIT_GLOBAL = "1000000";
+        settings.RATE_LIMIT_STRICT = "1000000";
+      }
       for (const provider of ["google", "kakao", "naver"]) {
         const prefix = `OAUTH_${provider.toUpperCase()}`;
         settings[`${prefix}_AUTHORIZE_URL`] =

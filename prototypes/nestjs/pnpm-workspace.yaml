@@ -7,3 +7,5 @@ allowBuilds:
   prisma: true
   argon2: true
   msgpackr-extract: false
+  # protobufjs postinstall only warns about dependent version declarations; no build output.
+  protobufjs: false

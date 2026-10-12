@@ -317,3 +317,45 @@ repository four-stage check/23 tests/schema83 difference0, SWC131, selected DI, 
 app19 initialization/close and root eleven-stage check. Actual command times are in
 [Task5 local correction gates](task-5.md#asynchronous-fixture-correction-local-pure-gates).
 No real corrected integration result is claimed from these pure checks.
+
+## Task 6 — 이미지·실행기·대상 격리
+
+Node 24.19.0/pnpm 12.6.0의 실제 전달 probe에서 --가 남고 INIT_CWD가 호출 폴더였다. 도구는 tsx, 서버는 빌드한 dist에서 실행한다. 물리 tmp의 보수적 IPC 경로는 80 UTF-8 바이트였고 100 미만을 매번 확인했다. TMPDIR는 자식에게만 적용했다.
+
+로컬 가짜 프로세스 검사는 셸 없는 인자·호출 폴더·환경 덮어쓰기, 엄격한 Origin, 서버 조기 종료, 로그 끝부분, 실제 SIGINT/SIGTERM의 130/143과 명령·세 서버·자손/그룹 정리를 검증했다. 기본 60초 한도는 가짜 시계로 검사했고 짧은 실제 deadline도 별도로 확인했다. 원본 shared process-tree의 Darwin EPERM polling을 바이트 그대로 복사했다. 이 결과는 실제 DB/Redis/SMTP/S3 수용 증거가 아니다.
+
+실행기는 app_e2e와 Redis DB14를 강제한다. Compose 환경 덮어쓰기를 서버 준비 경로에서 제거하고 환경 파일 자동 읽기를 끈다. PostgreSQL 소유 확인은 그 자식 환경을 명시하며 기존 호출의 기본 동작은 유지한다. NestJS 적합성은 프로젝트 nestjs를 명시한다. 초기화는 관리 DB 검사 뒤 migrate·TRUNCATE·seed와 DB14 FLUSHDB만 하고 버킷 CORS Origin 합집합을 적용한다. DBapp/Redis0 표식 보존, E2E 표식 제거,18000 폐쇄와 실제 자식 종료는 CI로 남겼다.
+
+이미지는 Node24.19 bookworm-slim/pnpm12.6 frozen 설치·Prisma generate·SWC·운영 의존성·UID10001이며 HEALTHCHECK가 없다. Prisma7.10 CLI를 운영 의존성에 남겨 이미지 하나의 migrate를 지원한다. 전체 이미지와 Prisma 패키지 크기는 CI에서 기록하고, 패키지 자체 크기를 전이 의존성까지 포함한 CLI-free 이미지 비교로 부르지 않는다. 실제 크기에 따른 최종 제품 결정은 후속 전체 계획에 남긴다.
+
+web/admin NestJS 프로젝트·이미지 접두사와 compose 두 개를 더했다. 기본 FastAPI 계획을 이전 추적 소스와 실제 Node에서 대조해 두 앱의 기존 모든 계획 필드와 실행 명령이 동일함을 확인했다. 포트·인자·정리 기본값과 기존 두 FastAPI compose 파일은 유지한다. smoke는 준비·시드둘·Mailpit·web OAuth·worker 메일 Origin·스토리지 PUT preflight이며 프론트 E2E20/18 전체 수용이 아니다.
+
+변경하지 않은 적합성94는 일반 선언89와 OAuth parameterized5를 포함한다. 선택기의 승인된 정확한41 이름을 로컬 정적으로 대조했다. CI는 동일한94 사례를 이름으로 선택해 실제41pass/53skip/0fail을 검사하고 JSON 원장에 기록한다. 아직 실제 계약 응답41을 실행한 결과가 아니다. 남은53은 최종 SDD 범위다.
+
+기존43 통합 사례(인증13·quota20·원래 boundedwait 포함)의14 소스 파일과 기존12 CI 작업17344바이트는 그대로다. storageSetup 함수 몸체는 바이트 동일하게 core로 옮겨 빌드한 storage-init과 기존 도구가 같이 쓴다. API의 HOST 선택은 E2E의127.0.0.1 바인딩만 추가하며 기본 listen 경로는 유지한다.
+
+SDK Node/HTTP0.223.0, trace-base2.12.0, Express/ioredis0.71.0, pg0.75.0을 정확 고정했다. 최초 protobufjs build-policy 실패와 자동 placeholder 중복 오류를 보존했고, 설치한 warning-only postinstall 검토 뒤 allowBuilds=false로 명시해 frozen 설치가 통과했다. minimumReleaseAge1440/기존 정책과 프론트·공유·계약 버전은 유지했다. 새 peer 억제는 없다. peers check는 기존 eslint-plugin-import2.32/ESLint10의 optional 선언 불일치로 계속 native1이며 통과로 부르지 않는다.
+
+OTel은 기본 꺼짐이다. CI가 실제 --import 등록 API의 HTTP/Express/pg/ioredis span 수와 health 전후 차이를 기록한다. 누락 또는 초기화 실패는 이 prototype Task에서 nonblocking이지만 complete=false로 보존한다. ESM loader와 명시적 span 대안은 실제 결과와 고정 패키지 소스로 최종 계획이 결정한다. 로컬 build/typecheck는 runtime span 증거가 아니다.
+
+실제 로컬 명령 결과(명령이 반환된 뒤 측정한 wall seconds; CPU·모델 토큰·청구 금액이 아니다):
+
+| 명령/관측                                                                  | native exit | wall seconds |
+| -------------------------------------------------------------------------- | ----------- | ------------ |
+| pnpm12.6 forwarding/INIT_CWD probe                                         | 0           | 0.169998667  |
+| pnpm install --frozen-lockfile                                             | 0           | 0.280831583  |
+| pnpm --filter @ai-template/scripts check                                   | 0           | 8.883615625  |
+| pnpm check:repo                                                            | 0           | 2.037287542  |
+| pnpm build                                                                 | 0           | 0.384602959  |
+| pnpm probe:di                                                              | 0           | 2.672773208  |
+| Node built ESM app init/19 mounted operations/close (infrastructure=false) | 0           | 0.333824791  |
+| Node+tsx 이전 FastAPI 계획 대조                                            | 0           | 0.108039375  |
+| pnpm check                                                                 | 0           | 68.022358125 |
+| pnpm check                                                                 | 0           | 14.535361416 |
+| pnpm peers check                                                           | 1           | 0.061765791  |
+
+자체 check는7단계/167단위20파일, root scripts는307사례27파일과 타입 검사를 통과했다. repo check는4단계/23사례/83schemas diff0, SWC는134파일, 선택 tsc/SWC/Vitest-SWC DI와 built ESM19/close를 확인했다. 루트 check11과 일반 hook을 커밋 전에 요구한다.
+
+실패 원본도 보존한다. 최초 runner table의 배열 행 분해 오류, OAuth typed provider/parameterized count를 놓친 정적 audit 오류, 새 파일 포맷·타입 린트 오류, 새 대상 도움말 기대 변경, 기존12jobs prefix audit의 여분 개행 오류는 각각 구체적으로 고친 뒤 검사했다. prefix 바이트 불변은 올바른 startsWith 비교로 확인했다. 원래13auth/43 통합 assertions나41 대상 이름을 빼서 성공시킨 것이 아니다.
+
+새 nestjs-prototype-stack을 더했다. 실제 이미지/UID/migrate, process E2E, app/Redis0 보존, app_e2e/Redis14 clearing, 실제41 적합성, web/admin smoke와 OTel 관측은 새 exact-head ALL13 PR CI가 확인하기 전까지 pending이다. 이후 Task7, 완성한 전체39operations/126schemas/94cases/web20/admin18/four creation variants/harness15 계획, 새 제품 승인도 남아 있다.

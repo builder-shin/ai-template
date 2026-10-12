@@ -409,3 +409,80 @@ jobs:
       - name: Remove owned integration infrastructure
         if: always()
         run: docker compose -f prototypes/nestjs/compose.yaml down --volumes
+
+  nestjs-prototype-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      COMPOSE_DISABLE_ENV_FILE: "1"
+      STACK_RUN_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: "12.6.0"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.19.0"
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            prototypes/nestjs/pnpm-lock.yaml
+      - id: install-root
+        run: pnpm install --frozen-lockfile
+      - run: pnpm --dir prototypes/nestjs install --frozen-lockfile
+      - name: Build the single nonroot runtime image
+        run: docker build --tag nestjs-template-app prototypes/nestjs
+      - name: Record runtime image size, UID, Node and Prisma CLI
+        working-directory: prototypes/nestjs
+        run: node scripts/preflight-tmp.mjs scripts/ci-image.ts
+      - run: pnpm --dir prototypes/nestjs setup
+      - id: markers
+        name: Insert owned development and E2E markers
+        working-directory: prototypes/nestjs
+        run: node scripts/preflight-tmp.mjs scripts/ci-e2e-isolation.ts before
+      - name: Run process-boundary E2E through e2e:serve
+        run: pnpm --dir prototypes/nestjs test:e2e
+      - name: Verify marker isolation, closed port and owned child exit
+        if: ${{ always() && steps.markers.outcome == 'success' }}
+        working-directory: prototypes/nestjs
+        run: node scripts/preflight-tmp.mjs scripts/ci-e2e-isolation.ts after
+      - name: Measure ESM OpenTelemetry spans and health exclusion
+        working-directory: prototypes/nestjs
+        run: node scripts/preflight-tmp.mjs scripts/otel-probe.ts
+      - name: Verify app profile migration, readiness and worker/scheduler state
+        working-directory: prototypes/nestjs
+        run: node scripts/preflight-tmp.mjs scripts/ci-stack-status.ts
+      - name: Run the exact 41-case conformance slice and retain 53 skips
+        working-directory: prototypes/nestjs
+        run: node scripts/preflight-tmp.mjs scripts/conformance.ts
+      - name: Run dedicated NestJS web smoke
+        run: pnpm web-e2e nestjs --smoke --run-id "$STACK_RUN_ID"
+      - name: Remove dedicated NestJS web stack and its exact image
+        if: ${{ always() && steps.install-root.outcome == 'success' }}
+        run: pnpm web-e2e nestjs --run-id "$STACK_RUN_ID" --down
+      - name: Run dedicated NestJS admin smoke
+        run: pnpm admin-e2e nestjs --smoke --run-id "$STACK_RUN_ID"
+      - name: Remove dedicated NestJS admin stack and its exact image
+        if: ${{ always() && steps.install-root.outcome == 'success' }}
+        run: pnpm admin-e2e nestjs --run-id "$STACK_RUN_ID" --down
+      - name: Print bounded prototype stack measurements
+        if: always()
+        run: |
+          for file in stack/image.json stack/compose-status.json stack/conformance-counts.json e2e/processes.json e2e/isolation.json telemetry/observations.json; do
+            if [ -f "prototypes/nestjs/.cache/$file" ]; then
+              cat "prototypes/nestjs/.cache/$file"
+            fi
+          done
+      - name: Owned NestJS infrastructure logs on failure
+        if: failure()
+        run: docker compose -f prototypes/nestjs/compose.yaml --profile app logs --no-color --tail 100
+      - name: Remove owned NestJS app profile and volumes
+        if: always()
+        run: docker compose -f prototypes/nestjs/compose.yaml --profile app down --volumes --remove-orphans
+      - name: Remove the exact prototype runtime image
+        if: always()
+        run: |
+          if docker image inspect nestjs-template-app >/dev/null 2>&1; then
+            docker image rm nestjs-template-app
+          fi

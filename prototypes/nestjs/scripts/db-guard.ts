@@ -39,12 +39,12 @@ export async function guardDatabase(url: string): Promise<void> {
     await pool.end();
   }
 }
-export function assertOwnedPostgres(url: string): void {
+export function assertOwnedPostgres(url: string, env: NodeJS.ProcessEnv = process.env): void {
   assertLocalDatabase(url);
   const result = spawnSync(
     "docker",
     ["compose", "-f", resolve(import.meta.dirname, "../compose.yaml"), "port", "postgres", "5432"],
-    { encoding: "utf8" },
+    { encoding: "utf8", env },
   );
   const address = result.stdout.trim();
   if (result.status !== 0 || address !== `127.0.0.1:${new URL(url).port || "5432"}`)

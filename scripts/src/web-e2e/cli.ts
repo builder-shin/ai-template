@@ -25,15 +25,18 @@ async function main(): Promise<number> {
   });
   if (
     positionals.length !== 1 ||
-    positionals[0] !== "fastapi" ||
+    !["fastapi", "nestjs"].includes(positionals[0] ?? "") ||
     (values.down === true && !values["run-id"])
   ) {
     throw new Error(
-      `사용법: pnpm ${app}-e2e fastapi [--smoke] [--keep] [--run-id <ID>] [--print|--down]`,
+      `사용법: pnpm ${app}-e2e <fastapi|nestjs> [--smoke] [--keep] [--run-id <ID>] [--print|--down]`,
     );
   }
+  const backend = positionals[0] === "nestjs" ? "nestjs" : "fastapi";
+  if (backend === "nestjs" && !values.smoke && !values.down && !values.print)
+    throw new Error("NestJS 프로토타입은 --smoke만 지원한다. 전체 프론트 E2E는 최종 SDD 범위다.");
   const runId = values["run-id"] ?? `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
-  const plan = createPlan(runId, undefined, app);
+  const plan = createPlan(runId, undefined, app, backend);
   const validate = () => {
     validateCompose(readFileSync(resolve(plan.root, plan.composeFile), "utf8"), plan);
   };
@@ -43,7 +46,7 @@ async function main(): Promise<number> {
   for (const [name, argv] of Object.entries(plan.commands))
     console.log(`${name}: ${JSON.stringify(argv)}`);
   if (values.smoke !== true) console.log(`${app}: ${JSON.stringify(appCommand(plan))}`);
-  console.log(`정리: pnpm ${app}-e2e fastapi --run-id ${runId} --down`);
+  console.log(`정리: pnpm ${app}-e2e ${backend} --run-id ${runId} --down`);
   if (values.print === true) return 0;
   if (values.down === true)
     return downStack(plan, {

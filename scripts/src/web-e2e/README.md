@@ -46,3 +46,20 @@ admin 정리 명령은 `pnpm admin-e2e fastapi --run-id <같은 ID> --down`이�
 스택을 성공적으로 내린 뒤 해당 실행의 이미지 태그만 강제 옵션 없이 제거한다. 이미지가 없으면 성공으로 처리하고 그 밖의 실패는 정리 종료 코드로 알린다. `--keep`은 이미지도 남기며 명시한 `--down`은 스택과 이미지를 함께 정리한다.
 
 검증: `pnpm --filter @ai-template/scripts test`는 Docker 없이 인자·설정·포트·실패·정리를 검사한다. 실제 실행 전후에 `docker compose ls -a`와 `docker volume ls`를 비교한다. 개발 프로젝트 `fastapi`·`joon`과 `fastapi_*` 볼륨은 작업 대상이 아니다.
+
+## NestJS 증거 프로토타입
+
+`pnpm web-e2e nestjs --smoke --run-id <ID>`와 `pnpm admin-e2e nestjs --smoke --run-id <ID>`는 같은 준비·포트·기존 자원 검사와 정리 실행기를 사용한다. FastAPI가 기본 대상이며 기존 인자·프로젝트·이미지·포트·정리 명령은 그대로다.
+
+| 값        | web                                    | admin                                        |
+| --------- | -------------------------------------- | -------------------------------------------- |
+| 프로젝트  | ai-template-web-nestjs-e2e-<ID>        | ai-template-admin-nestjs-e2e-<ID>            |
+| 이미지    | ai-template-web-e2e-nestjs:<ID>        | ai-template-admin-e2e-nestjs:<ID>            |
+| compose   | scripts/compose/nextjs-e2e-nestjs.yaml | scripts/compose/nextjs-admin-e2e-nestjs.yaml |
+| 빌드 문맥 | prototypes/nestjs                      | prototypes/nestjs                            |
+
+공개 포트와 실행 ID 환경 변수는 위 FastAPI 표와 같다. 같은 앱의 두 백엔드를 동시에 띄우면 포트 검사에서 거절한다. DSN은 NestJS용 `postgresql://`이고 운영 모드·큰 전역/엄격 리밋을 명시한다. 스택은 자기 새 볼륨과 정확한 이미지 태그만 정리한다.
+
+NestJS는 이 단계에서 `--smoke`, `--print`, `--down`을 지원한다. smoke는 API readiness, 시드 글 둘, Mailpit, web만 OAuth 준비, worker의 인증 메일 링크 Origin, 저장소 PUT preflight를 확인한다. 프론트 빌드·브라우저 E2E를 실행하지 않는다. web 20개·admin 18개 전체 수용과 프론트 대상 이름 추가는 최종 SDD 범위다.
+
+정리는 각각 `pnpm web-e2e nestjs --run-id <같은 ID> --down`, `pnpm admin-e2e nestjs --run-id <같은 ID> --down`이다. 실제 Docker 검증은 `nestjs-prototype-stack` PR CI에서만 한다.

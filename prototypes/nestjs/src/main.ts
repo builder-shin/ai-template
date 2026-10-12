@@ -73,7 +73,8 @@ export async function createApp(
 export async function bootstrap(): Promise<void> {
   const app = await createApp(undefined, true);
   app.enableShutdownHooks();
-  await app.listen(app.get<Settings>(SETTINGS).PORT);
+  if (process.env.HOST) await app.listen(app.get<Settings>(SETTINGS).PORT, process.env.HOST);
+  else await app.listen(app.get<Settings>(SETTINGS).PORT);
   await app.get(RealtimeService).start();
 }
 

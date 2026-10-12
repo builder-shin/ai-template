@@ -1,3 +1,32 @@
+# App profile uses the single built image; infrastructure remains the default profile.
+x-app: &app
+  build: .
+  image: nestjs-template-app
+  profiles: [app]
+  environment:
+    NODE_ENV: production
+    PORT: "8000"
+    DATABASE_URL: postgresql://app:app@postgres:5432/app # betterleaks:allow public compose credential
+    REDIS_URL: redis://valkey:6379/0
+    JWT_SECRET: compose-app-only-jwt-signing-key-32 # betterleaks:allow compose-only secret
+    IDENTIFIER_HASH_SECRET: compose-app-only-identifier-key-32 # betterleaks:allow compose-only secret
+    SMTP_URL: smtp://mailpit:1025
+    MAILPIT_URL: http://mailpit:8025
+    MAIL_FROM: "AI Template <no-reply@example.com>"
+    FRONTEND_URL: http://localhost:3000
+    SEED_ADMIN_EMAIL: compose-admin@example.com
+    SEED_ADMIN_PASSWORD: compose-app-profile-admin-password # betterleaks:allow compose-only credential
+    S3_ENDPOINT_URL: http://seaweedfs:8333
+    S3_PUBLIC_ENDPOINT_URL: http://127.0.0.1:28333
+    S3_REGION: us-east-1
+    S3_BUCKET: app
+    S3_ACCESS_KEY_ID: app
+    S3_SECRET_ACCESS_KEY: app-secret # betterleaks:allow public compose credential
+    STORAGE_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+    REALTIME_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+    RATE_LIMIT_GLOBAL: "1000000"
+    RATE_LIMIT_STRICT: "1000000"
+
 services:
   postgres:
     image: postgres:18.6-alpine
@@ -76,6 +105,70 @@ services:
       interval: 2s
       timeout: 5s
       retries: 60
+
+  migrate:
+    <<: *app
+    command: ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/seed.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  storage-init:
+    <<: *app
+    command: ["node", "dist/storage-init.js"]
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8000/health/ready').then(r => { if (r.status !== 200) process.exit(1); }).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 12
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      oauth:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ["node", "dist/worker.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  scheduler:
+    <<: *app
+    command: ["node", "dist/scheduler.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
 
 volumes:
   postgres-data:

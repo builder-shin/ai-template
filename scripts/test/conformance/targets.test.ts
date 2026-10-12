@@ -128,7 +128,7 @@ describe("pnpm conformance 인자", () => {
 
   it("사용법에 대상 목록을 적는다", () => {
     expect(usage(Object.keys(TARGETS))).toBe(
-      "사용법: pnpm conformance <fastapi|mock> [--keep] [흐름 파일...]",
+      "사용법: pnpm conformance <fastapi|nestjs|mock> [--keep] [흐름 파일...]",
     );
   });
 });
