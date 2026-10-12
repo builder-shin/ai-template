@@ -638,7 +638,6 @@ R32는 별도로 승인한 잠재 검사 오류 수정이다. 변경하지 않�
 
 새 HEAD의 실제 CI capture는 아직 **pending**이다. 다음 CI가 원래 strict 거절로 실패하며 자료만 남겨도 Task7 수락이 아니다. 실제 before/after로 확인한 최소 해석 수정 뒤 네 생성 변형의 실제 호환 결과와 새 exact-head 14개 작업 성공이 필요하다. 전체 39 operation·126 schema·94 적합성·web 20/admin 18·완전한 OTel·운영 프로세스 신뢰성·standalone 보안 도구/agent hook은 후속 전체 제품 게이트로 남긴다. draft PR은 병합하지 않으며 전체 설계·계획의 게시와 새로운 구체적 사용자 승인이 있어야 SDD를 시작한다.
 
-
 ## Task 7 R33 — 별도 lock 진단의 pnpm 라이프사이클
 
 `675b07699fc43fa51186321c3ae95100f5f52957`의 CI `38251366271`은 14개 작업 중 13개 성공, `create-combo-nestjs-probe` 하나 실패로 완료했다. 정상 035 `pnpm new --api nestjs --web`은 2026-10-12 12:51:20.102–12:51:29.366 UTC, native exit 1, 9.264155219초에 기존 `web: . importer의 해석 결과가 바뀌었다` 거절을 유지했다. 별도 036 진단은 12:51:29.386–12:51:29.824 UTC, exit 1, 0.437705323초에 `pnpm을 찾을 수 없다 — pnpm 12.6.0으로 pnpm new를 실행한다`로 끝났다.
