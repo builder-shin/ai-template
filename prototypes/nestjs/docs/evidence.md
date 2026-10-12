@@ -637,3 +637,18 @@ R32는 별도로 승인한 잠재 검사 오류 수정이다. 변경하지 않�
 완전한 create check는 native 0, 45.858688375초로 끝났다. 기존 199개(192 PASS+기존 7 SKIP)에 새 두 사례를 더해 201개(194 PASS+7 SKIP), Vitest 24개 파일과 기존 Node 66 PASS이며 FastAPI golden 대조도 유지했다. 이 기록 뒤 정확한 일곱 파일을 stage하고 루트 11단계와 일반 hook 커밋을 확인한다. 변경하지 않은 prototype 177·통합 43·auth 13·quota 20·적합성 선택 41/94 및 이전 SWC·DI·lazy 결과는 역사적 증거이며 이번에 재실행하지 않았다. 실제 resolution·frozen 설치나 생성 API runtime·Docker·DB·Redis·메일·스토리지는 로컬에서 실행하지 않았다.
 
 새 HEAD의 실제 CI capture는 아직 **pending**이다. 다음 CI가 원래 strict 거절로 실패하며 자료만 남겨도 Task7 수락이 아니다. 실제 before/after로 확인한 최소 해석 수정 뒤 네 생성 변형의 실제 호환 결과와 새 exact-head 14개 작업 성공이 필요하다. 전체 39 operation·126 schema·94 적합성·web 20/admin 18·완전한 OTel·운영 프로세스 신뢰성·standalone 보안 도구/agent hook은 후속 전체 제품 게이트로 남긴다. draft PR은 병합하지 않으며 전체 설계·계획의 게시와 새로운 구체적 사용자 승인이 있어야 SDD를 시작한다.
+
+
+## Task 7 R33 — 별도 lock 진단의 pnpm 라이프사이클
+
+`675b07699fc43fa51186321c3ae95100f5f52957`의 CI `38251366271`은 14개 작업 중 13개 성공, `create-combo-nestjs-probe` 하나 실패로 완료했다. 정상 035 `pnpm new --api nestjs --web`은 2026-10-12 12:51:20.102–12:51:29.366 UTC, native exit 1, 9.264155219초에 기존 `web: . importer의 해석 결과가 바뀌었다` 거절을 유지했다. 별도 036 진단은 12:51:29.386–12:51:29.824 UTC, exit 1, 0.437705323초에 `pnpm을 찾을 수 없다 — pnpm 12.6.0으로 pnpm new를 실행한다`로 끝났다.
+
+036은 기존 `runPnpm`이 요구하는 `npm_execpath`가 없는 `pnpm exec tsx` 진입이었다. failure의 staging은 null이고 원본 API·web lock 사본과 failure/evidence만 남았다. `capture.json`, before/after lock, diff는 없으므로 실제 해석 후 변경 필드는 여전히 UNKNOWN이다. 원본·native 증거 검증은 tested 675와 materialization `50855ea3358aefd99bca4687d0704f8998ead878`의 125 artifact 파일, 36 native 명령·72 stream, 369 추적 prototype 파일을 묶는다. 265,348바이트 job log의 해시·메타데이터 검증을 전체 수동 열람으로 표현하지 않는다.
+
+R33 변경은 정확히 다섯 경로다. 루트에 private 진단용 `probe:nestjs:lock-capture = tsx create/test/nestjs-probe-lock-capture.ts` 하나를 더하고, `diagnosticPlan`의 실행 prefix만 `run probe:nestjs:lock-capture`로 바꾼다. evidence·binding·separator·target·API·frontend·name 인자는 그대로다. 새 운영 회귀 한 개와 이 두 문서의 append가 나머지다. pnpm 자체 라이프사이클이 진입점을 공급하며 production `runPnpm`, capture 본문·버전 preflight·불변 출력·엄격한 거절·원래 오류 객체·CI guard·후속 phase 중단·소유 정리는 유지한다. pin·lock·resolver·정책·importer guard 변경 근거는 없다.
+
+새 회귀는 `npm_execpath` 없는 직접 CI 호출 형태에서 실제 `diagnosticPlan` launcher를 소유한 inert package/script fixture로 실행한다. stub은 실제 변경 없는 `runPnpm(cwd, ["--version"])`만 호출하고 실제 나머지 인자를 전달받았음을 확인한다. root script key/value와 연결하며 설치·해석·frozen·gen·backend 호출은 없다. 동일한 4,670바이트 테스트 SHA256 `873e12ca2bcee65dbe396c484463e54bd20e1c1fc07f46a1a87633889eeca913`으로 원래 exec launch RED는 native 1/0.757070459초, 수정 후 GREEN은 native 0/0.903759125초였다. RED는 실제 missing-entry 분기까지 도달했고 GREEN은 버전 probe를 완료했다. 각 소유 fixture 제거와 기록된 자식 PID의 종료를 확인했다. 이 시간은 enclosing 테스트 명령이며 `runPnpm` 내부 자식 PID·exit·wall은 공개되지 않아 UNKNOWN이다.
+
+로컬 전체 `pnpm --dir create check`는 exit 0/46.470731375초였다. Vitest 195 PASS + 기존 7 SKIP = 202개, 24 passed/1 skipped 파일과 기존 Node 66 PASS를 확인했다. 기존 capture·Zod 회귀와 원래 201개 선언은 유지한다. 최종 완료 기준은 다섯 파일 전체 staging 뒤 새로운 루트 `pnpm check` 11단계와 일반 hook 커밋이다. 이 절은 그 최종 실행 전 staging용 기록이며 실제 최종 native 결과는 커밋 검증에서 별도로 확인한다. 변경 없는 prototype/SWC/DI/lazy gate는 재실행하지 않는다.
+
+새 exact-head CI는 아직 대기다. 다음 진단 CI도 정상 035에서 실패하면서 before/after를 남길 수 있다. capture 성공은 호환 생성이나 Task 7 성공이 아니다. 실제 diff에 근거한 별도 최소 수정 뒤 네 생성 variant 모두 호환되고 새로운 전체 14개 작업이 성공해야 Task 7을 수용한다. draft PR 12는 병합하지 않으며 전체 Windows 설계·계획, MAIN 두 문서 검증·게시와 새 구체적 사용자 계획 승인은 후속 단계다.

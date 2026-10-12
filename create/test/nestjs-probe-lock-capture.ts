@@ -292,9 +292,8 @@ export function diagnosticPlan(
     name,
     bindingPath,
     args: [
-      "exec",
-      "tsx",
-      "create/test/nestjs-probe-lock-capture.ts",
+      "run",
+      "probe:nestjs:lock-capture",
       "--evidence-dir",
       join(directory, "lock-resolution"),
       "--binding-path",
