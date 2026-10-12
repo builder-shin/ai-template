@@ -33,3 +33,13 @@ OpenTelemetry는 기본 꺼져 있다. CI는 `OTEL_ENABLED=true node --import ./
 현재 변경은 원인을 고쳤다는 주장이 아니라 다음 CI의 실패 진단이다. fixture는 bootstrap/register/update/close의 고정된 공개 단계 이름을 실패할 때만 출력하며 조용한 native1과 thrown error를 포함한다. 성공 출력에는 식별자를 넣지 않는다. caller는 실패할 때만 기존 8192자 child tail을 실제 child와 inherited command 양쪽의 알려진 비밀값을 가린 뒤 assertion에 넣는다. 실행에 준 같은 child 환경을 redaction에도 사용하므로 app_e2e/DB14로 바뀐 URL도 가린다. 실제 worker context·PostsService.update·commit·별도 프로세스의 Socket.IO 전달과 23바이트 업로드/다운로드, 종료 코드 0 등 기존 assertion은 유지한다.
 
 로컬에서 새 SWC 산출물의 실제 AppModule을 인프라 대역으로 compile/register/close했고, 기존 fixture와 실제 compiled PostsService·Repository·UnitOfWork·PostEvents·Emitter를 제어된 transaction/Redis 포트로 실행했다. 둘 다 native0이어서 원인은 아직 미확정이다. 이 검사는 실제 DB commit이나 Redis/Socket.IO·worker 기동의 수용 증거가 아니다. 새로운 exact-head ALL13, 발행 worker의 실제 흐름·업로드/다운로드·OTel·app profile·41 적합성·web/admin smoke는 여전히 pending이며 Task7은 그 전체 CI 성공 뒤에만 시작한다.
+
+## Redis 게시 완료 계약의 수정
+
+위 진단 당시 기록 이후 `4c22a78e`의 [새 실제 CI](https://github.com/builder-shin/ai-template/actions/runs/38198199629)는 12성공·stack 1실패였다. child는 committed:true 다음 즉시 close 단계에서 ioredis Connection is closed로 종료1이었다. 이 결과는 이벤트 전달 성공으로 수용하지 않는다. 이번 이미지713,078,918바이트와 최초 dd 이미지713,078,917바이트를 구분하며 Prisma 패키지42,052,481바이트는 전이 의존성을 제외한다. 이번43/43 실제 통합 성공과 미도달한 게시/23바이트 업로드·OTel/app profile/41·smoke도 구분한다.
+
+설치한 emitter5.1.0은 실제 publish Promise를 버리고 true를 반환했다. UnitOfWork가 훅을 await하더라도 worker 분기의 훅은 게시 완료 전에 반환하므로 lazy Redis 명령과 app.close가 경쟁할 수 있었다. ioredis6.0.0의 manual close는 대기 명령을 reject한다. production 수정 전 실제 런타임 클래스와 installed emitter를 제어된 포트로 검사해 조기 완료·rejection 누출을 native1로 재현했다. 이 소스/제어된 결과는 실제 로컬 Redis 실행이 아니다.
+
+worker 분기는 installed emitter의 publish 포트에서 실제 Redis Promise를 관찰하고 await한다. 패킷 인코딩·namespace/key·룸 union은 emitter가 계속 맡으며 server 분기의 emit/ping·observer·payload·빈 룸과 기존 UnitOfWork의 commit 후 오류 containment는 유지한다. 새 DB 없는 테스트8개가 게시 완료까지 대기, 거부 전달과 commit 결과 보존·후속 훅, 겹친 게시, 기존 패킷/룸/서버 동작을 검사한다. timer/sleep, fixture 대기나 ping 추가, close 지연, 전역 오류 억제는 없다. 기존 즉시 app.close와 모든 process E2E assertion은 바이트 그대로다.
+
+제어된 native RED/GREEN과 최종 로컬 gate 시간은 evidence 원장에 기록한다. Redis PUBLISH 완료가 실제 별도 프로세스 Socket.IO 전달을 대신 증명하지 않는다. 새 변경 HEAD의 WHOLE13·실제 발행/업로드·OTel/app profile/41·web/admin smoke가 필요하며 Task7과 최종 전체 제품 계획·새 사용자 승인은 계속 별도 게이트다.

@@ -26,10 +26,22 @@ export class RuntimeRealtimePublisher extends RealtimePublisher {
       if (this.server) {
         this.server.to(targets).emit(name, payload);
         await this.redis.adapterPublisher.ping();
-      } else
-        new Emitter(this.redis.command, { key: `${this.redis.prefix}:socket.io` })
-          .to(targets)
-          .emit(name, payload);
+      } else {
+        // Emitter.emit returns true; observe the Redis Promise at its publish port.
+        await new Promise<void>((resolve, reject) => {
+          new Emitter(
+            {
+              publish: (channel: string, message: Buffer) =>
+                this.redis.command.publish(channel, message).then(() => {
+                  resolve();
+                }, reject),
+            },
+            { key: `${this.redis.prefix}:socket.io` },
+          )
+            .to(targets)
+            .emit(name, payload);
+        });
+      }
     });
   }
 }

@@ -384,3 +384,31 @@ OTel은 기본 꺼짐이다. CI가 실제 --import 등록 API의 HTTP/Express/pg
 | 검토 보완 후 루트 check11                                           | 0           | 72.150209334 |
 
 단계 probe의 조용한 종료/예외 8개와 잘못된 published 상태 1개는 실제 native1로 보존됐고 각각 올바른 실패 단계를 냈다. 성공 대역은 native0·빈 stderr였다. caller 대역도 child1을 여전히 assertion 실패로, child0을 성공으로 처리했고 8192자 tail·비밀값 가림을 검사했다. 이것은 원래 CI child stderr를 복원한 결과가 아니다. 일반 hook과 별도 커밋 이후의 새로운 실제 CI 판정은 계속 남아 있다.
+
+### 실제 Redis 게시 완료의 후속 수정
+
+위 진단 전용 기록 이후 `4c22a78e`의 [CI 38198199629](https://github.com/builder-shin/ai-template/actions/runs/38198199629)도 최종 12성공·stack 1실패로 끝났다. 이번 child tail은 `committed:true` 뒤 close 단계와 ioredis의 `Connection is closed` 오류를 보여 주었고 caller는 native1에 대해 기존 기대0으로 실패했다. 이 출력은 별도 프로세스 이벤트 전달의 성공이 아니다. 이번 이미지는 713,078,918바이트로 최초 dd 이미지의 713,078,917바이트와 구분한다. UID10001/Node24.19.0/Prisma7.10.0과 패키지 자체 42,052,481바이트도 기록됐으며 패키지 값에는 전이 의존성이 빠진다. 이번 실제 통합43/43과 10개 수명 주기의 명시적 close·새 listener 경고0은 별도 성공 증거다. processFlows·23바이트 업로드·OTel/app profile/41 적합성/web/admin smoke는 여전히 수용되지 않았다.
+
+설치한 redis-emitter5.1.0은 실제 Redis `publish(channel, packet)`을 호출하지만 그 Promise를 버리고 literal true를 반환한다. UnitOfWork는 이미 commit 뒤 훅을 await하고 실패를 포함한다. RuntimeRealtimePublisher의 worker 분기가 실제 게시 완료를 기다리지 않아 요청 반환과 즉시 app.close가 lazy Redis 명령보다 앞설 수 있었다. 설치한 ioredis6.0.0의 nonready disconnect와 manual-close flushQueue는 대기 명령을 reject한다. 이 소스와 실제 CI trace가 연결 종료 경쟁을 뒷받침하며, 로컬에서 실제 Redis를 실행한 결과라고 주장하지 않는다.
+
+production 수정 전에 실제 RuntimeRealtimePublisher·설치한 emitter·UnitOfWork를 제어된 지연 publish 포트로 검사했다. native1/0.696351791초로 8개 중5개가 실패했고 처리되지 않은 게시 rejection2개를 Vitest가 그대로 검출했다. commit 뒤에도 훅이 게시 완료까지 대기해야 한다는 검사가 조기 반환으로 실패했고, rejection은 훅 caller와 기존 UnitOfWork 오류 기록으로 전달되지 않았다. 실제 encoded packet/namespace/key/단일 룸·중복 제거 union 검사는 그 실패보다 먼저 통과했다. 실패 원본은 그대로 보존한다.
+
+worker 분기만 installed emitter의 publish 포트에서 실제 Redis Promise의 완료·거부를 관찰하고 기다리도록 고쳤다. 기존 server emit·adapter ping과 observer·payload 생성·빈 룸 처리는 그대로다. 새 DB 없는 수명 주기8개는 packet/룸 union, 게시 전 commit·완료까지 대기, 직접 rejection 전파, commit 결과 보존·기존 실패 containment·후속 훅 실행, 겹친 게시의 독립 완료, 빈 룸, 비동기 payload, server 분기를 검사한다. 타이머나 sleep 없이 event-loop turn만 비워 settlement를 검사하며 unhandled-rejection 검출을 끄지 않는다. 최종 targeted GREEN은 native0/0.586459000초였다. 새 테스트의 ES2023 타입 선언과 미사용 인자에 걸린 scoped lint native1도 보존하고 테스트 대역의 타입만 고쳤으며 설정·의존성은 바꾸지 않았다.
+
+이 GREEN은 제어된 포트의 완료 계약이다. Redis PUBLISH 응답을 기다린다는 것과 실제 Socket.IO client가 별도 프로세스의 이벤트를 받는다는 것을 구분한다. 기존 publish.mjs·flows.ts 진단, 즉시 app.close, 모든 종료·이벤트·23바이트 업로드 assertion과 기존167 단위·43 통합·41 선택·workflow 바이트는 유지한다. 새 변경 HEAD의 WHOLE13과 실제 게시·업로드·OTel/app profile/41·두 smoke 검증이 남아 있으며 Task7은 그 뒤에만 진행한다. 최종39operations/126schemas/14flows94cases/web20admin18/four creation variants/15jobs 전체 계획과 새 사용자 제품 승인은 별개다.
+
+수정 후 실제 로컬 gate 결과(반환 후 monotonic wall seconds; 실제 인프라 수용과 구분):
+
+| 검사                                          | native exit | wall seconds |
+| --------------------------------------------- | ----------- | ------------ |
+| frozen 설치                                   | 0           | 0.183453458  |
+| targeted lifecycle RED:5실패/3통과/2unhandled | 1           | 0.696351791  |
+| 최종 targeted lifecycle GREEN:8통과           | 0           | 0.586459000  |
+| 최종 자체 check7/기존167+새8=175/21파일       | 0           | 24.017651833 |
+| repo check4/23/83schemas diff0                | 0           | 2.325820292  |
+| SWC134                                        | 0           | 0.435939959  |
+| 선택 DI                                       | 0           | 3.013311708  |
+| 인프라 없는 compiled ESM19/init/close         | 0           | 0.361279250  |
+| 루트 check11                                  | 0           | 80.679905292 |
+
+선택 tsc/SWC/Vitest-SWC의 DI metadata/graph 일치와 잘못된 type import 거절을 확인했다. 탐색 Oxc도 동작했으며 tsx graph verified=false는 기존 한계로 유지한다. 최종 코드의 자체·repo·build·DI·ESM·루트 gate는 순차로 한 번씩 실행했고, 이후에는 반환된 시간 표만 보충했다. 일반 포맷·린트·비밀 hook과 별도 커밋을 요구하며 새 실제 CI 수용은 여전히 남아 있다.
