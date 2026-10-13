@@ -79,7 +79,11 @@ export async function runStages(
   const seconds = () => (performance.now() - started) / 1000;
   const messages: string[] = [];
   mkdirSync(options.cacheDir, { recursive: true });
-  for (const stage of stages) {
+  for (const original of stages) {
+    const stage =
+      options.fast && original.fastCommand
+        ? { ...original, command: original.fastCommand }
+        : original;
     if (options.fast && stage.fastSkip) {
       messages.push(`${stage.name} 건너뜀(--fast)`);
       continue;

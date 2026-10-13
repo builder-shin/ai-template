@@ -1,0 +1,65 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String     @id @default(uuid(7)) @db.Uuid
+  email           String?    @unique
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  passwordHash    String?    @map("password_hash")
+  name            String?
+  locale          String     @default("ko")
+  status          String     @default("active")
+  avatarFileId    String?    @map("avatar_file_id") @db.Uuid
+  lastLoginAt     DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  roles           UserRole[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String     @id @default(uuid(7)) @db.Uuid
+  name        String     @unique
+  system      Boolean    @default(false)
+  permissions String[]
+  description String?
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  action         String
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  targetType     String?  @map("target_type")
+  targetId       String?  @map("target_id")
+  identifierHash String?  @map("identifier_hash")
+  meta           Json
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  actor          User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("audit_logs")
+}

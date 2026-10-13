@@ -8,17 +8,17 @@
   },
   "scripts": {
     "fix": "prettier --write . && eslint --fix .",
-    "test": "vitest run --project unit",
+    "test": "vitest run --project unit --project integration",
     "build": "nest build -b swc",
-    "setup": "node scripts/not-yet.mjs setup 3",
+    "setup": "node scripts/setup.mjs",
     "dev": "node scripts/not-yet.mjs dev 20",
     "check": "tsx scripts/check/cli.ts",
     "test:e2e": "node scripts/not-yet.mjs test:e2e 20",
     "e2e:serve": "node scripts/not-yet.mjs e2e:serve 20",
-    "gen": "node scripts/not-yet.mjs gen 3",
-    "db:migrate": "node scripts/not-yet.mjs db:migrate 3",
-    "db:reset": "node scripts/not-yet.mjs db:reset 3",
-    "db:revision": "node scripts/not-yet.mjs db:revision 3",
+    "gen": "tsx scripts/gen.ts",
+    "db:migrate": "tsx scripts/db/migrate.ts",
+    "db:reset": "tsx scripts/db/reset.ts",
+    "db:revision": "tsx scripts/db/revision.ts",
     "gen:module": "node scripts/not-yet.mjs gen:module 21"
   },
   "dependencies": {

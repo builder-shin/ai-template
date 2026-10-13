@@ -1,20 +1,20 @@
 # NestJS backend
 
 Node 24.15 이상·25 미만, pnpm 12.6.0, NestJS 12.1.2를 쓰는 ESM 백엔드 템플릿이다.
-현재는 골격과 설정을 제공한다. API·인프라·하네스는 계획의 후속 Task에서 구현한다.
+계정 영속성·인프라와 검사 하네스를 제공한다. API·개발 서버는 후속 Task에서 구현한다.
 
 ## 명령
 
-| 명령                                                   | 하는 일                                         |
-| ------------------------------------------------------ | ----------------------------------------------- |
-| `pnpm fix`                                             | Prettier로 포맷한다. ESLint는 Task 2에서 더한다 |
-| `pnpm test`                                            | unit project의 설정·도구 단위 시험을 돌린다     |
-| `pnpm build`                                           | SWC로 NestJS 소스를 컴파일한다                  |
-| `pnpm check`                                           | Task 2에서 구현한다                             |
-| `pnpm setup`, `pnpm gen`                               | Task 3에서 구현한다                             |
-| `pnpm db:migrate`, `pnpm db:reset`, `pnpm db:revision` | Task 3에서 구현한다                             |
-| `pnpm dev`, `pnpm test:e2e`, `pnpm e2e:serve`          | Task 20에서 구현한다                            |
-| `pnpm gen:module <이름>`                               | Task 21에서 구현한다                            |
+| 명령                                                   | 하는 일                                   |
+| ------------------------------------------------------ | ----------------------------------------- |
+| `pnpm fix`                                             | Prettier·ESLint로 자동 수정한다           |
+| `pnpm test`                                            | 단위와 통합 시험을 돌린다                 |
+| `pnpm build`                                           | SWC로 NestJS 소스를 컴파일한다            |
+| `pnpm check [--fast]`                                  | 생성·린트·타입·하네스·시험을 검사한다     |
+| `pnpm setup`, `pnpm gen`                               | 인프라·세 DB 준비, Prisma 클라이언트 생성 |
+| `pnpm db:migrate`, `pnpm db:reset`, `pnpm db:revision` | 소유 검사 뒤 deploy·로컬 reset·revision   |
+| `pnpm dev`, `pnpm test:e2e`, `pnpm e2e:serve`          | Task 20에서 구현한다                      |
+| `pnpm gen:module <이름>`                               | Task 21에서 구현한다                      |
 
 아직 구현하지 않은 명령은 담당 Task를 stderr에 알리고 종료 코드 1로 끝난다.
 네 Claude hook은 exec form 선언만 있으며 모듈은 Task 21에서 더한다.
@@ -40,11 +40,13 @@ Node 24.15 이상·25 미만, pnpm 12.6.0, NestJS 12.1.2를 쓰는 ESM 백엔드
 - 의존성은 정확한 버전으로 고정한다. minimumReleaseAge 1440과 TypeScript 6.0.3 override, 선언한 allowBuilds를 유지한다.
 - 템플릿 밖의 파일을 참조하지 않는다. 공유 자산은 이 프로젝트 안의 사본으로 쓴다.
 - 소스 400줄·시험 600줄을 넘기지 않는다. 억제 주석에는 같은 줄에 사유를 적는다. 하네스는 `scripts/lint/fixtures/negative/ban-ts-comment/src/service.ts`의 첫 독립 `@ts-expect-error` 주석만 음성 검사 입력으로 허용한다.
+- Prisma 생성 클라이언트는 추적하지 않는다. setup과 check는 lint 앞에서 생성한다.
+- DB가 다른 도구 소유이면 변경하지 않는다. reset은 로컬 호스트만 허용한다.
 - 생성물은 직접 고치지 않는다. 마이그레이션 절차는 [레시피](docs/recipes/migration.md)를 따른다.
 - 로딩 UI는 스피너나 스켈레톤만 쓰고 로딩 문구는 쓰지 않는다.
 - 커밋은 영문 Conventional Commits다. AI 태그·트레일러와 hook 우회는 쓰지 않는다.
 
 ## 완료 기준
 
-완성된 하네스의 완료 기준은 `pnpm check`다. 현재 Task 1에서는 단위 시험이 통과하고,
-`pnpm check`가 Task 2 안내와 종료 코드 1을 반환해야 한다.
+완료 기준은 `pnpm check`다. 로컬 `--fast`는 통합을 제외하고 단위 시험을 실행한다.
+통합은 준비된 인프라에서 직렬로 실행하며 app_test·Redis 15·Mailpit 메시지만 비운다.

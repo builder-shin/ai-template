@@ -141,6 +141,7 @@ function prepareCli(failLint = false) {
   write("node_modules/tsx/index.mjs", "export {};\n");
   for (const [name, path] of [
     ["format", "node_modules/prettier/bin/prettier.cjs"],
+    ["gen", "scripts/gen.ts"],
     ["lint", "node_modules/eslint/bin/eslint.js"],
     ["typecheck", "node_modules/typescript/bin/tsc"],
     ["harness", "scripts/check/harness.ts"],
@@ -171,14 +172,14 @@ function runCli(...args: string[]) {
     },
   );
 }
-it("CLI 성공은 다섯 단계를 차례로 실행하고 한 줄만 출력한다", () => {
+it("CLI 성공은 여섯 단계를 차례로 실행하고 한 줄만 출력한다", () => {
   prepareCli();
   const result = runCli();
   expect(result.status).toBe(0);
-  expect(result.stdout).toMatch(/^check 통과: 5단계 \d+\.\d{2}s\n$/);
+  expect(result.stdout).toMatch(/^check 통과: 6단계 \d+\.\d{2}s\n$/);
   expect(result.stderr).toBe("");
   expect(readFileSync(join(root, "effects"), "utf8")).toBe(
-    "format\nlint\ntypecheck\nharness\ntest\n",
+    "format\ngen\nlint\ntypecheck\nharness\ntest\n",
   );
 });
 it("CLI 실패는 실패 단계 출력만 쓰고 뒤 단계는 실행하지 않는다", () => {
@@ -187,14 +188,14 @@ it("CLI 실패는 실패 단계 출력만 쓰고 뒤 단계는 실행하지 않�
   expect(result.status).toBe(1);
   expect(result.stdout).toBe("");
   expect(result.stderr).toBe("린트 실패\n");
-  expect(readFileSync(join(root, "effects"), "utf8")).toBe("format\nlint\n");
+  expect(readFileSync(join(root, "effects"), "utf8")).toBe("format\ngen\nlint\n");
 });
 it("CLI --fast도 이 Task의 일반 단위 시험을 실행한다", () => {
   prepareCli();
   const result = runCli("--fast");
   expect(result.status).toBe(0);
   expect(readFileSync(join(root, "effects"), "utf8")).toBe(
-    "format\nlint\ntypecheck\nharness\ntest\n",
+    "format\ngen\nlint\ntypecheck\nharness\ntest\n",
   );
 });
 it("CLI는 알 수 없는 인수를 명령 실행 전에 거절한다", () => {
@@ -216,3 +217,14 @@ it.each(["new-root.js", ".claude/hooks/new.mjs"])(
     expect(effects.filter((name) => name === "lint")).toHaveLength(2);
   },
 );
+
+it("--fast 명령을 바꿔 실행하면 통합 시험 효과를 만들지 않는다", async () => {
+  const item = stage("test", record, {
+    command: [process.execPath, "-e", "require('node:fs').appendFileSync('effects','통합\\n')"],
+    fastCommand: [process.execPath, "-e", "require('node:fs').appendFileSync('effects','단위\\n')"],
+  });
+  await runStages([item], { ...options(), fast: true });
+  expect(readFileSync(join(root, "effects"), "utf8")).toBe("단위\n");
+  await runStages([item], options());
+  expect(readFileSync(join(root, "effects"), "utf8")).toBe("단위\n통합\n");
+});
