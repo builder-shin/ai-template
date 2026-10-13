@@ -14,6 +14,10 @@
         {
           "template": "nextjs-admin",
           "path": ".gitattributes"
+        },
+        {
+          "template": "nestjs",
+          "path": ".gitattributes"
         }
       ]
     },
@@ -31,6 +35,10 @@
         {
           "template": "nextjs-admin",
           "path": ".editorconfig"
+        },
+        {
+          "template": "nestjs",
+          "path": ".editorconfig"
         }
       ]
     },
@@ -39,6 +47,10 @@
       "targets": [
         {
           "template": "fastapi",
+          "path": "api-style/lint.mjs"
+        },
+        {
+          "template": "nestjs",
           "path": "api-style/lint.mjs"
         }
       ]
@@ -549,6 +561,15 @@
         "src/lib/session/user.ts",
         "src/lib/testing/account.ts",
         "src/lib/utils.ts"
+      ]
+    },
+    {
+      "source": "shared/nextjs/scripts/process-tree.mjs",
+      "targets": [
+        {
+          "template": "nestjs",
+          "path": "scripts/process-tree.mjs"
+        }
       ]
     }
   ]

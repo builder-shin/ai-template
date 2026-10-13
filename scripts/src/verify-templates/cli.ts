@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { readSharedAssets } from "./manifest.ts";
 import { verifyTemplate } from "./verify.ts";
-import { verifyFrontendDependencies } from "./dependencies.ts";
+import { verifyBackendDependencies, verifyFrontendDependencies } from "./dependencies.ts";
 
 /** templates/ 아래 템플릿마다 하네스 표준을 검사한다. 템플릿이 없으면 통과한다. */
 const repoRoot = process.cwd();
@@ -21,7 +21,10 @@ if (Array.isArray(shared)) {
 }
 
 let failed = 0;
-const dependencies = verifyFrontendDependencies(repoRoot);
+const dependencies = [
+  ...verifyFrontendDependencies(repoRoot),
+  ...verifyBackendDependencies(repoRoot),
+];
 for (const problem of dependencies) console.error(`templates: ${problem}`);
 if (dependencies.length) failed += 1;
 for (const name of names) {

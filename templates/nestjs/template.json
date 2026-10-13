@@ -1,0 +1,6 @@
+{
+  "name": "nestjs",
+  "kind": "backend",
+  "runner": "pnpm",
+  "goldenModule": "src/modules/posts"
+}

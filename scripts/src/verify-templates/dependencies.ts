@@ -60,3 +60,53 @@ export function verifyFrontendDependencies(repoRoot: string): string[] {
   }
   return problems;
 }
+
+/** 백엔드와 각 프론트의 공통 직접 의존성과 설치 정책을 비교한다. */
+export function verifyBackendDependencies(repoRoot: string): string[] {
+  const names = ["nestjs", "nextjs", "nextjs-admin"];
+  const files = names.map((name) => join(repoRoot, "templates", name, "package.json"));
+  if (files.some((file) => !existsSync(file))) return [];
+  const backend = versions(files[0] ?? "");
+  const problems: string[] = [];
+  for (const [index, frontend] of names.slice(1).entries()) {
+    const declarations = versions(files[index + 1] ?? "");
+    for (const [name, left] of backend) {
+      const right = declarations.get(name);
+      if (!right) continue;
+      for (const a of left)
+        for (const b of right) {
+          if (a.section.includes("overrides") || b.section.includes("overrides")) continue;
+          if (isDeepStrictEqual(a.version, b.version)) continue;
+          problems.push(
+            `${name}: nestjs ${a.section}=${JSON.stringify(a.version)}, ${frontend} ${b.section}=${JSON.stringify(b.version)} — 백엔드와 프론트의 공통 의존성을 같은 버전으로 고치고 잠금 파일을 갱신한다.`,
+          );
+        }
+    }
+  }
+  const workspaceFiles = names.map((name) =>
+    join(repoRoot, "templates", name, "pnpm-workspace.yaml"),
+  );
+  if (workspaceFiles.every((file) => existsSync(file))) {
+    const workspaces = workspaceFiles.map(
+      (file) => parse(readFileSync(file, "utf8")) as Record<string, unknown>,
+    );
+    const backendWorkspace = workspaces[0];
+    for (const [index, frontend] of names.slice(1).entries()) {
+      const workspace = workspaces[index + 1];
+      for (const key of ["minimumReleaseAge", "overrides"])
+        if (!isDeepStrictEqual(backendWorkspace?.[key], workspace?.[key]))
+          problems.push(
+            `${key}: nestjs=${JSON.stringify(backendWorkspace?.[key])}, ${frontend}=${JSON.stringify(workspace?.[key])} — pnpm-workspace.yaml의 설정을 맞추고 잠금 파일을 갱신한다.`,
+          );
+      const left = backendWorkspace?.allowBuilds;
+      const right = workspace?.allowBuilds;
+      if (isRecord(left) && isRecord(right))
+        for (const [key, value] of Object.entries(left))
+          if (Object.hasOwn(right, key) && !isDeepStrictEqual(value, right[key]))
+            problems.push(
+              `allowBuilds.${key}: nestjs=${JSON.stringify(value)}, ${frontend}=${JSON.stringify(right[key])} — 같은 키의 빌드 허용 값을 맞춘다`,
+            );
+    }
+  }
+  return problems;
+}

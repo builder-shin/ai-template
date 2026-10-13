@@ -1,0 +1,48 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [".claude/hooks/post-edit.mjs"]
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [".claude/hooks/stop-check.mjs"]
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [".claude/hooks/guard-command.mjs"]
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [".claude/hooks/session-start.mjs"]
+          }
+        ]
+      }
+    ]
+  }
+}

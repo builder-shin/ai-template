@@ -14,6 +14,7 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `contract/conformance/`   | 두 백엔드와 목에 똑같이 돌리는 적합성 테스트 틀                                           |
 | `contract/mock/`          | 플랫폼 API를 메모리로 구현한 목 서버(Hono). 단독 web의 개발 백엔드이자 적합성 `mock` 대상 |
 | `templates/`              | 템플릿. 각 폴더는 그대로 복사하면 동작하는 독립 프로젝트다                                |
+| `templates/nestjs/`       | NestJS 백엔드 골격·52개 필수 설정·명령 어휘(Task 1)                                       |
 | `templates/fastapi/`      | FastAPI 백엔드 템플릿                                                                     |
 | `templates/nextjs/`       | Next.js BFF web. 자체 workspace의 계약·목과 인증·글·내 정보·세션·업로드·실시간 기능       |
 | `templates/nextjs-admin/` | Next.js 관리 BFF. 자체 계약·목, 비밀번호 로그인·관리 권한·ko/en·실시간 접근 확인          |
@@ -51,6 +52,9 @@ AI 바이브코딩에 최적화한 프로젝트 템플릿(FastAPI, NestJS, Next.
 | `pnpm tool <oasdiff\|betterleaks\|actionlint>`               | 버전을 고정한 바이너리를 받아 실행한다                                                                                                                                                                                                                                                            |
 | `pnpm spec-compare [--subset] <계약> <구현>`                 | 백엔드 스펙이 계약과 이름·경로·operation별 응답 상태·실시간 선언이 같고 계약을 깨지 않는지 본다. `--subset`은 구현 도중에 구현한 operation만 비교한다                                                                                                                                             |
 | `pnpm conformance <대상> [--keep] [흐름 파일...]`            | 대상을 띄우고 적합성 흐름 테스트를 돌린 뒤 내린다. `fastapi`는 compose로 띄우고(Docker 필요) 템플릿의 개발 인프라와 같은 compose 프로젝트를 써서 개발 DB에 마이그레이션과 시드를 실행한다(끝나면 개발 인프라도 내려간다). `mock`은 목 서버를 로컬 프로세스로 띄운다. 흐름 파일을 주면 그것만 돈다 |
+
+| `pnpm --dir templates/nestjs test` | NestJS unit project의 설정·도구 단위 시험 |
+| `pnpm --dir templates/nestjs check` | 현재는 Task 2 안내와 종료 코드 1이 예상 결과다 |
 
 ## 규칙
 

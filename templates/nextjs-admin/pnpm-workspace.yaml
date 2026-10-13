@@ -8,3 +8,5 @@ allowBuilds:
   lefthook: false
   "@parcel/watcher": true
   "@swc/core": true
+overrides:
+  typescript: 6.0.3
