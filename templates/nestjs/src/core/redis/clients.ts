@@ -33,8 +33,8 @@ export class RedisClients implements OnModuleDestroy {
       url.searchParams.delete(option);
     const client = new Redis(url.href, {
       lazyConnect: true,
-      commandTimeout: 2000,
-      maxRetriesPerRequest: 1,
+      ...(name === "bullmq" ? {} : { commandTimeout: 2000 }),
+      maxRetriesPerRequest: name === "bullmq" ? null : 1,
       connectionName: `${this.prefix}:${String(process.pid)}:${name}`,
     });
     this.connections.set(name, client);

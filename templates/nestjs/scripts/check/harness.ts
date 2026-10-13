@@ -7,6 +7,7 @@ import { settingsSchema } from "../../src/core/config/settings.js";
 import { envExampleProblems } from "./env-example.js";
 import { isGenerated, projectFiles } from "./files.js";
 import { gitEnvironment } from "./git-environment.js";
+import { mailLocaleProblems } from "./mail-locales.js";
 
 function lineCount(text: string): number {
   return text === "" ? 0 : text.replace(/\r?\n$/, "").split(/\r?\n/).length;
@@ -103,6 +104,7 @@ export function harnessProblems(root: string): string[] {
   } catch {
     problems.push("src/generated — git ls-files로 생성물 추적 여부를 확인할 수 없다");
   }
+  problems.push(...mailLocaleProblems(root));
   return problems;
 }
 

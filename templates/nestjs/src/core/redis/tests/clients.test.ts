@@ -2,6 +2,32 @@ import { expect, it, vi } from "vitest";
 import { RedisClients } from "../clients.js";
 import type { Settings } from "../../config/settings.js";
 const settings = { REDIS_URL: "redis://fixture.invalid:26379/15" } as Settings;
+it("BullMQ 연결은 차단 명령에 맞추고 같은 이름의 연결을 공유한다", async () => {
+  const clients = new RedisClients(settings);
+  try {
+    const bull = clients.connection("bullmq");
+    expect(bull.options.maxRetriesPerRequest).toBeNull();
+    expect(bull.options.commandTimeout).toBeUndefined();
+    expect(bull.options.db).toBe(15);
+    expect(bull.options.connectionName).toBe(`aitpl:15:${String(process.pid)}:bullmq`);
+    expect(bull.status).toBe("wait");
+    expect(clients.connection("bullmq")).toBe(bull);
+    expect(clients.command.options.maxRetriesPerRequest).toBe(1);
+    expect(clients.command.options.commandTimeout).toBe(2000);
+    const duplicate = bull.duplicate();
+    try {
+      expect(duplicate.options.maxRetriesPerRequest).toBeNull();
+      expect(duplicate.options.commandTimeout).toBeUndefined();
+      expect(duplicate.status).toBe("wait");
+    } finally {
+      duplicate.disconnect();
+    }
+    expect(duplicate.status).toBe("end");
+  } finally {
+    await clients.close();
+  }
+  expect(clients.connection("bullmq").status).toBe("end");
+});
 it("연결은 지연 생성하고 이름과 모든 키를 시험 DB로 격리한다", async () => {
   const clients = new RedisClients(settings);
   try {
