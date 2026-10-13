@@ -13,11 +13,12 @@ import {
   HttpException,
 } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { ApiError, ApiErrors } from "../../jsonapi/errors.js";
 import { PrismaService } from "../../db/prisma.service.js";
 import { RedisClients } from "../../redis/clients.js";
 import { GLOBAL_LIMITER } from "../pipeline.js";
-import { errorDocument, mediaType, testApp, sendRaw } from "./fixtures.js";
+import { errorDocument, mediaType, testApp, sendRaw, sendBytes } from "./fixtures.js";
 
 @Injectable()
 class DenyGuard {
@@ -121,12 +122,48 @@ describe("HTTP 파이프라인", () => {
     expect(
       (await http.post("/api/v1/echo").set("Content-Type", mediaType).send(exact)).status,
     ).toBe(200);
-    const res = await http
-      .post("/api/v1/echo")
-      .set("Content-Type", mediaType)
-      .send(exact + " ");
+    expect(Buffer.byteLength(exact)).toBe(1048576);
+    expect(Buffer.byteLength(exact + " ")).toBe(1048577);
+    const res = await sendBytes(
+      http.post("/api/v1/echo").set("Content-Type", mediaType),
+      exact + " ",
+    );
     expect(res.status).toBe(413);
     expect(errorDocument(res.text).errors[0]?.code).toBe("jsonapi.content_too_large");
+  });
+  it("본문 전송 중 조기 거절한 413 문서를 실제로 받는다", async () => {
+    const { app, http } = await testApp([EchoTestModule]);
+    const server: Server = app.getHttpServer();
+    const finished: { status: number; contentType: number | string | string[] | undefined }[] = [];
+    const observe = (_req: IncomingMessage, res: ServerResponse) => {
+      res.once("finish", () => {
+        finished.push({ status: res.statusCode, contentType: res.getHeader("content-type") });
+      });
+    };
+    server.on("request", observe);
+    const prefix = '{"data":{"type":"echoes","attributes":{"text":"';
+    const suffix = '"}}}';
+    const exact = prefix + "a".repeat(1048576 - prefix.length - suffix.length) + suffix;
+    try {
+      expect(
+        (await http.post("/api/v1/echo").set("Content-Type", mediaType).send(exact)).status,
+      ).toBe(200);
+      const res = await sendBytes(
+        http.post("/api/v1/echo").set("Content-Type", mediaType),
+        exact + " ",
+      );
+      expect(res.status).toBe(413);
+      expect(errorDocument(res.text).errors[0]?.code).toBe("jsonapi.content_too_large");
+      expect(finished).toEqual([
+        { status: 200, contentType: mediaType },
+        { status: 413, contentType: mediaType },
+      ]);
+    } catch (error) {
+      process.stderr.write(`조기 응답 관측: ${JSON.stringify(finished)}\n`);
+      throw error;
+    } finally {
+      server.off("request", observe);
+    }
   });
   it("길이가 없는 청크 본문도 바이트 한도를 적용한다", async () => {
     const { http } = await testApp([EchoTestModule]);
@@ -140,16 +177,22 @@ describe("HTTP 파이프라인", () => {
     const { http } = await testApp([EchoTestModule]);
     const oversized = "a".repeat(1048577);
     expect(
-      (await http.post("/api/v1/echo").set("Content-Type", "application/json").send(oversized))
-        .status,
+      (
+        await sendBytes(
+          http.post("/api/v1/echo").set("Content-Type", "application/json"),
+          oversized,
+        )
+      ).status,
     ).toBe(415);
     expect(
       (
-        await http
-          .post("/api/v1/echo")
-          .set("Content-Type", mediaType)
-          .set("Accept", "application/json")
-          .send(oversized)
+        await sendBytes(
+          http
+            .post("/api/v1/echo")
+            .set("Content-Type", mediaType)
+            .set("Accept", "application/json"),
+          oversized,
+        )
       ).status,
     ).toBe(406);
   });
@@ -174,10 +217,10 @@ describe("HTTP 파이프라인", () => {
     const { http } = await testApp([EchoTestModule]);
     expect(
       (
-        await http
-          .post("/api/v1/protected")
-          .set("Content-Type", mediaType)
-          .send("a".repeat(1048577))
+        await sendBytes(
+          http.post("/api/v1/protected").set("Content-Type", mediaType),
+          "a".repeat(1048577),
+        )
       ).status,
     ).toBe(413);
     expect(

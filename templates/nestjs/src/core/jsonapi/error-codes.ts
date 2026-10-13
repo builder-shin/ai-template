@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { registerComponent } from "./schemas.js";
 
 export const ERROR_CODES = [
   "jsonapi.unsupported_media_type",
@@ -42,4 +43,4 @@ export const ERROR_CODES = [
   "service.unavailable",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
-export const errorCodeSchema = z.enum(ERROR_CODES);
+export const errorCodeSchema = registerComponent("ErrorCode", z.enum(ERROR_CODES));

@@ -52,6 +52,11 @@ export function errorDocument(text: string): ErrorDocument {
   return JSON.parse(text) as ErrorDocument;
 }
 
+/** 큰 본문의 조기 응답을 잃지 않게 같은 바이트를 보내고 서버의 drain 동안 연결을 유지한다. */
+export function sendBytes(test: request.Test, body: string): request.Test {
+  return test.set("Connection", "keep-alive").send(Buffer.from(body));
+}
+
 /** send의 JSON 변환과 자동 Content-Length 없이 실제 입력 바이트를 보낸다. */
 export function sendRaw(test: request.Test, buffer: Buffer): Promise<request.Response> {
   test.write(buffer);

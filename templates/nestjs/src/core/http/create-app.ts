@@ -5,7 +5,7 @@ import express from "express";
 import { loadSettings, type Settings } from "../config/settings.js";
 import { AppModule, logLevels } from "../../app.module.js";
 import { JsonLogger } from "../logging/json-logger.js";
-import { DocumentInterceptor } from "../jsonapi/render.js";
+import { DocumentInterceptor } from "./document.interceptor.js";
 import { ApiExceptionFilter } from "./exception.filter.js";
 import { GLOBAL_LIMITER, pipeline, type GlobalLimiter } from "./pipeline.js";
 export interface AppOverrides {
