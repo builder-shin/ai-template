@@ -305,23 +305,6 @@
           "post.deleted_by_admin"
         ]
       },
-      "PermissionAttributes": {
-        "type": "object",
-        "properties": {
-          "description": { "type": "string" },
-          "group": { "type": "string" }
-        },
-        "required": ["description", "group"]
-      },
-      "PermissionResource": {
-        "type": "object",
-        "properties": {
-          "type": { "type": "string", "enum": ["permissions"] },
-          "id": { "type": "string" },
-          "attributes": { "$ref": "#/components/schemas/PermissionAttributes" }
-        },
-        "required": ["type", "id", "attributes"]
-      },
       "PaginationLinks": {
         "type": "object",
         "properties": {
@@ -358,6 +341,23 @@
         "type": "object",
         "properties": { "page": { "$ref": "#/components/schemas/PageMeta" } },
         "required": ["page"]
+      },
+      "PermissionAttributes": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "group": { "type": "string" }
+        },
+        "required": ["description", "group"]
+      },
+      "PermissionResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["permissions"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/PermissionAttributes" }
+        },
+        "required": ["type", "id", "attributes"]
       },
       "PermissionCollectionDocument": {
         "type": "object",

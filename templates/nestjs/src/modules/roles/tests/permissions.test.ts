@@ -105,3 +105,91 @@ it("등록부가 역할 include 로더를 앱에 연결한다", async () => {
     },
   ]);
 });
+it("역할 include는 등록된 코드를 보존하고 폐기된 코드를 제외한다", async () => {
+  const db = databaseFixture();
+  db.roles.push({
+    id: "r1",
+    name: "reader",
+    system: false,
+    permissions: ["roles:read", "retired:read", "posts:create"],
+    description: null,
+  });
+  expect(await new RolesRepository().load(db.tx, ["r1"])).toEqual([
+    {
+      type: "roles",
+      id: "r1",
+      attributes: {
+        name: "reader",
+        description: null,
+        permissions: ["roles:read", "posts:create"],
+        isSystem: false,
+      },
+    },
+  ]);
+});
+it("시스템 admin include는 저장 코드와 관계없이 미래 권한을 포함한다", async () => {
+  const db = databaseFixture();
+  db.roles.push({
+    id: "r1",
+    name: "admin",
+    system: true,
+    permissions: ["retired:read"],
+    description: null,
+  });
+  expect(await new RolesRepository().load(db.tx, ["r1"])).toMatchObject([
+    {
+      attributes: {
+        permissions: [
+          "admin:access",
+          "users:read",
+          "users:manage",
+          "roles:read",
+          "roles:manage",
+          "audit-logs:read",
+          "posts:create",
+          "posts:manage",
+          "posts:archive",
+        ],
+      },
+    },
+  ]);
+});
+it.each([{ names: ["missing"] }, { names: ["member", "missing", "member"] }])(
+  "없는 역할이 섞이면 부여 전에 거절하고 기존 관계를 보존한다: $names",
+  async ({ names }) => {
+    const db = databaseFixture();
+    await seedSystem(db.tx, settings);
+    const user = await db.tx.user.upsert({
+      where: { email: "new@example.com" },
+      update: {},
+      create: { email: "new@example.com", passwordHash: null },
+    });
+    const before = structuredClone(db.assignments);
+    await expect(new RolesRepository().assign(db.tx, user.id, names)).rejects.toThrow();
+    expect(db.assignments).toEqual(before);
+  },
+);
+it("유효한 역할을 추가하면 기존 역할을 유지하고 중복 요청은 한 번만 부여한다", async () => {
+  const db = databaseFixture();
+  await seedSystem(db.tx, settings);
+  const user = await db.tx.user.upsert({
+    where: { email: "new@example.com" },
+    update: {},
+    create: { email: "new@example.com", passwordHash: null },
+  });
+  db.roles.push({
+    id: "r3",
+    name: "reader",
+    system: false,
+    permissions: ["roles:read"],
+    description: null,
+  });
+  const repository = new RolesRepository();
+  await repository.assign(db.tx, user.id, ["member"]);
+  await repository.assign(db.tx, user.id, ["reader", "reader"]);
+  await repository.assign(db.tx, user.id, []);
+  expect(db.assignments.filter((a) => a.userId === user.id)).toEqual([
+    { userId: user.id, roleId: required(db.roles.find((r) => r.name === "member")).id },
+    { userId: user.id, roleId: "r3" },
+  ]);
+});

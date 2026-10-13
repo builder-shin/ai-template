@@ -16,8 +16,10 @@ export class RolesRepository {
     );
   }
   async assign(tx: Tx, userId: string, roleNames: readonly string[]): Promise<void> {
-    if (!roleNames.length) return;
-    const roles = await tx.role.findMany({ where: { name: { in: [...roleNames] } } });
+    const names = [...new Set(roleNames)];
+    if (!names.length) return;
+    const roles = await tx.role.findMany({ where: { name: { in: names } } });
+    if (roles.length !== names.length) throw new Error("요청한 역할이 없다");
     await tx.userRole.createMany({
       data: roles.map((role) => ({ userId, roleId: role.id })),
       skipDuplicates: true,
@@ -26,7 +28,7 @@ export class RolesRepository {
   async seedRoles(tx: Tx): Promise<void> {
     for (const role of SYSTEM_ROLES) {
       const data = { ...role, permissions: [...role.permissions], system: true };
-      await tx.role.upsert({ where: { name: role.name }, create: data, update: data });
+      await tx.role.upsert({ where: { name: role.name }, create: data, update: {} });
     }
   }
   async seedAdmin(tx: Tx, email: string, passwordHash: string): Promise<string> {
@@ -51,7 +53,9 @@ export class RolesRepository {
         name: role.name,
         description: role.description,
         permissions:
-          role.system && role.name === "admin" ? [...PERMISSION_CODES] : role.permissions,
+          role.system && role.name === "admin"
+            ? [...PERMISSION_CODES]
+            : role.permissions.filter((code) => PERMISSION_CODES.some((known) => known === code)),
         isSystem: role.system,
       }),
     );

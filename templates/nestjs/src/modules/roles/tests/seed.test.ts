@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { seedSystem } from "../index.js";
+import { seedSystem, RolesRepository } from "../index.js";
 import { databaseFixture, required } from "./fixtures.js";
 import { settings } from "../../../core/http/tests/fixtures.js";
 import { verifyPassword } from "../../../core/security/passwords.js";
@@ -36,7 +36,7 @@ it("시드 관리자의 이메일은 정규화하고 비밀번호는 surrogatepa
   expect(await verifyPassword(required(user.passwordHash), "a\uD800b-password")).toBe(true);
   expect(await verifyPassword(required(user.passwordHash), "a\uFFFDb-password")).toBe(false);
 });
-it("반복 시드는 관리자 개인정보와 바뀐 비밀번호를 덮지 않고 시스템 권한은 복구한다", async () => {
+it("반복 시드는 기존 관리자와 수정한 시스템 역할 설정을 보존한다", async () => {
   const db = databaseFixture();
   await seedSystem(db.tx, settings);
   Object.assign(required(db.users[0]), {
@@ -45,9 +45,46 @@ it("반복 시드는 관리자 개인정보와 바뀐 비밀번호를 덮지 않
     passwordHash: "변경된 해시",
   });
   required(db.roles.find((r) => r.name === "admin")).permissions = [];
+  const member = required(db.roles.find((r) => r.name === "member"));
+  member.permissions = ["roles:read"];
+  member.description = "수정한 member 설명";
+  const before = structuredClone(db.roles);
   await seedSystem(db.tx, settings);
   expect(db.users[0]).toMatchObject({ name: "새 이름", locale: "en", passwordHash: "변경된 해시" });
-  expect(db.roles.find((r) => r.name === "admin")?.permissions).toHaveLength(8);
+  expect(db.roles).toEqual(before);
+  expect(await new RolesRepository().permissionsOf(db.tx, required(db.users[0]).id)).toEqual(
+    new Set([
+      "admin:access",
+      "users:read",
+      "users:manage",
+      "roles:read",
+      "roles:manage",
+      "audit-logs:read",
+      "posts:create",
+      "posts:manage",
+    ]),
+  );
+});
+it("시드는 같은 이름의 기존 일반 역할을 시스템 역할로 승격하지 않는다", async () => {
+  const db = databaseFixture();
+  db.roles.push({
+    id: "r1",
+    name: "admin",
+    system: false,
+    permissions: ["roles:read"],
+    description: "기존 일반 역할",
+  });
+  const { adminUserId } = await seedSystem(db.tx, settings);
+  expect(db.roles.find((r) => r.name === "admin")).toEqual({
+    id: "r1",
+    name: "admin",
+    system: false,
+    permissions: ["roles:read"],
+    description: "기존 일반 역할",
+  });
+  expect(await new RolesRepository().permissionsOf(db.tx, adminUserId)).toEqual(
+    new Set(["roles:read", "posts:create"]),
+  );
 });
 it("로케일과 사용자 상태 컴포넌트는 계약 값만 허용한다", () => {
   const schemas = components();
