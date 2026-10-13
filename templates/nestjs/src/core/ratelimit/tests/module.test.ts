@@ -6,6 +6,8 @@ import { settings } from "../../http/tests/fixtures.js";
 import { JsonLogger } from "../../logging/json-logger.js";
 import { RedisClients } from "../../redis/clients.js";
 import { PrismaService } from "../../db/prisma.service.js";
+import { JobQueue } from "../../jobs/queue.js";
+import { MailSender } from "../../mail/sender.js";
 import { GLOBAL_LIMITER, type GlobalLimiter } from "../../http/pipeline.js";
 import { StrictLimiter } from "../strict.js";
 import { incoming, store } from "./fixtures.js";
@@ -24,6 +26,10 @@ it("운영 모듈은 실제 전역과 엄격 리미터를 DI로 제공한다", a
     .overrideProvider(RedisClients)
     .useValue(clients)
     .overrideProvider(PrismaService)
+    .useValue({})
+    .overrideProvider(JobQueue)
+    .useValue({})
+    .overrideProvider(MailSender)
     .useValue({})
     .compile();
   try {

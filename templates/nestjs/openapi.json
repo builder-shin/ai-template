@@ -2,7 +2,12 @@
   "openapi": "3.1.0",
   "info": { "title": "AI Template Platform API", "version": "1.0.0" },
   "servers": [{ "url": "http://localhost:8000" }],
-  "tags": [{ "name": "health" }, { "name": "permissions" }],
+  "tags": [
+    { "name": "health" },
+    { "name": "permissions" },
+    { "name": "registrations" },
+    { "name": "email-verifications" }
+  ],
   "paths": {
     "/health/live": {
       "get": {
@@ -171,6 +176,345 @@
         "security": [{ "BearerAuth": [] }],
         "x-permission": "roles:read",
         "x-jsonapi-sort": ["id"]
+      }
+    },
+    "/api/v1/registrations": {
+      "post": {
+        "operationId": "Registrations_create",
+        "summary": "가입하고 인증 메일을 보낸다",
+        "tags": ["registrations"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "가입했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationCreateDocument"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/email-verification-requests": {
+      "post": {
+        "operationId": "EmailVerificationRequests_create",
+        "summary": "계정 유무와 관계없이 인증 메일 재발송을 요청한다",
+        "tags": ["email-verifications"],
+        "parameters": [],
+        "responses": {
+          "202": { "description": "요청을 받았다" },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerificationRequestCreateDocument"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/email-verifications": {
+      "post": {
+        "operationId": "EmailVerifications_create",
+        "summary": "이메일 인증 토큰을 한 번 소비한다",
+        "tags": ["email-verifications"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "이메일을 인증했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailVerificationDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerificationCreateDocument"
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -374,6 +718,156 @@
       "UserStatus": {
         "type": "string",
         "enum": ["active", "deactivated", "deleted"]
+      },
+      "RegistrationCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8, "maxLength": 128 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "locale": { "$ref": "#/components/schemas/Locale" }
+        },
+        "required": ["email", "password", "name"]
+      },
+      "RegistrationCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["registrations"] },
+              "attributes": {
+                "$ref": "#/components/schemas/RegistrationCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "RegistrationAttributes": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["email", "createdAt"]
+      },
+      "RegistrationRelationships": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["users"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["user"]
+      },
+      "RegistrationResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["registrations"] },
+          "id": { "type": "string" },
+          "attributes": {
+            "$ref": "#/components/schemas/RegistrationAttributes"
+          },
+          "relationships": {
+            "$ref": "#/components/schemas/RegistrationRelationships"
+          }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "RegistrationDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/RegistrationResource" }
+        },
+        "required": ["data"]
+      },
+      "EmailVerificationRequestCreateAttributes": {
+        "type": "object",
+        "properties": { "email": { "type": "string", "format": "email" } },
+        "required": ["email"]
+      },
+      "EmailVerificationRequestCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["email-verification-requests"]
+              },
+              "attributes": {
+                "$ref": "#/components/schemas/EmailVerificationRequestCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "EmailVerificationCreateAttributes": {
+        "type": "object",
+        "properties": { "token": { "type": "string" } },
+        "required": ["token"]
+      },
+      "EmailVerificationCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["email-verifications"] },
+              "attributes": {
+                "$ref": "#/components/schemas/EmailVerificationCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "EmailVerificationAttributes": {
+        "type": "object",
+        "properties": {
+          "verifiedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["verifiedAt"]
+      },
+      "EmailVerificationResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["email-verifications"] },
+          "id": { "type": "string" },
+          "attributes": {
+            "$ref": "#/components/schemas/EmailVerificationAttributes"
+          }
+        },
+        "required": ["type", "id", "attributes"]
+      },
+      "EmailVerificationDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/EmailVerificationResource" }
+        },
+        "required": ["data"]
       }
     },
     "securitySchemes": { "BearerAuth": { "type": "http", "scheme": "Bearer" } }

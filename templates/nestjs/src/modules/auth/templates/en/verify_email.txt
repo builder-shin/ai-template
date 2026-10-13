@@ -1,0 +1,4 @@
+{{greeting}}
+
+Verify your email using the link below. It can be used once within 24 hours.
+{{link}}

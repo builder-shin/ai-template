@@ -1,0 +1,3 @@
+{{greeting}}
+
+Your email has been verified. Welcome!

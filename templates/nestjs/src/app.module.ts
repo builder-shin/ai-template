@@ -24,6 +24,7 @@ import { PRINCIPAL_RESOLVER, UnavailablePrincipalResolver } from "./core/securit
 import { OperationGuard } from "./core/http/operation.guard.js";
 import { IncludeRegistry } from "./core/jsonapi/include.js";
 import { UsersModule } from "./modules/users/index.js";
+import { AuthModule } from "./modules/auth/index.js";
 import { registerDomain } from "./modules/registry.js";
 
 @Global()
@@ -44,6 +45,7 @@ export class AppModule {
       imports: [
         HealthModule,
         UsersModule,
+        AuthModule.register(infrastructure),
         ...(infrastructure ? [DbModule, RedisModule, RateLimitModule] : []),
         ...(overrides.imports ?? []),
       ],
