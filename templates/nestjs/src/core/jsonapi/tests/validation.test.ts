@@ -227,3 +227,134 @@ it("수정 문서의 빠진 id는 문서 구조 오류다", () => {
     source: { pointer: "/data/id" },
   });
 });
+
+const choices = defineOperation({
+  ...base,
+  operationId: "Task5MalformedChoices",
+  method: "POST",
+  path: "/api/v1/choices",
+  body: z.object({
+    data: z.object({
+      type: z.literal("choices"),
+      attributes: z.object({
+        enumChoice: z.enum(["draft", "😀"]),
+        literalChoice: z.literal("😀"),
+        unionChoice: z.union([z.literal("draft"), z.literal("😀")]),
+        grant: z.discriminatedUnion("grantType", [
+          z.object({ grantType: z.literal("password"), payload: z.string() }),
+          z.object({ grantType: z.literal("😀"), payload: z.string() }),
+        ]),
+        token: z.string(),
+      }),
+    }),
+  }),
+});
+const choiceRaw = (attributes: object, type = "choices") => ({
+  search: "",
+  params: {},
+  body: {
+    data: {
+      type,
+      attributes: {
+        enumChoice: "draft",
+        literalChoice: "😀",
+        unionChoice: "draft",
+        grant: { grantType: "password", payload: "x" },
+        token: "\ud800",
+        ...attributes,
+      },
+    },
+  },
+});
+it.each([
+  ["열거 상위", { enumChoice: "\ud800" }, "/data/attributes/enumChoice"],
+  ["열거 하위", { enumChoice: "\udc00" }, "/data/attributes/enumChoice"],
+  ["리터럴 상위", { literalChoice: "\ud800" }, "/data/attributes/literalChoice"],
+  ["리터럴 하위", { literalChoice: "\udc00" }, "/data/attributes/literalChoice"],
+  ["유니온 상위", { unionChoice: "\ud800" }, "/data/attributes/unionChoice"],
+  ["유니온 하위", { unionChoice: "\udc00" }, "/data/attributes/unionChoice"],
+  [
+    "판별자 상위",
+    { grant: { grantType: "\ud800", payload: "x" } },
+    "/data/attributes/grant/grantType",
+  ],
+  [
+    "판별자 하위",
+    { grant: { grantType: "\udc00", payload: "x" } },
+    "/data/attributes/grant/grantType",
+  ],
+] as const)(
+  "제약 선택 문자열의 짝 없는 서로게이트는 형식 오류다: %s",
+  (_name, attributes, pointer) => {
+    const error = errorsOf(() => validateRequest(choices, choiceRaw(attributes)));
+    expect(error.status).toBe(422);
+    expect(error.errors.map((e) => e.init)).toMatchObject([
+      {
+        code: "validation.invalid_format",
+        source: { pointer },
+        meta: { params: { format: "unicode" } },
+      },
+    ]);
+  },
+);
+it.each(["\ud800", "\udc00"])(
+  "data.type의 짝 없는 서로게이트는 문서 오류를 유지한다: %s",
+  (type) => {
+    const error = errorsOf(() => validateRequest(choices, choiceRaw({}, type)));
+    expect(error.status).toBe(400);
+    expect(error.errors[0]?.init).toMatchObject({
+      code: "jsonapi.invalid_document",
+      source: { pointer: "/data/type" },
+    });
+  },
+);
+it("짝을 이룬 이모지 선택지와 제약 없는 문자열은 받는다", () => {
+  expect(
+    validateRequest(
+      choices,
+      choiceRaw({ enumChoice: "😀", unionChoice: "😀", grant: { grantType: "😀", payload: "x" } }),
+    ).body,
+  ).toEqual({
+    data: {
+      type: "choices",
+      attributes: {
+        enumChoice: "😀",
+        literalChoice: "😀",
+        unionChoice: "😀",
+        grant: { grantType: "😀", payload: "x" },
+        token: "\ud800",
+      },
+    },
+  });
+});
+it.each([
+  ["열거", { enumChoice: "secret" }, "/data/attributes/enumChoice", { choices: ["draft", "😀"] }],
+  ["리터럴", { literalChoice: "secret" }, "/data/attributes/literalChoice", { choices: ["😀"] }],
+  ["유니온", { unionChoice: "secret" }, "/data/attributes/unionChoice", {}],
+  [
+    "판별자",
+    { grant: { grantType: "secret", payload: "x" } },
+    "/data/attributes/grant/grantType",
+    {},
+  ],
+] as const)(
+  "일반 미지원 선택지는 기존 코드와 params를 유지한다: %s",
+  (_name, attributes, pointer, params) => {
+    const error = errorsOf(() => validateRequest(choices, choiceRaw(attributes)));
+    expect(error.status).toBe(422);
+    expect(error.errors[0]?.init).toMatchObject({
+      code: "validation.invalid_choice",
+      source: { pointer },
+      meta: { params },
+    });
+  },
+);
+it.each(["users", "😀"])("일반 type 불일치는 충돌과 기존 params를 유지한다: %s", (type) => {
+  const error = errorsOf(() => validateRequest(choices, choiceRaw({}, type)));
+  expect(error.status).toBe(409);
+  expect(error.errors[0]?.init).toMatchObject({
+    code: "resource.conflict",
+    source: { pointer: "/data/type" },
+    meta: { params: { choices: ["choices"] } },
+  });
+});

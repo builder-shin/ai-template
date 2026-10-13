@@ -112,23 +112,65 @@ it("include는 중복 id를 묶고 중첩 관계를 따라가며 주 리소스�
 });
 it("include는 배열·null 관계와 순환을 다루며 무관한 로더 결과를 버린다", async () => {
   const registry = new IncludeRegistry();
-  registry.register("posts", () =>
-    Promise.resolve([
-      resourceObject("posts", "p1", {}, { related: { data: [{ type: "posts", id: "p1" }] } }),
-      resourceObject("posts", "stray", {}),
-    ]),
-  );
+  const calls: unknown[] = [];
+  registry.register("posts", (_tx, ids) => {
+    calls.push(["posts", ids]);
+    return Promise.resolve(
+      ids.includes("p2")
+        ? [
+            resourceObject(
+              "posts",
+              "p2",
+              {},
+              {
+                related: {
+                  data: [
+                    { type: "posts", id: "p1" },
+                    { type: "posts", id: "p2" },
+                    { type: "posts", id: "stray" },
+                  ],
+                },
+                file: { data: { type: "files", id: "p2" } },
+              },
+            ),
+            resourceObject("posts", "stray", {}),
+            resourceObject("files", "p2", {}),
+          ]
+        : [],
+    );
+  });
+  registry.register("files", (_tx, ids) => {
+    calls.push(["files", ids]);
+    return Promise.resolve([]);
+  });
   const primary = [
     resourceObject(
       "posts",
       "p1",
       {},
-      { related: { data: [{ type: "posts", id: "p1" }] }, missing: { data: null } },
+      {
+        related: {
+          data: [
+            { type: "posts", id: "p1" },
+            { type: "posts", id: "p2" },
+          ],
+        },
+        missing: { data: null },
+      },
     ),
   ];
-  expect(await registry.load({} as Tx, ["related.related", "missing"], primary, undefined)).toEqual(
-    [],
+  const included = await registry.load(
+    {} as Tx,
+    ["related.related", "related.file", "missing"],
+    primary,
+    undefined,
   );
+  expect(included.map(({ type, id }) => ({ type, id }))).toEqual([{ type: "posts", id: "p2" }]);
+  expect(calls).toEqual([
+    ["posts", ["p2"]],
+    ["posts", ["stray"]],
+    ["files", ["p2"]],
+  ]);
 });
 it("include 로더 중복 등록을 거절한다", () => {
   const registry = new IncludeRegistry();

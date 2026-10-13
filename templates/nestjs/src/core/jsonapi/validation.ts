@@ -4,6 +4,7 @@ import { ApiError, ApiErrors } from "./errors.js";
 import type { ErrorCode } from "./error-codes.js";
 import type { OperationDeclaration, OperationSpec } from "./operation.js";
 import { parseQuery, type ParsedQuery } from "./query.js";
+import { hasLoneSurrogate } from "./schemas.js";
 export interface ValidatedRequest<S extends OperationSpec = OperationSpec> {
   query: ParsedQuery;
   params: S extends { params: infer P extends z.ZodType } ? z.infer<P> : Record<string, string>;
@@ -22,6 +23,9 @@ function pointer(path: readonly PropertyKey[]): string {
 }
 function issueError(issue: z.core.$ZodIssue, raw: unknown): ApiError {
   const value = at(raw, issue.path);
+  const malformedString = typeof value === "string" && hasLoneSurrogate(value);
+  const malformedChoice =
+    malformedString && (issue.code === "invalid_value" || issue.code === "invalid_union");
   let code: ErrorCode = "validation.invalid_format";
   const params: Record<string, unknown> = {};
   if (issue.code === "invalid_type" && value === undefined) code = "validation.required";
@@ -51,16 +55,17 @@ function issueError(issue: z.core.$ZodIssue, raw: unknown): ApiError {
     issue.path[1] === "type" &&
     issue.code === "invalid_value" &&
     typeof value === "string" &&
-    !/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/u.test(value);
+    !malformedString;
   const status = typeConflict ? 409 : structural ? 400 : 422;
   if (status === 409) code = "resource.conflict";
   else if (status === 400) code = "jsonapi.invalid_document";
+  else if (malformedChoice) code = "validation.invalid_format";
   return new ApiError({
     status,
     code,
     title: "Invalid request",
     source: { pointer: pointer(issue.path) },
-    meta: { params },
+    meta: { params: status === 422 && malformedChoice ? { format: "unicode" } : params },
   });
 }
 export function validateRequest<S extends OperationSpec>(

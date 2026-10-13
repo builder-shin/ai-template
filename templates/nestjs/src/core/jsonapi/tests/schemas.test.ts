@@ -76,7 +76,11 @@ it("레지스트리는 nullable과 판별자 선언을 보존하고 중복 이�
   expect(registerComponent("Task5Grant", schema, { discriminator })).toBe(schema);
   expect(components().get("Task5Grant")).toMatchObject({ schema, discriminator });
   expect(() => registerComponent("Task5Grant", z.string())).toThrow();
-  expect(z.toJSONSchema(z.string().nullable())).toMatchObject({ type: ["string", "null"] });
+  const registered = components().get("Task5Grant");
+  if (!registered) throw new Error("등록한 컴포넌트가 없다");
+  expect(z.toJSONSchema(registered.schema)).toMatchObject({
+    oneOf: [{ properties: { name: { type: ["string", "null"] } } }, {}],
+  });
 });
 it("권한과 오류 enum은 컴포넌트로 등록되고 실제 입력을 제한한다", () => {
   expect(permissionCodeSchema.safeParse("posts:manage").success).toBe(true);

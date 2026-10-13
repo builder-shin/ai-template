@@ -20,12 +20,15 @@ export function components(): ReadonlyMap<string, RegisteredComponent> {
 }
 
 const loneSurrogate = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/u;
+export function hasLoneSurrogate(value: string): boolean {
+  return loneSurrogate.test(value);
+}
 export function codePointString(options: { min?: number; max?: number } = {}): z.ZodString {
   return z
     .string()
     .check((ctx) => {
       const value = ctx.value;
-      if ((options.min !== undefined || options.max !== undefined) && loneSurrogate.test(value)) {
+      if ((options.min !== undefined || options.max !== undefined) && hasLoneSurrogate(value)) {
         ctx.issues.push({ code: "invalid_format", format: "unicode", input: value });
         return;
       }
@@ -69,7 +72,7 @@ function formattedString(format: string, valid: (value: string) => boolean): z.Z
   return z
     .string()
     .check((ctx) => {
-      if (loneSurrogate.test(ctx.value) || !valid(ctx.value))
+      if (hasLoneSurrogate(ctx.value) || !valid(ctx.value))
         ctx.issues.push({ code: "invalid_format", format, input: ctx.value });
     })
     .meta({ format });
