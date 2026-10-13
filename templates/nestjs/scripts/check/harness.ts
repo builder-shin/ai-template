@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { readFileSync, realpathSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { settingsSchema } from "../../src/core/config/settings.js";
 import { envExampleProblems } from "./env-example.js";
 import { isGenerated, projectFiles } from "./files.js";
+import { gitEnvironment } from "./git-environment.js";
 
 function lineCount(text: string): number {
   return text === "" ? 0 : text.replace(/\r?\n$/, "").split(/\r?\n/).length;
@@ -20,7 +21,7 @@ function suppressionProblems(file: string, text: string): string[] {
       ...(ts.getTrailingCommentRanges(text, node.end) ?? []),
     ])
       ranges.set(range.pos, range);
-    ts.forEachChild(node, visit);
+    for (const child of node.getChildren(parsed)) visit(child);
   }
   visit(parsed);
   const problems: string[] = [];
@@ -95,6 +96,7 @@ export function harnessProblems(root: string): string[] {
       cwd: root,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      env: gitEnvironment(),
     });
     for (const file of tracked.trim().split("\n").filter(Boolean))
       problems.push(`${file} — 생성물은 git에서 추적하지 않는다`);
@@ -104,7 +106,17 @@ export function harnessProblems(root: string): string[] {
   return problems;
 }
 
-if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+function isMain(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isMain()) {
   const problems = harnessProblems(process.cwd());
   if (problems.length) {
     process.stderr.write(`${problems.join("\n")}\n`);

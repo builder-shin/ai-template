@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { inputFiles } from "./files.js";
+import { gitEnvironment } from "./git-environment.js";
 import type { Stage, StageName } from "./stages.js";
 
 function inputHash(stage: Stage, root: string): string {
@@ -17,6 +18,7 @@ function inputHash(stage: Stage, root: string): string {
         execFileSync("git", ["ls-files", "--", "src/generated"], {
           cwd: root,
           stdio: ["ignore", "pipe", "pipe"],
+          env: gitEnvironment(),
         }),
       );
     } catch {

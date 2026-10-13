@@ -3,8 +3,10 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { runStages } from "../runner.js";
+import { gitEnvironment } from "../git-environment.js";
 import type { Stage, StageName } from "../stages.js";
 
 let root: string;
@@ -55,6 +57,19 @@ it("입력 파일의 추가와 삭제를 감지한다", async () => {
   await runStages([item], options());
   expect(readFileSync(join(root, "effects"), "utf8")).toBe("실행\n실행\n실행\n");
 });
+it.each(["dist", "coverage", ".cache"])(
+  "중첩 소스 폴더의 변경도 캐시를 무효화한다: %s",
+  async (name) => {
+    const path = join(root, "src/modules", name, "service.ts");
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, "처음");
+    const item = stage("lint", record, { inputs: ["src"] });
+    await runStages([item], options());
+    writeFileSync(path, "변경");
+    await runStages([item], options());
+    expect(readFileSync(join(root, "effects"), "utf8")).toBe("실행\n실행\n");
+  },
+);
 it("실패하면 그 단계 이름과 출력만 돌려주고 뒤 단계를 돌리지 않는다", async () => {
   const result = await runStages(
     [stage("format", "console.error('x'); process.exit(1)"), stage("lint", record)],
@@ -106,12 +121,12 @@ it("명령을 찾지 못하면 해당 단계의 실패로 알린다", async () =
   expect(result.output).toContain("ENOENT");
 });
 it("생성물을 새로 추적하면 바이트가 같아도 하네스를 다시 실행한다", async () => {
-  execFileSync("git", ["init", "--quiet"], { cwd: root });
+  execFileSync("git", ["init", "--quiet"], { cwd: root, env: gitEnvironment() });
   mkdirSync(join(root, "src/generated"), { recursive: true });
   writeFileSync(join(root, "src/generated/client.ts"), "export {};\n");
   const item = stage("harness", record, { inputs: ["src"] });
   await runStages([item], options());
-  execFileSync("git", ["add", "src/generated/client.ts"], { cwd: root });
+  execFileSync("git", ["add", "src/generated/client.ts"], { cwd: root, env: gitEnvironment() });
   await runStages([item], options());
   expect(readFileSync(join(root, "effects"), "utf8")).toBe("실행\n실행\n");
 });
@@ -141,7 +156,11 @@ function prepareCli(failLint = false) {
   }
 }
 const templateRoot = process.cwd();
-const loader = createRequire(import.meta.url).resolve("tsx");
+const loader = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
+it("CLI loader는 Node가 해석할 수 있는 절대 file URL이다", () => {
+  expect(new URL(loader).protocol).toBe("file:");
+  expect(fileURLToPath(loader)).toBe(createRequire(import.meta.url).resolve("tsx"));
+});
 function runCli(...args: string[]) {
   return spawnSync(
     process.execPath,

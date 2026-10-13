@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { harnessProblems } from "../harness.js";
+import { gitEnvironment } from "../git-environment.js";
 
 let root: string;
 function write(path: string, text: string) {
@@ -12,7 +13,7 @@ function write(path: string, text: string) {
 }
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "aitpl-check-harness-"));
-  execFileSync("git", ["init", "--quiet"], { cwd: root });
+  execFileSync("git", ["init", "--quiet"], { cwd: root, env: gitEnvironment() });
   write("AGENTS.md", "# 규칙\n");
   write("CLAUDE.md", "@AGENTS.md\n");
   write(".env.example", readFileSync(new URL("../../../.env.example", import.meta.url), "utf8"));
@@ -75,6 +76,17 @@ it("빈 사유와 다음 줄에 쓴 사유는 거절한다", () => {
   write("src/b.ts", "// eslint-disable --\n// @ts-expect-error\n// -- 다음 줄의 사유다\n");
   expect(harnessProblems(root).filter((problem) => problem.includes("억제 주석"))).toHaveLength(2);
 });
+it.each([
+  ["함수", "export function run() {\n  return 1;\n  /* eslint-disable no-console */\n}\n"],
+  ["클래스", "export class Box {\n  value = 1;\n  // @ts-expect-error\n}\n"],
+  ["배열", "export const values = [\n  1,\n  /* eslint-disable no-console */\n];\n"],
+  ["호출", "export const value = String(\n  1\n  /* eslint-disable no-console */\n);\n"],
+])("닫는 토큰 앞의 사유 없는 주석도 거절한다: %s", (_name, source) => {
+  write("src/closing.ts", source);
+  expect(harnessProblems(root)).toContain(
+    'src/closing.ts:3 억제 주석에 사유가 없다 — "-- 사유"를 같은 줄에 적는다',
+  );
+});
 it("환경 예시와 설정 키를 대조한다", () => {
   write(".env.example", "UNKNOWN=\n");
   const problems = harnessProblems(root);
@@ -83,7 +95,7 @@ it("환경 예시와 설정 키를 대조한다", () => {
 });
 it("추적된 Prisma 생성물을 거절한다", () => {
   write("src/generated/client.ts", "export {};\n");
-  execFileSync("git", ["add", "src/generated/client.ts"], { cwd: root });
+  execFileSync("git", ["add", "src/generated/client.ts"], { cwd: root, env: gitEnvironment() });
   expect(harnessProblems(root)).toContain(
     "src/generated/client.ts — 생성물은 git에서 추적하지 않는다",
   );
@@ -110,6 +122,22 @@ it("루트 CLAUDE의 import 뒤 추가 안내는 허용하고 중첩 지침은 �
 it("설치물과 캐시를 열지 않는다", () => {
   write("node_modules/pkg/index.ts", "export {};\n".repeat(1000));
   write(".cache/input.ts", "export {};\n".repeat(1000));
+  expect(harnessProblems(root)).toEqual([]);
+});
+it.each(["dist", "coverage", ".cache"])("중첩 소스 폴더에도 400줄 한도를 적용한다: %s", (name) => {
+  const path = `src/modules/${name}/service.ts`;
+  write(path, "export {};\n".repeat(401));
+  expect(harnessProblems(root)).toContain(`${path}: 401줄 — 소스는 400줄 이하로 나눈다`);
+});
+it("루트 산출물과 모든 깊이의 설치물·git 폴더는 제외한다", () => {
+  for (const path of [
+    "dist/output.ts",
+    "coverage/output.ts",
+    ".cache/output.ts",
+    "src/node_modules/pkg/output.ts",
+    "src/modules/posts/.git/output.ts",
+  ])
+    write(path, "export {};\n".repeat(401));
   expect(harnessProblems(root)).toEqual([]);
 });
 it("루트 지침이 없으면 생성 프로젝트의 규칙을 요구한다", () => {
