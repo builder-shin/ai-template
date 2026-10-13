@@ -7,12 +7,12 @@
     "node": ">=24.15 <25"
   },
   "scripts": {
-    "fix": "prettier --write .",
+    "fix": "prettier --write . && eslint --fix .",
     "test": "vitest run --project unit",
     "build": "nest build -b swc",
     "setup": "node scripts/not-yet.mjs setup 3",
     "dev": "node scripts/not-yet.mjs dev 20",
-    "check": "node scripts/not-yet.mjs check 2",
+    "check": "tsx scripts/check/cli.ts",
     "test:e2e": "node scripts/not-yet.mjs test:e2e 20",
     "e2e:serve": "node scripts/not-yet.mjs e2e:serve 20",
     "gen": "node scripts/not-yet.mjs gen 3",

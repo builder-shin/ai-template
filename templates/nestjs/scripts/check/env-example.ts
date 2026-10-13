@@ -7,8 +7,8 @@ export function envExampleProblems(exampleText: string, settingKeys: readonly st
     const key = /^([A-Z][A-Z0-9_]*)=/.exec(line)?.[1];
     if (key === undefined) continue;
     if (!required.has(key))
-      problems.push(`.env.example:${index + 1} ${key} — 설정 스키마에 없는 키다`);
-    if (seen.has(key)) problems.push(`.env.example:${index + 1} ${key} — 키가 중복이다`);
+      problems.push(`.env.example:${String(index + 1)} ${key} — 설정 스키마에 없는 키다`);
+    if (seen.has(key)) problems.push(`.env.example:${String(index + 1)} ${key} — 키가 중복이다`);
     seen.add(key);
   }
   for (const key of settingKeys)

@@ -39,7 +39,7 @@ Node 24.15 이상·25 미만, pnpm 12.6.0, NestJS 12.1.2를 쓰는 ESM 백엔드
 - HTTP API에는 CORS를 열지 않는다. Socket.IO·스토리지만 허용 Origin 목록을 쓴다.
 - 의존성은 정확한 버전으로 고정한다. minimumReleaseAge 1440과 TypeScript 6.0.3 override, 선언한 allowBuilds를 유지한다.
 - 템플릿 밖의 파일을 참조하지 않는다. 공유 자산은 이 프로젝트 안의 사본으로 쓴다.
-- 소스 400줄·시험 600줄을 넘기지 않는다. 억제 주석에는 같은 줄에 사유를 적는다.
+- 소스 400줄·시험 600줄을 넘기지 않는다. 억제 주석에는 같은 줄에 사유를 적는다. 하네스는 `scripts/lint/fixtures/negative/ban-ts-comment/src/service.ts`의 첫 독립 `@ts-expect-error` 주석만 음성 검사 입력으로 허용한다.
 - 생성물은 직접 고치지 않는다. 마이그레이션 절차는 [레시피](docs/recipes/migration.md)를 따른다.
 - 로딩 UI는 스피너나 스켈레톤만 쓰고 로딩 문구는 쓰지 않는다.
 - 커밋은 영문 Conventional Commits다. AI 태그·트레일러와 hook 우회는 쓰지 않는다.

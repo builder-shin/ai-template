@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_SECRETS, SettingsError, loadSettings, settingsSchema } from "../settings.js";
 
-const example = Object.fromEntries(
+const example = Object.fromEntries<string | undefined>(
   readFileSync(new URL("../../../../.env.example", import.meta.url), "utf8")
     .split("\n")
     .map((line) => /^([A-Z][A-Z0-9_]*)=(.*?)(?:\s+#.*)?$/.exec(line))
     .filter((match) => match !== null)
-    .map((match) => [match[1], match[2]]),
+    .map((match) => [match[1] as string, match[2]] as const),
 );
 
 describe("설정", () => {
