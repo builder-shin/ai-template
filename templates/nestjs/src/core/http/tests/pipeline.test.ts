@@ -41,9 +41,6 @@ class EchoController {
   @Get("/api/v1/korean") korean() {
     return { data: { type: "echoes", id: "1", attributes: { text: "가😀" } } };
   }
-  @Get("/health/live") health() {
-    return { status: "ok" };
-  }
   @Delete("/api/v1/echo") @HttpCode(204) remove() {}
   @Get("/api/v1/error") error() {
     throw new ApiError({

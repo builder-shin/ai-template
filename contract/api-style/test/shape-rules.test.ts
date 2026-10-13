@@ -49,6 +49,37 @@ describe("jsonapi/include-extension", () => {
 });
 
 describe("jsonapi/schema-naming", () => {
+  it("PermissionCode는 permissions 리소스 선언 없이도 공용 스키마로 통과한다", async () => {
+    const doc = validFixture();
+    const schemas = at(doc, "components", "schemas");
+    schemas.PermissionCode = {
+      type: "string",
+      enum: [
+        "admin:access",
+        "users:read",
+        "users:manage",
+        "roles:read",
+        "roles:manage",
+        "audit-logs:read",
+        "posts:create",
+        "posts:manage",
+      ],
+    };
+    expect(Object.keys(schemas).filter((name) => name.startsWith("Permission"))).toEqual([
+      "PermissionCode",
+    ]);
+    expect(await ruleIds(doc)).toEqual([]);
+  });
+
+  it("PermissionCode와 비슷한 이름은 공용 목록으로 통과하지 않는다", async () => {
+    const doc = validFixture();
+    at(doc, "components", "schemas").PermissionCodeTypo = {
+      type: "string",
+      enum: ["posts:create"],
+    };
+    expect(await ruleIds(doc)).toEqual(["jsonapi/schema-naming"]);
+  });
+
   it("리소스 이름으로 시작하지 않는 스키마를 잡는다", async () => {
     const doc = validFixture();
     at(doc, "components", "schemas").Gadget = { type: "object" };

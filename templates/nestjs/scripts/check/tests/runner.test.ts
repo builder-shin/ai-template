@@ -145,11 +145,15 @@ function prepareCli(failLint = false) {
     ["lint", "node_modules/eslint/bin/eslint.js"],
     ["typecheck", "node_modules/typescript/bin/tsc"],
     ["harness", "scripts/check/harness.ts"],
+    ["api-style", "api-style/lint.mjs"],
     ["test", "node_modules/vitest/vitest.mjs"],
   ] as const) {
     write(
       path,
       `process.getBuiltinModule('node:fs').appendFileSync('effects', '${name}\\n');` +
+        (name === "gen"
+          ? "if (!process.argv.includes('--check')) throw new Error('생성 비교가 없다');"
+          : "") +
         (name === "lint" && failLint
           ? "process.stderr.write('린트 실패\\n'); process.exit(1);"
           : "process.stdout.write('성공 단계 출력\\n');"),
@@ -172,14 +176,14 @@ function runCli(...args: string[]) {
     },
   );
 }
-it("CLI 성공은 여섯 단계를 차례로 실행하고 한 줄만 출력한다", () => {
+it("CLI 성공은 생성 비교와 API 스타일을 포함한 일곱 단계를 차례로 실행한다", () => {
   prepareCli();
   const result = runCli();
   expect(result.status).toBe(0);
-  expect(result.stdout).toMatch(/^check 통과: 6단계 \d+\.\d{2}s\n$/);
+  expect(result.stdout).toMatch(/^check 통과: 7단계 \d+\.\d{2}s\n$/);
   expect(result.stderr).toBe("");
   expect(readFileSync(join(root, "effects"), "utf8")).toBe(
-    "format\ngen\nlint\ntypecheck\nharness\ntest\n",
+    "format\ngen\nlint\ntypecheck\nharness\napi-style\ntest\n",
   );
 });
 it("CLI 실패는 실패 단계 출력만 쓰고 뒤 단계는 실행하지 않는다", () => {
@@ -195,7 +199,7 @@ it("CLI --fast도 이 Task의 일반 단위 시험을 실행한다", () => {
   const result = runCli("--fast");
   expect(result.status).toBe(0);
   expect(readFileSync(join(root, "effects"), "utf8")).toBe(
-    "format\ngen\nlint\ntypecheck\nharness\ntest\n",
+    "format\ngen\nlint\ntypecheck\nharness\napi-style\ntest\n",
   );
 });
 it("CLI는 알 수 없는 인수를 명령 실행 전에 거절한다", () => {

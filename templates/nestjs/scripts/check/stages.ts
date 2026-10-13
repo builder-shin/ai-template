@@ -24,10 +24,13 @@ export const STAGES: readonly Stage[] = [
       "src/generated",
       "scripts/gen.ts",
       "scripts/runtime.ts",
-      "src/core/config",
+      "src",
+      "src/app.module.ts",
+      ".env.example",
+      "openapi.json",
       ...config,
     ],
-    command: [process.execPath, "--import", "tsx", "scripts/gen.ts"],
+    command: [process.execPath, "--import", "tsx", "scripts/gen.ts", "--check"],
   },
   {
     name: "lint",
@@ -43,6 +46,11 @@ export const STAGES: readonly Stage[] = [
     name: "harness",
     inputs: ["."],
     command: [process.execPath, "--import", "tsx", "scripts/check/harness.ts"],
+  },
+  {
+    name: "api-style",
+    inputs: ["api-style", "openapi.json", ...config],
+    command: cli("api-style/lint.mjs", "openapi.json"),
   },
   {
     name: "test",

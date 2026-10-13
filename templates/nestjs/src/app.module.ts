@@ -5,6 +5,11 @@ import { RedisModule } from "./core/redis/redis.module.js";
 import { JsonLogger } from "./core/logging/json-logger.js";
 import { GLOBAL_LIMITER, type GlobalLimiter } from "./core/http/pipeline.js";
 import type { AppOverrides } from "./core/http/create-app.js";
+import { HealthModule, HEALTH_CHECKS, databaseCheck, redisCheck } from "./modules/health/index.js";
+import { PrismaService } from "./core/db/prisma.service.js";
+import { RedisClients } from "./core/redis/clients.js";
+import "./core/jsonapi/error-codes.js";
+import "./core/security/permissions.js";
 
 @Global()
 @Module({})
@@ -18,14 +23,28 @@ export class AppModule {
   ): DynamicModule {
     return {
       module: AppModule,
-      imports: [...(infrastructure ? [DbModule, RedisModule] : []), ...(overrides.imports ?? [])],
+      imports: [
+        HealthModule,
+        ...(infrastructure ? [DbModule, RedisModule] : []),
+        ...(overrides.imports ?? []),
+      ],
       providers: [
         { provide: SETTINGS, useValue: settings },
         { provide: JsonLogger, useValue: logger },
         { provide: GLOBAL_LIMITER, useValue: (() => Promise.resolve()) satisfies GlobalLimiter },
+        infrastructure
+          ? {
+              provide: HEALTH_CHECKS,
+              inject: [PrismaService, RedisClients],
+              useFactory: (prisma: PrismaService, redis: RedisClients) => [
+                databaseCheck(prisma),
+                redisCheck(redis),
+              ],
+            }
+          : { provide: HEALTH_CHECKS, useValue: [] },
         ...(overrides.providers ?? []),
       ],
-      exports: [SETTINGS, JsonLogger, GLOBAL_LIMITER],
+      exports: [SETTINGS, JsonLogger, GLOBAL_LIMITER, HEALTH_CHECKS],
     };
   }
 }

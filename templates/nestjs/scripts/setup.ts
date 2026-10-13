@@ -9,7 +9,7 @@ export async function setup(): Promise<void> {
   const settings = scriptSettings();
   execFileSync("docker", ["compose", "up", "-d", "--wait"], { stdio: "inherit" });
   await ensureDatabases(settings.DATABASE_URL);
-  generate();
+  await generate();
   for (const url of databaseUrls(settings.DATABASE_URL)) await migrate(url);
 }
 if (isMain(import.meta.url)) await main(setup);

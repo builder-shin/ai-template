@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { compareComponents } from "./schemas.ts";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "yaml";
@@ -18,9 +19,12 @@ import {
  */
 const args = process.argv.slice(2);
 const subset = args.includes("--subset");
-const [contractPath, implementationPath] = args.filter((arg) => arg !== "--subset");
+const schemas = args.includes("--schemas");
+const [contractPath, implementationPath] = args.filter(
+  (arg) => arg !== "--subset" && arg !== "--schemas",
+);
 if (contractPath === undefined || implementationPath === undefined) {
-  console.error("사용법: pnpm spec-compare [--subset] <계약 파일> <구현 스펙 파일>");
+  console.error("사용법: pnpm spec-compare [--schemas] [--subset] <계약 파일> <구현 스펙 파일>");
   process.exit(2);
 }
 
@@ -28,14 +32,21 @@ const load = (path: string) => parse(readFileSync(path, "utf8")) as OpenApiLike;
 const contract = load(contractPath);
 const implementation = load(implementationPath);
 const problems = describeComparison(compareSpecs(contract, implementation, { subset }));
+if (schemas) problems.push(...compareComponents(contract, implementation, { subset }));
 
 let breakingBase = contractPath;
+let temporary: string | undefined;
 if (subset) {
-  breakingBase = join(mkdtempSync(join(tmpdir(), "spec-compare-")), "contract.json");
+  temporary = mkdtempSync(join(tmpdir(), "spec-compare-"));
+  breakingBase = join(temporary, "contract.json");
   writeFileSync(breakingBase, JSON.stringify(restrictToImplemented(contract, implementation)));
 }
-const breaking = await checkBreaking(breakingBase, implementationPath, TOOL_CACHE_DIR);
-if (!breaking.ok) problems.push(`계약을 깨는 변경이 있다(oasdiff):\n${breaking.output}`);
+try {
+  const breaking = await checkBreaking(breakingBase, implementationPath, TOOL_CACHE_DIR);
+  if (!breaking.ok) problems.push(`계약을 깨는 변경이 있다(oasdiff):\n${breaking.output}`);
+} finally {
+  if (temporary) rmSync(temporary, { recursive: true, force: true });
+}
 
 for (const problem of problems) console.error(problem);
 process.exitCode = problems.length > 0 ? 1 : 0;

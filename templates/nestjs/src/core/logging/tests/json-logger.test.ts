@@ -61,9 +61,6 @@ class LogController {
   @Get("/api/v1/failure") failure() {
     throw new Error("로그에만 남는 예외");
   }
-  @Get("/health/live") health() {
-    return { status: "ok" };
-  }
 }
 @Module({ controllers: [LogController] })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest 시험 모듈은 선언용 클래스를 사용한다

@@ -1,0 +1,128 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "AI Template Platform API", "version": "1.0.0" },
+  "servers": [{ "url": "http://localhost:8000" }],
+  "tags": [{ "name": "health" }],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "operationId": "Health_live",
+        "summary": "프로세스가 살아 있는지 확인한다",
+        "tags": ["health"],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "헬스체크 결과다",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthReport" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "Health_ready",
+        "summary": "의존 대상의 연결을 확인한다",
+        "tags": ["health"],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "헬스체크 결과다",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthReport" }
+              }
+            }
+          },
+          "503": {
+            "description": "헬스체크 결과다",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthReport" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthReport": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["ok", "unavailable"] },
+          "checks": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "type": "string",
+              "enum": ["ok", "unavailable"]
+            }
+          }
+        },
+        "required": ["status", "checks"]
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "jsonapi.unsupported_media_type",
+          "jsonapi.not_acceptable",
+          "jsonapi.content_too_large",
+          "jsonapi.invalid_document",
+          "jsonapi.invalid_query",
+          "jsonapi.unsupported_include",
+          "jsonapi.unsupported_sort",
+          "validation.required",
+          "validation.too_short",
+          "validation.too_long",
+          "validation.invalid_format",
+          "validation.out_of_range",
+          "validation.invalid_choice",
+          "validation.already_taken",
+          "auth.unauthenticated",
+          "auth.invalid_credentials",
+          "auth.token_expired",
+          "auth.token_invalid",
+          "auth.refresh_token_reused",
+          "auth.oauth_code_invalid",
+          "auth.reauthentication_required",
+          "auth.oauth_denied",
+          "auth.oauth_failed",
+          "auth.email_not_verified",
+          "auth.account_deactivated",
+          "auth.verification_token_invalid",
+          "permission.denied",
+          "role.system_role_protected",
+          "role.last_admin_protected",
+          "resource.not_found",
+          "resource.conflict",
+          "post.invalid_transition",
+          "file.too_large",
+          "file.type_not_allowed",
+          "file.upload_incomplete",
+          "file.quota_exceeded",
+          "rate_limit.exceeded",
+          "internal.unexpected",
+          "service.unavailable"
+        ]
+      },
+      "PermissionCode": {
+        "type": "string",
+        "enum": [
+          "admin:access",
+          "users:read",
+          "users:manage",
+          "roles:read",
+          "roles:manage",
+          "audit-logs:read",
+          "posts:create",
+          "posts:manage"
+        ]
+      }
+    },
+    "securitySchemes": { "BearerAuth": { "type": "http", "scheme": "Bearer" } }
+  }
+}
