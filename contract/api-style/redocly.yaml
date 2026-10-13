@@ -23,6 +23,8 @@ rules:
     shared:
       - ErrorCode
       - PermissionCode
+      - AuditLogAction
+      - UserStatus
       - ErrorDocument
       - ErrorObject
       - ErrorSource

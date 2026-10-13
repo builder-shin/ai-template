@@ -49,6 +49,47 @@ describe("jsonapi/include-extension", () => {
 });
 
 describe("jsonapi/schema-naming", () => {
+  function withoutUserResource() {
+    const doc = validFixture();
+    delete at(doc, "paths")["/api/v1/me"];
+    const schemas = at(doc, "components", "schemas");
+    delete schemas.UserResource;
+    delete schemas.UserDocument;
+    return doc;
+  }
+  it.each([
+    [
+      "AuditLogAction",
+      [
+        "session.login_succeeded",
+        "session.login_failed",
+        "session.all_revoked",
+        "user.password_changed",
+        "user.password_reset",
+        "user.roles_changed",
+        "user.deactivated",
+        "user.reactivated",
+        "user.deleted",
+        "role.created",
+        "role.updated",
+        "role.deleted",
+        "post.deleted_by_admin",
+      ],
+    ],
+    ["UserStatus", ["active", "deactivated", "deleted"]],
+  ] as const)("리소스 선언 없이 %s 공용 스키마를 허용한다", async (name, values) => {
+    const doc = withoutUserResource();
+    at(doc, "components", "schemas")[name] = { type: "string", enum: values };
+    expect(await ruleIds(doc)).toEqual([]);
+  });
+  it.each(["AuditLogActionTypo", "UserStatusTypo"])(
+    "공용 이름과 비슷한 %s는 거절한다",
+    async (name) => {
+      const doc = withoutUserResource();
+      at(doc, "components", "schemas")[name] = { type: "string", enum: ["잘못된 값"] };
+      expect(await ruleIds(doc)).toEqual(["jsonapi/schema-naming"]);
+    },
+  );
   it("PermissionCode는 permissions 리소스 선언 없이도 공용 스키마로 통과한다", async () => {
     const doc = validFixture();
     const schemas = at(doc, "components", "schemas");

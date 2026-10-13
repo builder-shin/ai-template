@@ -6,6 +6,7 @@ import { components, registerComponent, codePointString, jsonInteger } from "../
 import { defineOperation, operations, type OperationDeclaration } from "../../operation.js";
 import { errorCodeSchema, ERROR_CODES } from "../../error-codes.js";
 import { permissionCodeSchema, PERMISSION_CODES } from "../../../security/permissions.js";
+import "../../errors.js";
 import "../../../../modules/health/index.js";
 
 it("레지스트리에서 OpenAPI 3.1.0과 헬스 응답 참조를 만든다", () => {
@@ -29,10 +30,6 @@ it("레지스트리에서 OpenAPI 3.1.0과 헬스 응답 참조를 만든다", (
   expect(JSON.stringify(doc)).not.toContain('"$schema"');
 });
 it("등록한 중첩 컴포넌트는 응답과 본문에서 같은 참조를 쓴다", () => {
-  registerComponent(
-    "ErrorDocument",
-    z.object({ errors: z.array(z.object({ code: errorCodeSchema })) }),
-  );
   const child = registerComponent(
     "EmitChild",
     z.object({ title: codePointString({ min: 1, max: 200 }) }),

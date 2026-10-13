@@ -40,6 +40,7 @@ export async function createApp(
   app.useGlobalInterceptors(new DocumentInterceptor());
   try {
     await app.init();
+    AppModule.registerDomain(app);
     return app;
   } catch (error) {
     await app.close();

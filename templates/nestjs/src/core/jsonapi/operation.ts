@@ -20,6 +20,9 @@ export interface OperationSpec {
         schema?: string;
         contentType?: "application/vnd.api+json" | "application/json";
         description: string;
+        headers?: Readonly<
+          Record<string, { schema: z.ZodType; required?: boolean; description?: string }>
+        >;
       }
     >
   >;

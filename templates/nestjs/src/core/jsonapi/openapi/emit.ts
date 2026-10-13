@@ -75,6 +75,22 @@ export function buildOpenApi(
           status,
           {
             description: response.description,
+            ...(response.headers === undefined
+              ? {}
+              : {
+                  headers: Object.fromEntries(
+                    Object.entries(response.headers).map(([name, header]) => [
+                      name,
+                      {
+                        schema: schemaFor(header.schema),
+                        ...(header.required === undefined ? {} : { required: header.required }),
+                        ...(header.description === undefined
+                          ? {}
+                          : { description: header.description }),
+                      },
+                    ]),
+                  ),
+                }),
             ...(response.schema
               ? {
                   content: {

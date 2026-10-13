@@ -1,4 +1,11 @@
-import { Global, Module, type DynamicModule, type LogLevel } from "@nestjs/common";
+import {
+  Global,
+  Module,
+  type DynamicModule,
+  type LogLevel,
+  type INestApplicationContext,
+} from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { SETTINGS, type Settings } from "./core/config/settings.js";
 import { DbModule } from "./core/db/db.module.js";
 import { RedisModule } from "./core/redis/redis.module.js";
@@ -10,11 +17,21 @@ import { PrismaService } from "./core/db/prisma.service.js";
 import { RedisClients } from "./core/redis/clients.js";
 import "./core/jsonapi/error-codes.js";
 import "./core/security/permissions.js";
+import "./core/config/locale.js";
+import "./core/audit/actions.js";
+import { PRINCIPAL_RESOLVER, UnavailablePrincipalResolver } from "./core/security/principal.js";
+import { OperationGuard } from "./core/http/operation.guard.js";
+import { IncludeRegistry } from "./core/jsonapi/include.js";
+import { UsersModule } from "./modules/users/index.js";
+import { registerDomain } from "./modules/registry.js";
 
 @Global()
 @Module({})
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest DI 모듈은 선언용 클래스를 사용한다
 export class AppModule {
+  static registerDomain(app: INestApplicationContext): void {
+    registerDomain(app);
+  }
   static register(
     settings: Settings,
     logger: JsonLogger,
@@ -25,6 +42,7 @@ export class AppModule {
       module: AppModule,
       imports: [
         HealthModule,
+        UsersModule,
         ...(infrastructure ? [DbModule, RedisModule] : []),
         ...(overrides.imports ?? []),
       ],
@@ -32,6 +50,9 @@ export class AppModule {
         { provide: SETTINGS, useValue: settings },
         { provide: JsonLogger, useValue: logger },
         { provide: GLOBAL_LIMITER, useValue: (() => Promise.resolve()) satisfies GlobalLimiter },
+        IncludeRegistry,
+        { provide: PRINCIPAL_RESOLVER, useClass: UnavailablePrincipalResolver },
+        { provide: APP_GUARD, useClass: OperationGuard },
         infrastructure
           ? {
               provide: HEALTH_CHECKS,
@@ -44,7 +65,14 @@ export class AppModule {
           : { provide: HEALTH_CHECKS, useValue: [] },
         ...(overrides.providers ?? []),
       ],
-      exports: [SETTINGS, JsonLogger, GLOBAL_LIMITER, HEALTH_CHECKS],
+      exports: [
+        SETTINGS,
+        JsonLogger,
+        GLOBAL_LIMITER,
+        HEALTH_CHECKS,
+        PRINCIPAL_RESOLVER,
+        IncludeRegistry,
+      ],
     };
   }
 }
