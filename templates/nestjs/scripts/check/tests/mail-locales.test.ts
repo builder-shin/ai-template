@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, symlinkSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -13,6 +13,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   rmSync(root, { recursive: true, force: true });
+  expect(existsSync(root)).toBe(false);
 });
 it("한 로케일의 메일만 있으면 다른 로케일의 세 형식 누락을 알린다", () => {
   for (const suffix of ["subject.txt", "txt", "html"])
@@ -46,7 +47,10 @@ it("메일이 없는 모듈과 무관한 파일은 허용한다", () => {
 });
 it("심볼릭 링크를 메일 템플릿으로 세지 않는다", () => {
   write("src/modules/auth/templates/ko/welcome.html");
-  mkdirSync(join(root, "src/modules/auth/templates/en"));
-  symlinkSync("../ko/welcome.html", join(root, "src/modules/auth/templates/en/welcome.html"));
+  symlinkSync(
+    join(root, "src/modules/auth/templates/ko"),
+    join(root, "src/modules/auth/templates/en"),
+    process.platform === "win32" ? "junction" : "dir",
+  );
   expect(mailLocaleProblems(root)).toContain("src/modules/auth/templates/en/welcome.html가 없다");
 });

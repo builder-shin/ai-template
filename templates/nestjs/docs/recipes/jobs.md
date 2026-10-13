@@ -10,6 +10,8 @@
 scheduler 프로세스는 하나만 띄운다. 여러 scheduler 프로세스를 함께 실행하는 것은 지원하지 않는다.
 `registerPeriodic({ name, pattern, tz: "UTC" })`는 같은 이름의 BullMQ scheduler를 멱등 등록한다.
 주기 잡의 id는 작업 이름이며 처리기는 이를 정리 작업의 식별자로 사용한다.
+이름을 바꾸거나 선언을 지워도 기존 scheduler 항목은 남아 계속 잡을 만든다.
+운영자가 이전 작업 이름의 scheduler를 명시적으로 제거해야 해당 잡 생성이 멈춘다.
 
 worker의 Queue와 Worker는 `RedisClients.connection("bullmq")` 연결을 공유한다.
 이 연결은 차단 명령을 지원하므로 명령별 시간 제한과 요청별 재시도 제한이 없다.
@@ -19,7 +21,8 @@ BullMQ가 내부에서 만드는 차단 연결은 BullMQ가 소유하고 닫는�
 
 처음 포함 최대 다섯 번 실행하며 재시도 n회의 지연은 `min(5000 * n, 60000) + random(0..1000)`밀리초다.
 완료 잡은 지우고 최종 실패 잡은 failed 기록으로 남긴다.
-실제 지연·SMTP·worker 종료는 준비된 CI 인프라의 통합 시험으로 확인한다.
+통합 시험은 실제 지연·SMTP와 직접 구성한 host와 큐의 수동 종료를 확인하는 사례를 포함한다.
+Nest 컨텍스트의 실제 DI 시작과 진행 중 잡의 종료 순서는 별도 운영·CI 검증에서 확인한다.
 
 메일 파일은 `src/modules/<모듈>/templates/<ko|en>/<메일>.{subject.txt,txt,html}`에 둔다.
 `loadMailTemplates`로 선택한 로케일을 읽고 `renderMail`로 `{{이름}}` 값을 치환한다.

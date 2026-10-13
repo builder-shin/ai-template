@@ -1,4 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
+import { Logger } from "@nestjs/common";
 import type { RedisClients } from "../../redis/clients.js";
 import { registerJob, registerPeriodic } from "../../../modules/registry.js";
 const boundary = vi.hoisted(() => ({
@@ -13,7 +14,9 @@ const boundary = vi.hoisted(() => ({
   process: undefined as
     | ((job: { name: string; data: { id: string }; attemptsMade: number }) => Promise<void>)
     | undefined,
-  schedulers: new Map<string, unknown>(),
+  upserts: [] as unknown[][],
+  failed: undefined as
+    ((job: { name: string; attemptsMade: number } | undefined, error: Error) => void) | undefined,
   closed: 0,
   readyFailure: undefined as Error | undefined,
 }));
@@ -23,7 +26,7 @@ vi.mock("bullmq", () => ({
       boundary.queueOptions = options;
     }
     upsertJobScheduler(name: string, repeat: unknown, template: unknown) {
-      boundary.schedulers.set(name, { repeat, template });
+      boundary.upserts.push([name, repeat, template]);
       return Promise.resolve();
     }
     async close() {}
@@ -37,7 +40,8 @@ vi.mock("bullmq", () => ({
       boundary.process = process;
       boundary.workerOptions = options;
     }
-    on() {
+    on(event: string, listener: unknown) {
+      if (event === "failed") boundary.failed = listener as typeof boundary.failed;
       return this;
     }
     waitUntilReady() {
@@ -55,7 +59,8 @@ import { SchedulerHost } from "../scheduler-host.js";
 const connection = {};
 const redis = { prefix: "aitpl:15", connection: () => connection } as unknown as RedisClients;
 afterEach(() => {
-  boundary.schedulers.clear();
+  boundary.upserts.length = 0;
+  boundary.failed = undefined;
   boundary.closed = 0;
   boundary.process = undefined;
   boundary.readyFailure = undefined;
@@ -99,24 +104,41 @@ it("등록되지 않은 잡을 성공 처리하지 않는다", async () => {
     boundary.process?.({ name: "test.missing", data: { id: "u1" }, attemptsMade: 0 }),
   ).rejects.toThrow("잡 처리기가 없다: test.missing");
 });
-it("주기 작업을 두 번 선언하고 등록해도 이름별 항목은 하나다", async () => {
+it("미지원 backoff를 조용히 다른 방식으로 처리하지 않는다", async () => {
+  await new WorkerHost(new JobQueue(redis)).start();
+  expect(() => boundary.workerOptions?.settings.backoffStrategy(1, "foreign")).toThrow(
+    "재시도 방식이 없다: foreign",
+  );
+});
+it("네 번째 실패는 조용하고 다섯 번째 실패만 최종 실패를 기록한다", async () => {
+  const log = vi.spyOn(Logger.prototype, "error").mockImplementation(() => {});
+  const failure = new Error("시험 발송 실패");
+  try {
+    await new WorkerHost(new JobQueue(redis)).start();
+    boundary.failed?.({ name: "test.final_failure", attemptsMade: 4 }, failure);
+    expect(log).not.toHaveBeenCalled();
+    boundary.failed?.({ name: "test.final_failure", attemptsMade: 5 }, failure);
+    expect(log.mock.calls).toEqual([["잡 최종 실패: test.final_failure", failure]]);
+  } finally {
+    log.mockRestore();
+  }
+});
+it("주기 선언을 UTC와 id 전용 템플릿으로 scheduler에 전달한다", async () => {
   const periodic = { name: "test.periodic" as const, pattern: "0 * * * *", tz: "UTC" as const };
   registerPeriodic(periodic);
   registerPeriodic(periodic);
   const host = new SchedulerHost(new JobQueue(redis));
   await host.start();
   await host.start();
-  expect([...boundary.schedulers.entries()]).toEqual([
-    [
-      "test.periodic",
-      {
-        repeat: { pattern: "0 * * * *", tz: "UTC" },
-        template: {
-          name: "test.periodic",
-          data: { id: "test.periodic" },
-          opts: { attempts: 5, backoff: { type: "aitpl" }, removeOnComplete: true },
-        },
-      },
-    ],
-  ]);
+  const expected = [
+    "test.periodic",
+    { pattern: "0 * * * *", tz: "UTC" },
+    {
+      name: "test.periodic",
+      data: { id: "test.periodic" },
+      opts: { attempts: 5, backoff: { type: "aitpl" }, removeOnComplete: true },
+    },
+  ];
+  expect(boundary.upserts).toHaveLength(2);
+  expect(boundary.upserts).toEqual([expected, expected]);
 });
