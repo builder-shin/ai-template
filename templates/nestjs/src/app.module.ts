@@ -9,6 +9,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { SETTINGS, type Settings } from "./core/config/settings.js";
 import { DbModule } from "./core/db/db.module.js";
 import { RedisModule } from "./core/redis/redis.module.js";
+import { RateLimitModule } from "./core/ratelimit/ratelimit.module.js";
 import { JsonLogger } from "./core/logging/json-logger.js";
 import { GLOBAL_LIMITER, type GlobalLimiter } from "./core/http/pipeline.js";
 import type { AppOverrides } from "./core/http/create-app.js";
@@ -43,13 +44,20 @@ export class AppModule {
       imports: [
         HealthModule,
         UsersModule,
-        ...(infrastructure ? [DbModule, RedisModule] : []),
+        ...(infrastructure ? [DbModule, RedisModule, RateLimitModule] : []),
         ...(overrides.imports ?? []),
       ],
       providers: [
         { provide: SETTINGS, useValue: settings },
         { provide: JsonLogger, useValue: logger },
-        { provide: GLOBAL_LIMITER, useValue: (() => Promise.resolve()) satisfies GlobalLimiter },
+        ...(!infrastructure
+          ? [
+              {
+                provide: GLOBAL_LIMITER,
+                useValue: (() => Promise.resolve()) satisfies GlobalLimiter,
+              },
+            ]
+          : []),
         IncludeRegistry,
         { provide: PRINCIPAL_RESOLVER, useClass: UnavailablePrincipalResolver },
         { provide: APP_GUARD, useClass: OperationGuard },
@@ -68,7 +76,7 @@ export class AppModule {
       exports: [
         SETTINGS,
         JsonLogger,
-        GLOBAL_LIMITER,
+        ...(infrastructure ? [RateLimitModule] : [GLOBAL_LIMITER]),
         HEALTH_CHECKS,
         PRINCIPAL_RESOLVER,
         IncludeRegistry,
