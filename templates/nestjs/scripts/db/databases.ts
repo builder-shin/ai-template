@@ -10,7 +10,7 @@ export function databaseUrls(url: string): string[] {
   });
 }
 export async function ensureDatabases(url: string): Promise<void> {
-  assertLocalDatabase(url);
+  assertLocalDatabase(url, "setup");
   const docker = (...args: string[]) => execFileSync("docker", args, { encoding: "utf8" });
   const config = JSON.parse(docker("compose", "config", "--format", "json")) as { name?: string };
   const ids = docker("compose", "ps", "--all", "--quiet", "postgres")

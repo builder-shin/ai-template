@@ -1,6 +1,11 @@
 const fixtureUrl = "postgresql://app:app@fixture.invalid/app"; // betterleaks:allow 사유: 외부 접속 없는 시험용 가짜 계정
 import { afterEach, expect, it, vi } from "vitest";
-import { assertLocalDatabase, assertProjectDatabase, classifyDatabase } from "../guard.js";
+import {
+  assertLocalDatabase,
+  assertProjectDatabase,
+  classifyDatabase,
+  ForeignDatabaseError,
+} from "../guard.js";
 const fixture = vi.hoisted(() => ({ tables: [] as string[], calls: [] as string[], fail: false }));
 vi.mock("pg", () => ({
   default: {
@@ -50,25 +55,19 @@ it.each(["db.example.com", "127.0.0.2", "localhost.example.com"])(
 );
 it("다른 도구 표의 이름을 알리고 연결을 닫는다", async () => {
   fixture.tables = ["_prisma_migrations", "alembic_version"];
-  await expect(assertProjectDatabase(fixtureUrl)).rejects.toThrow(
-    // betterleaks:allow 사유: 외부 접속 없는 시험용 가짜 계정
-    "alembic_version",
-  );
+  const foreign = assertProjectDatabase(fixtureUrl);
+  await expect(foreign).rejects.toBeInstanceOf(ForeignDatabaseError);
+  await expect(foreign).rejects.toThrow("alembic_version");
   expect(fixture.calls.at(-1)).toBe("end");
   expect(fixture.calls[1]).toContain("pg_tables");
 });
 it("프로젝트 DB는 검사 뒤 연결을 닫는다", async () => {
   fixture.tables = ["_prisma_migrations", "users"];
-  await expect(
-    assertProjectDatabase(fixtureUrl), // betterleaks:allow 사유: 외부 접속 없는 시험용 가짜 계정
-  ).resolves.toBeUndefined();
+  await expect(assertProjectDatabase(fixtureUrl)).resolves.toBeUndefined();
   expect(fixture.calls.at(-1)).toBe("end");
 });
 it("표 조회 실패에서도 연결을 닫는다", async () => {
   fixture.fail = true;
-  await expect(assertProjectDatabase(fixtureUrl)).rejects.toThrow(
-    // betterleaks:allow 사유: 외부 접속 없는 시험용 가짜 계정
-    "조회 실패",
-  );
+  await expect(assertProjectDatabase(fixtureUrl)).rejects.toThrow("조회 실패");
   expect(fixture.calls.at(-1)).toBe("end");
 });

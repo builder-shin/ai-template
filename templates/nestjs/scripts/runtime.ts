@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { loadSettings, settingsSchema, type Settings } from "../src/core/config/settings.js";
-import { environment } from "../src/core/config/environment.mjs";
+import { environment } from "./child-environment.mjs";
 export function scriptSettings(): Settings {
   const env = environment();
   if (Object.keys(settingsSchema.shape).some((key) => env[key] === undefined) && existsSync(".env"))

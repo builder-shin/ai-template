@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "imports": {
+    "#child-env": "./scripts/child-environment.mjs"
+  }
+}

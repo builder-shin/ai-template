@@ -20,6 +20,10 @@ const negatives = [
   ["test-boundary", "src/core/service.ts", "boundaries/dependencies"],
   ["no-direct-env", "src/service.ts", "aitpl/no-direct-env"],
   ["no-direct-env", "src/computed.ts", "aitpl/no-direct-env"],
+  ["raw-env-import", "src/service.ts", "aitpl/no-direct-env"],
+  ["raw-env-import", "src/modules/posts/deep/service.ts", "aitpl/no-direct-env"],
+  ["raw-env-import", "src/alias.ts", "aitpl/no-direct-env"],
+  ["raw-env-import", "src/core/config/bridge.ts", "aitpl/no-direct-env"],
   ["no-console", "src/service.ts", "no-console"],
   ["ban-ts-comment", "src/service.ts", "@typescript-eslint/ban-ts-comment"],
 ] as const;

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { environment } from "../src/core/config/environment.mjs";
+import { environment } from "./child-environment.mjs";
 const pnpm = environment().npm_execpath;
 if (!pnpm) {
   process.stderr.write("pnpm setup으로 실행한다\n");

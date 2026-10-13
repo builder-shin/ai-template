@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { environment } from "../../src/core/config/environment.mjs";
+import { environment } from "../child-environment.mjs";
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots) {
