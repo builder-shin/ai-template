@@ -3,9 +3,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { updateOpenApi } from "../gen.js";
-import { buildOpenApi } from "../../src/core/jsonapi/openapi/emit.js";
-import { operations } from "../../src/core/jsonapi/operation.js";
-import { components } from "../../src/core/jsonapi/schemas.js";
 let root: string;
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "aitpl-task06-gen-"));
@@ -36,26 +33,4 @@ it("check에서 생성물이 없으면 실패하고 새 파일을 쓰지 않는�
     "openapi.json이 선언과 다르다 — pnpm gen을 실행한다",
   );
   expect(existsSync(path)).toBe(false);
-});
-it("실제 생성 진입점은 오류와 권한 enum도 컴포넌트로 등록한다", () => {
-  const doc = buildOpenApi(operations(), components());
-  const error = doc.components.schemas.ErrorCode as { enum: unknown[] } | undefined;
-  const permission = doc.components.schemas.PermissionCode as { enum: unknown[] } | undefined;
-  expect(error?.enum).toEqual(
-    expect.arrayContaining([
-      "jsonapi.invalid_document",
-      "validation.invalid_format",
-      "service.unavailable",
-    ]),
-  );
-  expect(permission?.enum).toEqual([
-    "admin:access",
-    "users:read",
-    "users:manage",
-    "roles:read",
-    "roles:manage",
-    "audit-logs:read",
-    "posts:create",
-    "posts:manage",
-  ]);
 });

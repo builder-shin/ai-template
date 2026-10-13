@@ -2,10 +2,6 @@ import { isMain, main, prismaCommand, scriptSettings } from "./runtime.js";
 import "reflect-metadata";
 import { readFile, writeFile } from "node:fs/promises";
 import { format } from "prettier";
-import { createApp } from "../src/core/http/create-app.js";
-import { buildOpenApi } from "../src/core/jsonapi/openapi/emit.js";
-import { operations } from "../src/core/jsonapi/operation.js";
-import { components } from "../src/core/jsonapi/schemas.js";
 export async function updateOpenApi(
   document: unknown,
   path: string,
@@ -27,7 +23,11 @@ export async function updateOpenApi(
 export async function generate(check = false): Promise<void> {
   const settings = scriptSettings();
   prismaCommand(settings.DATABASE_URL, ["generate"]);
-  const app = await createApp({ settings }, false);
+  const { createApp } = await import("../src/core/http/create-app.js");
+  const { buildOpenApi } = await import("../src/core/jsonapi/openapi/emit.js");
+  const { operations } = await import("../src/core/jsonapi/operation.js");
+  const { components } = await import("../src/core/jsonapi/schemas.js");
+  const app = await createApp({ settings: { ...settings, LOG_LEVEL: "error" } }, false);
   try {
     await updateOpenApi(buildOpenApi(operations(), components()), "openapi.json", check);
   } finally {

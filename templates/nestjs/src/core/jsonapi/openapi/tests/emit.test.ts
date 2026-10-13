@@ -73,10 +73,18 @@ it("등록한 중첩 컴포넌트는 응답과 본문에서 같은 참조를 쓴
           "application/vnd.api+json": { schema: { $ref: "#/components/schemas/EmitBody" } },
         },
       },
-      "403": {},
-      "409": {},
     },
   });
+  for (const [status, description] of [
+    ["403", "Forbidden"],
+    ["409", "Conflict"],
+  ] as const)
+    expect(doc.paths["/api/v1/emit"]?.post?.responses[status]).toEqual({
+      description,
+      content: {
+        "application/vnd.api+json": { schema: { $ref: "#/components/schemas/ErrorDocument" } },
+      },
+    });
 });
 it("nullable은 type 배열이고 판별 유니온은 선언한 discriminator를 낸다", () => {
   const a = registerComponent(

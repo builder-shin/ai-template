@@ -1,4 +1,4 @@
-import { Controller, Module } from "@nestjs/common";
+import { All, Controller, Get, Module } from "@nestjs/common";
 import { expect, it } from "vitest";
 import { z } from "zod";
 import { registeredRoutes, declaredOverlaps, unexpectedOverlaps } from "../routes.js";
@@ -31,10 +31,10 @@ const specific = defineOperation({
 @Controller()
 class AuditController {
   @Operation(dynamic) get(@JsonApiRequest() input: { params: { id: string } }) {
-    return { data: { id: input.params.id } };
+    return { data: { id: "dynamic-" + input.params.id } };
   }
   @Operation(specific) current() {
-    return { data: { id: "current" } };
+    return { data: { id: "specific-current" } };
   }
 }
 @Module({ controllers: [AuditController] })
@@ -60,7 +60,10 @@ it("실제 등록 라우트의 겹침은 operation 허용 선언으로만 통과
   expect(unexpectedOverlaps(routes, [])).toHaveLength(1);
   expect(unexpectedOverlaps(routes, declaredOverlaps([dynamic, specific]))).toEqual([]);
   expect(JSON.parse((await http.get("/api/v1/audit/current")).text) as unknown).toEqual({
-    data: { id: "current" },
+    data: { id: "specific-current" },
+  });
+  expect(JSON.parse((await http.get("/api/v1/audit/known")).text) as unknown).toEqual({
+    data: { id: "dynamic-known" },
   });
 });
 it("등록한 Operation의 요청 팩토리가 던진 검증 오류도 전역 필터가 응답한다", async () => {
@@ -74,4 +77,44 @@ it("등록한 Operation의 요청 팩토리가 던진 검증 오류도 전역 �
 });
 it("허용 선언의 operation이 없으면 감사 준비를 거절한다", () => {
   expect(() => declaredOverlaps([{ ...specific, overlaps: ["Missing"] }])).toThrow(/Missing/);
+});
+@Controller()
+class AllController {
+  @All("/api/v1/wild/current") current() {
+    return { data: null };
+  }
+}
+@Controller()
+class WildController {
+  @Get("/api/v1/wild/:id") get() {
+    return { data: null };
+  }
+}
+@Module({ controllers: [AllController, WildController] })
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest 시험 모듈은 선언용 클래스를 사용한다
+class AllModule {}
+it("Nest All 라우트의 겹침도 실제 등록된 메서드별로 감사한다", async () => {
+  const { app } = await testApp([AllModule]);
+  const all = { method: "GET", path: "/api/v1/wild/current" };
+  const get = { method: "GET", path: "/api/v1/wild/:id" };
+  const routes = registeredRoutes(app);
+  expect(routes).toContainEqual(all);
+  expect(unexpectedOverlaps(routes, [])).toEqual([[all, get]]);
+  expect(unexpectedOverlaps(routes, [[all, get]])).toEqual([]);
+});
+it("Express _all 라우트도 다른 메서드의 겹침을 허용 목록으로 감사한다", async () => {
+  const { app } = await testApp([]);
+  const express = app.getHttpAdapter().getInstance();
+  express.route("/api/v1/raw/current").all((_req, res) => {
+    res.end();
+  });
+  express.get("/api/v1/raw/:id", (_req, res) => {
+    res.end();
+  });
+  const all = { method: "ALL", path: "/api/v1/raw/current" };
+  const get = { method: "GET", path: "/api/v1/raw/:id" };
+  const routes = registeredRoutes(app);
+  expect(routes).toContainEqual(all);
+  expect(unexpectedOverlaps(routes, [])).toEqual([[all, get]]);
+  expect(unexpectedOverlaps(routes, [[all, get]])).toEqual([]);
 });

@@ -8,7 +8,10 @@ export function registeredRoutes(app: INestApplication): RouteKey[] {
     route
       ? Object.entries(route.methods)
           .filter(([, enabled]) => enabled)
-          .map(([method]) => ({ method: method.toUpperCase(), path: route.path }))
+          .map(([method]) => ({
+            method: method === "_all" ? "ALL" : method.toUpperCase(),
+            path: route.path,
+          }))
       : [],
   );
 }
