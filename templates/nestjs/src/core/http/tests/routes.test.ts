@@ -1,7 +1,7 @@
 import { Controller, Delete, Get, Module } from "@nestjs/common";
 import { expect, it } from "vitest";
 import { unexpectedOverlaps } from "../routes.js";
-import { testApp } from "./fixtures.js";
+import { testApp, publicFixtureOperation } from "./fixtures.js";
 
 const specific = { method: "DELETE", path: "/api/v1/sessions/current" };
 const dynamic = { method: "DELETE", path: "/api/v1/sessions/:id" };
@@ -20,15 +20,15 @@ it("매개변수 이름과 TypeSpec 표기가 달라도 겹침을 찾는다", ()
   const b = { method: "GET", path: "/api/v1/sessions/{id}" };
   expect(unexpectedOverlaps([a, b], [])).toEqual([[a, b]]);
 });
-@Controller("/api/v1/sessions")
+@Controller("/api/v1/route-fixture-sessions")
 class SpecificController {
-  @Delete("current") current() {
+  @Delete("current") @publicFixtureOperation() current() {
     return { data: { id: "current" } };
   }
 }
-@Controller("/api/v1/sessions")
+@Controller("/api/v1/route-fixture-sessions")
 class DynamicController {
-  @Delete(":id") byId() {
+  @Delete(":id") @publicFixtureOperation() byId() {
     return { data: { id: "dynamic" } };
   }
 }
@@ -42,10 +42,12 @@ it.each([SpecificFirst, DynamicFirst])(
   "구체 경로는 선언 순서와 관계없이 먼저 선택한다: %s",
   async (module) => {
     const { http } = await testApp([module]);
-    const res = await http.delete("/api/v1/sessions/current");
+    const res = await http.delete("/api/v1/route-fixture-sessions/current");
     expect(res.status).toBe(200);
     expect(JSON.parse(res.text) as unknown).toEqual({ data: { id: "current" } });
-    expect(JSON.parse((await http.delete("/api/v1/sessions/abc")).text) as unknown).toEqual({
+    expect(
+      JSON.parse((await http.delete("/api/v1/route-fixture-sessions/abc")).text) as unknown,
+    ).toEqual({
       data: { id: "dynamic" },
     });
   },

@@ -24,7 +24,7 @@ import { PRINCIPAL_RESOLVER, UnavailablePrincipalResolver } from "./core/securit
 import { OperationGuard } from "./core/http/operation.guard.js";
 import { IncludeRegistry } from "./core/jsonapi/include.js";
 import { UsersModule } from "./modules/users/index.js";
-import { AuthModule } from "./modules/auth/index.js";
+import { AuthModule, JwtPrincipalResolver } from "./modules/auth/index.js";
 import { registerDomain } from "./modules/registry.js";
 
 @Global()
@@ -61,7 +61,9 @@ export class AppModule {
             ]
           : []),
         IncludeRegistry,
-        { provide: PRINCIPAL_RESOLVER, useClass: UnavailablePrincipalResolver },
+        infrastructure
+          ? { provide: PRINCIPAL_RESOLVER, useExisting: JwtPrincipalResolver }
+          : { provide: PRINCIPAL_RESOLVER, useClass: UnavailablePrincipalResolver },
         { provide: APP_GUARD, useClass: OperationGuard },
         infrastructure
           ? {

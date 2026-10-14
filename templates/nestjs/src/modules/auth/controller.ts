@@ -1,19 +1,29 @@
 import { Controller, HttpCode, Inject, Req, Res } from "@nestjs/common";
 import type { Request, Response } from "express";
+import { randomUUID } from "node:crypto";
+import type { Principal } from "../../core/security/principal.js";
 import { Operation, JsonApiRequest } from "../../core/jsonapi/decorators.js";
 import type { ValidatedRequest } from "../../core/jsonapi/validation.js";
 import {
   createRegistration,
   requestEmailVerification,
   createEmailVerification,
+  createSession,
+  listSessions,
+  deleteCurrentSession,
+  deleteSession,
+  createSessionRevocation,
 } from "./operations.js";
 import { RegistrationService } from "./registration.service.js";
 import { VerificationService } from "./verification.service.js";
+import { SessionsService } from "./sessions.service.js";
+import { ApiError } from "../../core/jsonapi/errors.js";
 @Controller()
 export class AuthController {
   constructor(
     @Inject(RegistrationService) private readonly registration: RegistrationService,
     @Inject(VerificationService) private readonly verification: VerificationService,
+    @Inject(SessionsService) private readonly sessions: SessionsService,
   ) {}
   @Operation(createRegistration)
   register(
@@ -39,5 +49,62 @@ export class AuthController {
   @Operation(createEmailVerification)
   verify(@JsonApiRequest() input: ValidatedRequest<typeof createEmailVerification>) {
     return this.verification.verify(input.body.data.attributes.token);
+  }
+  @Operation(createSession)
+  createSession(
+    @JsonApiRequest() input: ValidatedRequest<typeof createSession>,
+    @Req() req: Request,
+  ) {
+    const attributes = input.body.data.attributes;
+    if (attributes.grantType === "oauthCode")
+      throw new ApiError({
+        status: 503,
+        code: "service.unavailable",
+        title: "OAuth exchange is unavailable",
+      });
+    if (attributes.grantType === "refreshToken")
+      return this.sessions.refresh(attributes.refreshToken);
+    return this.sessions.createWithPassword(attributes, {
+      ip: req.ip ?? "",
+      ...(req.headers["user-agent"] === undefined ? {} : { userAgent: req.headers["user-agent"] }),
+    });
+  }
+  @Operation(listSessions)
+  listSessions(
+    @JsonApiRequest() input: ValidatedRequest<typeof listSessions>,
+    @Req() req: Request,
+  ) {
+    return this.sessions.list(
+      input.principal as Principal,
+      input.query,
+      req.originalUrl.split("?")[1] ?? "",
+    );
+  }
+  @Operation(deleteCurrentSession)
+  @HttpCode(204)
+  deleteCurrent(@JsonApiRequest() input: ValidatedRequest<typeof deleteCurrentSession>) {
+    return this.sessions.revokeCurrent(input.principal as Principal);
+  }
+  @Operation(deleteSession)
+  @HttpCode(204)
+  delete(@JsonApiRequest() input: ValidatedRequest<typeof deleteSession>) {
+    return this.sessions.revoke(input.principal as Principal, input.params.id);
+  }
+  @Operation(createSessionRevocation)
+  async revokeMany(@JsonApiRequest() input: ValidatedRequest<typeof createSessionRevocation>) {
+    const { scope } = input.body.data.attributes;
+    const principal = input.principal as Principal;
+    const revokedCount =
+      scope === "others"
+        ? await this.sessions.revokeOthers(principal)
+        : await this.sessions.revokeAll(principal);
+    return {
+      data: {
+        type: "session-revocations",
+        id: randomUUID(),
+        attributes: { scope, revokedCount, createdAt: new Date().toISOString() },
+      },
+      meta: { revokedCount },
+    };
   }
 }

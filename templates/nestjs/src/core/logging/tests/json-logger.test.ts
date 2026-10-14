@@ -3,7 +3,7 @@ import { Controller, Get, Inject, Module } from "@nestjs/common";
 import { afterEach, expect, it, vi } from "vitest";
 import { requestContext, currentTraceId } from "../context.js";
 import { JsonLogger } from "../json-logger.js";
-import { settings, testApp } from "../../http/tests/fixtures.js";
+import { settings, testApp, publicFixtureOperation } from "../../http/tests/fixtures.js";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -52,13 +52,13 @@ it("요청 문맥의 모든 레벨 로그에 traceId를 넣는다", () => {
 @Controller()
 class LogController {
   constructor(@Inject(JsonLogger) private readonly logger: JsonLogger) {}
-  @Get("/api/v1/log") async log() {
+  @Get("/api/v1/log") @publicFixtureOperation() async log() {
     const before = currentTraceId();
     await setTimeout(5);
     this.logger.log("요청 처리");
     return { meta: { before, after: currentTraceId() }, data: null };
   }
-  @Get("/api/v1/failure") failure() {
+  @Get("/api/v1/failure") @publicFixtureOperation() failure() {
     throw new Error("로그에만 남는 예외");
   }
 }

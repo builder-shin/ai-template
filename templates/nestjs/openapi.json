@@ -6,7 +6,8 @@
     { "name": "health" },
     { "name": "permissions" },
     { "name": "registrations" },
-    { "name": "email-verifications" }
+    { "name": "email-verifications" },
+    { "name": "sessions" }
   ],
   "paths": {
     "/health/live": {
@@ -516,6 +517,538 @@
           }
         }
       }
+    },
+    "/api/v1/sessions": {
+      "post": {
+        "operationId": "Sessions_create",
+        "summary": "로그인하고 토큰을 발급한다",
+        "tags": ["sessions"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "세션과 토큰을 만들었다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionWithTokensDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/SessionCreateDocument" }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "Sessions_list",
+        "summary": "내 활성 세션을 조회한다",
+        "tags": ["sessions"],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "default": 1
+            },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[sessions]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "세션 목록이다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionCollectionDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-jsonapi-sort": ["createdAt", "lastUsedAt"]
+      }
+    },
+    "/api/v1/sessions/current": {
+      "delete": {
+        "operationId": "Sessions_deleteCurrent",
+        "summary": "현재 세션을 폐기한다",
+        "tags": ["sessions"],
+        "parameters": [],
+        "responses": {
+          "204": { "description": "세션을 폐기했다" },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }]
+      }
+    },
+    "/api/v1/sessions/{id}": {
+      "delete": {
+        "operationId": "Sessions_delete",
+        "summary": "내 세션 하나를 폐기한다",
+        "tags": ["sessions"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "세션을 폐기했다" },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }]
+      }
+    },
+    "/api/v1/session-revocations": {
+      "post": {
+        "operationId": "SessionRevocations_create",
+        "summary": "여러 세션을 폐기한다",
+        "tags": ["sessions"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "세션을 폐기했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRevocationDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRevocationCreateDocument"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -718,6 +1251,216 @@
       "UserStatus": {
         "type": "string",
         "enum": ["active", "deactivated", "deleted"]
+      },
+      "SessionPasswordGrant": {
+        "type": "object",
+        "properties": {
+          "grantType": { "type": "string", "enum": ["password"] },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        },
+        "required": ["grantType", "email", "password"]
+      },
+      "SessionRefreshTokenGrant": {
+        "type": "object",
+        "properties": {
+          "grantType": { "type": "string", "enum": ["refreshToken"] },
+          "refreshToken": { "type": "string" }
+        },
+        "required": ["grantType", "refreshToken"]
+      },
+      "SessionOAuthCodeGrant": {
+        "type": "object",
+        "properties": {
+          "grantType": { "type": "string", "enum": ["oauthCode"] },
+          "code": { "type": "string" },
+          "codeVerifier": { "type": "string" }
+        },
+        "required": ["grantType", "code", "codeVerifier"]
+      },
+      "SessionGrant": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/SessionPasswordGrant" },
+          { "$ref": "#/components/schemas/SessionRefreshTokenGrant" },
+          { "$ref": "#/components/schemas/SessionOAuthCodeGrant" }
+        ],
+        "type": "object",
+        "discriminator": {
+          "propertyName": "grantType",
+          "mapping": {
+            "password": "#/components/schemas/SessionPasswordGrant",
+            "refreshToken": "#/components/schemas/SessionRefreshTokenGrant",
+            "oauthCode": "#/components/schemas/SessionOAuthCodeGrant"
+          }
+        }
+      },
+      "SessionCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["sessions"] },
+              "attributes": { "$ref": "#/components/schemas/SessionGrant" }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "SessionAttributes": {
+        "type": "object",
+        "properties": {
+          "userAgent": { "type": ["string", "null"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "lastUsedAt": { "type": "string", "format": "date-time" },
+          "current": { "type": "boolean" }
+        },
+        "required": ["userAgent", "createdAt", "lastUsedAt", "current"]
+      },
+      "SessionWithTokensAttributes": {
+        "type": "object",
+        "properties": {
+          "userAgent": { "type": ["string", "null"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "lastUsedAt": { "type": "string", "format": "date-time" },
+          "current": { "type": "boolean" },
+          "accessToken": { "type": "string" },
+          "accessTokenExpiresAt": { "type": "string", "format": "date-time" },
+          "refreshToken": { "type": "string" },
+          "refreshTokenExpiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "userAgent",
+          "createdAt",
+          "lastUsedAt",
+          "current",
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "refreshTokenExpiresAt"
+        ]
+      },
+      "SessionRelationships": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["users"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["user"]
+      },
+      "SessionResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["sessions"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/SessionAttributes" },
+          "relationships": {
+            "$ref": "#/components/schemas/SessionRelationships"
+          }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "SessionWithTokensResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["sessions"] },
+          "id": { "type": "string" },
+          "attributes": {
+            "$ref": "#/components/schemas/SessionWithTokensAttributes"
+          },
+          "relationships": {
+            "$ref": "#/components/schemas/SessionRelationships"
+          }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "SessionWithTokensDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/SessionWithTokensResource" }
+        },
+        "required": ["data"]
+      },
+      "SessionCollectionDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SessionResource" }
+          },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" },
+          "meta": { "$ref": "#/components/schemas/CollectionMeta" }
+        },
+        "required": ["data", "links", "meta"]
+      },
+      "SessionRevocationScope": { "type": "string", "enum": ["others", "all"] },
+      "SessionRevocationAttributes": {
+        "type": "object",
+        "properties": {
+          "scope": { "$ref": "#/components/schemas/SessionRevocationScope" },
+          "revokedCount": { "type": "integer", "format": "int32" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["scope", "revokedCount", "createdAt"]
+      },
+      "SessionRevocationCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "scope": { "$ref": "#/components/schemas/SessionRevocationScope" }
+        },
+        "required": ["scope"]
+      },
+      "SessionRevocationResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["session-revocations"] },
+          "id": { "type": "string" },
+          "attributes": {
+            "$ref": "#/components/schemas/SessionRevocationAttributes"
+          }
+        },
+        "required": ["type", "id", "attributes"]
+      },
+      "SessionRevocationDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/SessionRevocationResource" }
+        },
+        "required": ["data"]
+      },
+      "SessionRevocationCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["session-revocations"] },
+              "attributes": {
+                "$ref": "#/components/schemas/SessionRevocationCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
       },
       "RegistrationCreateAttributes": {
         "type": "object",

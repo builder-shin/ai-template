@@ -21,7 +21,12 @@ import { registeredRoutes } from "../../../core/http/routes.js";
 import { settings } from "../../../core/http/tests/fixtures.js";
 import { fixture } from "./fixtures.js";
 import { RolesRepository } from "../../roles/index.js";
-it("오프라인 모드는 세 경로를 등록하고 실제 인프라 서비스 없이 호출을 거절한다", async () => {
+import { SessionsService } from "../index.js";
+import { SessionsRepository } from "../index.js";
+import { JwtPrincipalResolver } from "../index.js";
+import { PasswordBootstrap } from "../../../core/security/passwords.js";
+import { parseQuery } from "../../../core/jsonapi/query.js";
+it("오프라인 모드는 인증 경로를 등록하고 실제 인프라 서비스 없이 호출을 거절한다", async () => {
   const app = await createApp({ settings }, false);
   const expectedErrors = vi.spyOn(app.get(JsonLogger), "error").mockImplementation(() => {});
   try {
@@ -30,6 +35,11 @@ it("오프라인 모드는 세 경로를 등록하고 실제 인프라 서비스
         { method: "POST", path: "/api/v1/registrations" },
         { method: "POST", path: "/api/v1/email-verification-requests" },
         { method: "POST", path: "/api/v1/email-verifications" },
+        { method: "POST", path: "/api/v1/sessions" },
+        { method: "GET", path: "/api/v1/sessions" },
+        { method: "DELETE", path: "/api/v1/sessions/current" },
+        { method: "DELETE", path: "/api/v1/sessions/:id" },
+        { method: "POST", path: "/api/v1/session-revocations" },
       ]),
     );
     expect(() =>
@@ -48,9 +58,31 @@ it("오프라인 모드는 세 경로를 등록하고 실제 인프라 서비스
     expect(() => app.get(VerificationService).verify("token")).toThrow(
       "인프라가 없는 앱에서는 인증 작업을 실행할 수 없다",
     );
-    for (const token of [UnitOfWork, StrictLimiter, JobQueue, MailSender, AuthMails, RedisClients])
+    const sessions = app.get(SessionsService);
+    const principal = { userId: "u", sessionId: "s", permissions: new Set<never>() };
+    for (const call of [
+      () => sessions.createWithPassword({ email: "x@example.com", password: "p" }, { ip: "ip" }),
+      () => sessions.refresh("token"),
+      () => sessions.list(principal, parseQuery("", {})),
+      () => sessions.revokeCurrent(principal),
+      () => sessions.revoke(principal, "s"),
+      () => sessions.revokeOthers(principal),
+      () => sessions.revokeAll(principal),
+    ])
+      expect(call).toThrow("인프라가 없는 앱에서는 인증 작업을 실행할 수 없다");
+    for (const token of [
+      UnitOfWork,
+      StrictLimiter,
+      JobQueue,
+      MailSender,
+      AuthMails,
+      RedisClients,
+      SessionsRepository,
+      JwtPrincipalResolver,
+      PasswordBootstrap,
+    ])
       expect(() => app.get(token)).toThrow();
-    expect(expectedErrors).toHaveBeenCalledTimes(6);
+    expect(expectedErrors).toHaveBeenCalledTimes(9);
   } finally {
     expectedErrors.mockRestore();
     await app.close();
@@ -91,6 +123,9 @@ it("인프라 모드는 주입한 저장소와 큐를 실제 Nest 서비스에 �
     expect(app.get(RegistrationService)).toBeInstanceOf(RegistrationService);
     expect(app.get(VerificationService)).toBeInstanceOf(VerificationService);
     expect(app.get(AuthMails)).toBeInstanceOf(AuthMails);
+    expect(app.get(SessionsService)).toBeInstanceOf(SessionsService);
+    expect(app.get(JwtPrincipalResolver)).toBeInstanceOf(JwtPrincipalResolver);
+    await app.init();
     await app.get(RegistrationService).create(
       {
         email: "member@example.com",

@@ -18,7 +18,14 @@ import { ApiError, ApiErrors } from "../../jsonapi/errors.js";
 import { PrismaService } from "../../db/prisma.service.js";
 import { RedisClients } from "../../redis/clients.js";
 import { GLOBAL_LIMITER } from "../pipeline.js";
-import { errorDocument, mediaType, testApp, sendRaw, sendBytes } from "./fixtures.js";
+import {
+  errorDocument,
+  mediaType,
+  testApp,
+  sendRaw,
+  sendBytes,
+  publicFixtureOperation,
+} from "./fixtures.js";
 
 @Injectable()
 class DenyGuard {
@@ -29,20 +36,22 @@ class DenyGuard {
 @Controller()
 class EchoController {
   @Post("/api/v1/echo")
+  @publicFixtureOperation()
   @HttpCode(200)
   echo(@Body() body: unknown) {
     return body;
   }
   @Post("/api/v1/protected")
+  @publicFixtureOperation()
   @UseGuards(DenyGuard)
   protected() {
     return { data: null };
   }
-  @Get("/api/v1/korean") korean() {
+  @Get("/api/v1/korean") @publicFixtureOperation() korean() {
     return { data: { type: "echoes", id: "1", attributes: { text: "가😀" } } };
   }
-  @Delete("/api/v1/echo") @HttpCode(204) remove() {}
-  @Get("/api/v1/error") error() {
+  @Delete("/api/v1/echo") @publicFixtureOperation() @HttpCode(204) remove() {}
+  @Get("/api/v1/error") @publicFixtureOperation() error() {
     throw new ApiError({
       status: 422,
       code: "validation.too_short",
@@ -51,16 +60,16 @@ class EchoController {
       meta: { params: { min: 3 } },
     });
   }
-  @Get("/api/v1/mixed") mixed() {
+  @Get("/api/v1/mixed") @publicFixtureOperation() mixed() {
     throw new ApiErrors(400, [
       new ApiError({ status: 404, code: "resource.not_found", title: "Not found" }),
       new ApiError({ status: 422, code: "validation.required", title: "Required" }),
     ]);
   }
-  @Get("/api/v1/unexpected") unexpected() {
+  @Get("/api/v1/unexpected") @publicFixtureOperation() unexpected() {
     throw new Error("비공개 구현 오류");
   }
-  @Get("/api/v1/method-error") methodError() {
+  @Get("/api/v1/method-error") @publicFixtureOperation() methodError() {
     throw new HttpException("비공개 오류", 405);
   }
 }

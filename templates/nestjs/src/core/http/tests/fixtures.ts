@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { readFileSync } from "node:fs";
-import type { DynamicModule, Type } from "@nestjs/common";
+import { SetMetadata, type DynamicModule, type Type } from "@nestjs/common";
+import { OPERATION_METADATA } from "../../jsonapi/decorators.js";
 import { afterEach, expect } from "vitest";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import request from "supertest";
@@ -8,6 +9,10 @@ import { loadSettings } from "../../config/settings.js";
 import { createApp, type AppOverrides } from "../create-app.js";
 
 export const mediaType = "application/vnd.api+json";
+/** raw Nest 라우터·파이프라인 시험 처리기의 공개 인증 의도를 명시한다. */
+export function publicFixtureOperation(): MethodDecorator {
+  return SetMetadata(OPERATION_METADATA, { auth: "none" });
+}
 const env = Object.fromEntries(
   readFileSync(new URL("../../../../.env.example", import.meta.url), "utf8")
     .split("\n")

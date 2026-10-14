@@ -21,12 +21,13 @@ export class OperationGuard implements CanActivate {
       OPERATION_METADATA,
       context.getHandler(),
     );
-    if (!operation || operation.auth === "none") return true;
+    if (!operation) throw new Error("처리기에 Operation 선언이 없다");
+    if (operation.auth === "none") return true;
     const req = context.switchToHttp().getRequest<Request & { principal?: Principal }>();
     const authorization = req.headers.authorization;
-    if (authorization === undefined && operation.auth === "optional") return true;
-    if (authorization === undefined) this.unauthenticated();
-    const principal = await this.resolver.resolve(authorization);
+    if (authorization === undefined && operation.auth === "required") this.unauthenticated();
+    const principal =
+      authorization === undefined ? undefined : await this.resolver.resolve(authorization);
     if (!principal && operation.auth === "required") this.unauthenticated();
     if (principal) req.principal = principal;
     else delete req.principal;

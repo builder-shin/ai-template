@@ -4,8 +4,122 @@ import {
   dateTimeString,
   emailString,
   registerComponent,
+  jsonInteger,
 } from "../../core/jsonapi/schemas.js";
+import {
+  paginationLinksSchema,
+  collectionMetaSchema,
+} from "../../core/jsonapi/collection-schemas.js";
 import { localeSchema } from "../../core/config/locale.js";
+const passwordGrant = registerComponent(
+  "SessionPasswordGrant",
+  z.object({ grantType: z.enum(["password"]), email: emailString(), password: z.string() }),
+);
+const refreshGrant = registerComponent(
+  "SessionRefreshTokenGrant",
+  z.object({ grantType: z.enum(["refreshToken"]), refreshToken: z.string() }),
+);
+const oauthGrant = registerComponent(
+  "SessionOAuthCodeGrant",
+  z.object({ grantType: z.enum(["oauthCode"]), code: z.string(), codeVerifier: z.string() }),
+);
+const sessionGrant = registerComponent(
+  "SessionGrant",
+  z
+    .discriminatedUnion("grantType", [passwordGrant, refreshGrant, oauthGrant])
+    .meta({ type: "object" }),
+  {
+    discriminator: {
+      propertyName: "grantType",
+      mapping: {
+        password: "#/components/schemas/SessionPasswordGrant", // betterleaks:allow 사유: 비밀번호 값이 아닌 discriminator 스키마 경로다
+        refreshToken: "#/components/schemas/SessionRefreshTokenGrant",
+        oauthCode: "#/components/schemas/SessionOAuthCodeGrant",
+      },
+    },
+  },
+);
+export const sessionCreateDocumentSchema = registerComponent(
+  "SessionCreateDocument",
+  z.object({ data: z.object({ type: z.enum(["sessions"]), attributes: sessionGrant }) }),
+);
+const sessionAttributes = registerComponent(
+  "SessionAttributes",
+  z.object({
+    userAgent: z.string().nullable(),
+    createdAt: dateTimeString(),
+    lastUsedAt: dateTimeString(),
+    current: z.boolean(),
+  }),
+);
+const sessionWithTokensAttributes = registerComponent(
+  "SessionWithTokensAttributes",
+  sessionAttributes.extend({
+    accessToken: z.string(),
+    accessTokenExpiresAt: dateTimeString(),
+    refreshToken: z.string(),
+    refreshTokenExpiresAt: dateTimeString(),
+  }),
+);
+const sessionRelationships = registerComponent(
+  "SessionRelationships",
+  z.object({
+    user: z.object({ data: z.object({ type: z.enum(["users"]), id: z.string() }).nullable() }),
+  }),
+);
+const sessionResource = registerComponent(
+  "SessionResource",
+  z.object({
+    type: z.enum(["sessions"]),
+    id: z.string(),
+    attributes: sessionAttributes,
+    relationships: sessionRelationships,
+  }),
+);
+const sessionWithTokensResource = registerComponent(
+  "SessionWithTokensResource",
+  sessionResource.extend({ attributes: sessionWithTokensAttributes }),
+);
+registerComponent("SessionWithTokensDocument", z.object({ data: sessionWithTokensResource }));
+registerComponent(
+  "SessionCollectionDocument",
+  z.object({
+    data: z.array(sessionResource),
+    links: paginationLinksSchema,
+    meta: collectionMetaSchema,
+  }),
+);
+const revocationScope = registerComponent("SessionRevocationScope", z.enum(["others", "all"]));
+const revocationAttributes = registerComponent(
+  "SessionRevocationAttributes",
+  z.object({
+    scope: revocationScope,
+    revokedCount: jsonInteger({ format: "int32" }),
+    createdAt: dateTimeString(),
+  }),
+);
+const revocationCreateAttributes = registerComponent(
+  "SessionRevocationCreateAttributes",
+  z.object({ scope: revocationScope }),
+);
+const revocationResource = registerComponent(
+  "SessionRevocationResource",
+  z.object({
+    type: z.enum(["session-revocations"]),
+    id: z.string(),
+    attributes: revocationAttributes,
+  }),
+);
+registerComponent("SessionRevocationDocument", z.object({ data: revocationResource }));
+export const sessionRevocationCreateDocumentSchema = registerComponent(
+  "SessionRevocationCreateDocument",
+  z.object({
+    data: z.object({
+      type: z.enum(["session-revocations"]),
+      attributes: revocationCreateAttributes,
+    }),
+  }),
+);
 const password = z
   .string()
   .check((ctx) => {

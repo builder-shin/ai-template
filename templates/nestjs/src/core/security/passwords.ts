@@ -1,5 +1,6 @@
 import * as argon2 from "argon2";
 import { passwordBytes } from "./encoding.js";
+import { Injectable, type OnModuleInit } from "@nestjs/common";
 
 export async function hashPassword(password: string): Promise<string> {
   const hash = await argon2.hash(passwordBytes(password), {
@@ -16,7 +17,21 @@ export async function verifyPassword(hash: string, password: string): Promise<bo
   return argon2.verify(hash, passwordBytes(password));
 }
 let dummyHash: Promise<string> | undefined;
+export async function prepareDummyHash(): Promise<void> {
+  dummyHash ??= hashPassword("dummy-verification-only").catch((error: unknown) => {
+    dummyHash = undefined;
+    throw error;
+  });
+  await dummyHash;
+}
 export async function dummyVerify(password: string): Promise<void> {
-  dummyHash ??= hashPassword("dummy-verification-only");
+  await prepareDummyHash();
+  if (!dummyHash) throw new Error("가짜 해시가 준비되지 않았다");
   await verifyPassword(await dummyHash, password);
+}
+@Injectable()
+export class PasswordBootstrap implements OnModuleInit {
+  onModuleInit(): Promise<void> {
+    return prepareDummyHash();
+  }
 }

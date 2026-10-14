@@ -40,12 +40,19 @@ class AuditController {
 @Module({ controllers: [AuditController] })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest 시험 모듈은 선언용 클래스를 사용한다
 class AuditModule {}
+const sessionOverlaps = () =>
+  declaredOverlaps(operations().filter((op) => op.operationId.startsWith("Sessions_")));
 it("앱의 모든 등록 라우트에 허용 목록 밖의 겹침이 없다", async () => {
   const { app } = await testApp([]);
   expect(registeredRoutes(app)).toEqual([
+    { method: "DELETE", path: "/api/v1/sessions/current" },
+    { method: "DELETE", path: "/api/v1/sessions/:id" },
     { method: "POST", path: "/api/v1/registrations" },
     { method: "POST", path: "/api/v1/email-verification-requests" },
     { method: "POST", path: "/api/v1/email-verifications" },
+    { method: "POST", path: "/api/v1/sessions" },
+    { method: "GET", path: "/api/v1/sessions" },
+    { method: "POST", path: "/api/v1/session-revocations" },
     { method: "GET", path: "/api/v1/permissions" },
     { method: "GET", path: "/health/live" },
     { method: "GET", path: "/health/ready" },
@@ -61,8 +68,10 @@ it("실제 등록 라우트의 겹침은 operation 허용 선언으로만 통과
       { method: "GET", path: "/api/v1/audit/current" },
     ]),
   );
-  expect(unexpectedOverlaps(routes, [])).toHaveLength(1);
-  expect(unexpectedOverlaps(routes, declaredOverlaps([dynamic, specific]))).toEqual([]);
+  expect(unexpectedOverlaps(routes, sessionOverlaps())).toHaveLength(1);
+  expect(
+    unexpectedOverlaps(routes, [...sessionOverlaps(), ...declaredOverlaps([dynamic, specific])]),
+  ).toEqual([]);
   expect(JSON.parse((await http.get("/api/v1/audit/current")).text) as unknown).toEqual({
     data: { id: "specific-current" },
   });
@@ -103,8 +112,8 @@ it("Nest All 라우트의 겹침도 실제 등록된 메서드별로 감사한�
   const get = { method: "GET", path: "/api/v1/wild/:id" };
   const routes = registeredRoutes(app);
   expect(routes).toContainEqual(all);
-  expect(unexpectedOverlaps(routes, [])).toEqual([[all, get]]);
-  expect(unexpectedOverlaps(routes, [[all, get]])).toEqual([]);
+  expect(unexpectedOverlaps(routes, sessionOverlaps())).toEqual([[all, get]]);
+  expect(unexpectedOverlaps(routes, [...sessionOverlaps(), [all, get]])).toEqual([]);
 });
 it("Express _all 라우트도 다른 메서드의 겹침을 허용 목록으로 감사한다", async () => {
   const { app } = await testApp([]);
@@ -119,6 +128,6 @@ it("Express _all 라우트도 다른 메서드의 겹침을 허용 목록으로 
   const get = { method: "GET", path: "/api/v1/raw/:id" };
   const routes = registeredRoutes(app);
   expect(routes).toContainEqual(all);
-  expect(unexpectedOverlaps(routes, [])).toEqual([[all, get]]);
-  expect(unexpectedOverlaps(routes, [[all, get]])).toEqual([]);
+  expect(unexpectedOverlaps(routes, sessionOverlaps())).toEqual([[all, get]]);
+  expect(unexpectedOverlaps(routes, [...sessionOverlaps(), [all, get]])).toEqual([]);
 });

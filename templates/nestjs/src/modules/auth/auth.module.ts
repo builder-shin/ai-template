@@ -7,6 +7,10 @@ import { AuthRepository } from "./repository.js";
 import { RegistrationService } from "./registration.service.js";
 import { VerificationService } from "./verification.service.js";
 import { AuthMails } from "./mails.js";
+import { SessionsRepository } from "./sessions.repository.js";
+import { SessionsService } from "./sessions.service.js";
+import { JwtPrincipalResolver } from "./principal.resolver.js";
+import { PasswordBootstrap } from "../../core/security/passwords.js";
 function unavailable(): never {
   throw new Error("인프라가 없는 앱에서는 인증 작업을 실행할 수 없다");
 }
@@ -19,8 +23,38 @@ export class AuthModule {
       imports: infrastructure ? [RolesModule, JobsModule, MailModule] : [],
       controllers: [AuthController],
       providers: infrastructure
-        ? [AuthRepository, RegistrationService, VerificationService, AuthMails]
+        ? [
+            AuthRepository,
+            RegistrationService,
+            VerificationService,
+            AuthMails,
+            SessionsRepository,
+            SessionsService,
+            JwtPrincipalResolver,
+            PasswordBootstrap,
+          ]
         : [
+            {
+              provide: SessionsService,
+              useValue: {
+                createWithPassword: unavailable,
+                refresh: unavailable,
+                list: unavailable,
+                revokeCurrent: unavailable,
+                revoke: unavailable,
+                revokeOthers: unavailable,
+                revokeAll: unavailable,
+              } satisfies Pick<
+                SessionsService,
+                | "createWithPassword"
+                | "refresh"
+                | "list"
+                | "revokeCurrent"
+                | "revoke"
+                | "revokeOthers"
+                | "revokeAll"
+              >,
+            },
             {
               provide: RegistrationService,
               useValue: { create: unavailable } satisfies Pick<RegistrationService, "create">,
@@ -33,7 +67,12 @@ export class AuthModule {
               >,
             },
           ],
-      exports: [RegistrationService, VerificationService, ...(infrastructure ? [AuthMails] : [])],
+      exports: [
+        RegistrationService,
+        VerificationService,
+        SessionsService,
+        ...(infrastructure ? [AuthMails, JwtPrincipalResolver] : []),
+      ],
     };
   }
 }
