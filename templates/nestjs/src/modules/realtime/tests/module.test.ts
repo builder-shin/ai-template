@@ -13,6 +13,11 @@ import { member } from "./gateway-fixture.js";
 import { z } from "zod";
 import type { Request, Response, NextFunction } from "express";
 import { redisFixture } from "../../../core/realtime/tests/redis-fixture.js";
+import { moduleFixture, graphPrincipal } from "./module-fixture.js";
+import { JwtPrincipalResolver } from "../../auth/index.js";
+import { RealtimeGateway } from "../index.js";
+import { signAccessToken } from "../../../core/security/jwt.js";
+import { io, type Socket } from "socket.io-client";
 const apps: Awaited<ReturnType<typeof createApp>>[] = [];
 afterEach(async () => {
   for (const app of apps.splice(0)) await app.close();
@@ -105,4 +110,53 @@ it("빈 티켓 attributes 스키마는 계약처럼 properties 없이 내보낸�
   expect(
     buildOpenApi(operations(), components()).components.schemas.RealtimeTicketCreateAttributes,
   ).toEqual({ type: "object" });
+});
+it("전체 인프라 그래프의 HTTP와 실시간 인증은 한 해석기와 중복 없는 경로를 공유한다", async () => {
+  const f = await moduleFixture();
+  let socket: Socket | undefined;
+  try {
+    const resolvers = f.app.get<JwtPrincipalResolver>(JwtPrincipalResolver, { each: true });
+    expect(resolvers).toHaveLength(1);
+    const resolver = resolvers[0];
+    if (!resolver) throw new Error("인증 해석기가 없다");
+    expect(f.app.get(PRINCIPAL_RESOLVER)).toBe(resolver);
+    const read = vi.spyOn(resolver, "resolveSession");
+    const url = await f.start();
+    const routes = registeredRoutes(f.app);
+    expect(new Set(routes.map((route) => JSON.stringify(route))).size).toBe(routes.length);
+    expect(
+      routes.filter((route) => route.method === "POST" && route.path === "/api/v1/sessions"),
+    ).toHaveLength(1);
+    const token = await signAccessToken(graphPrincipal, settings.JWT_SECRET);
+    const response = await request(url)
+      .post("/api/v1/realtime-tickets")
+      .set("Authorization", "Bearer " + token)
+      .set("Content-Type", "application/vnd.api+json")
+      .send({ data: { type: "realtime-tickets", attributes: {} } });
+    expect(response.status).toBe(201);
+    expect(read).toHaveBeenCalledTimes(1);
+    const ticket = z
+      .object({ data: z.object({ attributes: z.object({ token: z.string() }) }) })
+      .parse(JSON.parse(response.text) as unknown).data.attributes.token;
+    socket = io(url, {
+      transports: ["websocket"],
+      auth: { ticket },
+      autoConnect: false,
+      reconnection: false,
+      timeout: 1000,
+    });
+    const client = socket;
+    await new Promise<void>((resolve, reject) => {
+      client.once("connect", resolve);
+      client.once("connect_error", reject);
+      client.connect();
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(
+      f.app.get(RealtimeGateway).server?.sockets.sockets.get(socket.id ?? "")?.data.principal,
+    ).toEqual(graphPrincipal);
+  } finally {
+    socket?.disconnect();
+    await f.close();
+  }
 });

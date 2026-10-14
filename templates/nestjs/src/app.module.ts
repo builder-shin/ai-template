@@ -41,13 +41,14 @@ export class AppModule {
     overrides: AppOverrides,
     infrastructure: boolean,
   ): DynamicModule {
+    const auth = AuthModule.register(infrastructure);
     return {
       module: AppModule,
       imports: [
         HealthModule,
         UsersModule,
-        AuthModule.register(infrastructure),
-        RealtimeModule.register(infrastructure),
+        auth,
+        RealtimeModule.register(infrastructure, auth),
         ...(infrastructure ? [DbModule, RedisModule, RateLimitModule] : []),
         ...(overrides.imports ?? []),
       ],

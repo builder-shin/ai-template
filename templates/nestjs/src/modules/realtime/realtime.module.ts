@@ -13,10 +13,13 @@ function unavailable(): never {
 @Module({})
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest DI 모듈은 선언용 클래스를 사용한다
 export class RealtimeModule {
-  static register(infrastructure: boolean): DynamicModule {
+  static register(
+    infrastructure: boolean,
+    auth: DynamicModule = AuthModule.register(infrastructure),
+  ): DynamicModule {
     return {
       module: RealtimeModule,
-      imports: infrastructure ? [AuthModule.register(true)] : [],
+      imports: infrastructure ? [auth] : [],
       controllers: [RealtimeController],
       providers: infrastructure
         ? [
