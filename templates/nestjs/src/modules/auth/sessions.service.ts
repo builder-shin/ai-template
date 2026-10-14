@@ -173,6 +173,35 @@ export class SessionsService {
     reason: "password_reset" | "password_changed",
     keepSessionId?: string,
   ): Promise<void> {
+    await this.revokeActive(tx, afterCommit, userId, at, reason, keepSessionId);
+  }
+  private revokeMany(principal: Principal, scope: "others" | "all"): Promise<number> {
+    return this.unit.run(async (tx, afterCommit) => {
+      const at = new Date();
+      const sessionIds = await this.revokeActive(
+        tx,
+        afterCommit,
+        principal.userId,
+        at,
+        "revoked",
+        scope === "others" ? principal.sessionId : undefined,
+      );
+      await recordAudit(tx, {
+        action: "session.all_revoked",
+        actorUserId: principal.userId,
+        meta: { scope, revokedCount: sessionIds.length },
+      });
+      return sessionIds.length;
+    });
+  }
+  private async revokeActive(
+    tx: Tx,
+    afterCommit: AfterCommit,
+    userId: string,
+    at: Date,
+    reason: SessionRevokedReason,
+    keepSessionId?: string,
+  ): Promise<string[]> {
     const candidates = (await this.repository.active(tx, userId, at))
       .filter((s) => s.id !== keepSessionId)
       .sort((a, b) => a.id.localeCompare(b.id));
@@ -183,28 +212,7 @@ export class SessionsService {
     }
     await this.repository.revoke(tx, sessionIds, at, reason);
     if (sessionIds.length) sessionsRevoked(afterCommit, { userId, sessionIds, reason });
-  }
-  private revokeMany(principal: Principal, scope: "others" | "all"): Promise<number> {
-    return this.unit.run(async (tx, afterCommit) => {
-      const at = new Date();
-      const candidates = (await this.repository.active(tx, principal.userId, at)).filter(
-        (s) => scope === "all" || s.id !== principal.sessionId,
-      );
-      const sessionIds: string[] = [];
-      for (const candidate of [...candidates].sort((a, b) => a.id.localeCompare(b.id))) {
-        const session = await this.repository.lock(tx, candidate.id);
-        if (session && !session.revokedAt && session.expiresAt > at) sessionIds.push(session.id);
-      }
-      await this.repository.revoke(tx, sessionIds, at, "revoked");
-      await recordAudit(tx, {
-        action: "session.all_revoked",
-        actorUserId: principal.userId,
-        meta: { scope, revokedCount: sessionIds.length },
-      });
-      if (sessionIds.length)
-        sessionsRevoked(afterCommit, { userId: principal.userId, sessionIds, reason: "revoked" });
-      return sessionIds.length;
-    });
+    return sessionIds;
   }
   private async revokeLocked(
     tx: Tx,

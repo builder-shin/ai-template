@@ -143,14 +143,15 @@ export function passwordFixture() {
       }
       if (
         !text.includes("DELETE FROM verification_tokens") ||
-        !text.includes("purpose = 'reset'") ||
+        !text.includes('purpose = ?::"TokenPurpose"') ||
+        (values[1] !== "reset" && values[1] !== "verification") ||
         !text.includes("expires_at >") ||
         !text.includes("RETURNING")
       )
         throw new Error("재설정 토큰은 목적·만료를 확인하고 한 번 소비한다");
       const index = state().tokens.findIndex(
         (t) =>
-          t.tokenHash === values[0] && t.purpose === "reset" && t.expiresAt > (values[1] as Date),
+          t.tokenHash === values[0] && t.purpose === values[1] && t.expiresAt > (values[2] as Date),
       );
       return Promise.resolve(index < 0 ? [] : state().tokens.splice(index, 1));
     },

@@ -1,6 +1,7 @@
 import type { Tx } from "../../core/db/unit-of-work.js";
 import { Injectable } from "@nestjs/common";
 import { advisoryXactLock } from "../../core/db/locks.js";
+type TokenPurpose = "verification" | "reset";
 export interface AuthUser {
   id: string;
   email: string | null;
@@ -31,26 +32,15 @@ export class AuthRepository {
   lockUser(tx: Tx, id: string): Promise<void> {
     return advisoryXactLock(tx, `auth:verification:${id}`);
   }
-  async rotateVerification(tx: Tx, id: string, hash: string, expiresAt: Date): Promise<void> {
-    await tx.verificationToken.deleteMany({ where: { userId: id, purpose: "verification" } });
-    await tx.verificationToken.create({
-      data: { userId: id, purpose: "verification", tokenHash: hash, expiresAt },
-    });
+  rotateVerification(tx: Tx, id: string, hash: string, expiresAt: Date): Promise<void> {
+    return this.rotateToken(tx, id, hash, expiresAt, "verification");
   }
-  async consumeVerification(
+  consumeVerification(
     tx: Tx,
     hash: string,
     at: Date,
   ): Promise<{ id: string; userId: string } | undefined> {
-    const candidate = await tx.verificationToken.findUnique({ where: { tokenHash: hash } });
-    if (!candidate || candidate.purpose !== "verification") return undefined;
-    await this.lockUser(tx, candidate.userId);
-    const rows = await tx.$queryRaw<{ id: string; userId: string }[]>`
-      DELETE FROM verification_tokens
-      WHERE token_hash = ${hash} AND purpose = 'verification' AND expires_at > ${at}
-      RETURNING id, user_id AS "userId"
-    `;
-    return rows[0];
+    return this.consumeToken(tx, hash, at, "verification");
   }
   async markVerified(tx: Tx, id: string, at: Date): Promise<void> {
     await tx.user.update({ where: { id }, data: { emailVerifiedAt: at } });
@@ -61,23 +51,40 @@ export class AuthRepository {
   async deleteResetTokens(tx: Tx, id: string): Promise<void> {
     await tx.verificationToken.deleteMany({ where: { userId: id, purpose: "reset" } });
   }
-  async rotateReset(tx: Tx, id: string, hash: string, expiresAt: Date): Promise<void> {
-    await this.deleteResetTokens(tx, id);
-    await tx.verificationToken.create({
-      data: { userId: id, purpose: "reset", tokenHash: hash, expiresAt },
-    });
+  rotateReset(tx: Tx, id: string, hash: string, expiresAt: Date): Promise<void> {
+    return this.rotateToken(tx, id, hash, expiresAt, "reset");
   }
-  async consumeReset(
+  consumeReset(
     tx: Tx,
     hash: string,
     at: Date,
   ): Promise<{ id: string; userId: string } | undefined> {
+    return this.consumeToken(tx, hash, at, "reset");
+  }
+  private async rotateToken(
+    tx: Tx,
+    id: string,
+    hash: string,
+    expiresAt: Date,
+    purpose: TokenPurpose,
+  ): Promise<void> {
+    await tx.verificationToken.deleteMany({ where: { userId: id, purpose } });
+    await tx.verificationToken.create({
+      data: { userId: id, purpose, tokenHash: hash, expiresAt },
+    });
+  }
+  private async consumeToken(
+    tx: Tx,
+    hash: string,
+    at: Date,
+    purpose: TokenPurpose,
+  ): Promise<{ id: string; userId: string } | undefined> {
     const candidate = await tx.verificationToken.findUnique({ where: { tokenHash: hash } });
-    if (!candidate || candidate.purpose !== "reset") return undefined;
+    if (!candidate || candidate.purpose !== purpose) return undefined;
     await this.lockUser(tx, candidate.userId);
     const rows = await tx.$queryRaw<{ id: string; userId: string }[]>`
       DELETE FROM verification_tokens
-      WHERE token_hash = ${hash} AND purpose = 'reset' AND expires_at > ${at}
+      WHERE token_hash = ${hash} AND purpose = ${purpose}::"TokenPurpose" AND expires_at > ${at}
       RETURNING id, user_id AS "userId"
     `;
     return rows[0];

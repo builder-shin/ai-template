@@ -29,9 +29,9 @@ it("토큰 소비는 사용자별 잠금을 잡고 유효한 인증 토큰만 DE
     values: ["auth:verification:user-fixture"],
   });
   expect(statements[1]?.sql.replace(/\s+/g, " ").trim()).toBe(
-    "DELETE FROM verification_tokens WHERE token_hash = ? AND purpose = 'verification' AND expires_at > ? RETURNING id, user_id AS \"userId\"",
+    'DELETE FROM verification_tokens WHERE token_hash = ? AND purpose = ?::"TokenPurpose" AND expires_at > ? RETURNING id, user_id AS "userId"',
   );
-  expect(statements[1]?.values).toEqual(["hash-fixture", now]);
+  expect(statements[1]?.values).toEqual(["hash-fixture", "verification", now]);
 });
 it("만료되거나 동시에 소비한 토큰의 빈 DELETE 결과는 성공으로 바꾸지 않는다", async () => {
   const tx = {
