@@ -51,9 +51,14 @@ export class AuthMails {
         : user.name
           ? `Hello, ${user.name}.`
           : "Hello.";
+    const rendered = renderMail(loadMailTemplates(moduleDir, mail, locale), {
+      greeting,
+      ...values,
+    });
     await this.sender.send({
       to: user.email ?? "",
-      ...renderMail(loadMailTemplates(moduleDir, mail, locale), { greeting, ...values }),
+      ...rendered,
+      subject: rendered.subject.replace(/[\r\n]+$/, ""),
     });
   }
 }
