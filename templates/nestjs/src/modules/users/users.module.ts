@@ -4,6 +4,8 @@ import { UsersRepository } from "./repository.js";
 import { MeService } from "./me.service.js";
 import { MeController } from "./me.controller.js";
 import { MeRealtimeBridge } from "./events.js";
+import { UsersAdminService } from "./admin.service.js";
+import { UsersAdminController } from "./admin.controller.js";
 function unavailable(): never {
   throw new Error("인프라가 없는 앱에서는 내 정보 작업을 실행할 수 없다");
 }
@@ -14,12 +16,20 @@ export class UsersModule {
     return {
       module: UsersModule,
       imports: [RolesModule, ...(infrastructure ? dependencies : [])],
-      controllers: [MeController],
+      controllers: [MeController, UsersAdminController],
       providers: [
         UsersRepository,
         ...(infrastructure
-          ? [MeService, MeRealtimeBridge]
+          ? [MeService, MeRealtimeBridge, UsersAdminService]
           : [
+              {
+                provide: UsersAdminService,
+                useValue: {
+                  list: unavailable,
+                  get: unavailable,
+                  update: unavailable,
+                } satisfies Pick<UsersAdminService, "list" | "get" | "update">,
+              },
               {
                 provide: MeService,
                 useValue: {
@@ -34,7 +44,7 @@ export class UsersModule {
               },
             ]),
       ],
-      exports: [UsersRepository, MeService, MeRealtimeBridge],
+      exports: [UsersRepository, MeService, MeRealtimeBridge, UsersAdminService],
     };
   }
 }

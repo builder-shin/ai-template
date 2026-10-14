@@ -7,6 +7,17 @@ export const SYSTEM_ROLES = [
   },
   { name: "member", permissions: ["posts:create"], description: "Given to everyone who signs up." },
 ] as const;
+export function rolePermissions(role: {
+  name: string;
+  system: boolean;
+  permissions: readonly string[];
+}): PermissionCode[] {
+  return role.system && role.name === "admin"
+    ? [...PERMISSION_CODES]
+    : role.permissions.filter((code): code is PermissionCode =>
+        PERMISSION_CODES.some((known) => known === code),
+      );
+}
 const descriptions: Record<PermissionCode, string> = {
   "admin:access": "Sign in to the admin app.",
   "users:read": "Read every user's full profile.",

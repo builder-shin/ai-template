@@ -25,6 +25,21 @@ export function resourceObject(
 ): ResourceObject {
   return { type, id, attributes, ...(relationships === undefined ? {} : { relationships }) };
 }
+export function sparseResource(
+  resource: ResourceObject,
+  fields?: readonly string[],
+): ResourceObject {
+  if (fields === undefined) return resource;
+  const select = (value: object) =>
+    Object.fromEntries(Object.entries(value).filter(([key]) => fields.includes(key)));
+  return {
+    ...resource,
+    attributes: select(resource.attributes),
+    ...(resource.relationships === undefined
+      ? {}
+      : { relationships: select(resource.relationships) }),
+  };
+}
 export function paginationLinks(
   path: string,
   search: string,

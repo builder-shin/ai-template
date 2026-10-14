@@ -4,6 +4,10 @@ import { localeSchema } from "../../core/config/locale.js";
 import { permissionCodeSchema } from "../../core/security/permissions.js";
 import { roleResourceSchema } from "../roles/index.js";
 import { fileResourceSchema } from "../files/index.js";
+import {
+  paginationLinksSchema,
+  collectionMetaSchema,
+} from "../../core/jsonapi/collection-schemas.js";
 export const USER_STATUSES = ["active", "deactivated", "deleted"] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 export const userStatusSchema = registerComponent("UserStatus", z.enum(USER_STATUSES));
@@ -30,6 +34,45 @@ const relationships = registerComponent(
 export const userResourceSchema = registerComponent(
   "UserResource",
   z.object({ type: z.enum(["users"]), id: z.string(), attributes, relationships }),
+);
+registerComponent(
+  "UserDocument",
+  z.object({
+    data: userResourceSchema,
+    included: z.array(z.union([roleResourceSchema, fileResourceSchema])).optional(),
+  }),
+);
+registerComponent(
+  "UserCollectionDocument",
+  z.object({
+    data: z.array(userResourceSchema),
+    included: z.array(z.union([roleResourceSchema, fileResourceSchema])).optional(),
+    links: paginationLinksSchema,
+    meta: collectionMetaSchema,
+  }),
+);
+const userUpdateAttributesSchema = registerComponent(
+  "UserUpdateAttributes",
+  z.object({ status: userStatusSchema.optional() }),
+);
+const userUpdateRelationshipsSchema = registerComponent(
+  "UserUpdateRelationships",
+  z.object({
+    roles: z
+      .object({ data: z.array(z.object({ type: z.enum(["roles"]), id: z.string() })) })
+      .optional(),
+  }),
+);
+export const userUpdateDocumentSchema = registerComponent(
+  "UserUpdateDocument",
+  z.object({
+    data: z.object({
+      type: z.enum(["users"]),
+      id: z.string(),
+      attributes: userUpdateAttributesSchema.optional(),
+      relationships: userUpdateRelationshipsSchema.optional(),
+    }),
+  }),
 );
 const publicAttributes = registerComponent(
   "UserPublicAttributes",

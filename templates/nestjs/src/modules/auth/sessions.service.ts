@@ -233,6 +233,14 @@ export class SessionsService {
     if (ids.length)
       sessionsRevoked(afterCommit, { userId, sessionIds: ids, reason: "account_deleted" });
   }
+  async revokeForDeactivation(
+    tx: Tx,
+    afterCommit: AfterCommit,
+    userId: string,
+    at: Date,
+  ): Promise<void> {
+    await this.revokeActive(tx, afterCommit, userId, at, "account_deactivated");
+  }
   private revokeMany(principal: Principal, scope: "others" | "all"): Promise<number> {
     return this.unit.run(async (tx, afterCommit) => {
       const at = new Date();

@@ -44,32 +44,46 @@ const sessionOverlaps = () =>
   declaredOverlaps(operations().filter((op) => op.operationId.startsWith("Sessions_")));
 it("앱의 모든 등록 라우트에 허용 목록 밖의 겹침이 없다", async () => {
   const { app } = await testApp([]);
-  expect(registeredRoutes(app)).toEqual([
-    { method: "DELETE", path: "/api/v1/sessions/current" },
-    { method: "GET", path: "/api/v1/oauth/:provider/authorize" },
-    { method: "GET", path: "/api/v1/oauth/:provider/callback" },
-    { method: "GET", path: "/api/v1/files/:id" },
-    { method: "PATCH", path: "/api/v1/files/:id" },
-    { method: "DELETE", path: "/api/v1/files/:id" },
-    { method: "DELETE", path: "/api/v1/sessions/:id" },
-    { method: "GET", path: "/api/v1/me" },
-    { method: "PATCH", path: "/api/v1/me" },
-    { method: "DELETE", path: "/api/v1/me" },
-    { method: "POST", path: "/api/v1/files" },
-    { method: "POST", path: "/api/v1/password-reset-requests" },
-    { method: "POST", path: "/api/v1/password-resets" },
-    { method: "POST", path: "/api/v1/password-changes" },
-    { method: "POST", path: "/api/v1/registrations" },
-    { method: "POST", path: "/api/v1/email-verification-requests" },
-    { method: "POST", path: "/api/v1/email-verifications" },
-    { method: "POST", path: "/api/v1/sessions" },
-    { method: "GET", path: "/api/v1/sessions" },
-    { method: "POST", path: "/api/v1/session-revocations" },
-    { method: "POST", path: "/api/v1/realtime-tickets" },
-    { method: "GET", path: "/api/v1/permissions" },
-    { method: "GET", path: "/health/live" },
-    { method: "GET", path: "/health/ready" },
-  ]);
+  const routes = registeredRoutes(app);
+  expect(routes).toHaveLength(34);
+  expect(routes).toEqual(
+    expect.arrayContaining([
+      { method: "GET", path: "/api/v1/users" },
+      { method: "GET", path: "/api/v1/users/:id" },
+      { method: "PATCH", path: "/api/v1/users/:id" },
+      { method: "GET", path: "/api/v1/roles" },
+      { method: "POST", path: "/api/v1/roles" },
+      { method: "GET", path: "/api/v1/roles/:id" },
+      { method: "PATCH", path: "/api/v1/roles/:id" },
+      { method: "DELETE", path: "/api/v1/roles/:id" },
+      { method: "GET", path: "/api/v1/audit-logs" },
+      { method: "GET", path: "/api/v1/audit-logs/:id" },
+      { method: "DELETE", path: "/api/v1/sessions/current" },
+      { method: "GET", path: "/api/v1/oauth/:provider/authorize" },
+      { method: "GET", path: "/api/v1/oauth/:provider/callback" },
+      { method: "GET", path: "/api/v1/files/:id" },
+      { method: "PATCH", path: "/api/v1/files/:id" },
+      { method: "DELETE", path: "/api/v1/files/:id" },
+      { method: "DELETE", path: "/api/v1/sessions/:id" },
+      { method: "GET", path: "/api/v1/me" },
+      { method: "PATCH", path: "/api/v1/me" },
+      { method: "DELETE", path: "/api/v1/me" },
+      { method: "POST", path: "/api/v1/files" },
+      { method: "POST", path: "/api/v1/password-reset-requests" },
+      { method: "POST", path: "/api/v1/password-resets" },
+      { method: "POST", path: "/api/v1/password-changes" },
+      { method: "POST", path: "/api/v1/registrations" },
+      { method: "POST", path: "/api/v1/email-verification-requests" },
+      { method: "POST", path: "/api/v1/email-verifications" },
+      { method: "POST", path: "/api/v1/sessions" },
+      { method: "GET", path: "/api/v1/sessions" },
+      { method: "POST", path: "/api/v1/session-revocations" },
+      { method: "POST", path: "/api/v1/realtime-tickets" },
+      { method: "GET", path: "/api/v1/permissions" },
+      { method: "GET", path: "/health/live" },
+      { method: "GET", path: "/health/ready" },
+    ]),
+  );
   expect(unexpectedOverlaps(registeredRoutes(app), declaredOverlaps(operations()))).toEqual([]);
 });
 it("실제 등록 라우트의 겹침은 operation 허용 선언으로만 통과한다", async () => {

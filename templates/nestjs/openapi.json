@@ -6,6 +6,7 @@
     { "name": "health" },
     { "name": "files" },
     { "name": "permissions" },
+    { "name": "roles" },
     { "name": "registrations" },
     { "name": "email-verifications" },
     { "name": "sessions" },
@@ -13,6 +14,8 @@
     { "name": "password-changes" },
     { "name": "oauth" },
     { "name": "me" },
+    { "name": "users" },
+    { "name": "audit-logs" },
     { "name": "realtime" }
   ],
   "paths": {
@@ -628,6 +631,593 @@
         "security": [{ "BearerAuth": [] }],
         "x-permission": "roles:read",
         "x-jsonapi-sort": ["id"]
+      }
+    },
+    "/api/v1/roles": {
+      "get": {
+        "operationId": "Roles_list",
+        "summary": "역할 목록을 조회한다",
+        "tags": ["roles"],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "default": 1
+            },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[roles]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "filter[q]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "역할 목록이다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleCollectionDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "roles:read",
+        "x-jsonapi-sort": ["name", "createdAt"]
+      },
+      "post": {
+        "operationId": "Roles_create",
+        "summary": "역할을 만든다",
+        "tags": ["roles"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "역할을 만들었다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/RoleDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "roles:manage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/RoleCreateDocument" }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/roles/{id}": {
+      "get": {
+        "operationId": "Roles_get",
+        "summary": "역할을 조회한다",
+        "tags": ["roles"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "fields[roles]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "역할을 조회했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/RoleDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "roles:read"
+      },
+      "patch": {
+        "operationId": "Roles_update",
+        "summary": "역할을 바꾼다",
+        "tags": ["roles"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "역할을 바꿨다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/RoleDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "roles:manage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/RoleUpdateDocument" }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Roles_delete",
+        "summary": "역할을 지운다",
+        "tags": ["roles"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "역할을 지웠다" },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "roles:manage"
       }
     },
     "/api/v1/registrations": {
@@ -2341,6 +2931,729 @@
         "security": [{ "BearerAuth": [] }]
       }
     },
+    "/api/v1/users": {
+      "get": {
+        "operationId": "Users_list",
+        "summary": "사용자 목록을 조회한다",
+        "tags": ["users"],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "default": 1
+            },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[roles]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "filter[q]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "filter[status]",
+            "in": "query",
+            "required": false,
+            "schema": { "$ref": "#/components/schemas/UserStatus" },
+            "explode": false
+          },
+          {
+            "name": "filter[role]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "사용자 목록이다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserCollectionDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "users:read",
+        "x-jsonapi-sort": ["createdAt", "name", "email"],
+        "x-jsonapi-include": ["roles", "avatar"]
+      }
+    },
+    "/api/v1/users/{id}": {
+      "get": {
+        "operationId": "Users_get",
+        "summary": "사용자를 조회한다",
+        "tags": ["users"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[roles]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "사용자를 조회했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/UserDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "users:read",
+        "x-jsonapi-include": ["roles", "avatar"]
+      },
+      "patch": {
+        "operationId": "Users_update",
+        "summary": "사용자의 역할과 상태를 바꾼다",
+        "tags": ["users"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "사용자를 바꿨다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/UserDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "users:manage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/UserUpdateDocument" }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs": {
+      "get": {
+        "operationId": "AuditLogs_list",
+        "summary": "감사 로그 목록을 조회한다",
+        "tags": ["audit-logs"],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "default": 1
+            },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[audit-logs]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "filter[actor]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" },
+            "explode": false
+          },
+          {
+            "name": "filter[action]",
+            "in": "query",
+            "required": false,
+            "schema": { "$ref": "#/components/schemas/AuditLogAction" },
+            "explode": false
+          },
+          {
+            "name": "filter[targetType]",
+            "in": "query",
+            "required": false,
+            "schema": { "$ref": "#/components/schemas/AuditLogTargetType" },
+            "explode": false
+          },
+          {
+            "name": "filter[createdFrom]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" },
+            "explode": false
+          },
+          {
+            "name": "filter[createdTo]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "감사 로그 목록이다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogCollectionDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "audit-logs:read",
+        "x-jsonapi-sort": ["createdAt"],
+        "x-jsonapi-include": ["actor"]
+      }
+    },
+    "/api/v1/audit-logs/{id}": {
+      "get": {
+        "operationId": "AuditLogs_get",
+        "summary": "감사 로그를 조회한다",
+        "tags": ["audit-logs"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[audit-logs]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "감사 로그를 조회했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/AuditLogDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "audit-logs:read",
+        "x-jsonapi-include": ["actor"]
+      }
+    },
     "/api/v1/realtime-tickets": {
       "post": {
         "operationId": "RealtimeTickets_create",
@@ -2816,6 +4129,93 @@
           "attributes": { "$ref": "#/components/schemas/RoleAttributes" }
         },
         "required": ["type", "id", "attributes"]
+      },
+      "RoleDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/RoleResource" }
+        },
+        "required": ["data"]
+      },
+      "RoleCollectionDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RoleResource" }
+          },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" },
+          "meta": { "$ref": "#/components/schemas/CollectionMeta" }
+        },
+        "required": ["data", "links", "meta"]
+      },
+      "RoleCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+          "description": {
+            "anyOf": [
+              { "type": "string", "description": "역할 설명이다" },
+              { "type": "null" }
+            ],
+            "maxLength": 200
+          },
+          "permissions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PermissionCode" }
+          }
+        },
+        "required": ["name", "permissions"]
+      },
+      "RoleUpdateAttributes": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+          "description": {
+            "anyOf": [
+              { "type": "string", "description": "역할 설명이다" },
+              { "type": "null" }
+            ],
+            "maxLength": 200
+          },
+          "permissions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PermissionCode" }
+          }
+        }
+      },
+      "RoleCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["roles"] },
+              "attributes": {
+                "$ref": "#/components/schemas/RoleCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "RoleUpdateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["roles"] },
+              "id": { "type": "string" },
+              "attributes": {
+                "$ref": "#/components/schemas/RoleUpdateAttributes"
+              }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
       },
       "SessionPasswordGrant": {
         "type": "object",
@@ -3382,6 +4782,91 @@
         },
         "required": ["type", "id", "attributes", "relationships"]
       },
+      "UserDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/UserResource" },
+          "included": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "$ref": "#/components/schemas/RoleResource" },
+                { "$ref": "#/components/schemas/FileResource" }
+              ]
+            }
+          }
+        },
+        "required": ["data"]
+      },
+      "UserCollectionDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UserResource" }
+          },
+          "included": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "$ref": "#/components/schemas/RoleResource" },
+                { "$ref": "#/components/schemas/FileResource" }
+              ]
+            }
+          },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" },
+          "meta": { "$ref": "#/components/schemas/CollectionMeta" }
+        },
+        "required": ["data", "links", "meta"]
+      },
+      "UserUpdateAttributes": {
+        "type": "object",
+        "properties": {
+          "status": { "$ref": "#/components/schemas/UserStatus" }
+        }
+      },
+      "UserUpdateRelationships": {
+        "type": "object",
+        "properties": {
+          "roles": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string", "enum": ["roles"] },
+                    "id": { "type": "string" }
+                  },
+                  "required": ["type", "id"]
+                }
+              }
+            },
+            "required": ["data"]
+          }
+        }
+      },
+      "UserUpdateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["users"] },
+              "id": { "type": "string" },
+              "attributes": {
+                "$ref": "#/components/schemas/UserUpdateAttributes"
+              },
+              "relationships": {
+                "$ref": "#/components/schemas/UserUpdateRelationships"
+              }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
+      },
       "UserPublicAttributes": {
         "type": "object",
         "properties": { "name": { "type": ["string", "null"] } },
@@ -3519,6 +5004,98 @@
           }
         },
         "required": ["meta"]
+      },
+      "AuditLogTargetType": {
+        "type": "string",
+        "enum": ["users", "roles", "posts"]
+      },
+      "AuditLogAttributes": {
+        "type": "object",
+        "properties": {
+          "action": { "$ref": "#/components/schemas/AuditLogAction" },
+          "targetType": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/AuditLogTargetType" },
+              { "type": "null" }
+            ]
+          },
+          "targetId": { "type": ["string", "null"] },
+          "metadata": { "type": "object", "unevaluatedProperties": {} },
+          "ipAddress": { "type": ["string", "null"] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "action",
+          "targetType",
+          "targetId",
+          "metadata",
+          "ipAddress",
+          "createdAt"
+        ]
+      },
+      "AuditLogRelationships": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["users"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["actor"]
+      },
+      "AuditLogResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["audit-logs"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/AuditLogAttributes" },
+          "relationships": {
+            "$ref": "#/components/schemas/AuditLogRelationships"
+          }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "AuditLogDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/AuditLogResource" },
+          "included": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UserPublicResource" }
+          }
+        },
+        "required": ["data"]
+      },
+      "AuditLogCollectionDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AuditLogResource" }
+          },
+          "included": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UserPublicResource" }
+          },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" },
+          "meta": { "$ref": "#/components/schemas/CollectionMeta" }
+        },
+        "required": ["data", "links", "meta"]
       },
       "RealtimeChannel": { "type": "string", "enum": ["posts", "posts:all"] },
       "RealtimeSubscription": {

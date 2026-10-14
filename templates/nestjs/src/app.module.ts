@@ -33,6 +33,8 @@ import { PRINCIPAL_RESOLVER, UnavailablePrincipalResolver } from "./core/securit
 import { OperationGuard } from "./core/http/operation.guard.js";
 import { IncludeRegistry } from "./core/jsonapi/include.js";
 import { UsersModule } from "./modules/users/index.js";
+import { RolesModule } from "./modules/roles/index.js";
+import { AuditLogsModule } from "./modules/audit-logs/index.js";
 import { AuthModule, JwtPrincipalResolver } from "./modules/auth/index.js";
 import { registerDomain } from "./modules/registry.js";
 import { RealtimeModule } from "./modules/realtime/index.js";
@@ -58,6 +60,8 @@ export class AppModule {
       imports: [
         HealthModule,
         UsersModule.register(infrastructure, [auth, realtime, files]),
+        RolesModule.register(infrastructure, [realtime]),
+        AuditLogsModule.register(infrastructure),
         files,
         auth,
         realtime,

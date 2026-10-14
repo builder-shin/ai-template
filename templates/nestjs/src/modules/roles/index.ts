@@ -3,3 +3,4 @@ export { RolesRepository } from "./repository.js";
 export { seedSystem } from "./seed.js";
 export { SYSTEM_ROLES } from "./permissions.js";
 export { roleResourceSchema } from "./schemas.js";
+export { RolesAdminService } from "./admin.service.js";

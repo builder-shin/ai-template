@@ -3,6 +3,9 @@ import { PERMISSION_CODES, type PermissionCode } from "../../core/security/permi
 import { Injectable } from "@nestjs/common";
 import { resourceObject, type ResourceObject } from "../../core/jsonapi/document.js";
 import { SYSTEM_ROLES } from "./permissions.js";
+import { rolePermissions } from "./permissions.js";
+import type { ParsedQuery } from "../../core/jsonapi/query.js";
+import type { Prisma, Role } from "../../generated/prisma/client.js";
 @Injectable()
 export class RolesRepository {
   async permissionsOf(tx: Tx, userId: string): Promise<Set<PermissionCode>> {
@@ -14,6 +17,84 @@ export class RolesRepository {
         .flatMap(({ role }) => role.permissions)
         .filter((code): code is PermissionCode => PERMISSION_CODES.some((known) => known === code)),
     );
+  }
+  permissions(role: Role): Set<PermissionCode> {
+    return new Set(rolePermissions(role));
+  }
+  async lock(tx: Tx, id: string): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM roles WHERE id = ${id}::uuid FOR UPDATE`;
+  }
+  find(tx: Tx, id: string) {
+    return tx.role.findUnique({ where: { id } });
+  }
+  findIds(tx: Tx, ids: readonly string[]) {
+    return tx.role.findMany({ where: { id: { in: [...ids] } } });
+  }
+  async list(tx: Tx, query: ParsedQuery) {
+    const where: Prisma.RoleWhereInput =
+      typeof query.filter.q === "string"
+        ? { name: { contains: query.filter.q, mode: "insensitive" } }
+        : {};
+    const total = await tx.role.count({ where });
+    const rows = await tx.role.findMany({
+      where,
+      orderBy: [
+        ...query.sort.map((s) => ({
+          [s.field]: s.descending ? ("desc" as const) : ("asc" as const),
+        })),
+        { id: "asc" },
+      ],
+      skip: (query.page.number - 1) * query.page.size,
+      take: query.page.size,
+    });
+    return { total, rows };
+  }
+  create(
+    tx: Tx,
+    data: { name: string; description?: string | null; permissions: readonly PermissionCode[] },
+  ) {
+    return tx.role.create({ data: { ...data, permissions: [...new Set(data.permissions)] } });
+  }
+  update(
+    tx: Tx,
+    id: string,
+    data: { name?: string; description?: string | null; permissions?: readonly PermissionCode[] },
+  ) {
+    return tx.role.update({
+      where: { id },
+      data: {
+        ...(data.name === undefined ? {} : { name: data.name }),
+        ...(data.description === undefined ? {} : { description: data.description }),
+        ...(data.permissions === undefined ? {} : { permissions: [...new Set(data.permissions)] }),
+      },
+    });
+  }
+  async members(tx: Tx, roleId: string): Promise<string[]> {
+    return (await tx.userRole.findMany({ where: { roleId } })).map((a) => a.userId);
+  }
+  async delete(tx: Tx, id: string): Promise<void> {
+    await tx.userRole.deleteMany({ where: { roleId: id } });
+    await tx.role.delete({ where: { id } });
+  }
+  async replaceRoles(tx: Tx, userId: string, names: readonly string[]): Promise<void> {
+    const roles = await tx.role.findMany({ where: { name: { in: [...new Set(names)] } } });
+    if (roles.length !== new Set(names).size) throw new Error("교체할 역할이 없다");
+    await tx.userRole.deleteMany({ where: { userId } });
+    if (roles.length)
+      await tx.userRole.createMany({
+        data: roles.map((r) => ({ userId, roleId: r.id })),
+        skipDuplicates: true,
+      });
+  }
+  resource(role: Role): ResourceObject {
+    return resourceObject("roles", role.id, {
+      name: role.name,
+      description: role.description,
+      permissions: rolePermissions(role),
+      isSystem: role.system,
+      createdAt: role.createdAt.toISOString(),
+      updatedAt: role.updatedAt.toISOString(),
+    });
   }
   async assign(tx: Tx, userId: string, roleNames: readonly string[]): Promise<void> {
     const names = [...new Set(roleNames)];
@@ -48,18 +129,6 @@ export class RolesRepository {
   }
   async load(tx: Tx, ids: readonly string[]): Promise<readonly ResourceObject[]> {
     const roles = await tx.role.findMany({ where: { id: { in: [...ids] } } });
-    return roles.map((role) =>
-      resourceObject("roles", role.id, {
-        name: role.name,
-        description: role.description,
-        permissions:
-          role.system && role.name === "admin"
-            ? [...PERMISSION_CODES]
-            : role.permissions.filter((code) => PERMISSION_CODES.some((known) => known === code)),
-        isSystem: role.system,
-        createdAt: role.createdAt.toISOString(),
-        updatedAt: role.updatedAt.toISOString(),
-      }),
-    );
+    return roles.map((role) => this.resource(role));
   }
 }

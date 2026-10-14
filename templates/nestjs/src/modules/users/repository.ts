@@ -4,9 +4,42 @@ import type { Tx } from "../../core/db/unit-of-work.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { ApiError } from "../../core/jsonapi/errors.js";
 import { resourceObject } from "../../core/jsonapi/document.js";
+import type { ParsedQuery } from "../../core/jsonapi/query.js";
 export type UserRecord = Prisma.UserGetPayload<{ include: { roles: true } }>;
 @Injectable()
 export class UsersRepository {
+  async list(tx: Tx, query: ParsedQuery) {
+    const { q, status, role } = query.filter;
+    const where: Prisma.UserWhereInput = {
+      ...(typeof q === "string"
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { email: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+      ...(typeof status === "string" ? { status } : {}),
+      ...(typeof role === "string" ? { roles: { some: { roleId: role } } } : {}),
+    };
+    const total = await tx.user.count({ where });
+    const rows = await tx.user.findMany({
+      where,
+      include: { roles: true },
+      orderBy: [
+        ...query.sort.map((s) => ({
+          [s.field]: s.descending ? ("desc" as const) : ("asc" as const),
+        })),
+        { id: "asc" },
+      ],
+      skip: (query.page.number - 1) * query.page.size,
+      take: query.page.size,
+    });
+    return { total, rows };
+  }
+  async updateStatus(tx: Tx, id: string, status: "active" | "deactivated"): Promise<void> {
+    await tx.user.update({ where: { id }, data: { status } });
+  }
   findByEmail(tx: Tx, email: string) {
     return tx.user.findUnique({ where: { email } });
   }
