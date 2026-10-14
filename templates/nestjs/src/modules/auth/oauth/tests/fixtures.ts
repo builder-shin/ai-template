@@ -174,6 +174,7 @@ export function oauthFixture() {
   const service = new OAuthService(unit, store, client, settings);
   return {
     service,
+    client,
     store,
     unit,
     tx,

@@ -1,4 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { z } from "zod";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { UnitOfWork } from "../../../core/db/unit-of-work.js";
 import { isUniqueViolation } from "../../../core/db/errors.js";
 import { SETTINGS, type Settings } from "../../../core/config/settings.js";
@@ -7,7 +8,7 @@ import { ApiError } from "../../../core/jsonapi/errors.js";
 import { newOpaqueToken } from "../../../core/security/tokens.js";
 import { providerSettings, type OAuthProvider } from "./providers.js";
 import { OAuthState } from "./state.js";
-import { OAuthClient } from "./client.js";
+import { OAuthClient, OAuthHttpError } from "./client.js";
 import { identityFrom } from "./identity.js";
 import { linkAccount } from "./link.js";
 import { challengeFor } from "./pkce.js";
@@ -28,6 +29,7 @@ function redirect(target: string, name: "code" | "error", value: string): string
 }
 @Injectable()
 export class OAuthService {
+  private readonly logger = new Logger(OAuthService.name);
   constructor(
     @Inject(UnitOfWork) private readonly unit: UnitOfWork,
     @Inject(OAuthState) private readonly state: OAuthState,
@@ -59,9 +61,14 @@ export class OAuthService {
     const failed = (code: string) => redirect(stored.redirectUri, "error", code);
     if (query.error === "access_denied") return failed("auth.oauth_denied");
     if (query.error !== undefined || !query.code) return failed("auth.oauth_failed");
+    let phase: "exchange" | "profile" | "identity" | "link" | "issue_code" = "exchange";
     try {
       const token = await this.client.exchange(provider, query.code, stored.verifier);
-      const identity = identityFrom(provider, await this.client.profile(provider, token));
+      phase = "profile";
+      const profile = await this.client.profile(provider, token);
+      phase = "identity";
+      const identity = identityFrom(provider, profile);
+      phase = "link";
       const link = () => this.unit.run((tx) => linkAccount(tx, provider, identity, locale));
       const user = await link().catch((error: unknown) => {
         if (!isUniqueViolation(error)) throw error;
@@ -69,14 +76,79 @@ export class OAuthService {
         return link();
       });
       if (user.status !== "active") return failed("auth.account_deactivated");
+      phase = "issue_code";
       const code = await this.state.issueCode({
         userId: user.userId,
         provider,
         codeChallenge: stored.codeChallenge,
       });
       return redirect(stored.redirectUri, "code", code);
-    } catch {
+    } catch (error) {
+      this.logger.warn({
+        message: "소셜 로그인 콜백이 실패했다",
+        provider,
+        phase,
+        ...safeFailure(error),
+      });
       return failed("auth.oauth_failed");
     }
+  }
+}
+
+function safeFailure(error: unknown): {
+  errorType: string;
+  errorCode?: string;
+  httpStatus?: number;
+} {
+  try {
+    const errorType =
+      error instanceof OAuthHttpError
+        ? "OAuthHttpError"
+        : error instanceof z.ZodError
+          ? "ZodError"
+          : error instanceof TypeError
+            ? "TypeError"
+            : error instanceof SyntaxError
+              ? "SyntaxError"
+              : error instanceof RangeError
+                ? "RangeError"
+                : error instanceof DOMException &&
+                    (error.name === "TimeoutError" || error.name === "AbortError")
+                  ? error.name
+                  : error instanceof Error
+                    ? "Error"
+                    : "unknown";
+    // 임의 오류의 getter·메시지·스택·cause·페이로드는 읽거나 직렬화하지 않는다.
+    const code: unknown =
+      typeof error === "object" && error !== null
+        ? Object.getOwnPropertyDescriptor(error, "code")?.value
+        : undefined;
+    const allowedCodes = [
+      "P2002",
+      "P2024",
+      "P2028",
+      "P1000",
+      "P1001",
+      "P1002",
+      "P1017",
+      "ECONNRESET",
+      "ECONNREFUSED",
+      "ETIMEDOUT",
+    ];
+    const errorCode = typeof code === "string" && allowedCodes.includes(code) ? code : undefined;
+    const httpStatus =
+      error instanceof OAuthHttpError &&
+      Number.isInteger(error.status) &&
+      error.status >= 100 &&
+      error.status <= 599
+        ? error.status
+        : undefined;
+    return {
+      errorType,
+      ...(errorCode === undefined ? {} : { errorCode }),
+      ...(httpStatus === undefined ? {} : { httpStatus }),
+    };
+  } catch {
+    return { errorType: "unknown" };
   }
 }

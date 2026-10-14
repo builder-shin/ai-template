@@ -2,6 +2,12 @@ import { Inject, Injectable } from "@nestjs/common";
 import { z } from "zod";
 import { SETTINGS, type Settings } from "../../../core/config/settings.js";
 import { providerSettings, type OAuthProvider } from "./providers.js";
+export class OAuthHttpError extends Error {
+  constructor(readonly status: number) {
+    super("제공자 HTTP 요청에 실패했다");
+    this.name = "OAuthHttpError";
+  }
+}
 const tokenSchema = z.object({ access_token: z.string().min(1) });
 @Injectable()
 export class OAuthClient {
@@ -38,7 +44,7 @@ export class OAuthClient {
       }),
       signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok) throw new Error("제공자 토큰 교환에 실패했다");
+    if (!response.ok) throw new OAuthHttpError(response.status);
     return tokenSchema.parse((await response.json()) as unknown).access_token;
   }
   async profile(provider: OAuthProvider, accessToken: string): Promise<unknown> {
@@ -47,7 +53,7 @@ export class OAuthClient {
       headers: { Authorization: "Bearer " + accessToken },
       signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok) throw new Error("제공자 신원 조회에 실패했다");
+    if (!response.ok) throw new OAuthHttpError(response.status);
     return response.json() as Promise<unknown>;
   }
 }
