@@ -4,6 +4,7 @@
   "servers": [{ "url": "http://localhost:8000" }],
   "tags": [
     { "name": "health" },
+    { "name": "files" },
     { "name": "permissions" },
     { "name": "registrations" },
     { "name": "email-verifications" },
@@ -56,6 +57,451 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/files": {
+      "post": {
+        "operationId": "Files_create",
+        "summary": "파일 업로드를 준비한다",
+        "tags": ["files"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "업로드를 준비했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/FileDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/FileCreateDocument" }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files/{id}": {
+      "get": {
+        "operationId": "Files_get",
+        "summary": "읽을 수 있는 파일을 조회한다",
+        "tags": ["files"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "파일을 조회했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/FileDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{}, { "BearerAuth": [] }]
+      },
+      "patch": {
+        "operationId": "Files_update",
+        "summary": "파일 업로드 완료를 확인한다",
+        "tags": ["files"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "파일을 확인했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/FileDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/FileUpdateDocument" }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Files_delete",
+        "summary": "내 파일을 삭제한다",
+        "tags": ["files"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "파일을 삭제했다" },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }]
       }
     },
     "/api/v1/permissions": {
@@ -1800,6 +2246,128 @@
           }
         },
         "required": ["status", "checks"]
+      },
+      "FileStatus": { "type": "string", "enum": ["pending", "ready"] },
+      "FileAttributes": {
+        "type": "object",
+        "properties": {
+          "filename": { "type": "string" },
+          "contentType": { "type": "string" },
+          "size": { "type": "integer", "format": "int64" },
+          "status": { "$ref": "#/components/schemas/FileStatus" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["filename", "contentType", "size", "status", "createdAt"]
+      },
+      "FileCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "filename": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "contentType": { "type": "string" },
+          "size": { "type": "integer", "minimum": 1, "format": "int64" }
+        },
+        "required": ["filename", "contentType", "size"]
+      },
+      "FileUpdateAttributes": {
+        "type": "object",
+        "properties": { "status": { "type": "string", "enum": ["ready"] } }
+      },
+      "FileUpload": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string", "format": "uri" },
+          "method": { "type": "string", "enum": ["PUT"] },
+          "headers": {
+            "type": "object",
+            "unevaluatedProperties": { "type": "string" }
+          },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["url", "method", "headers", "expiresAt"]
+      },
+      "FileMeta": {
+        "type": "object",
+        "properties": {
+          "upload": { "$ref": "#/components/schemas/FileUpload" },
+          "downloadUrl": { "type": "string", "format": "uri" },
+          "downloadUrlExpiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "FileRelationships": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["users"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["owner"]
+      },
+      "FileResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["files"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/FileAttributes" },
+          "relationships": { "$ref": "#/components/schemas/FileRelationships" },
+          "meta": { "$ref": "#/components/schemas/FileMeta" }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "FileDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/FileResource" }
+        },
+        "required": ["data"]
+      },
+      "FileCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["files"] },
+              "attributes": {
+                "$ref": "#/components/schemas/FileCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "FileUpdateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["files"] },
+              "id": { "type": "string" },
+              "attributes": {
+                "$ref": "#/components/schemas/FileUpdateAttributes"
+              }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
       },
       "PermissionCode": {
         "type": "string",

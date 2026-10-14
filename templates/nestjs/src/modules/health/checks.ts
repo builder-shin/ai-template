@@ -1,9 +1,18 @@
 import type { PrismaService } from "../../core/db/prisma.service.js";
 import type { RedisClients } from "../../core/redis/clients.js";
+import { HeadBucketCommand, type S3Client } from "@aws-sdk/client-s3";
 export const HEALTH_CHECKS: unique symbol = Symbol("HEALTH_CHECKS");
 export interface HealthCheck {
   readonly name: "database" | "redis" | "storage";
   check(): Promise<void>;
+}
+export function storageCheck(client: S3Client, bucket: string): HealthCheck {
+  return {
+    name: "storage",
+    async check() {
+      await client.send(new HeadBucketCommand({ Bucket: bucket }));
+    },
+  };
 }
 export function databaseCheck(prisma: Pick<PrismaService, "$queryRaw">): HealthCheck {
   return {

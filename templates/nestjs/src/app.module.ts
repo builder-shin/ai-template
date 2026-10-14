@@ -13,7 +13,16 @@ import { RateLimitModule } from "./core/ratelimit/ratelimit.module.js";
 import { JsonLogger } from "./core/logging/json-logger.js";
 import { GLOBAL_LIMITER, type GlobalLimiter } from "./core/http/pipeline.js";
 import type { AppOverrides } from "./core/http/create-app.js";
-import { HealthModule, HEALTH_CHECKS, databaseCheck, redisCheck } from "./modules/health/index.js";
+import {
+  HealthModule,
+  HEALTH_CHECKS,
+  databaseCheck,
+  redisCheck,
+  storageCheck,
+} from "./modules/health/index.js";
+import { FilesModule } from "./modules/files/index.js";
+import { StorageModule } from "./core/storage/storage.module.js";
+import { STORAGE_CLIENTS, type StorageClients } from "./core/storage/client.js";
 import { PrismaService } from "./core/db/prisma.service.js";
 import { RedisClients } from "./core/redis/clients.js";
 import "./core/jsonapi/error-codes.js";
@@ -47,9 +56,10 @@ export class AppModule {
       imports: [
         HealthModule,
         UsersModule,
+        FilesModule.register(infrastructure),
         auth,
         RealtimeModule.register(infrastructure, auth),
-        ...(infrastructure ? [DbModule, RedisModule, RateLimitModule] : []),
+        ...(infrastructure ? [DbModule, RedisModule, RateLimitModule, StorageModule] : []),
         ...(overrides.imports ?? []),
       ],
       providers: [
@@ -71,10 +81,11 @@ export class AppModule {
         infrastructure
           ? {
               provide: HEALTH_CHECKS,
-              inject: [PrismaService, RedisClients],
-              useFactory: (prisma: PrismaService, redis: RedisClients) => [
+              inject: [PrismaService, RedisClients, STORAGE_CLIENTS],
+              useFactory: (prisma: PrismaService, redis: RedisClients, storage: StorageClients) => [
                 databaseCheck(prisma),
                 redisCheck(redis),
+                storageCheck(storage.internal, settings.S3_BUCKET),
               ],
             }
           : { provide: HEALTH_CHECKS, useValue: [] },

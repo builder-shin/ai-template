@@ -26,6 +26,7 @@ model User {
   verificationTokens VerificationToken[]
   sessions           Session[]
   oauthAccounts      OAuthAccount[]
+  files              File[]
 
   @@map("users")
 }
@@ -126,4 +127,27 @@ model OAuthAccount {
   @@unique([provider, subject])
   @@index([userId])
   @@map("oauth_accounts")
+}
+
+enum FileStatus {
+  pending
+  ready
+}
+
+model File {
+  id          String     @id @default(uuid(7)) @db.Uuid
+  ownerId     String     @map("owner_id") @db.Uuid
+  key         String     @unique
+  filename    String
+  contentType String     @map("content_type")
+  size        BigInt
+  status      FileStatus @default(pending)
+  detachedAt  DateTime?  @map("detached_at") @db.Timestamptz(6)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, status])
+  @@index([status, createdAt])
+  @@index([detachedAt])
+  @@map("files")
 }

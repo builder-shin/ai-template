@@ -5,7 +5,28 @@ import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import { prepareEnvironment } from "../setup-env.js";
 import { setup } from "../setup.js";
-const fixture = vi.hoisted(() => ({ events: [] as unknown[], fail: false }));
+import { PutBucketCorsCommand, type S3Client } from "@aws-sdk/client-s3";
+const fixture = vi.hoisted(() => ({ events: [] as unknown[], fail: false, storageFail: false }));
+vi.mock("../../src/core/storage/client.js", () => ({
+  storageClients: () => ({
+    internal: {
+      send(command: { constructor: { name: string }; input: unknown }) {
+        fixture.events.push(["storage.internal", command.constructor.name, command.input]);
+        if (fixture.storageFail && command instanceof PutBucketCorsCommand)
+          return Promise.reject(new Error("CORS 준비 실패"));
+        return Promise.resolve({});
+      },
+      destroy() {
+        fixture.events.push("internal.destroy");
+      },
+    } as unknown as S3Client,
+    public: {
+      destroy() {
+        fixture.events.push("public.destroy");
+      },
+    } as unknown as S3Client,
+  }),
+}));
 vi.mock("node:child_process", () => ({
   execFileSync: vi.fn((file: string, args: string[]) => {
     fixture.events.push([file, args]);
@@ -37,7 +58,11 @@ vi.mock("../gen.js", () => ({
 }));
 vi.mock("../runtime.js", () => ({
   isMain: () => false,
-  scriptSettings: () => ({ DATABASE_URL: "postgresql://fixture/app" }),
+  scriptSettings: () => ({
+    DATABASE_URL: "postgresql://fixture/app",
+    S3_BUCKET: "app",
+    STORAGE_ALLOWED_ORIGINS: ["https://web.example.test"],
+  }),
 }));
 const roots: string[] = [];
 afterEach(() => {
@@ -48,6 +73,7 @@ afterEach(() => {
   roots.length = 0;
   fixture.events = [];
   fixture.fail = false;
+  fixture.storageFail = false;
   vi.clearAllMocks();
 });
 it("환경 파일이 없으면 공개 예시를 복사한다", () => {
@@ -84,7 +110,40 @@ it("setup은 기동과 소유 확인 뒤 생성하고 세 DB를 migrate한다", 
       ["migrate", "postgresql://fixture/app"],
       ["migrate", "postgresql://fixture/app_test"],
       ["migrate", "postgresql://fixture/app_e2e"],
+      ["storage.internal", "HeadBucketCommand", { Bucket: "app" }],
+      [
+        "storage.internal",
+        "PutBucketCorsCommand",
+        {
+          Bucket: "app",
+          CORSConfiguration: {
+            CORSRules: [
+              {
+                AllowedOrigins: ["https://web.example.test"],
+                AllowedMethods: ["GET", "PUT", "HEAD"],
+                AllowedHeaders: ["*"],
+                ExposeHeaders: ["ETag"],
+                MaxAgeSeconds: 3000,
+              },
+            ],
+          },
+        },
+      ],
+      "internal.destroy",
+      "public.destroy",
     ]);
+  } finally {
+    prepare.mockRestore();
+  }
+});
+it("CORS 준비 실패 때도 내부와 공개 클라이언트를 정리한다", async () => {
+  const prepare = vi
+    .spyOn(await import("../setup-env.js"), "prepareEnvironment")
+    .mockImplementation(() => undefined);
+  fixture.storageFail = true;
+  try {
+    await expect(setup()).rejects.toThrow("CORS 준비 실패");
+    expect(fixture.events.slice(-2)).toEqual(["internal.destroy", "public.destroy"]);
   } finally {
     prepare.mockRestore();
   }
