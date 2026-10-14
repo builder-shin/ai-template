@@ -6,7 +6,7 @@ import type { OperationDeclaration, OperationSpec } from "./operation.js";
 import { parseQuery, type ParsedQuery } from "./query.js";
 import { hasLoneSurrogate } from "./schemas.js";
 export interface ValidatedRequest<S extends OperationSpec = OperationSpec> {
-  query: ParsedQuery;
+  query: S extends { querySchema: infer Q extends z.ZodType } ? z.infer<Q> : ParsedQuery;
   params: S extends { params: infer P extends z.ZodType } ? z.infer<P> : Record<string, string>;
   body: S extends { body: infer B extends z.ZodType } ? z.infer<B> : unknown;
   principal: Principal | undefined;
@@ -72,7 +72,9 @@ export function validateRequest<S extends OperationSpec>(
   declaration: OperationDeclaration<S>,
   raw: { search: string; params: Record<string, string>; body: unknown },
 ): ValidatedRequest<S> {
-  const query = parseQuery(raw.search, declaration.query ?? {});
+  const query = declaration.querySchema
+    ? ordinaryQuery(raw.search, declaration.querySchema)
+    : parseQuery(raw.search, declaration.query ?? {});
   const params = declaration.params?.safeParse(raw.params);
   const body = declaration.body?.safeParse(raw.body);
   const errors: ApiError[] = [];
@@ -133,4 +135,29 @@ export function validateRequest<S extends OperationSpec>(
     body: body?.success ? body.data : raw.body,
     principal: undefined,
   } as ValidatedRequest<S>;
+}
+
+function ordinaryQuery(search: string, schema: z.ZodObject): unknown {
+  const raw = new URLSearchParams(search);
+  const seen = new Set<string>();
+  const invalid = (parameter: string): never => {
+    throw new ApiError({
+      status: 400,
+      code: "jsonapi.invalid_query",
+      title: "쿼리가 올바르지 않다",
+      source: { parameter },
+    });
+  };
+  for (const key of raw.keys()) {
+    if (seen.has(key) && Object.hasOwn(schema.shape, key)) invalid(key);
+    seen.add(key);
+  }
+  const parsed = schema.safeParse(Object.fromEntries(raw));
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    invalid(
+      issue?.code === "unrecognized_keys" ? (issue.keys[0] ?? "") : String(issue?.path[0] ?? ""),
+    );
+  }
+  return parsed.data;
 }

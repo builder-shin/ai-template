@@ -1,3 +1,5 @@
+import { OAuthState } from "../index.js";
+import { memoryRedis } from "../oauth/tests/fixtures.js";
 import { randomUUID } from "node:crypto";
 import { UnitOfWork, type Tx } from "../../../core/db/unit-of-work.js";
 import type { PrismaService } from "../../../core/db/prisma.service.js";
@@ -23,7 +25,7 @@ type State = {
   audits: object[];
   loginAt: Date | null;
 };
-export function sessionFixture() {
+export function sessionFixture(oauth = new OAuthState(memoryRedis().redis)) {
   let committed: State = { users: [], sessions: [], refresh: [], audits: [], loginAt: null };
   let active: State | undefined;
   let failAudit = false;
@@ -150,7 +152,7 @@ export function sessionFixture() {
   const roles = new MemoryRoles();
   const auth = new MemoryAuth();
   const repository = new MemorySessions();
-  const service = new SessionsService(unit, repository, auth, limiter, settings);
+  const service = new SessionsService(unit, repository, auth, limiter, settings, oauth);
   const resolver = new JwtPrincipalResolver(unit, repository, auth, roles, settings);
   return {
     service,

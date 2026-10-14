@@ -290,3 +290,16 @@ const passwordChangeResource = registerComponent(
 );
 registerComponent("PasswordResetDocument", z.object({ data: passwordResetResource }));
 registerComponent("PasswordChangeDocument", z.object({ data: passwordChangeResource }));
+
+export const oauthProviderSchema = registerComponent(
+  "OAuthProvider",
+  z.enum(["google", "kakao", "naver"]),
+);
+export const oauthParamsSchema = z.object({ provider: oauthProviderSchema });
+export const oauthAuthorizeQuerySchema = z.strictObject({
+  redirectUri: z.url(),
+  codeChallenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+});
+export const oauthCallbackQuerySchema = z
+  .object({ state: z.string(), code: z.string().optional(), error: z.string().optional() })
+  .loose();

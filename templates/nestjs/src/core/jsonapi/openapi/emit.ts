@@ -53,6 +53,14 @@ export function buildOpenApi(
     const params = op.params?.shape as Readonly<Record<string, z.ZodType>> | undefined;
     for (const [name, schema] of Object.entries(params ?? {}))
       parameters.push({ name, in: "path", required: true, schema: schemaFor(schema) });
+    const ordinary = op.querySchema?.shape as Readonly<Record<string, z.ZodType>> | undefined;
+    for (const [name, schema] of Object.entries(ordinary ?? {}))
+      parameters.push({
+        name,
+        in: "query",
+        required: !schema.safeParse(undefined).success,
+        schema: schemaFor(schema),
+      });
     const query = (name: string, schema: JsonSchema) =>
       parameters.push({ name, in: "query", required: false, schema, explode: false });
     if (op.query?.page) {

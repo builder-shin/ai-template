@@ -1,3 +1,5 @@
+import { OAuthState } from "./oauth/state.js";
+import { verifiesCodeChallenge } from "./oauth/pkce.js";
 import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { SETTINGS, type Settings } from "../../core/config/settings.js";
@@ -30,7 +32,48 @@ export class SessionsService {
     @Inject(AuthRepository) private readonly auth: AuthRepository,
     @Inject(StrictLimiter) private readonly limiter: StrictLimiter,
     @Inject(SETTINGS) private readonly settings: Settings,
+    @Inject(OAuthState) private readonly oauth: OAuthState,
   ) {}
+  async createWithOAuthCode(
+    input: { code: string; codeVerifier: string },
+    client: { ip: string; userAgent?: string },
+  ) {
+    const invalid = () =>
+      new ApiError({
+        status: 401,
+        code: "auth.oauth_code_invalid",
+        title: "소셜 로그인 코드가 올바르지 않다",
+        headers: { "WWW-Authenticate": "Bearer" },
+      });
+    const code = await this.oauth.consumeCode(input.code);
+    if (!code || !verifiesCodeChallenge(code.codeChallenge, input.codeVerifier)) throw invalid();
+    return this.unit.run(async (tx) => {
+      const user = await this.auth.findById(tx, code.userId);
+      if (!user) throw invalid();
+      if (user.status !== "active")
+        throw new ApiError({
+          status: 403,
+          code: "auth.account_deactivated",
+          title: "비활성 계정이다",
+        });
+      const at = new Date();
+      const session = await this.repository.create(tx, {
+        userId: user.id,
+        at,
+        expiresAt: expiresAt(at),
+        ...client,
+      });
+      const document = await this.issue(tx, session, at);
+      await this.repository.loginAt(tx, user.id, at);
+      await recordAudit(tx, {
+        action: "session.login_succeeded",
+        actorUserId: user.id,
+        target: { type: "sessions", id: session.id },
+        meta: { method: "oauth", provider: code.provider },
+      });
+      return document;
+    });
+  }
   async createWithPassword(
     input: { email: string; password: string },
     client: { ip: string; userAgent?: string },

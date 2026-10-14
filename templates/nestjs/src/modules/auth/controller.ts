@@ -1,3 +1,5 @@
+import { OAuthService } from "./oauth/oauth.service.js";
+import { registrationLocale } from "./registration.service.js";
 import { Controller, HttpCode, Inject, Req, Res } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { randomUUID } from "node:crypto";
@@ -5,6 +7,8 @@ import type { Principal } from "../../core/security/principal.js";
 import { Operation, JsonApiRequest } from "../../core/jsonapi/decorators.js";
 import type { ValidatedRequest } from "../../core/jsonapi/validation.js";
 import {
+  authorizeOAuth,
+  callbackOAuth,
   createRegistration,
   requestEmailVerification,
   createEmailVerification,
@@ -21,10 +25,10 @@ import { RegistrationService } from "./registration.service.js";
 import { VerificationService } from "./verification.service.js";
 import { SessionsService } from "./sessions.service.js";
 import { PasswordsService } from "./passwords.service.js";
-import { ApiError } from "../../core/jsonapi/errors.js";
 @Controller()
 export class AuthController {
   constructor(
+    @Inject(OAuthService) private readonly oauth: OAuthService,
     @Inject(RegistrationService) private readonly registration: RegistrationService,
     @Inject(VerificationService) private readonly verification: VerificationService,
     @Inject(SessionsService) private readonly sessions: SessionsService,
@@ -43,6 +47,34 @@ export class AuthController {
   @Operation(createPasswordReset)
   reset(@JsonApiRequest() input: ValidatedRequest<typeof createPasswordReset>) {
     return this.passwords.reset(input.body.data.attributes);
+  }
+  @Operation(authorizeOAuth)
+  async authorizeOAuth(
+    @JsonApiRequest() input: ValidatedRequest<typeof authorizeOAuth>,
+    @Res() res: Response,
+  ): Promise<void> {
+    res
+      .status(302)
+      .setHeader("Location", await this.oauth.authorize(input.params.provider, input.query));
+    res.end();
+  }
+  @Operation(callbackOAuth)
+  async callbackOAuth(
+    @JsonApiRequest() input: ValidatedRequest<typeof callbackOAuth>,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    res
+      .status(302)
+      .setHeader(
+        "Location",
+        await this.oauth.callback(
+          input.params.provider,
+          input.query,
+          registrationLocale(req.headers["accept-language"]),
+        ),
+      );
+    res.end();
   }
   @Operation(createPasswordChange)
   change(@JsonApiRequest() input: ValidatedRequest<typeof createPasswordChange>) {
@@ -80,10 +112,11 @@ export class AuthController {
   ) {
     const attributes = input.body.data.attributes;
     if (attributes.grantType === "oauthCode")
-      throw new ApiError({
-        status: 503,
-        code: "service.unavailable",
-        title: "OAuth exchange is unavailable",
+      return this.sessions.createWithOAuthCode(attributes, {
+        ip: req.ip ?? "",
+        ...(req.headers["user-agent"] === undefined
+          ? {}
+          : { userAgent: req.headers["user-agent"] }),
       });
     if (attributes.grantType === "refreshToken")
       return this.sessions.refresh(attributes.refreshToken);

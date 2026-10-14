@@ -25,6 +25,7 @@ model User {
   auditLogs          AuditLog[]
   verificationTokens VerificationToken[]
   sessions           Session[]
+  oauthAccounts      OAuthAccount[]
 
   @@map("users")
 }
@@ -112,4 +113,17 @@ model AuditLog {
 
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model OAuthAccount {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  provider String
+  subject  String
+  userId   String  @map("user_id") @db.Uuid
+  email    String?
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([userId])
+  @@map("oauth_accounts")
 }

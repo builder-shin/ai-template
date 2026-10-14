@@ -10,6 +10,7 @@
     { "name": "sessions" },
     { "name": "password-resets" },
     { "name": "password-changes" },
+    { "name": "oauth" },
     { "name": "realtime" }
   ],
   "paths": {
@@ -1401,6 +1402,180 @@
         }
       }
     },
+    "/api/v1/oauth/{provider}/authorize": {
+      "get": {
+        "operationId": "OAuth_authorize",
+        "summary": "제공자 로그인 화면으로 보낸다",
+        "tags": ["oauth"],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/OAuthProvider" }
+          },
+          {
+            "name": "redirectUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uri" }
+          },
+          {
+            "name": "codeChallenge",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "리다이렉트한다",
+            "headers": {
+              "Location": {
+                "schema": { "type": "string", "format": "uri" },
+                "required": true
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/oauth/{provider}/callback": {
+      "get": {
+        "operationId": "OAuth_callback",
+        "summary": "제공자 신원을 연결하고 프론트로 보낸다",
+        "tags": ["oauth"],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/OAuthProvider" }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "리다이렉트한다",
+            "headers": {
+              "Location": {
+                "schema": { "type": "string", "format": "uri" },
+                "required": true
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/realtime-tickets": {
       "post": {
         "operationId": "RealtimeTickets_create",
@@ -2206,6 +2381,10 @@
           "data": { "$ref": "#/components/schemas/PasswordChangeResource" }
         },
         "required": ["data"]
+      },
+      "OAuthProvider": {
+        "type": "string",
+        "enum": ["google", "kakao", "naver"]
       },
       "RealtimeChannel": { "type": "string", "enum": ["posts", "posts:all"] },
       "RealtimeSubscription": {

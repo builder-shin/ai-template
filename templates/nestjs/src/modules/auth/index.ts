@@ -25,3 +25,11 @@ export {
   passwordResetCreateDocumentSchema,
   passwordChangeCreateDocumentSchema,
 } from "./schemas.js";
+
+export { OAuthClient } from "./oauth/client.js";
+export { OAuthState } from "./oauth/state.js";
+export { OAuthService } from "./oauth/oauth.service.js";
+export { identityFrom } from "./oauth/identity.js";
+export { linkAccount } from "./oauth/link.js";
+export { challengeFor, verifiesCodeChallenge } from "./oauth/pkce.js";
+export type { OAuthProvider, ProviderIdentity } from "./oauth/providers.js";

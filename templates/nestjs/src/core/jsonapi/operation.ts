@@ -11,6 +11,7 @@ export interface OperationSpec {
   auth: "required" | "optional" | "none";
   permission?: PermissionCode;
   query?: QuerySpec;
+  querySchema?: z.ZodObject;
   params?: z.ZodObject;
   body?: z.ZodType;
   responses: Readonly<
@@ -36,6 +37,7 @@ export type OperationDeclaration<S extends OperationSpec = OperationSpec> = Omit
   Pick<OperationSpec, "responses" | "errors">;
 const registry = new Map<string, OperationDeclaration>();
 export function defineOperation<const S extends OperationSpec>(spec: S): OperationDeclaration<S> {
+  if (spec.query && spec.querySchema) throw new Error("쿼리 선언 방식은 하나만 쓴다");
   if (registry.has(spec.operationId))
     throw new Error(`operationId가 중복된다: ${spec.operationId}`);
   const responses = { ...spec.responses };

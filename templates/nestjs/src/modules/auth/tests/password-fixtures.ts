@@ -1,3 +1,5 @@
+import { OAuthState } from "../index.js";
+import { memoryRedis } from "../oauth/tests/fixtures.js";
 import { createHash, randomUUID } from "node:crypto";
 import { UnitOfWork, type Tx, type AfterCommit } from "../../../core/db/unit-of-work.js";
 import type { PrismaService } from "../../../core/db/prisma.service.js";
@@ -209,7 +211,14 @@ export function passwordFixture() {
     FRONTEND_URL: "https://web.example.test/base/",
   } as Settings;
   const auth = new AuthRepository();
-  const sessions = new SessionsService(unit, new SessionsRepository(), auth, limiter, settings);
+  const sessions = new SessionsService(
+    unit,
+    new SessionsRepository(),
+    auth,
+    limiter,
+    settings,
+    new OAuthState(memoryRedis().redis),
+  );
   const service = new PasswordsService(unit, auth, sessions, queue, limiter, settings);
   return {
     service,

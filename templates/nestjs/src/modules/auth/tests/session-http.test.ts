@@ -81,6 +81,7 @@ async function fixture() {
   });
   const target = app.app.get(SessionsService);
   for (const key of [
+    "createWithOAuthCode",
     "createWithPassword",
     "refresh",
     "list",
@@ -97,7 +98,7 @@ async function fixture() {
 type SessionDocument = {
   data: { id: string; attributes: { accessToken: string; refreshToken: string } };
 };
-it("유효한 OAuth grant는 Task 14 전까지 명시적 503이고 비밀번호·refresh·세션 작업을 호출하지 않는다", async () => {
+it("발급하지 않은 OAuth 코드는 Bearer 401이며 비밀번호·refresh·세션 작업을 호출하지 않는다", async () => {
   const f = await fixture();
   const sessions = f.app.get(SessionsService);
   const password = vi.spyOn(sessions, "createWithPassword");
@@ -106,13 +107,14 @@ it("유효한 OAuth grant는 Task 14 전까지 명시적 503이고 비밀번호�
     const response = await f.post({
       grantType: "oauthCode",
       code: "one-time-code",
-      codeVerifier: "verifier",
+      codeVerifier: "a".repeat(43),
     });
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(401);
+    expect(response.headers["www-authenticate"]).toBe("Bearer");
     expect(response.headers["content-type"]).toBe(mediaType);
     expect(errorDocument(response.text).errors[0]).toMatchObject({
-      status: "503",
-      code: "service.unavailable",
+      status: "401",
+      code: "auth.oauth_code_invalid",
     });
     expect(password).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();

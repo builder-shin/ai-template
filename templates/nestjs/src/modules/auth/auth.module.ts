@@ -1,3 +1,6 @@
+import { OAuthClient } from "./oauth/client.js";
+import { OAuthState } from "./oauth/state.js";
+import { OAuthService } from "./oauth/oauth.service.js";
 import { Module, type DynamicModule } from "@nestjs/common";
 import { JobsModule } from "../../core/jobs/jobs.module.js";
 import { MailModule } from "../../core/mail/mail.module.js";
@@ -25,6 +28,9 @@ export class AuthModule {
       controllers: [AuthController],
       providers: infrastructure
         ? [
+            OAuthClient,
+            OAuthState,
+            OAuthService,
             AuthRepository,
             RegistrationService,
             VerificationService,
@@ -37,6 +43,13 @@ export class AuthModule {
           ]
         : [
             {
+              provide: OAuthService,
+              useValue: { authorize: unavailable, callback: unavailable } satisfies Pick<
+                OAuthService,
+                "authorize" | "callback"
+              >,
+            },
+            {
               provide: PasswordsService,
               useValue: {
                 request: unavailable,
@@ -47,6 +60,7 @@ export class AuthModule {
             {
               provide: SessionsService,
               useValue: {
+                createWithOAuthCode: unavailable,
                 createWithPassword: unavailable,
                 refresh: unavailable,
                 list: unavailable,
@@ -56,6 +70,7 @@ export class AuthModule {
                 revokeAll: unavailable,
               } satisfies Pick<
                 SessionsService,
+                | "createWithOAuthCode"
                 | "createWithPassword"
                 | "refresh"
                 | "list"
@@ -78,6 +93,7 @@ export class AuthModule {
             },
           ],
       exports: [
+        OAuthService,
         RegistrationService,
         VerificationService,
         SessionsService,

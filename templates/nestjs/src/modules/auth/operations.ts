@@ -3,6 +3,9 @@ import { jsonInteger } from "../../core/jsonapi/schemas.js";
 import { uuidString } from "../../core/jsonapi/schemas.js";
 import { z } from "zod";
 import {
+  oauthParamsSchema,
+  oauthAuthorizeQuerySchema,
+  oauthCallbackQuerySchema,
   registrationCreateDocumentSchema,
   emailVerificationRequestCreateDocumentSchema,
   emailVerificationCreateDocumentSchema,
@@ -114,6 +117,7 @@ export const createSession = defineOperation({
     "auth.email_not_verified",
     "auth.account_deactivated",
     "auth.refresh_token_reused",
+    "auth.oauth_code_invalid",
   ],
 });
 export const listSessions = defineOperation({
@@ -211,4 +215,47 @@ export const createPasswordChange = defineOperation({
     401: failure,
   },
   errors: [...errors, ...authErrors, "auth.invalid_credentials"],
+});
+
+const oauthResponses = {
+  302: {
+    description: "리다이렉트한다",
+    headers: { Location: { required: true, schema: z.url() } },
+  },
+  400: failure,
+  404: failure,
+  406: failure,
+  429: failures[429],
+  500: failure,
+};
+const oauthErrors = [
+  "jsonapi.invalid_query",
+  "resource.not_found",
+  "jsonapi.not_acceptable",
+  "rate_limit.exceeded",
+  "internal.unexpected",
+] as const;
+export const authorizeOAuth = defineOperation({
+  operationId: "OAuth_authorize",
+  method: "GET",
+  path: "/api/v1/oauth/{provider}/authorize",
+  tags: ["oauth"],
+  summary: "제공자 로그인 화면으로 보낸다",
+  auth: "none",
+  params: oauthParamsSchema,
+  querySchema: oauthAuthorizeQuerySchema,
+  responses: oauthResponses,
+  errors: oauthErrors,
+});
+export const callbackOAuth = defineOperation({
+  operationId: "OAuth_callback",
+  method: "GET",
+  path: "/api/v1/oauth/{provider}/callback",
+  tags: ["oauth"],
+  summary: "제공자 신원을 연결하고 프론트로 보낸다",
+  auth: "none",
+  params: oauthParamsSchema,
+  querySchema: oauthCallbackQuerySchema,
+  responses: oauthResponses,
+  errors: oauthErrors,
 });
