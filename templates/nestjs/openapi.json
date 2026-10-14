@@ -12,6 +12,7 @@
     { "name": "password-resets" },
     { "name": "password-changes" },
     { "name": "oauth" },
+    { "name": "me" },
     { "name": "realtime" }
   ],
   "paths": {
@@ -2022,6 +2023,324 @@
         }
       }
     },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "Me_get",
+        "summary": "내 정보와 실제 권한을 조회한다",
+        "tags": ["me"],
+        "parameters": [
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[roles]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "내 정보를 조회했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/UserMeDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-jsonapi-include": ["roles", "avatar"]
+      },
+      "patch": {
+        "operationId": "Me_update",
+        "summary": "내 이름과 로케일과 아바타를 바꾼다",
+        "tags": ["me"],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "내 정보를 바꿨다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/UserMeDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/UserMeUpdateDocument" }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Me_delete",
+        "summary": "내 정보를 익명화하고 탈퇴한다",
+        "tags": ["me"],
+        "parameters": [],
+        "responses": {
+          "204": { "description": "탈퇴했다" },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }]
+      }
+    },
     "/api/v1/realtime-tickets": {
       "post": {
         "operationId": "RealtimeTickets_create",
@@ -2467,9 +2786,36 @@
         },
         "required": ["data", "links", "meta"]
       },
-      "UserStatus": {
-        "type": "string",
-        "enum": ["active", "deactivated", "deleted"]
+      "RoleAttributes": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": ["string", "null"] },
+          "permissions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PermissionCode" }
+          },
+          "isSystem": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "name",
+          "description",
+          "permissions",
+          "isSystem",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "RoleResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["roles"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/RoleAttributes" }
+        },
+        "required": ["type", "id", "attributes"]
       },
       "SessionPasswordGrant": {
         "type": "object",
@@ -2954,6 +3300,226 @@
         "type": "string",
         "enum": ["google", "kakao", "naver"]
       },
+      "UserStatus": {
+        "type": "string",
+        "enum": ["active", "deactivated", "deleted"]
+      },
+      "UserAttributes": {
+        "type": "object",
+        "properties": {
+          "email": { "type": ["string", "null"] },
+          "name": { "type": ["string", "null"] },
+          "locale": { "$ref": "#/components/schemas/Locale" },
+          "status": { "$ref": "#/components/schemas/UserStatus" },
+          "emailVerifiedAt": {
+            "anyOf": [
+              { "type": "string", "format": "date-time" },
+              { "type": "null" }
+            ]
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "email",
+          "name",
+          "locale",
+          "status",
+          "emailVerifiedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UserRelationships": {
+        "type": "object",
+        "properties": {
+          "roles": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string", "enum": ["roles"] },
+                    "id": { "type": "string" }
+                  },
+                  "required": ["type", "id"]
+                }
+              }
+            },
+            "required": ["data"]
+          },
+          "avatar": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["files"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["roles", "avatar"]
+      },
+      "UserResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["users"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/UserAttributes" },
+          "relationships": { "$ref": "#/components/schemas/UserRelationships" }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "UserPublicAttributes": {
+        "type": "object",
+        "properties": { "name": { "type": ["string", "null"] } },
+        "required": ["name"]
+      },
+      "UserPublicRelationships": {
+        "type": "object",
+        "properties": {
+          "avatar": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["files"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["avatar"]
+      },
+      "UserPublicResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["users"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/UserPublicAttributes" },
+          "relationships": {
+            "$ref": "#/components/schemas/UserPublicRelationships"
+          }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "UserMeDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/UserResource" },
+          "included": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "$ref": "#/components/schemas/RoleResource" },
+                { "$ref": "#/components/schemas/FileResource" }
+              ]
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "permissions": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/PermissionCode" }
+              }
+            },
+            "required": ["permissions"]
+          }
+        },
+        "required": ["data", "meta"]
+      },
+      "UserMeUpdateAttributes": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "locale": { "$ref": "#/components/schemas/Locale" }
+        }
+      },
+      "UserMeUpdateRelationships": {
+        "type": "object",
+        "properties": {
+          "avatar": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["files"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        }
+      },
+      "UserMeUpdateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["users"] },
+              "id": { "type": "string" },
+              "attributes": {
+                "$ref": "#/components/schemas/UserMeUpdateAttributes"
+              },
+              "relationships": {
+                "$ref": "#/components/schemas/UserMeUpdateRelationships"
+              }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
+      },
+      "UserMeUpdatedEventDocument": {
+        "type": "object",
+        "properties": {
+          "meta": {
+            "type": "object",
+            "properties": {
+              "changed": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["roles", "status", "profile"]
+                }
+              }
+            },
+            "required": ["changed"]
+          }
+        },
+        "required": ["meta"]
+      },
       "RealtimeChannel": { "type": "string", "enum": ["posts", "posts:all"] },
       "RealtimeSubscription": {
         "type": "object",
@@ -3042,6 +3608,11 @@
     "securitySchemes": { "BearerAuth": { "type": "http", "scheme": "Bearer" } }
   },
   "x-realtime-events": [
+    {
+      "name": "me.updated",
+      "rooms": ["user:{userId}"],
+      "payload": "UserMeUpdatedEventDocument"
+    },
     {
       "name": "session.revoked",
       "rooms": ["user:{userId}"],

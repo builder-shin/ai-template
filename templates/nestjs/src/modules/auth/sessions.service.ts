@@ -218,6 +218,21 @@ export class SessionsService {
   ): Promise<void> {
     await this.revokeActive(tx, afterCommit, userId, at, reason, keepSessionId);
   }
+  async revokeForAccountDeletion(
+    tx: Tx,
+    afterCommit: AfterCommit,
+    userId: string,
+    at: Date,
+  ): Promise<void> {
+    const ids: string[] = [];
+    for (const candidate of await this.repository.unrevoked(tx, userId)) {
+      const session = await this.repository.lock(tx, candidate.id);
+      if (session && !session.revokedAt) ids.push(session.id);
+    }
+    await this.repository.revoke(tx, ids, at, "account_deleted");
+    if (ids.length)
+      sessionsRevoked(afterCommit, { userId, sessionIds: ids, reason: "account_deleted" });
+  }
   private revokeMany(principal: Principal, scope: "others" | "all"): Promise<number> {
     return this.unit.run(async (tx, afterCommit) => {
       const at = new Date();

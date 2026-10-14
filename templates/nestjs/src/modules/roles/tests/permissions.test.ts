@@ -6,6 +6,7 @@ import { settings } from "../../../core/http/tests/fixtures.js";
 import { IncludeRegistry } from "../../../core/jsonapi/include.js";
 import { registerDomain } from "../../registry.js";
 import type { INestApplicationContext } from "@nestjs/common";
+import { MeRealtimeBridge } from "../../users/index.js";
 import { SessionRealtimeBridge } from "../../realtime/index.js";
 
 vi.mock("../../../core/security/permissions.js", async (importOriginal) => {
@@ -79,7 +80,8 @@ it("등록부가 역할 include 로더를 앱에 연결한다", async () => {
   const app = {
     get: (token: unknown) => {
       if (token === IncludeRegistry) return registry;
-      if (token === SessionRealtimeBridge) return { register: () => {} };
+      if (token === SessionRealtimeBridge || token === MeRealtimeBridge)
+        return { register: () => {} };
       return new RolesRepository();
     },
   } as unknown as INestApplicationContext;
@@ -128,6 +130,8 @@ it("역할 include는 등록된 코드를 보존하고 폐기된 코드를 제�
         description: null,
         permissions: ["roles:read", "posts:create"],
         isSystem: false,
+        createdAt: "1970-01-01T00:00:00.000Z",
+        updatedAt: "1970-01-01T00:00:00.000Z",
       },
     },
   ]);

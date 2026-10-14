@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { registerComponent } from "../../core/jsonapi/schemas.js";
+import { permissionCodeSchema } from "../../core/security/permissions.js";
+import { registerComponent, dateTimeString } from "../../core/jsonapi/schemas.js";
 import {
   paginationLinksSchema,
   collectionMetaSchema,
@@ -23,4 +24,20 @@ export const permissionCollectionDocumentSchema = registerComponent(
     links: paginationLinksSchema,
     meta: collectionMetaSchema,
   }),
+);
+
+export const roleAttributesSchema = registerComponent(
+  "RoleAttributes",
+  z.object({
+    name: z.string(),
+    description: z.string().nullable(),
+    permissions: z.array(permissionCodeSchema),
+    isSystem: z.boolean(),
+    createdAt: dateTimeString(),
+    updatedAt: dateTimeString(),
+  }),
+);
+export const roleResourceSchema = registerComponent(
+  "RoleResource",
+  z.object({ type: z.enum(["roles"]), id: z.string(), attributes: roleAttributesSchema }),
 );

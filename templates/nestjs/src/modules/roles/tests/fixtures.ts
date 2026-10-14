@@ -32,11 +32,13 @@ export function databaseFixture() {
       where,
     }: { where?: { name?: { in: readonly string[] }; id?: { in: readonly string[] } } } = {}) =>
       Promise.resolve(
-        roles.filter(
-          (r) =>
-            (!where?.name || where.name.in.includes(r.name)) &&
-            (!where?.id || where.id.in.includes(r.id)),
-        ),
+        roles
+          .filter(
+            (r) =>
+              (!where?.name || where.name.in.includes(r.name)) &&
+              (!where?.id || where.id.in.includes(r.id)),
+          )
+          .map((r) => ({ ...r, createdAt: new Date(0), updatedAt: new Date(0) })),
       ),
     upsert: ({
       where,

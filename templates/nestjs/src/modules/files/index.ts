@@ -5,3 +5,4 @@ export { readableFileIds } from "./policies.js";
 export { FilesRepository, type FileRecord, type NewFile } from "./repository.js";
 export { fileCreateDocumentSchema, fileUpdateDocumentSchema } from "./schemas.js";
 export { registerFileJobs } from "./jobs.js";
+export { fileResourceSchema } from "./schemas.js";

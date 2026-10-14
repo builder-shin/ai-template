@@ -77,6 +77,9 @@ export class SessionsRepository {
       ],
     });
   }
+  unrevoked(tx: Tx, userId: string): Promise<SessionRow[]> {
+    return tx.session.findMany({ where: { userId, revokedAt: null }, orderBy: { id: "asc" } });
+  }
   async loginAt(tx: Tx, userId: string, at: Date): Promise<void> {
     await tx.user.update({ where: { id: userId }, data: { lastLoginAt: at } });
   }

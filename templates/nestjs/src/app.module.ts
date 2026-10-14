@@ -51,14 +51,16 @@ export class AppModule {
     infrastructure: boolean,
   ): DynamicModule {
     const auth = AuthModule.register(infrastructure);
+    const realtime = RealtimeModule.register(infrastructure, auth);
+    const files = FilesModule.register(infrastructure);
     return {
       module: AppModule,
       imports: [
         HealthModule,
-        UsersModule,
-        FilesModule.register(infrastructure),
+        UsersModule.register(infrastructure, [auth, realtime, files]),
+        files,
         auth,
-        RealtimeModule.register(infrastructure, auth),
+        realtime,
         ...(infrastructure ? [DbModule, RedisModule, RateLimitModule, StorageModule] : []),
         ...(overrides.imports ?? []),
       ],

@@ -57,6 +57,8 @@ export class RolesRepository {
             ? [...PERMISSION_CODES]
             : role.permissions.filter((code) => PERMISSION_CODES.some((known) => known === code)),
         isSystem: role.system,
+        createdAt: role.createdAt.toISOString(),
+        updatedAt: role.updatedAt.toISOString(),
       }),
     );
   }

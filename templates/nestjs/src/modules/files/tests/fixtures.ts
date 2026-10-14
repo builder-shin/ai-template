@@ -31,7 +31,7 @@ export function fixture(overrides: Partial<Settings> = {}) {
       active = structuredClone(committed);
       events.push("begin");
       try {
-        const result = await fn({} as Tx);
+        const result = await fn({ user: { findMany: () => Promise.resolve([]) } } as unknown as Tx);
         if (fail) throw new Error("commit 실패");
         committed = active;
         events.push("commit");

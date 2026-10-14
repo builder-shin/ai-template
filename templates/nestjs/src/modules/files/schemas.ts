@@ -51,7 +51,7 @@ const relationships = registerComponent(
     owner: z.object({ data: z.object({ type: z.enum(["users"]), id: z.string() }).nullable() }),
   }),
 );
-const resource = registerComponent(
+export const fileResourceSchema = registerComponent(
   "FileResource",
   z.object({
     type: z.enum(["files"]),
@@ -61,7 +61,7 @@ const resource = registerComponent(
     meta: meta.optional(),
   }),
 );
-registerComponent("FileDocument", z.object({ data: resource }));
+registerComponent("FileDocument", z.object({ data: fileResourceSchema }));
 export const fileCreateDocumentSchema = registerComponent(
   "FileCreateDocument",
   z.object({ data: z.object({ type: z.enum(["files"]), attributes: createAttributes }) }),
