@@ -3,6 +3,8 @@ import { storageClients } from "./core/storage/client.js";
 import { prepareBucket } from "./core/storage/setup.js";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { JsonLogger } from "./core/logging/json-logger.js";
+import { storageFailure } from "./core/storage/diagnostics.js";
 export async function storageInit(): Promise<void> {
   const settings = loadSettings();
   const clients = storageClients(settings);
@@ -13,11 +15,18 @@ export async function storageInit(): Promise<void> {
     clients.public.destroy();
   }
 }
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+export async function storageInitMain(): Promise<number> {
   try {
     await storageInit();
-  } catch {
-    process.stderr.write("스토리지 버킷을 준비하지 못했다\n");
-    process.exitCode = 1;
+    return 0;
+  } catch (error) {
+    new JsonLogger().error(
+      { message: "스토리지 버킷 준비가 실패했다", phase: "storage_init", ...storageFailure(error) },
+      "storage-init",
+    );
+    return 1;
   }
+}
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  process.exitCode = await storageInitMain();
 }

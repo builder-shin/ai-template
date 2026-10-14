@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { HeadObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { SETTINGS, type Settings } from "../../core/config/settings.js";
@@ -7,7 +7,7 @@ import type { Principal } from "../../core/security/principal.js";
 import { ApiError } from "../../core/jsonapi/errors.js";
 import { STORAGE_CLIENTS, type StorageClients } from "../../core/storage/client.js";
 import { presignUpload, presignDownload } from "../../core/storage/presign.js";
-import { storageMissing } from "../../core/storage/setup.js";
+import { storageFailure } from "../../core/storage/diagnostics.js";
 import { FilesRepository, type FileRecord } from "./repository.js";
 import { readableFileIds } from "./policies.js";
 export interface FileCreateAttributes {
@@ -24,6 +24,7 @@ function incomplete(): ApiError {
 }
 @Injectable()
 export class FilesService {
+  private readonly logger = new Logger(FilesService.name);
   constructor(
     @Inject(UnitOfWork) private readonly unit: UnitOfWork,
     @Inject(FilesRepository) private readonly repository: FilesRepository,
@@ -95,7 +96,13 @@ export class FilesService {
           new HeadObjectCommand({ Bucket: this.settings.S3_BUCKET, Key: file.key }),
         );
       } catch (error) {
-        if (storageMissing(error)) throw incomplete();
+        const failure = storageFailure(error);
+        if (failure.httpStatus === 404) throw incomplete();
+        this.logger.warn({
+          message: "파일 완료 스토리지 요청이 실패했다",
+          phase: "complete_head",
+          ...failure,
+        });
         throw new ApiError({
           status: 503,
           code: "service.unavailable",

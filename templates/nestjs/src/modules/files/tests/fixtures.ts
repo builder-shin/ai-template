@@ -21,6 +21,7 @@ export function fixture(overrides: Partial<Settings> = {}) {
   let active: FileRecord[] | undefined;
   const events: string[] = [];
   let fail = false;
+  let headFailure: unknown;
   const state = () => {
     if (!active) throw new Error("트랜잭션 밖이다");
     return active;
@@ -111,6 +112,8 @@ export function fixture(overrides: Partial<Settings> = {}) {
     send(command: unknown) {
       if (command instanceof HeadObjectCommand) {
         events.push(`head:${command.input.Key ?? ""}`);
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- 외부 SDK의 임의 거절 값도 시험한다.
+        if (headFailure !== undefined) return Promise.reject(headFailure);
         const found = objects.get(command.input.Key ?? "");
         return found
           ? Promise.resolve(found)
@@ -155,6 +158,9 @@ export function fixture(overrides: Partial<Settings> = {}) {
     },
     set failCommit(value: boolean) {
       fail = value;
+    },
+    set headFailure(value: unknown) {
+      headFailure = value;
     },
   };
 }
