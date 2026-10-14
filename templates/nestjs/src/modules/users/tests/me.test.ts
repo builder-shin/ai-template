@@ -122,7 +122,9 @@ it("최근 로그인 창을 넘은 세션은 재인증이 필요하다", async (
     init: {
       status: 401,
       code: "auth.reauthentication_required",
-      headers: { "WWW-Authenticate": "Bearer" },
+      headers: {
+        "WWW-Authenticate": 'Bearer error="insufficient_user_authentication", max_age=600',
+      },
     },
   });
   expect(f.state.users[0]?.status).toBe("active");

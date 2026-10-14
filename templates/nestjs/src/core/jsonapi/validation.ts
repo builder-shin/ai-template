@@ -70,7 +70,12 @@ function issueError(issue: z.core.$ZodIssue, raw: unknown): ApiError {
 }
 export function validateRequest<S extends OperationSpec>(
   declaration: OperationDeclaration<S>,
-  raw: { search: string; params: Record<string, string>; body: unknown },
+  raw: {
+    search: string;
+    params: Record<string, string>;
+    body: unknown;
+    principal?: Principal | undefined;
+  },
 ): ValidatedRequest<S> {
   const query = declaration.querySchema
     ? ordinaryQuery(raw.search, declaration.querySchema)
@@ -89,6 +94,8 @@ export function validateRequest<S extends OperationSpec>(
         }),
       );
   const dataId = at(raw.body, ["data", "id"]);
+  const expectedId =
+    declaration.bodyIdSource === "principal" ? raw.principal?.userId : raw.params.id;
   const clientId = declaration.method === "POST" && dataId !== undefined;
   if (clientId)
     errors.push(
@@ -102,8 +109,8 @@ export function validateRequest<S extends OperationSpec>(
   if (
     declaration.method === "PATCH" &&
     typeof dataId === "string" &&
-    raw.params.id !== undefined &&
-    dataId !== raw.params.id
+    expectedId !== undefined &&
+    dataId !== expectedId
   )
     errors.push(
       new ApiError({

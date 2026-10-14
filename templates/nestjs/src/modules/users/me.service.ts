@@ -108,7 +108,9 @@ export class MeService {
           status: 401,
           code: "auth.reauthentication_required",
           title: "다시 로그인해야 한다",
-          headers: { "WWW-Authenticate": "Bearer" },
+          headers: {
+            "WWW-Authenticate": `Bearer error="insufficient_user_authentication", max_age=${String(this.settings.RECENT_LOGIN_SECONDS)}`,
+          },
         });
       await assertNotLastActiveAdmin(tx, principal.userId);
       await this.users.lock(tx, principal.userId);

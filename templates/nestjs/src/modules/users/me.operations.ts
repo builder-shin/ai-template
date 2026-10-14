@@ -61,6 +61,7 @@ export const updateMe = defineOperation({
   summary: "내 이름과 로케일과 아바타를 바꾼다",
   auth: "required",
   body: userMeUpdateDocumentSchema,
+  bodyIdSource: "principal",
   responses: {
     200: { schema: "UserMeDocument", description: "내 정보를 바꿨다" },
     ...failures,

@@ -14,6 +14,8 @@ export interface OperationSpec {
   querySchema?: z.ZodObject;
   params?: z.ZodObject;
   body?: z.ZodType;
+  /** 본문 id의 비교 기준이다. 선언하지 않으면 경로 id를 쓴다. */
+  bodyIdSource?: "path" | "principal";
   responses: Readonly<
     Record<
       number,

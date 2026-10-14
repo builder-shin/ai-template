@@ -29,6 +29,7 @@ export const JsonApiRequest: () => ParameterDecorator = createParamDecorator(
       search: index < 0 ? "" : req.originalUrl.slice(index + 1),
       params: req.params as Record<string, string>,
       body: req.body as unknown,
+      principal: req.principal,
     });
     return { ...validated, principal: req.principal };
   },
