@@ -2,6 +2,7 @@ import type { OperationDeclaration } from "../operation.js";
 import type { RegisteredComponent } from "../schemas.js";
 import { z } from "zod";
 import { normalizeSchema, type JsonSchema } from "./normalize.js";
+import { realtimeDeclarations } from "../../realtime/declarations.js";
 export interface OpenApiDocument {
   openapi: string;
   info: { title: string; version: string };
@@ -12,6 +13,9 @@ export interface OpenApiDocument {
     Record<string, { responses: Record<string, unknown>; [key: string]: unknown }>
   >;
   components: { schemas: Record<string, unknown>; securitySchemes: Record<string, unknown> };
+  "x-realtime-events": ReturnType<typeof realtimeDeclarations>["events"];
+  "x-realtime-messages": ReturnType<typeof realtimeDeclarations>["messages"];
+  "x-realtime-channels": ReturnType<typeof realtimeDeclarations>["channels"];
 }
 export function buildOpenApi(
   declarations: readonly OperationDeclaration[],
@@ -138,6 +142,9 @@ export function buildOpenApi(
     tags: [...new Set(declarations.flatMap((op) => [...op.tags]))].map((name) => ({ name })),
     paths,
     components: { schemas, securitySchemes: { BearerAuth: { type: "http", scheme: "Bearer" } } },
+    "x-realtime-events": realtimeDeclarations().events,
+    "x-realtime-messages": realtimeDeclarations().messages,
+    "x-realtime-channels": realtimeDeclarations().channels,
   };
 }
 /** 단일 스키마 내보내기의 로컬 $defs 참조를 이미 등록한 컴포넌트로 옮긴다. */

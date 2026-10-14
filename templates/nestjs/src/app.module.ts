@@ -26,6 +26,7 @@ import { IncludeRegistry } from "./core/jsonapi/include.js";
 import { UsersModule } from "./modules/users/index.js";
 import { AuthModule, JwtPrincipalResolver } from "./modules/auth/index.js";
 import { registerDomain } from "./modules/registry.js";
+import { RealtimeModule } from "./modules/realtime/index.js";
 
 @Global()
 @Module({})
@@ -46,6 +47,7 @@ export class AppModule {
         HealthModule,
         UsersModule,
         AuthModule.register(infrastructure),
+        RealtimeModule.register(infrastructure),
         ...(infrastructure ? [DbModule, RedisModule, RateLimitModule] : []),
         ...(overrides.imports ?? []),
       ],

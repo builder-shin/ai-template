@@ -1,9 +1,9 @@
-import { Inject, Injectable, type OnModuleDestroy } from "@nestjs/common";
+import { Inject, Injectable, type OnApplicationShutdown } from "@nestjs/common";
 import { Redis } from "ioredis";
 import { SETTINGS, type Settings } from "../config/settings.js";
 import { redisNamespace } from "./keys.js";
 @Injectable()
-export class RedisClients implements OnModuleDestroy {
+export class RedisClients implements OnApplicationShutdown {
   readonly prefix: string;
   readonly command: Redis;
   readonly subscriber: Redis;
@@ -53,7 +53,7 @@ export class RedisClients implements OnModuleDestroy {
       }),
     );
   }
-  async onModuleDestroy(): Promise<void> {
+  async onApplicationShutdown(): Promise<void> {
     await this.close();
   }
 }

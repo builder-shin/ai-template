@@ -5,6 +5,7 @@ import { writeDocument } from "../jsonapi/render.js";
 
 export class DocumentInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler<unknown>): Observable<unknown> {
+    if (context.getType() === "ws") return next.handle();
     const http = context.switchToHttp();
     const req = http.getRequest<Request>();
     const res = http.getResponse<Response>();

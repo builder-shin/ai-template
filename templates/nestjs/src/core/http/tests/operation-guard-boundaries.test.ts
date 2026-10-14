@@ -12,6 +12,7 @@ function fixture(auth?: "none" | "optional" | "required", permission?: string) {
   let resolved: Principal | undefined;
   const guard = new OperationGuard(new Reflector(), { resolve: () => Promise.resolve(resolved) });
   const context = {
+    getType: () => "http",
     getHandler: () => handler,
     switchToHttp: () => ({ getRequest: () => req }),
   } as unknown as ExecutionContext;

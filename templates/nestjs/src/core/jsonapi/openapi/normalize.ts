@@ -13,6 +13,13 @@ export function normalizeSchema(schema: JsonSchema): JsonSchema {
     if (Object.hasOwn(result, key)) result[key] = normalizeChild(result[key]);
   for (const key of ["anyOf", "oneOf", "allOf", "prefixItems"])
     if (Array.isArray(result[key])) result[key] = result[key].map(normalizeChild);
+  if (
+    typeof result.properties === "object" &&
+    result.properties !== null &&
+    !Array.isArray(result.properties) &&
+    Object.keys(result.properties).length === 0
+  )
+    delete result.properties;
   const names = result.propertyNames;
   if (
     result.type === "object" &&

@@ -53,6 +53,7 @@ it("앱의 모든 등록 라우트에 허용 목록 밖의 겹침이 없다", as
     { method: "POST", path: "/api/v1/sessions" },
     { method: "GET", path: "/api/v1/sessions" },
     { method: "POST", path: "/api/v1/session-revocations" },
+    { method: "POST", path: "/api/v1/realtime-tickets" },
     { method: "GET", path: "/api/v1/permissions" },
     { method: "GET", path: "/health/live" },
     { method: "GET", path: "/health/ready" },

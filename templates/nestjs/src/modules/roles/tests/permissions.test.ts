@@ -6,6 +6,7 @@ import { settings } from "../../../core/http/tests/fixtures.js";
 import { IncludeRegistry } from "../../../core/jsonapi/include.js";
 import { registerDomain } from "../../registry.js";
 import type { INestApplicationContext } from "@nestjs/common";
+import { SessionRealtimeBridge } from "../../realtime/index.js";
 
 vi.mock("../../../core/security/permissions.js", async (importOriginal) => {
   const actual = await importOriginal<typeof SecurityPermissions>();
@@ -76,7 +77,11 @@ it("등록부가 역할 include 로더를 앱에 연결한다", async () => {
   const { adminUserId } = await seedSystem(db.tx, settings);
   const registry = new IncludeRegistry();
   const app = {
-    get: (token: unknown) => (token === IncludeRegistry ? registry : new RolesRepository()),
+    get: (token: unknown) => {
+      if (token === IncludeRegistry) return registry;
+      if (token === SessionRealtimeBridge) return { register: () => {} };
+      return new RolesRepository();
+    },
   } as unknown as INestApplicationContext;
   registerDomain(app);
   const role = required(db.roles.find((r) => r.name === "admin"));

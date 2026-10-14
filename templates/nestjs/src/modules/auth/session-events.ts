@@ -16,8 +16,11 @@ export interface SessionRevocation {
 }
 type Listener = (afterCommit: AfterCommit, revocation: SessionRevocation) => void;
 const listeners = new Set<Listener>();
-export function onSessionsRevoked(listener: Listener): void {
+export function onSessionsRevoked(listener: Listener): () => void {
   listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 export function sessionsRevoked(afterCommit: AfterCommit, revocation: SessionRevocation): void {
   for (const listener of listeners) listener(afterCommit, revocation);

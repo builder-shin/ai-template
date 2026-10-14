@@ -63,7 +63,7 @@ it("준비된 연결은 quit하고 나머지는 disconnect한다", async () => {
   clients.command.status = "ready";
   const quit = vi.spyOn(clients.command, "quit").mockResolvedValue("OK");
   const disconnect = vi.spyOn(clients.command, "disconnect");
-  await clients.onModuleDestroy();
+  await clients.onApplicationShutdown();
   expect(quit).toHaveBeenCalledOnce();
   expect(disconnect).not.toHaveBeenCalled();
   expect(clients.subscriber.status).toBe("end");

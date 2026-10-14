@@ -17,6 +17,7 @@ export class OperationGuard implements CanActivate {
     @Inject(PRINCIPAL_RESOLVER) private readonly resolver: PrincipalResolver,
   ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (context.getType() === "ws") return true;
     const operation = this.reflector.get<OperationDeclaration | undefined>(
       OPERATION_METADATA,
       context.getHandler(),

@@ -9,6 +9,7 @@ import { DocumentInterceptor } from "./document.interceptor.js";
 import { ApiExceptionFilter } from "./exception.filter.js";
 import { GLOBAL_LIMITER, pipeline, type GlobalLimiter } from "./pipeline.js";
 export interface AppOverrides {
+  readonly configure?: (app: NestExpressApplication) => void;
   readonly settings?: Settings;
   readonly providers?: readonly Provider[];
   readonly imports?: readonly (Type<unknown> | DynamicModule)[];
@@ -39,6 +40,7 @@ export async function createApp(
   app.useGlobalFilters(filter);
   app.useGlobalInterceptors(new DocumentInterceptor());
   try {
+    overrides.configure?.(app);
     await app.init();
     AppModule.registerDomain(app);
     return app;

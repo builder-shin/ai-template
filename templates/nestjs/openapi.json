@@ -7,7 +7,8 @@
     { "name": "permissions" },
     { "name": "registrations" },
     { "name": "email-verifications" },
-    { "name": "sessions" }
+    { "name": "sessions" },
+    { "name": "realtime" }
   ],
   "paths": {
     "/health/live": {
@@ -1049,6 +1050,131 @@
           }
         }
       }
+    },
+    "/api/v1/realtime-tickets": {
+      "post": {
+        "operationId": "RealtimeTickets_create",
+        "summary": "한 번 쓸 수 있는 실시간 연결 티켓을 발급한다",
+        "tags": ["realtime"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "티켓을 발급했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealtimeTicketDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RealtimeTicketCreateDocument"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1611,8 +1737,115 @@
           "data": { "$ref": "#/components/schemas/EmailVerificationResource" }
         },
         "required": ["data"]
+      },
+      "RealtimeChannel": { "type": "string", "enum": ["posts", "posts:all"] },
+      "RealtimeSubscription": {
+        "type": "object",
+        "properties": {
+          "channel": { "$ref": "#/components/schemas/RealtimeChannel" }
+        },
+        "required": ["channel"]
+      },
+      "RealtimeAck": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "error": { "$ref": "#/components/schemas/ErrorObject" }
+        },
+        "required": ["ok"]
+      },
+      "RealtimeTicketCreateAttributes": { "type": "object" },
+      "RealtimeTicketCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["realtime-tickets"] },
+              "attributes": {
+                "$ref": "#/components/schemas/RealtimeTicketCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "RealtimeTicketAttributes": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["token", "expiresAt"]
+      },
+      "RealtimeTicketResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["realtime-tickets"] },
+          "id": { "type": "string" },
+          "attributes": {
+            "$ref": "#/components/schemas/RealtimeTicketAttributes"
+          }
+        },
+        "required": ["type", "id", "attributes"]
+      },
+      "RealtimeTicketDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/RealtimeTicketResource" }
+        },
+        "required": ["data"]
+      },
+      "SessionRevokedReason": {
+        "type": "string",
+        "enum": [
+          "logout",
+          "password_reset",
+          "account_deactivated",
+          "revoked",
+          "password_changed",
+          "refresh_token_reused",
+          "account_deleted"
+        ]
+      },
+      "SessionRevokedEventDocument": {
+        "type": "object",
+        "properties": {
+          "meta": {
+            "type": "object",
+            "properties": {
+              "reason": { "$ref": "#/components/schemas/SessionRevokedReason" }
+            },
+            "required": ["reason"]
+          }
+        },
+        "required": ["meta"]
       }
     },
     "securitySchemes": { "BearerAuth": { "type": "http", "scheme": "Bearer" } }
-  }
+  },
+  "x-realtime-events": [
+    {
+      "name": "session.revoked",
+      "rooms": ["user:{userId}"],
+      "payload": "SessionRevokedEventDocument"
+    }
+  ],
+  "x-realtime-messages": [
+    {
+      "name": "subscribe",
+      "payload": "RealtimeSubscription",
+      "ack": "RealtimeAck"
+    },
+    {
+      "name": "unsubscribe",
+      "payload": "RealtimeSubscription",
+      "ack": "RealtimeAck"
+    }
+  ],
+  "x-realtime-channels": [
+    { "name": "posts", "permission": null },
+    { "name": "posts:all", "permission": "posts:manage" }
+  ]
 }

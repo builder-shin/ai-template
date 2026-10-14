@@ -20,6 +20,9 @@ export class JwtPrincipalResolver implements PrincipalResolver {
     const match = /^Bearer ([^\s]+)$/i.exec(authorization);
     if (!match?.[1]) throw tokenError();
     const claims = await verifyAccessToken(match[1], this.settings.JWT_SECRET);
+    return this.resolveSession(claims);
+  }
+  async resolveSession(claims: Pick<Principal, "userId" | "sessionId">): Promise<Principal> {
     return this.unit.run(async (tx) => {
       const session = await this.sessions.find(tx, claims.sessionId);
       if (
