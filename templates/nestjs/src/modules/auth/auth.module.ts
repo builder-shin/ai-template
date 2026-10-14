@@ -9,6 +9,7 @@ import { VerificationService } from "./verification.service.js";
 import { AuthMails } from "./mails.js";
 import { SessionsRepository } from "./sessions.repository.js";
 import { SessionsService } from "./sessions.service.js";
+import { PasswordsService } from "./passwords.service.js";
 import { JwtPrincipalResolver } from "./principal.resolver.js";
 import { PasswordBootstrap } from "../../core/security/passwords.js";
 function unavailable(): never {
@@ -30,10 +31,19 @@ export class AuthModule {
             AuthMails,
             SessionsRepository,
             SessionsService,
+            PasswordsService,
             JwtPrincipalResolver,
             PasswordBootstrap,
           ]
         : [
+            {
+              provide: PasswordsService,
+              useValue: {
+                request: unavailable,
+                reset: unavailable,
+                change: unavailable,
+              } satisfies Pick<PasswordsService, "request" | "reset" | "change">,
+            },
             {
               provide: SessionsService,
               useValue: {
@@ -71,6 +81,7 @@ export class AuthModule {
         RegistrationService,
         VerificationService,
         SessionsService,
+        PasswordsService,
         ...(infrastructure ? [AuthMails, JwtPrincipalResolver] : []),
       ],
     };

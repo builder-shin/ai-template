@@ -47,6 +47,9 @@ it("앱의 모든 등록 라우트에 허용 목록 밖의 겹침이 없다", as
   expect(registeredRoutes(app)).toEqual([
     { method: "DELETE", path: "/api/v1/sessions/current" },
     { method: "DELETE", path: "/api/v1/sessions/:id" },
+    { method: "POST", path: "/api/v1/password-reset-requests" },
+    { method: "POST", path: "/api/v1/password-resets" },
+    { method: "POST", path: "/api/v1/password-changes" },
     { method: "POST", path: "/api/v1/registrations" },
     { method: "POST", path: "/api/v1/email-verification-requests" },
     { method: "POST", path: "/api/v1/email-verifications" },

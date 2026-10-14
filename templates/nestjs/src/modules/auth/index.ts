@@ -13,10 +13,15 @@ export { AuthRepository, type AuthUser, type NewUser } from "./repository.js";
 export { RegistrationService } from "./registration.service.js";
 export { VerificationService } from "./verification.service.js";
 export { AuthMails } from "./mails.js";
+export { PasswordsService } from "./passwords.service.js";
+export { purgeExpired } from "./purge.js";
 export {
   registrationCreateDocumentSchema,
   emailVerificationRequestCreateDocumentSchema,
   emailVerificationCreateDocumentSchema,
   sessionCreateDocumentSchema,
   sessionRevocationCreateDocumentSchema,
+  passwordResetRequestCreateDocumentSchema,
+  passwordResetCreateDocumentSchema,
+  passwordChangeCreateDocumentSchema,
 } from "./schemas.js";

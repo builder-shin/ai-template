@@ -165,6 +165,25 @@ export class SessionsService {
   revokeAll(principal: Principal): Promise<number> {
     return this.revokeMany(principal, "all");
   }
+  async revokeForPassword(
+    tx: Tx,
+    afterCommit: AfterCommit,
+    userId: string,
+    at: Date,
+    reason: "password_reset" | "password_changed",
+    keepSessionId?: string,
+  ): Promise<void> {
+    const candidates = (await this.repository.active(tx, userId, at))
+      .filter((s) => s.id !== keepSessionId)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const sessionIds: string[] = [];
+    for (const candidate of candidates) {
+      const session = await this.repository.lock(tx, candidate.id);
+      if (session && !session.revokedAt && session.expiresAt > at) sessionIds.push(session.id);
+    }
+    await this.repository.revoke(tx, sessionIds, at, reason);
+    if (sessionIds.length) sessionsRevoked(afterCommit, { userId, sessionIds, reason });
+  }
   private revokeMany(principal: Principal, scope: "others" | "all"): Promise<number> {
     return this.unit.run(async (tx, afterCommit) => {
       const at = new Date();

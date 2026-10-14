@@ -8,6 +8,8 @@
     { "name": "registrations" },
     { "name": "email-verifications" },
     { "name": "sessions" },
+    { "name": "password-resets" },
+    { "name": "password-changes" },
     { "name": "realtime" }
   ],
   "paths": {
@@ -1051,6 +1053,354 @@
         }
       }
     },
+    "/api/v1/password-reset-requests": {
+      "post": {
+        "operationId": "PasswordResetRequests_create",
+        "summary": "계정 유무와 관계없이 재설정 메일을 요청한다",
+        "tags": ["password-resets"],
+        "parameters": [],
+        "responses": {
+          "202": { "description": "요청을 받았다" },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequestCreateDocument"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/password-resets": {
+      "post": {
+        "operationId": "PasswordResets_create",
+        "summary": "비밀번호를 재설정하고 모든 세션을 폐기한다",
+        "tags": ["password-resets"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "비밀번호를 재설정했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetCreateDocument"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/password-changes": {
+      "post": {
+        "operationId": "PasswordChanges_create",
+        "summary": "비밀번호를 변경하고 다른 세션을 폐기한다",
+        "tags": ["password-changes"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "비밀번호를 변경했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordChangeDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeCreateDocument"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/realtime-tickets": {
       "post": {
         "operationId": "RealtimeTickets_create",
@@ -1735,6 +2085,125 @@
         "type": "object",
         "properties": {
           "data": { "$ref": "#/components/schemas/EmailVerificationResource" }
+        },
+        "required": ["data"]
+      },
+      "PasswordResetRequestCreateAttributes": {
+        "type": "object",
+        "properties": { "email": { "type": "string", "format": "email" } },
+        "required": ["email"]
+      },
+      "PasswordResetRequestCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["password-reset-requests"] },
+              "attributes": {
+                "$ref": "#/components/schemas/PasswordResetRequestCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PasswordResetCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "password": { "type": "string", "minLength": 8, "maxLength": 128 }
+        },
+        "required": ["token", "password"]
+      },
+      "PasswordResetCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["password-resets"] },
+              "attributes": {
+                "$ref": "#/components/schemas/PasswordResetCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PasswordChangeCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "currentPassword": { "type": "string" },
+          "newPassword": { "type": "string", "minLength": 8, "maxLength": 128 }
+        },
+        "required": ["currentPassword", "newPassword"]
+      },
+      "PasswordChangeCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["password-changes"] },
+              "attributes": {
+                "$ref": "#/components/schemas/PasswordChangeCreateAttributes"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PasswordResetAttributes": {
+        "type": "object",
+        "properties": {
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["createdAt"]
+      },
+      "PasswordChangeAttributes": {
+        "type": "object",
+        "properties": {
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["createdAt"]
+      },
+      "PasswordResetResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["password-resets"] },
+          "id": { "type": "string" },
+          "attributes": {
+            "$ref": "#/components/schemas/PasswordResetAttributes"
+          }
+        },
+        "required": ["type", "id", "attributes"]
+      },
+      "PasswordChangeResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["password-changes"] },
+          "id": { "type": "string" },
+          "attributes": {
+            "$ref": "#/components/schemas/PasswordChangeAttributes"
+          }
+        },
+        "required": ["type", "id", "attributes"]
+      },
+      "PasswordResetDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PasswordResetResource" }
+        },
+        "required": ["data"]
+      },
+      "PasswordChangeDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PasswordChangeResource" }
         },
         "required": ["data"]
       },

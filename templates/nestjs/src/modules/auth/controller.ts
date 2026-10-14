@@ -13,10 +13,14 @@ import {
   deleteCurrentSession,
   deleteSession,
   createSessionRevocation,
+  requestPasswordReset,
+  createPasswordReset,
+  createPasswordChange,
 } from "./operations.js";
 import { RegistrationService } from "./registration.service.js";
 import { VerificationService } from "./verification.service.js";
 import { SessionsService } from "./sessions.service.js";
+import { PasswordsService } from "./passwords.service.js";
 import { ApiError } from "../../core/jsonapi/errors.js";
 @Controller()
 export class AuthController {
@@ -24,7 +28,26 @@ export class AuthController {
     @Inject(RegistrationService) private readonly registration: RegistrationService,
     @Inject(VerificationService) private readonly verification: VerificationService,
     @Inject(SessionsService) private readonly sessions: SessionsService,
+    @Inject(PasswordsService) private readonly passwords: PasswordsService,
   ) {}
+  @Operation(requestPasswordReset)
+  @HttpCode(202)
+  async requestReset(
+    @JsonApiRequest() input: ValidatedRequest<typeof requestPasswordReset>,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    await this.passwords.request(input.body.data.attributes.email, req.ip ?? "");
+    res.status(202).end();
+  }
+  @Operation(createPasswordReset)
+  reset(@JsonApiRequest() input: ValidatedRequest<typeof createPasswordReset>) {
+    return this.passwords.reset(input.body.data.attributes);
+  }
+  @Operation(createPasswordChange)
+  change(@JsonApiRequest() input: ValidatedRequest<typeof createPasswordChange>) {
+    return this.passwords.change(input.principal as Principal, input.body.data.attributes);
+  }
   @Operation(createRegistration)
   register(
     @JsonApiRequest() input: ValidatedRequest<typeof createRegistration>,

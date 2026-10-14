@@ -55,4 +55,31 @@ export class AuthRepository {
   async markVerified(tx: Tx, id: string, at: Date): Promise<void> {
     await tx.user.update({ where: { id }, data: { emailVerifiedAt: at } });
   }
+  async updatePassword(tx: Tx, id: string, passwordHash: string): Promise<void> {
+    await tx.user.update({ where: { id }, data: { passwordHash } });
+  }
+  async deleteResetTokens(tx: Tx, id: string): Promise<void> {
+    await tx.verificationToken.deleteMany({ where: { userId: id, purpose: "reset" } });
+  }
+  async rotateReset(tx: Tx, id: string, hash: string, expiresAt: Date): Promise<void> {
+    await this.deleteResetTokens(tx, id);
+    await tx.verificationToken.create({
+      data: { userId: id, purpose: "reset", tokenHash: hash, expiresAt },
+    });
+  }
+  async consumeReset(
+    tx: Tx,
+    hash: string,
+    at: Date,
+  ): Promise<{ id: string; userId: string } | undefined> {
+    const candidate = await tx.verificationToken.findUnique({ where: { tokenHash: hash } });
+    if (!candidate || candidate.purpose !== "reset") return undefined;
+    await this.lockUser(tx, candidate.userId);
+    const rows = await tx.$queryRaw<{ id: string; userId: string }[]>`
+      DELETE FROM verification_tokens
+      WHERE token_hash = ${hash} AND purpose = 'reset' AND expires_at > ${at}
+      RETURNING id, user_id AS "userId"
+    `;
+    return rows[0];
+  }
 }

@@ -225,3 +225,68 @@ export const emailVerificationDocumentSchema = registerComponent(
   "EmailVerificationDocument",
   z.object({ data: verificationResource }),
 );
+const passwordResetRequestAttributes = registerComponent(
+  "PasswordResetRequestCreateAttributes",
+  z.object({ email: emailString() }),
+);
+export const passwordResetRequestCreateDocumentSchema = registerComponent(
+  "PasswordResetRequestCreateDocument",
+  z.object({
+    data: z.object({
+      type: z.enum(["password-reset-requests"]),
+      attributes: passwordResetRequestAttributes,
+    }),
+  }),
+);
+const passwordResetCreateAttributes = registerComponent(
+  "PasswordResetCreateAttributes",
+  z.object({ token: z.string(), password }),
+);
+export const passwordResetCreateDocumentSchema = registerComponent(
+  "PasswordResetCreateDocument",
+  z.object({
+    data: z.object({
+      type: z.enum(["password-resets"]),
+      attributes: passwordResetCreateAttributes,
+    }),
+  }),
+);
+const passwordChangeCreateAttributes = registerComponent(
+  "PasswordChangeCreateAttributes",
+  z.object({ currentPassword: z.string(), newPassword: password }),
+);
+export const passwordChangeCreateDocumentSchema = registerComponent(
+  "PasswordChangeCreateDocument",
+  z.object({
+    data: z.object({
+      type: z.enum(["password-changes"]),
+      attributes: passwordChangeCreateAttributes,
+    }),
+  }),
+);
+const passwordResetAttributes = registerComponent(
+  "PasswordResetAttributes",
+  z.object({ createdAt: dateTimeString() }),
+);
+const passwordChangeAttributes = registerComponent(
+  "PasswordChangeAttributes",
+  z.object({ createdAt: dateTimeString() }),
+);
+const passwordResetResource = registerComponent(
+  "PasswordResetResource",
+  z.object({
+    type: z.enum(["password-resets"]),
+    id: z.string(),
+    attributes: passwordResetAttributes,
+  }),
+);
+const passwordChangeResource = registerComponent(
+  "PasswordChangeResource",
+  z.object({
+    type: z.enum(["password-changes"]),
+    id: z.string(),
+    attributes: passwordChangeAttributes,
+  }),
+);
+registerComponent("PasswordResetDocument", z.object({ data: passwordResetResource }));
+registerComponent("PasswordChangeDocument", z.object({ data: passwordChangeResource }));

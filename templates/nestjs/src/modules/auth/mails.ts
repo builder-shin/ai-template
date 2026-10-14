@@ -17,6 +17,20 @@ export class AuthMails {
     @Inject(MailSender) private readonly sender: MailSender,
     @Inject(SETTINGS) private readonly settings: Settings,
   ) {}
+  async sendReset(id: string): Promise<void> {
+    const prepared = await this.unit.run(async (tx) => {
+      await this.repository.lockUser(tx, id);
+      const user = await this.repository.findById(tx, id);
+      if (!user?.email || user.status !== "active") return undefined;
+      const { token, hash } = newOpaqueToken();
+      await this.repository.rotateReset(tx, id, hash, new Date(Date.now() + 60 * 60 * 1000));
+      return { user, token };
+    });
+    if (prepared)
+      await this.send(prepared.user, "reset_password", {
+        link: `${this.settings.FRONTEND_URL.replace(/\/$/, "")}/reset-password?token=${prepared.token}`,
+      });
+  }
   async sendVerification(id: string): Promise<void> {
     const prepared = await this.unit.run(async (tx) => {
       await this.repository.lockUser(tx, id);

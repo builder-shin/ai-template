@@ -8,6 +8,9 @@ import {
   emailVerificationCreateDocumentSchema,
   sessionCreateDocumentSchema,
   sessionRevocationCreateDocumentSchema,
+  passwordResetRequestCreateDocumentSchema,
+  passwordResetCreateDocumentSchema,
+  passwordChangeCreateDocumentSchema,
 } from "./schemas.js";
 const failure = { schema: "ErrorDocument", description: "요청에 실패했다" };
 const failures = {
@@ -168,4 +171,44 @@ export const createSessionRevocation = defineOperation({
     401: failure,
   },
   errors: [...errors, ...authErrors],
+});
+export const requestPasswordReset = defineOperation({
+  operationId: "PasswordResetRequests_create",
+  method: "POST",
+  path: "/api/v1/password-reset-requests",
+  tags: ["password-resets"],
+  summary: "계정 유무와 관계없이 재설정 메일을 요청한다",
+  auth: "none",
+  body: passwordResetRequestCreateDocumentSchema,
+  responses: { 202: { description: "요청을 받았다" }, ...failures },
+  errors,
+});
+export const createPasswordReset = defineOperation({
+  operationId: "PasswordResets_create",
+  method: "POST",
+  path: "/api/v1/password-resets",
+  tags: ["password-resets"],
+  summary: "비밀번호를 재설정하고 모든 세션을 폐기한다",
+  auth: "none",
+  body: passwordResetCreateDocumentSchema,
+  responses: {
+    201: { schema: "PasswordResetDocument", description: "비밀번호를 재설정했다" },
+    ...failures,
+  },
+  errors: [...errors, "auth.verification_token_invalid"],
+});
+export const createPasswordChange = defineOperation({
+  operationId: "PasswordChanges_create",
+  method: "POST",
+  path: "/api/v1/password-changes",
+  tags: ["password-changes"],
+  summary: "비밀번호를 변경하고 다른 세션을 폐기한다",
+  auth: "required",
+  body: passwordChangeCreateDocumentSchema,
+  responses: {
+    201: { schema: "PasswordChangeDocument", description: "비밀번호를 변경했다" },
+    ...failures,
+    401: failure,
+  },
+  errors: [...errors, ...authErrors, "auth.invalid_credentials"],
 });
