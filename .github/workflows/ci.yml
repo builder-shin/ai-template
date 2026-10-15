@@ -506,9 +506,239 @@ jobs:
             done
           '
 
+  create-combo-nestjs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      npm_config_verify_deps_before_run: error
+      PNPM_VERIFY_DEPS_BEFORE_RUN: error
+      PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: error
+      NEST_COMPOSE: ci-nest-${{ github.run_id }}-${{ github.run_attempt }}
+      API_IMAGE: aitpl-ci-nest-api:${{ github.run_id }}-${{ github.run_attempt }}
+      WEB_IMAGE: aitpl-ci-nest-web:${{ github.run_id }}-${{ github.run_attempt }}
+      ADMIN_IMAGE: aitpl-ci-nest-admin:${{ github.run_id }}-${{ github.run_attempt }}
+      API_CONTAINER: aitpl-ci-nest-api-${{ github.run_id }}-${{ github.run_attempt }}
+      WEB_CONTAINER: aitpl-ci-nest-web-${{ github.run_id }}-${{ github.run_attempt }}
+      ADMIN_CONTAINER: aitpl-ci-nest-admin-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: "12.6.0"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 생성 프로젝트의 git 신원 설정
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+      - name: 전용 경로·스택·이미지·컨테이너의 부재 확인
+        id: allocate
+        shell: bash
+        run: |
+          NEST_ROOT="$RUNNER_TEMP/aitpl-ci-nest-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          test ! -e "$NEST_ROOT"
+          docker info >/dev/null
+          containers=$(docker ps --all --filter "label=com.docker.compose.project=$NEST_COMPOSE" --format '{{.ID}}')
+          volumes=$(docker volume ls --filter "label=com.docker.compose.project=$NEST_COMPOSE" --format '{{.Name}}')
+          if [ -n "$containers$volumes" ]; then
+            echo "조합 스택이 이미 있다 — 새 실행 이름을 사용한다." >&2
+            exit 1
+          fi
+          for image in "$API_IMAGE" "$WEB_IMAGE" "$ADMIN_IMAGE" "$NEST_COMPOSE-api:latest"; do
+            if docker image inspect "$image" >/dev/null 2>&1; then
+              echo "실행 이미지가 이미 있다 — 소유하지 않은 이미지를 보존한다." >&2
+              exit 1
+            fi
+          done
+          for container in "$API_CONTAINER" "$WEB_CONTAINER" "$ADMIN_CONTAINER"; do
+            if docker container inspect "$container" >/dev/null 2>&1; then
+              echo "실행 컨테이너가 이미 있다 — 소유하지 않은 컨테이너를 보존한다." >&2
+              exit 1
+            fi
+          done
+          mkdir -p "$NEST_ROOT/work" "$NEST_ROOT/reports"
+          printf '%s\n' "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" > "$NEST_ROOT/.task24-owned"
+          printf 'NEST_ROOT=%s\n' "$NEST_ROOT" >> "$GITHUB_ENV"
+          printf 'owned=true\n' >> "$GITHUB_OUTPUT"
+      - name: 두 프론트 NestJS 조합 생성
+        run: |
+          pnpm new "$NEST_ROOT/work/both" --api nestjs --web --admin --name "$NEST_COMPOSE"
+          test ! -e "$NEST_ROOT/work/both/apps/api/src/generated"
+      - name: web만 있는 NestJS 조합 생성
+        run: pnpm new "$NEST_ROOT/work/web" --api nestjs --web --name "$NEST_COMPOSE-web"
+      - run: node --test scripts/*.test.mjs .claude/hooks/*.test.mjs
+        working-directory: ${{ env.NEST_ROOT }}/work/web
+      - run: pnpm exec turbo run check --dry=json
+        working-directory: ${{ env.NEST_ROOT }}/work/web
+      - name: admin만 있는 NestJS 조합 생성
+        run: pnpm new "$NEST_ROOT/work/admin" --api nestjs --admin --name "$NEST_COMPOSE-admin"
+      - run: node --test scripts/*.test.mjs .claude/hooks/*.test.mjs
+        working-directory: ${{ env.NEST_ROOT }}/work/admin
+      - run: pnpm exec turbo run check --dry=json
+        working-directory: ${{ env.NEST_ROOT }}/work/admin
+      - run: pnpm setup
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - run: pnpm db:migrate
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - run: pnpm --filter web exec playwright install-deps chromium
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - run: pnpm --filter admin exec playwright install-deps chromium
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - run: pnpm check
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+        env:
+          AI_AGENT: "1"
+      - run: pnpm test:e2e
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - name: 생성 프로젝트의 작업 트리 확인
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+        run: |
+          status=$(git status --porcelain)
+          if [ -n "$status" ]; then
+            echo "생성 프로젝트의 작업 트리가 바뀌었다 — 도구의 출력 경로와 ignore를 확인한다." >&2
+            printf '%s\n' "$status"
+            exit 1
+          fi
+      - run: docker build --tag "$API_IMAGE" -f apps/api/Dockerfile .
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - run: docker build --tag "$WEB_IMAGE" -f apps/web/Dockerfile .
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - run: docker build --tag "$ADMIN_IMAGE" -f apps/admin/Dockerfile .
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - name: API 이미지의 격리·UID·크기와 실제 시작 확인
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+        run: |
+          test "$(docker run --rm --entrypoint id "$API_IMAGE" -u)" = 10001
+          docker run --rm --entrypoint node "$API_IMAGE" -e '
+            try { require.resolve("next"); process.exit(1); }
+            catch (error) { if (error.code !== "MODULE_NOT_FOUND") throw error; }
+          '
+          docker image inspect --format '{{.Size}}' "$API_IMAGE" | tee "$NEST_ROOT/reports/api-image-size.txt"
+          printf 'services:\n  api:\n    image: %s\n' "$API_IMAGE" > "$NEST_ROOT/api-image.yaml"
+          docker compose -p "$NEST_COMPOSE" -f apps/api/compose.yaml \
+            -f "$NEST_ROOT/api-image.yaml" --profile app run --detach --no-deps \
+            --name "$API_CONTAINER" --publish 127.0.0.1:18001:8000 api
+          test "$(curl --fail --silent --retry 60 --retry-connrefused --retry-delay 1 \
+            --retry-max-time 60 --max-time 2 --output /dev/null --write-out '%{http_code}' \
+            http://127.0.0.1:18001/health/live)" = 200
+      - name: 조합 web·admin 컨테이너 시작 확인
+        shell: bash
+        run: |
+          session_secret=$(openssl rand -hex 32)
+          for app in web admin; do
+            if [ "$app" = web ]; then
+              image="$WEB_IMAGE"; container="$WEB_CONTAINER"; host=3200; port=3000
+            else
+              image="$ADMIN_IMAGE"; container="$ADMIN_CONTAINER"; host=3201; port=3001
+            fi
+            docker run --detach --name "$container" --publish "127.0.0.1:$host:$port" \
+              --env API_BASE_URL=http://127.0.0.1:8000/api/v1 \
+              --env "APP_URL=http://127.0.0.1:$host" \
+              --env NEXT_PUBLIC_REALTIME_URL=http://127.0.0.1:8000 \
+              --env TIME_ZONE=Asia/Seoul --env SESSION_SECRET="$session_secret" "$image"
+            ready=false
+            for attempt in {1..60}; do
+              if [ "$(curl --location --silent --output /dev/null --write-out '%{http_code}' \
+                --max-time 2 "http://127.0.0.1:$host/")" = 200 ]; then
+                ready=true
+                break
+              fi
+              sleep 1
+            done
+            if [ "$ready" != true ]; then
+              docker logs "$container"
+              exit 1
+            fi
+          done
+      - name: 같은 HEAD의 단독 web으로 R2 숨은 hoist 감사
+        run: |
+          pnpm new "$NEST_ROOT/work/standalone-web" --template nextjs --name ci-nest-hoist-web --no-git
+          pnpm --dir "$NEST_ROOT/work/standalone-web" install --frozen-lockfile
+          node --input-type=module - "$GITHUB_WORKSPACE" "$NEST_ROOT" <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+          import { join } from "node:path";
+          import { pathToFileURL } from "node:url";
+          const [repository, root] = process.argv.slice(2);
+          const { hoistShadows } = await import(pathToFileURL(join(repository, "create/test/ci/hoist-audit.mjs")).href);
+          const report = hoistShadows(
+            readFileSync(join(root, "work/both/node_modules/.modules.yaml"), "utf8"),
+            readFileSync(join(root, "work/standalone-web/node_modules/.modules.yaml"), "utf8"),
+          );
+          writeFileSync(join(root, "reports/hoist-audit.json"), JSON.stringify(report, null, 2) + "\n");
+          console.log(JSON.stringify({ ...report, apiOnlyCount: report.apiOnly.length }, null, 2));
+          if (report.shadowed.length) throw new Error("단독 web의 숨은 hoist 버전이 조합에서 바뀌었다");
+          NODE
+      - name: R1 실제 의존성 갱신과 프론트 해석 보고서
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+        run: |
+          cp pnpm-lock.yaml "$NEST_ROOT/before-r1-lock.yaml"
+          pnpm --filter api remove nodemailer
+          pnpm --filter api add -E nodemailer@10.1.0
+          node --input-type=module - "$GITHUB_WORKSPACE" "$NEST_ROOT" <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+          import { join } from "node:path";
+          import { pathToFileURL } from "node:url";
+          const [repository, root] = process.argv.slice(2);
+          const { importerResolutionDiff } = await import(pathToFileURL(join(repository, "create/test/ci/resolution-drift.mjs")).href);
+          const changes = importerResolutionDiff(
+            readFileSync(join(root, "before-r1-lock.yaml"), "utf8"),
+            readFileSync(join(root, "work/both/pnpm-lock.yaml"), "utf8"),
+            ["apps/web", "apps/admin"],
+          );
+          writeFileSync(join(root, "reports/resolution-drift.json"), JSON.stringify(changes, null, 2) + "\n");
+          console.log(JSON.stringify(changes, null, 2));
+          NODE
+      - run: pnpm install --frozen-lockfile
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - name: R1 갱신 뒤 전체 앱 검사
+        run: pnpm check
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+        env:
+          AI_AGENT: "1"
+      - run: pnpm --filter web build
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - run: pnpm --filter admin build
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ always() && steps.allocate.outputs.owned == 'true' }}
+        with:
+          name: nestjs-create-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.NEST_ROOT }}/reports/
+          if-no-files-found: warn
+      - name: 조합 소유 스택·볼륨·이미지·임시 경로 정리
+        if: ${{ always() && steps.allocate.outputs.owned == 'true' }}
+        shell: bash
+        run: |
+          test "$NEST_ROOT" = "$RUNNER_TEMP/aitpl-ci-nest-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          test "$(cat "$NEST_ROOT/.task24-owned")" = "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          status=0
+          for container in "$API_CONTAINER" "$WEB_CONTAINER" "$ADMIN_CONTAINER"; do
+            if docker container inspect "$container" >/dev/null 2>&1; then
+              docker rm -f "$container" || status=1
+            fi
+          done
+          if [ -f "$NEST_ROOT/work/both/apps/api/compose.yaml" ]; then
+            docker compose -p "$NEST_COMPOSE" -f "$NEST_ROOT/work/both/apps/api/compose.yaml" \
+              --profile app down --volumes --remove-orphans || status=1
+          fi
+          for image in "$API_IMAGE" "$WEB_IMAGE" "$ADMIN_IMAGE" "$NEST_COMPOSE-api:latest"; do
+            if docker image inspect "$image" >/dev/null 2>&1; then
+              docker image rm "$image" || status=1
+            fi
+          done
+          rm -rf "$NEST_ROOT" || status=1
+          exit "$status"
+
   create-standalone:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      npm_config_verify_deps_before_run: error
+      PNPM_VERIFY_DEPS_BEFORE_RUN: error
+      PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: error
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -546,3 +776,51 @@ jobs:
         working-directory: ${{ runner.temp }}/aitpl-admin
       - run: pnpm check
         working-directory: ${{ runner.temp }}/aitpl-admin
+      - name: 단독 FastAPI 소유 인프라 정리
+        if: ${{ always() }}
+        run: |
+          if [ -f "$RUNNER_TEMP/aitpl-fastapi/compose.yaml" ]; then
+            docker compose -p ci-api -f "$RUNNER_TEMP/aitpl-fastapi/compose.yaml" down --volumes --remove-orphans
+          fi
+      - name: 생성 클라이언트가 없는 단독 NestJS 생성
+        id: nest-standalone
+        shell: bash
+        run: |
+          root="$RUNNER_TEMP/aitpl-ci-nest-standalone-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          project="ci-nest-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-standalone"
+          test ! -e "$root"
+          containers=$(docker ps --all --filter "label=com.docker.compose.project=$project" --format '{{.ID}}')
+          volumes=$(docker volume ls --filter "label=com.docker.compose.project=$project" --format '{{.Name}}')
+          test -z "$containers$volumes"
+          if docker image inspect "$project-app:latest" >/dev/null 2>&1; then
+            echo "단독 실행 이미지가 이미 있다 — 새 실행 이름을 사용한다." >&2
+            exit 1
+          fi
+          mkdir -p "$root"
+          printf '%s\n' "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" > "$root/.task24-owned"
+          printf 'owned=true\n' >> "$GITHUB_OUTPUT"
+          pnpm new "$root/project" --template nestjs --name "$project"
+          test ! -e "$root/project/src/generated"
+      - run: pnpm setup
+        working-directory: ${{ runner.temp }}/aitpl-ci-nest-standalone-${{ github.run_id }}-${{ github.run_attempt }}/project
+      - run: pnpm gen
+        working-directory: ${{ runner.temp }}/aitpl-ci-nest-standalone-${{ github.run_id }}-${{ github.run_attempt }}/project
+      - run: pnpm check
+        working-directory: ${{ runner.temp }}/aitpl-ci-nest-standalone-${{ github.run_id }}-${{ github.run_attempt }}/project
+      - name: 단독 NestJS 소유 스택·볼륨·이미지·임시 경로 정리
+        if: ${{ always() && steps.nest-standalone.outputs.owned == 'true' }}
+        shell: bash
+        run: |
+          root="$RUNNER_TEMP/aitpl-ci-nest-standalone-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          project="ci-nest-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-standalone"
+          test "$(cat "$root/.task24-owned")" = "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          status=0
+          if [ -f "$root/project/compose.yaml" ]; then
+            docker compose -p "$project" -f "$root/project/compose.yaml" \
+              --profile app down --volumes --remove-orphans || status=1
+          fi
+          if docker image inspect "$project-app:latest" >/dev/null 2>&1; then
+            docker image rm "$project-app:latest" || status=1
+          fi
+          rm -rf "$root" || status=1
+          exit "$status"

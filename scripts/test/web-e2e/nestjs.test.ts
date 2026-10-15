@@ -293,6 +293,6 @@ it.each(["web", "admin"] as const)(
     expect(run).toBeDefined();
     expect(down?.if).toBe("${{ always() && steps.install-root.outcome == 'success' }}");
     expect(down?.["timeout-minutes"]).toBe(5);
-    expect(Object.keys(jobs)).toHaveLength(14);
+    expect(Object.keys(jobs)).toHaveLength(15);
   },
 );
