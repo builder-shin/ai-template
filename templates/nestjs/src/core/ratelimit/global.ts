@@ -1,3 +1,4 @@
+import { dependencyFailure } from "../telemetry/diagnostics.js";
 import { Logger } from "@nestjs/common";
 import type { RedisClients } from "../redis/clients.js";
 import type { Settings } from "../config/settings.js";
@@ -25,8 +26,8 @@ export function createGlobalLimiter(redis: RedisClients, settings: Settings): Gl
         settings.RATE_LIMIT_GLOBAL,
         60,
       );
-    } catch {
-      logger.warn("Rate limit store unavailable.");
+    } catch (error) {
+      logger.warn("속도 제한 저장소를 사용할 수 없다", { failureKind: dependencyFailure(error) });
       return;
     }
     if (!result.allowed)

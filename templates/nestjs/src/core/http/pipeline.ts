@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Request, RequestHandler } from "express";
 import { ApiError } from "../jsonapi/errors.js";
-import { requestContext } from "../logging/context.js";
+import { currentTraceId, requestContext } from "../logging/context.js";
 import type { JsonLogger } from "../logging/json-logger.js";
 import { accessLog } from "../logging/access-log.js";
 import { negotiate } from "./negotiation.js";
@@ -16,7 +16,7 @@ export function pipeline(
   limiter: GlobalLimiter,
 ): RequestHandler {
   return (req, res, next) => {
-    const traceId = randomBytes(16).toString("hex");
+    const traceId = currentTraceId() ?? randomBytes(16).toString("hex");
     res.locals.traceId = traceId;
     requestContext.run({ traceId }, () => {
       accessLog(req, res, logger);

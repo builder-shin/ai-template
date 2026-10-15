@@ -1,6 +1,8 @@
 import { Inject, Injectable, type OnApplicationShutdown } from "@nestjs/common";
 import { Redis } from "ioredis";
 import { SETTINGS, type Settings } from "../config/settings.js";
+import { instrumentRedis } from "../telemetry/redis-spans.js";
+import { getTracer } from "../telemetry/tracer.js";
 import { redisNamespace } from "./keys.js";
 @Injectable()
 export class RedisClients implements OnApplicationShutdown {
@@ -37,6 +39,7 @@ export class RedisClients implements OnApplicationShutdown {
       maxRetriesPerRequest: name === "bullmq" ? null : 1,
       connectionName: `${this.prefix}:${String(process.pid)}:${name}`,
     });
+    instrumentRedis(client, getTracer());
     this.connections.set(name, client);
     return client;
   }

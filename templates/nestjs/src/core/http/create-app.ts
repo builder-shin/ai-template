@@ -5,6 +5,7 @@ import express from "express";
 import { loadSettings, type Settings } from "../config/settings.js";
 import { AppModule, logLevels } from "../../app.module.js";
 import { JsonLogger } from "../logging/json-logger.js";
+import { OperationInterceptor } from "./operation.interceptor.js";
 import { DocumentInterceptor } from "./document.interceptor.js";
 import { ApiExceptionFilter } from "./exception.filter.js";
 import { GLOBAL_LIMITER, pipeline, type GlobalLimiter } from "./pipeline.js";
@@ -38,7 +39,7 @@ export async function createApp(
   const filter = new ApiExceptionFilter(logger);
   app.use(pipeline(logger, filter, app.get<GlobalLimiter>(GLOBAL_LIMITER)));
   app.useGlobalFilters(filter);
-  app.useGlobalInterceptors(new DocumentInterceptor());
+  app.useGlobalInterceptors(new OperationInterceptor(), new DocumentInterceptor());
   try {
     overrides.configure?.(app);
     await app.init();

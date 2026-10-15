@@ -52,5 +52,7 @@ it("저장소 오류는 비공개 상세 없이 경고를 남기고 통과한다
   await expect(
     new StrictLimiter(clients, settings, logger).enforce("mail.email", "identifier"),
   ).resolves.toBeUndefined();
-  expect(warn).toHaveBeenCalledExactlyOnceWith("Rate limit store unavailable.");
+  expect(warn).toHaveBeenCalledExactlyOnceWith("속도 제한 저장소를 사용할 수 없다", {
+    failureKind: "unknown",
+  });
 });

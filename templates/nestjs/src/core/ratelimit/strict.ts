@@ -1,3 +1,4 @@
+import { dependencyFailure } from "../telemetry/diagnostics.js";
 import { Inject, Injectable } from "@nestjs/common";
 import { RedisClients } from "../redis/clients.js";
 import { SETTINGS, type Settings } from "../config/settings.js";
@@ -23,8 +24,10 @@ export class StrictLimiter {
         this.settings[setting],
         windowSeconds,
       );
-    } catch {
-      this.logger.warn("Rate limit store unavailable.");
+    } catch (error) {
+      this.logger.warn("속도 제한 저장소를 사용할 수 없다", {
+        failureKind: dependencyFailure(error),
+      });
       return;
     }
     if (!result.allowed)

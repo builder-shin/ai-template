@@ -73,5 +73,7 @@ it("전역 저장소 오류는 경고를 남기고 통과한다", async () => {
   evalCommand.mockRejectedValue(new Error("비공개 연결 정보"));
   const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
   await expect(createGlobalLimiter(clients, settings)(incoming())).resolves.toBeUndefined();
-  expect(warn).toHaveBeenCalledWith("Rate limit store unavailable.");
+  expect(warn).toHaveBeenCalledWith("속도 제한 저장소를 사용할 수 없다", {
+    failureKind: "unknown",
+  });
 });
