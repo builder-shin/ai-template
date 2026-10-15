@@ -29,12 +29,15 @@ const settings = z.object({
     .pipe(z.number().int().min(1).max(2_147_483)),
 });
 
-export function parseFastapiTargetEnv(input: Record<string, string | undefined>) {
+export function parseFastapiTargetEnv(
+  input: Record<string, string | undefined>,
+  name: "fastapi" | "nestjs" = "fastapi",
+) {
   const result = settings.safeParse(input);
   if (!result.success) {
     const keys = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))];
     throw new Error(
-      keys.map((key) => `${key}: FastAPI E2E의 URL 또는 양의 정수 창을 설정한다.`).join("\n"),
+      keys.map((key) => `${key}: ${name} E2E의 URL 또는 양의 정수 창을 설정한다.`).join("\n"),
     );
   }
   const data = result.data;
@@ -62,9 +65,9 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 export function fastapiTarget(
   request: APIRequestContext,
   input: Record<string, string | undefined> = process.env,
-  options: { mailPollMs?: number; mailTimeoutMs?: number } = {},
+  options: { mailPollMs?: number; mailTimeoutMs?: number; backendName?: "fastapi" | "nestjs" } = {},
 ): TargetAdapter {
-  const config = parseFastapiTargetEnv(input);
+  const config = parseFastapiTargetEnv(input, options.backendName);
   const mailTimeoutMs = options.mailTimeoutMs ?? 10_000;
   const mailPollMs = options.mailPollMs ?? 200;
   // 메일함 시계로 비교한다. 같은 밀리초의 재발송도 읽되 이미 반환한 ID는 다시 쓰지 않는다.

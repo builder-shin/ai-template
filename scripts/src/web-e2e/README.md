@@ -1,4 +1,4 @@
-# FastAPI 대상 프론트 E2E 스택
+# FastAPI·NestJS 대상 프론트 E2E 스택
 
 저장소 루트에서 `pnpm web-e2e fastapi`를 실행한다. 전용 스택을 준비하고 web 템플릿의 `pnpm test:e2e`에 `E2E_TARGET=fastapi`와 스택 주소를 전달한다. 목과 같은 Chromium E2E 20개를 필터 없이 실행한다. 템플릿은 외부 API 준비 뒤 web만 빌드·기동하며 Docker를 실행하지 않는다.
 
@@ -46,3 +46,17 @@ admin 정리 명령은 `pnpm admin-e2e fastapi --run-id <같은 ID> --down`이�
 스택을 성공적으로 내린 뒤 해당 실행의 이미지 태그만 강제 옵션 없이 제거한다. 이미지가 없으면 성공으로 처리하고 그 밖의 실패는 정리 종료 코드로 알린다. `--keep`은 이미지도 남기며 명시한 `--down`은 스택과 이미지를 함께 정리한다.
 
 검증: `pnpm --filter @ai-template/scripts test`는 Docker 없이 인자·설정·포트·실패·정리를 검사한다. 실제 실행 전후에 `docker compose ls -a`와 `docker volume ls`를 비교한다. 개발 프로젝트 `fastapi`·`joon`과 `fastapi_*` 볼륨은 작업 대상이 아니다.
+
+## NestJS 대상
+
+`pnpm web-e2e nestjs`와 `pnpm admin-e2e nestjs`는 각각 같은 web 20개·admin 18개 E2E를 `E2E_TARGET=nestjs`로 실행한다. 공유 대상은 앱 소유 훅에 `fastapi`를 전달하여 Mailpit·최근 로그인 창·web의 모의 OAuth 어댑터를 재사용한다. admin은 기존 시드 관리자 환경을 받는다.
+
+| 값       | web                                    | admin                                        |
+| -------- | -------------------------------------- | -------------------------------------------- |
+| 프로젝트 | ai-template-web-nestjs-e2e-<ID>        | ai-template-admin-nestjs-e2e-<ID>            |
+| 이미지   | ai-template-web-e2e-nestjs:<ID>        | ai-template-admin-e2e-nestjs:<ID>            |
+| compose  | scripts/compose/nextjs-e2e-nestjs.yaml | scripts/compose/nextjs-admin-e2e-nestjs.yaml |
+
+실행 ID 변수와 공개 포트는 위 FastAPI 표와 같다. 같은 앱의 두 백엔드를 동시에 실행하면 포트 검사가 거절한다. NestJS compose는 독립 `templates/nestjs` 이미지를 빌드하며 Prisma 마이그레이션 뒤 시드를 실행하고 Node API·worker·scheduler·스토리지 초기화를 쓴다. 환경 키는 FastAPI와 같고 `PORT=8000`, 빈 `FORWARDED_ALLOW_IPS`를 더한다. DB URL은 Prisma의 `postgresql://` 형식이다.
+
+`--smoke`·`--print`·`--keep`·`--run-id <ID>`·`--down`의 의미도 같다. `pnpm web-e2e nestjs --print`와 `pnpm admin-e2e nestjs --print`는 Docker 없이 계획만 출력한다. 유지한 스택은 `pnpm web-e2e nestjs --run-id <같은 ID> --down` 또는 `pnpm admin-e2e nestjs --run-id <같은 ID> --down`으로 정리한다. 해당 프로젝트·볼륨·정확한 이미지 태그만 정리하며 개발 프로젝트 `fastapi`·`joon`·`nestjs`는 건드리지 않는다. 실제 스택·브라우저 실행은 PR CI의 `nextjs-e2e-nestjs`·`nextjs-admin-e2e-nestjs`가 확인하고 실패해도 같은 실행 ID로 정리한다.

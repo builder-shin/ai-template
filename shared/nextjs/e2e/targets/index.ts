@@ -6,15 +6,20 @@ import { appOrigin } from "../../src/lib/app-config.mjs";
 
 export const applicationOrigin = appOrigin("e2e");
 export const mockOrigin = appOrigin("e2eMock", "127.0.0.1");
-export type TargetName = "mock" | "fastapi";
+export type TargetName = "mock" | "fastapi" | "nestjs";
 export interface TargetAdapter {
   mailLink(email: string, purpose: "verification" | "reset"): Promise<string>;
   expireRecentLogin(): Promise<void>;
 }
 
 export function targetName(value = process.env.E2E_TARGET ?? "mock"): TargetName {
-  if (value !== "mock" && value !== "fastapi") throw new Error(`알 수 없는 E2E_TARGET: ${value}`);
+  if (value !== "mock" && value !== "fastapi" && value !== "nestjs")
+    throw new Error(`알 수 없는 E2E_TARGET: ${value}`);
   return value;
+}
+
+export function adapterName(name: TargetName): "mock" | "fastapi" {
+  return name === "mock" ? "mock" : "fastapi";
 }
 
 export function targetEnvironment(
@@ -27,16 +32,26 @@ export function targetEnvironment(
       APP_URL: applicationOrigin,
       API_BASE_URL: `${mockOrigin}/api/v1`,
       NEXT_PUBLIC_REALTIME_URL: mockOrigin,
-      ...appEnvironment(name, input),
+      ...appEnvironment(adapterName(name), input),
     };
-  const config = parseFastapiTargetEnv(input);
+  return {
+    ...backendEnvironment(name, input),
+    ...appEnvironment(adapterName(name), input),
+  };
+}
+
+export function backendEnvironment(
+  name: "fastapi" | "nestjs",
+  input: Record<string, string | undefined>,
+): Record<string, string> {
+  const config = parseFastapiTargetEnv(input, name);
   if (config.applicationOrigin !== applicationOrigin)
     throw new Error(`APP_URL이 앱 설정과 다르다 — E2E 주소를 넣는다: ${applicationOrigin}`);
   let realtime: URL;
   try {
     realtime = new URL(input.NEXT_PUBLIC_REALTIME_URL ?? "");
   } catch {
-    throw new Error("NEXT_PUBLIC_REALTIME_URL: FastAPI 실시간 Origin을 설정한다.");
+    throw new Error(`NEXT_PUBLIC_REALTIME_URL: ${name} 실시간 Origin을 설정한다.`);
   }
   if (
     !/^https?:$/.test(realtime.protocol) ||
@@ -45,7 +60,7 @@ export function targetEnvironment(
     realtime.hostname.includes("*") ||
     realtime.href !== `${realtime.origin}/`
   )
-    throw new Error("NEXT_PUBLIC_REALTIME_URL: FastAPI 실시간 Origin을 설정한다.");
+    throw new Error(`NEXT_PUBLIC_REALTIME_URL: ${name} 실시간 Origin을 설정한다.`);
   return {
     E2E_TARGET: name,
     APP_URL: config.applicationOrigin,
@@ -53,11 +68,13 @@ export function targetEnvironment(
     NEXT_PUBLIC_REALTIME_URL: realtime.origin,
     E2E_MAILPIT_URL: config.mailpitOrigin,
     E2E_RECENT_LOGIN_SECONDS: String(config.recentLoginSeconds),
-    ...appEnvironment(name, input),
   };
 }
 
 export function createTarget(name: TargetName, request: APIRequestContext) {
-  const target = name === "fastapi" ? fastapiTarget(request) : mockTarget(request, mockOrigin);
-  return extendTarget(name, request, target, mockOrigin);
+  const target =
+    name === "mock"
+      ? mockTarget(request, mockOrigin)
+      : fastapiTarget(request, process.env, { backendName: name });
+  return extendTarget(adapterName(name), request, target, mockOrigin);
 }

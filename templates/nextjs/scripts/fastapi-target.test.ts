@@ -5,6 +5,7 @@ import { request as playwrightRequest, type APIRequestContext } from "@playwrigh
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { fastapiTarget, parseFastapiTargetEnv } from "../e2e/targets/fastapi";
 import { createTarget } from "../e2e/targets";
+import * as targets from "../e2e/targets";
 
 type Handler = (request: IncomingMessage, response: ServerResponse) => void | Promise<void>;
 const cleanups: (() => Promise<void>)[] = [];
@@ -51,6 +52,79 @@ afterEach(async () => {
 });
 
 describe("FastAPI 대상 설정", () => {
+  it("nestjs는 실제 백엔드 대상이고 E2E_TARGET을 그대로 낸다", () => {
+    expect(targets.targetName("nestjs")).toBe("nestjs");
+    expect(targets.adapterName("nestjs")).toBe("fastapi");
+    expect(
+      targets.backendEnvironment("nestjs", {
+        ...env(),
+        NEXT_PUBLIC_REALTIME_URL: "http://127.0.0.1:18100/",
+      }),
+    ).toEqual({
+      E2E_TARGET: "nestjs",
+      APP_URL: appOrigin("e2e"),
+      API_BASE_URL: "http://127.0.0.1:18100/api/v1",
+      NEXT_PUBLIC_REALTIME_URL: "http://127.0.0.1:18100",
+      E2E_MAILPIT_URL: "http://127.0.0.1:28125",
+      E2E_RECENT_LOGIN_SECONDS: "10",
+    });
+  });
+
+  it("모르는 대상은 여전히 거절하고 목은 목 어댑터를 쓴다", () => {
+    expect(() => targets.targetName("django")).toThrow("알 수 없는 E2E_TARGET: django");
+    expect(targets.adapterName("mock")).toBe("mock");
+    expect(targets.adapterName("fastapi")).toBe("fastapi");
+  });
+
+  it.each(["fastapi", "nestjs"] as const)(
+    "%s 공통 환경은 앱별 OAuth·시드 설정 없이 검증한다",
+    (name) => {
+      const input = { ...env(), NEXT_PUBLIC_REALTIME_URL: "http://127.0.0.1:18100" };
+      expect(targets.backendEnvironment(name, input).E2E_TARGET).toBe(name);
+      expect(() =>
+        targets.backendEnvironment(name, { ...input, E2E_MAILPIT_URL: undefined }),
+      ).toThrow(`${name} E2E`);
+      expect(() =>
+        targets.backendEnvironment(name, {
+          ...input,
+          NEXT_PUBLIC_REALTIME_URL: "http://localhost/path",
+        }),
+      ).toThrow(`${name} 실시간 Origin`);
+    },
+  );
+
+  it("nestjs 대상은 필수 메일 설정이 없으면 목으로 대체하지 않는다", () => {
+    vi.stubEnv("E2E_MAILPIT_URL", undefined);
+    try {
+      expect(() => createTarget("nestjs", request)).toThrow("E2E_MAILPIT_URL: nestjs E2E");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("nestjs의 최근 로그인 만료는 실제 백엔드 창을 기다린다", async () => {
+    vi.useFakeTimers();
+    for (const [key, value] of Object.entries(env({ E2E_RECENT_LOGIN_SECONDS: "2" })))
+      vi.stubEnv(key, value);
+    vi.stubEnv("E2E_OAUTH_URL", "http://127.0.0.1:28180");
+    try {
+      let done = false;
+      const waiting = createTarget("nestjs", request)
+        .expireRecentLogin()
+        .then(() => {
+          done = true;
+        });
+      await vi.advanceTimersByTimeAsync(2099);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(done).toBe(true);
+      await waiting;
+    } finally {
+      await vi.runAllTimersAsync();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("공통 대상은 OAuth 설정 없이 메일·최근 로그인 설정을 읽는다", () => {
     const config = parseFastapiTargetEnv(env());
     expect(config.apiBaseUrl).toBe("http://127.0.0.1:18100/api/v1");

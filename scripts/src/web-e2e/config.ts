@@ -15,8 +15,12 @@ function equal(actual: unknown, expected: unknown, label: string): void {
 
 /** 환경 파일과 외부 자원을 해석하기 전에 수기 compose의 안전 경계를 확인한다. */
 export function validateCompose(text: string, plan: Plan): void {
-  equal(plan.project, projectName(plan.runId, plan.app), "프로젝트");
-  equal(plan.composeFile, STACKS[plan.app].composeFile, "compose 파일");
+  equal(plan.project, projectName(plan.runId, plan.app, plan.backend), "프로젝트");
+  equal(
+    plan.composeFile,
+    STACKS[plan.app].composeFile.replace("fastapi.yaml", `${plan.backend}.yaml`),
+    "compose 파일",
+  );
   const urls = STACKS[plan.app].urls;
   const document = record(parse(text, { merge: true }) as unknown);
   equal(Object.keys(document).sort(), ["services", "volumes", "x-app"], "compose 구조");
@@ -63,10 +67,10 @@ export function validateCompose(text: string, plan: Plan): void {
     equal(service.ports ?? [], publications[name] ?? [], `${name} 포트`);
     equal(service.volumes ?? [], mounts[name] ?? [], `${name} 볼륨`);
     if (apps.includes(name)) {
-      equal(service.build, { context: "../../templates/fastapi" }, `${name} 빌드`);
+      equal(service.build, { context: `../../templates/${plan.backend}` }, `${name} 빌드`);
       equal(
         service.image,
-        `ai-template-${plan.app}-e2e-fastapi:\${${STACKS[plan.app].runIdVariable}:?실행 ID를 지정한다}`,
+        `ai-template-${plan.app}-e2e-${plan.backend}:\${${STACKS[plan.app].runIdVariable}:?실행 ID를 지정한다}`,
         `${name} 이미지`,
       );
       const env = record(service.environment);
@@ -78,10 +82,14 @@ export function validateCompose(text: string, plan: Plan): void {
         STORAGE_ALLOWED_ORIGINS: urls.web,
         S3_ENDPOINT_URL: "http://seaweedfs:8333",
         S3_PUBLIC_ENDPOINT_URL: urls.s3,
-        DATABASE_URL: "postgresql+psycopg://app:app@postgres:5432/app",
+        DATABASE_URL:
+          plan.backend === "nestjs"
+            ? "postgresql://app:app@postgres:5432/app" // betterleaks:allow 사유: 전용 DB의 공개 fixture
+            : "postgresql+psycopg://app:app@postgres:5432/app",
         REDIS_URL: "redis://valkey:6379/0",
         SMTP_URL: "smtp://mailpit:1025",
         RECENT_LOGIN_SECONDS: "10",
+        ...(plan.backend === "nestjs" ? { PORT: "8000", FORWARDED_ALLOW_IPS: "" } : {}),
       };
       for (const provider of ["google", "kakao", "naver"]) {
         const prefix = `OAUTH_${provider.toUpperCase()}`;
@@ -112,7 +120,7 @@ export function validateCompose(text: string, plan: Plan): void {
         if (
           !/^[A-Z][A-Z0-9_]+$/.test(key) ||
           typeof setting !== "string" ||
-          setting.length === 0 ||
+          (setting.length === 0 && !(plan.backend === "nestjs" && key === "FORWARDED_ALLOW_IPS")) ||
           setting.includes("${")
         ) {
           throw new Error(`${name}.${key}: 환경 변수 값을 명시한다.`);

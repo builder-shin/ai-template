@@ -1,7 +1,7 @@
 import { registerHooks } from "node:module";
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 import { appSessionCookieName } from "../src/lib/app-config.mjs";
-import { createTarget, targetName, targetEnvironment } from "./targets";
+import { adapterName, createTarget, targetName, targetEnvironment } from "./targets";
 import { ko, en } from "../src/lib/i18n/catalogs";
 import type { components } from "../src/lib/api/schema";
 
@@ -41,7 +41,7 @@ function accountOptions(request: APIRequestContext) {
     origin: new URL(env.API_BASE_URL!).origin,
     options: {
       mailLink: target.mailLink,
-      ...(name === "fastapi"
+      ...(adapterName(name) === "fastapi"
         ? {
             seedAccount: {
               email: env.E2E_SEED_ADMIN_EMAIL!,

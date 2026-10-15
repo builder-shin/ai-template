@@ -2,7 +2,7 @@ import { ko, en } from "../../lib/i18n/catalogs";
 // @vitest-environment jsdom
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { LoginForm } from "./login-form";
@@ -156,5 +156,7 @@ it("다른 미인증 이메일로 로그인하면 이전 재발송 성공 안내
   await user.clear(screen.getByLabelText("비밀번호"));
   await user.type(screen.getByLabelText("비밀번호"), "sample-password");
   await user.click(screen.getByRole("button", { name: "로그인" }));
-  expect(screen.queryByText("인증 메일을 보냈습니다. 받은 편지함을 확인해 주세요.")).toBeNull();
+  await waitFor(() => {
+    expect(screen.queryByText("인증 메일을 보냈습니다. 받은 편지함을 확인해 주세요.")).toBeNull();
+  });
 });
