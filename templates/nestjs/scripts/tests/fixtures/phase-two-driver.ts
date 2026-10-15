@@ -1,0 +1,10 @@
+import { writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { runSignalTests } from "../../test-e2e.js";
+const record = process.argv[2];
+if (!record) throw new Error("소유 기록 경로가 없다");
+const before = ["SIGINT", "SIGTERM"].map((signal) => process.listenerCount(signal));
+const code = await runSignalTests([resolve("scripts/tests/fixtures/phase-two-child.mjs"), record]);
+const after = ["SIGINT", "SIGTERM"].map((signal) => process.listenerCount(signal));
+await writeFile(record + "-result", JSON.stringify({ code, before, after }));
+process.exitCode = code;

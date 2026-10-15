@@ -8,6 +8,7 @@ import { loadSettings } from "../src/core/config/settings.js";
 import { seed } from "../src/seed.js";
 import { storageClients } from "../src/core/storage/client.js";
 import { prepareBucket } from "../src/core/storage/setup.js";
+import { RunnerFailure } from "./runner-diagnostics.js";
 
 export async function prepareE2e(env: Record<string, string>): Promise<void> {
   const port = createServer();
@@ -26,8 +27,12 @@ export async function prepareE2e(env: Record<string, string>): Promise<void> {
     new URL(settings.DATABASE_URL).pathname !== "/app_e2e" ||
     new URL(settings.REDIS_URL).pathname !== "/14"
   )
-    throw new Error("E2E 전용 DB만 비운다");
-  assertLocalDatabase(settings.DATABASE_URL);
+    throw new RunnerFailure("prepare", "guard");
+  try {
+    assertLocalDatabase(settings.DATABASE_URL);
+  } catch {
+    throw new RunnerFailure("prepare", "guard");
+  }
   await assertProjectDatabase(settings.DATABASE_URL);
   const db = new pg.Client({
     connectionString: settings.DATABASE_URL,

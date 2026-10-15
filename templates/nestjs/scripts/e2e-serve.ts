@@ -2,12 +2,19 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { setTimeout } from "node:timers/promises";
-import { startServers, type ServerSpec, type Servers } from "./servers.js";
+import { startServers, redactor, type ServerSpec, type Servers } from "./servers.js";
 import { stopProcessTree } from "./process-tree.mjs";
 import { environment } from "./child-environment.mjs";
 import { e2eEnvironment, e2eOptions } from "./e2e-options.js";
 import { isMain, main, scriptSettings } from "./runtime.js";
+import {
+  RunnerFailure,
+  failureCategory,
+  runnerDiagnostic,
+  type RunnerPhase,
+} from "./runner-diagnostics.js";
 export interface E2eServeDeps {
   prepare(env: Record<string, string>): Promise<void>;
   specs(): readonly ServerSpec[];
@@ -16,8 +23,12 @@ export interface E2eServeDeps {
 const root = resolve(import.meta.dirname, "..");
 export const realDeps: E2eServeDeps = {
   prepare: async (env) => {
-    const { build } = await import("./build.js");
-    await build(root);
+    try {
+      const { build } = await import("./build.js");
+      await build(root);
+    } catch (error) {
+      throw new RunnerFailure("build", failureCategory(error));
+    }
     const { prepareE2e } = await import("./e2e-prepare.js");
     await prepareE2e(env);
   },
@@ -26,7 +37,7 @@ export const realDeps: E2eServeDeps = {
       role,
       argv: [
         "--import",
-        resolve(root, "dist/core/telemetry/register.js"),
+        pathToFileURL(resolve(root, "dist/core/telemetry/register.js")).href,
         resolve(root, `dist/${role === "api" ? "main" : role}.js`),
       ],
     })),
@@ -78,15 +89,20 @@ export async function runE2eServe(
   let readyDir: string | undefined;
   let ownedDir = false;
   let code = 1;
+  let phase: RunnerPhase = "prepare";
+  let scrub = redactor(environment());
   try {
     const inherited = environment();
     const env = e2eEnvironment(options.webUrl, inherited);
+    scrub = redactor(inherited, env.server, env.command);
     await deps.prepare(env.server);
     if (interrupted) return interrupted;
+    phase = "start";
     readyDir = inherited.AITPL_READY_DIR ?? (await mkdtemp(join(tmpdir(), "aitpl-e2e-")));
     ownedDir = !inherited.AITPL_READY_DIR;
     await mkdir(readyDir, { recursive: true });
     servers = await startServers({ cwd: root, env: env.server, readyDir, specs: deps.specs() });
+    phase = "ready";
     const deadline = Date.now() + deps.readyTimeoutMs;
     const readiness = (async () => {
       await servers.ready(deps.readyTimeoutMs);
@@ -96,6 +112,7 @@ export async function runE2eServe(
     if (status !== undefined) code = status;
     else if (!options.command.length) code = await abort;
     else {
+      phase = "command";
       const executable = options.command[0];
       if (!executable) throw new Error("명령 실행 파일이 없다");
       const child = spawn(executable, options.command.slice(1), {
@@ -107,7 +124,8 @@ export async function runE2eServe(
       });
       command = child;
       const finished = new Promise<number>((yes) => {
-        child.once("error", () => {
+        child.once("error", (error) => {
+          process.stderr.write(scrub(runnerDiagnostic("command", error)));
           yes(1);
         });
         child.once("exit", (exit, signal) => {
@@ -118,8 +136,8 @@ export async function runE2eServe(
         await writeFile(join(readyDir, "command.json"), JSON.stringify({ pid: command.pid }));
       code = await Promise.race([finished, abort]);
     }
-  } catch {
-    process.stderr.write("E2E 준비 또는 실행에 실패했다\n");
+  } catch (error) {
+    process.stderr.write(scrub(runnerDiagnostic(phase, error)));
     code = 1;
   } finally {
     const cleanup = await Promise.allSettled([

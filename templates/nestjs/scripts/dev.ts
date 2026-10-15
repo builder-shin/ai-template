@@ -5,6 +5,7 @@ import { redactor, type ServerSpec } from "./servers.js";
 import { startProcessTree, stopProcessTree } from "./process-tree.mjs";
 import { environment } from "./child-environment.mjs";
 import { isMain, main, scriptSettings } from "./runtime.js";
+import { runnerDiagnostic, type RunnerPhase } from "./runner-diagnostics.js";
 export async function runDev(options: {
   cwd: string;
   env: Record<string, string>;
@@ -48,10 +49,12 @@ export async function runDev(options: {
   options.signal?.addEventListener("abort", onInt);
   let code: number;
   let cleanupFailed: boolean;
+  let phase: RunnerPhase = "dev";
   try {
     if (options.signal?.aborted) onInt();
     else
       for (const spec of specs) {
+        phase = `dev:${spec.role}`;
         const child = startProcessTree([...spec.argv], {
           cwd: options.cwd,
           env,
@@ -73,7 +76,8 @@ export async function runDev(options: {
             if (pending) output.write(`[${spec.role}] ${scrub(pending)}\n`);
           });
         }
-        child.once("error", () => {
+        child.once("error", (error) => {
+          process.stderr.write(scrub(runnerDiagnostic(`dev:${spec.role}`, error)));
           finish(1);
         });
         child.once("exit", (code: number | null) => {
@@ -81,6 +85,9 @@ export async function runDev(options: {
         });
       }
     code = await result;
+  } catch (error) {
+    process.stderr.write(scrub(runnerDiagnostic(phase, error)));
+    code = 1;
   } finally {
     const stopped = await Promise.allSettled(children.map((child) => stopProcessTree(child)));
     process.off("SIGINT", onInt);
