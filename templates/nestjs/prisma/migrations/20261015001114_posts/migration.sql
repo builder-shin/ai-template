@@ -33,4 +33,3 @@ ALTER TABLE "posts" ADD CONSTRAINT "posts_author_id_fkey" FOREIGN KEY ("author_i
 
 -- AddForeignKey
 ALTER TABLE "posts" ADD CONSTRAINT "posts_cover_image_id_fkey" FOREIGN KEY ("cover_image_id") REFERENCES "files"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
