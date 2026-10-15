@@ -5,18 +5,21 @@ import { tmpdir } from "node:os";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 
-export function generatorFixture() {
+export function generatorFixture(sourceRoot = process.cwd()) {
   const root = mkdtempSync(join(tmpdir(), "aitpl-module-fixture-"));
   for (const folder of ["src", "prisma"])
-    cpSync(join(process.cwd(), folder), join(root, folder), {
+    cpSync(join(sourceRoot, folder), join(root, folder), {
       recursive: true,
       filter: (path) => !["generated", "node_modules"].includes(basename(path)),
     });
   mkdirSync(join(root, "scripts/tests"), { recursive: true });
-  cpSync("scripts/tests/gen-bootstrap.test.ts", join(root, "scripts/tests/gen-bootstrap.test.ts"));
+  cpSync(
+    join(sourceRoot, "scripts/tests/gen-bootstrap.test.ts"),
+    join(root, "scripts/tests/gen-bootstrap.test.ts"),
+  );
   mkdirSync(join(root, "tests/integration"), { recursive: true });
   for (const file of ["audit-logs.test.ts", "permissions.test.ts", "seed.test.ts"])
-    cpSync(`tests/integration/${file}`, join(root, "tests/integration", file));
+    cpSync(join(sourceRoot, "tests/integration", file), join(root, "tests/integration", file));
   return {
     root,
     close: () => {

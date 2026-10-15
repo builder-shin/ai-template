@@ -1,5 +1,6 @@
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
+import { expectedPermissions } from "./generated-module.js";
 
 export const permissions = [
   "admin:access",
@@ -77,4 +78,34 @@ export function variable(source: ts.SourceFile, name: string): ts.Expression {
   );
   if (!declaration?.initializer) throw new Error(`${name}: 독립 예상값 선언이 없다`);
   return declaration.initializer;
+}
+
+/** 생성 전 시험에 적힌 독립 literal만 읽고 production registry는 평가하지 않는다. */
+export function oracleBaseline(read: (path: string) => string) {
+  const expectedActions = stringArrays(
+    parse(read("src/core/audit/tests/record.test.ts")),
+    "session.login_succeeded",
+  );
+  if (expectedActions.length !== 1 || !expectedActions[0])
+    throw new Error("감사의 독립 예상 배열이 하나가 아니다");
+  const source = parse(read("src/core/http/tests/operation-guard.test.ts"));
+  const object = nodes(source, ts.isObjectLiteralExpression).find((node) =>
+    node.properties.some((item) => item.name && item.name.getText(source) === '"admin:access"'),
+  );
+  if (!object) throw new Error("권한 설명의 독립 예상 map이 없다");
+  const expectedDescriptions: Record<string, string> = {};
+  for (const item of object.properties) {
+    if (
+      !ts.isPropertyAssignment(item) ||
+      !ts.isStringLiteral(item.name) ||
+      !ts.isStringLiteral(item.initializer)
+    )
+      throw new Error("권한 설명은 명시 문자열 literal이어야 한다");
+    expectedDescriptions[item.name.text] = item.initializer.text;
+  }
+  return {
+    permissions: expectedPermissions(read("scripts/tests/gen-bootstrap.test.ts")),
+    actions: expectedActions[0],
+    descriptions: expectedDescriptions,
+  };
 }
