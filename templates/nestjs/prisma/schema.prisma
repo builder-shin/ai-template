@@ -27,6 +27,7 @@ model User {
   sessions           Session[]
   oauthAccounts      OAuthAccount[]
   files              File[]
+  posts              Post[]
 
   @@map("users")
 }
@@ -147,9 +148,35 @@ model File {
   detachedAt  DateTime?  @map("detached_at") @db.Timestamptz(6)
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  posts       Post[]
 
   @@index([ownerId, status])
   @@index([status, createdAt])
   @@index([detachedAt])
   @@map("files")
+}
+
+enum PostStatus {
+  draft
+  published
+}
+
+model Post {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  authorId     String     @map("author_id") @db.Uuid
+  title        String
+  body         String
+  status       PostStatus @default(draft)
+  publishedAt  DateTime?  @map("published_at") @db.Timestamptz(6)
+  coverImageId String?    @map("cover_image_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  coverImage   File?      @relation(fields: [coverImageId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([authorId, status])
+  @@index([publishedAt])
+  @@index([coverImageId])
+  @@map("posts")
 }

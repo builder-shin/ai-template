@@ -2,10 +2,23 @@ import { expect, it } from "vitest";
 import { adminFixture, collection, resourceDocument } from "./admin-fixture.js";
 import { sessionDocument } from "./session-fixture.js";
 import { newOpaqueToken } from "../../src/core/security/tokens.js";
-it("현재 구현한 열두 감사 행위는 실제 원인 API를 통해 기록되고 목록에서 조회된다", async () => {
+it("열세 감사 행위는 실제 원인 API를 통해 기록되고 목록에서 조회된다", async () => {
   const f = await adminFixture(),
     member = await f.addUser("member");
   const original = "me-fixture-password"; // betterleaks:allow 사유: CI의 가짜 비밀번호다
+  const post = await f.post(
+    "posts",
+    { title: "관리자 삭제 감사", body: "본문" },
+    member.session.attributes.accessToken,
+  );
+  expect(post.status).toBe(201);
+  expect(
+    (
+      await f.http
+        .delete("/api/v1/posts/" + resourceDocument(post.text).data.id)
+        .set("Authorization", "Bearer " + f.token)
+    ).status,
+  ).toBe(204);
   const replacement = "audit-replacement-password"; // betterleaks:allow 사유: CI의 가짜 비밀번호다
   expect(
     (
@@ -80,6 +93,7 @@ it("현재 구현한 열두 감사 행위는 실제 원인 API를 통해 기록�
   expect(listed.status).toBe(200);
   expect([...new Set(collection(listed.text).data.map((r) => r.attributes.action))].sort()).toEqual(
     [
+      "post.deleted_by_admin",
       "role.created",
       "role.deleted",
       "role.updated",

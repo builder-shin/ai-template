@@ -16,7 +16,8 @@
     { "name": "me" },
     { "name": "users" },
     { "name": "audit-logs" },
-    { "name": "realtime" }
+    { "name": "realtime" },
+    { "name": "posts" }
   ],
   "paths": {
     "/health/live": {
@@ -3778,6 +3779,647 @@
           }
         }
       }
+    },
+    "/api/v1/posts": {
+      "get": {
+        "operationId": "Posts_list",
+        "summary": "볼 수 있는 글을 검색하고 목록으로 조회한다",
+        "tags": ["posts"],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "default": 1
+            },
+            "explode": false
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "explode": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[posts]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "filter[status]",
+            "in": "query",
+            "required": false,
+            "schema": { "$ref": "#/components/schemas/PostStatus" },
+            "explode": false
+          },
+          {
+            "name": "filter[author]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" },
+            "explode": false
+          },
+          {
+            "name": "filter[q]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "글 목록을 조회했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostCollectionDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{}, { "BearerAuth": [] }],
+        "x-jsonapi-sort": ["createdAt", "publishedAt", "title"],
+        "x-jsonapi-include": ["author", "coverImage"]
+      },
+      "post": {
+        "operationId": "Posts_create",
+        "summary": "본인의 글을 만든다",
+        "tags": ["posts"],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "글을 만들었다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/PostDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "x-permission": "posts:create",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/PostCreateDocument" }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{id}": {
+      "get": {
+        "operationId": "Posts_get",
+        "summary": "볼 수 있는 글을 조회한다",
+        "tags": ["posts"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[posts]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[users]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          },
+          {
+            "name": "fields[files]",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "글을 조회했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/PostDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{}, { "BearerAuth": [] }],
+        "x-jsonapi-include": ["author", "coverImage"]
+      },
+      "patch": {
+        "operationId": "Posts_update",
+        "summary": "글을 고치거나 발행 상태를 바꾼다",
+        "tags": ["posts"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "글을 고쳤다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/PostDocument" }
+              }
+            }
+          },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "409": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "413": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "415": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": { "$ref": "#/components/schemas/PostUpdateDocument" }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Posts_delete",
+        "summary": "글을 지우고 관리자 삭제 감사를 남긴다",
+        "tags": ["posts"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "글을 지웠다" },
+          "400": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "401": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "403": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "404": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "406": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "429": {
+            "description": "요청에 실패했다",
+            "headers": {
+              "Retry-After": {
+                "schema": { "type": "integer", "format": "int32" },
+                "required": true
+              }
+            },
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "500": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          },
+          "503": {
+            "description": "요청에 실패했다",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": { "$ref": "#/components/schemas/ErrorDocument" }
+              }
+            }
+          }
+        },
+        "security": [{ "BearerAuth": [] }]
+      }
     }
   },
   "components": {
@@ -5180,6 +5822,251 @@
           }
         },
         "required": ["meta"]
+      },
+      "PostStatus": { "type": "string", "enum": ["draft", "published"] },
+      "PostAttributes": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "body": { "type": "string", "maxLength": 100000 },
+          "status": { "$ref": "#/components/schemas/PostStatus" },
+          "publishedAt": {
+            "anyOf": [
+              { "type": "string", "format": "date-time" },
+              { "type": "null" }
+            ]
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "title",
+          "body",
+          "status",
+          "publishedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PostRelationships": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["users"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          },
+          "coverImage": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["files"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        },
+        "required": ["author", "coverImage"]
+      },
+      "PostResource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["posts"] },
+          "id": { "type": "string" },
+          "attributes": { "$ref": "#/components/schemas/PostAttributes" },
+          "relationships": { "$ref": "#/components/schemas/PostRelationships" }
+        },
+        "required": ["type", "id", "attributes", "relationships"]
+      },
+      "PostDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PostResource" },
+          "included": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "$ref": "#/components/schemas/UserPublicResource" },
+                { "$ref": "#/components/schemas/FileResource" }
+              ]
+            }
+          }
+        },
+        "required": ["data"]
+      },
+      "PostCollectionDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PostResource" }
+          },
+          "included": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "$ref": "#/components/schemas/UserPublicResource" },
+                { "$ref": "#/components/schemas/FileResource" }
+              ]
+            }
+          },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" },
+          "meta": { "$ref": "#/components/schemas/CollectionMeta" }
+        },
+        "required": ["data", "links", "meta"]
+      },
+      "PostCreateAttributes": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "body": { "type": "string", "maxLength": 100000 },
+          "status": { "$ref": "#/components/schemas/PostStatus" }
+        },
+        "required": ["title", "body"]
+      },
+      "PostUpdateAttributes": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "body": { "type": "string", "maxLength": 100000 },
+          "status": { "$ref": "#/components/schemas/PostStatus" }
+        }
+      },
+      "PostWriteRelationships": {
+        "type": "object",
+        "properties": {
+          "coverImage": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["files"] },
+                      "id": { "type": "string" }
+                    },
+                    "required": ["type", "id"]
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["data"]
+          }
+        }
+      },
+      "PostCreateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["posts"] },
+              "attributes": {
+                "$ref": "#/components/schemas/PostCreateAttributes"
+              },
+              "relationships": {
+                "$ref": "#/components/schemas/PostWriteRelationships"
+              }
+            },
+            "required": ["type", "attributes"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PostUpdateDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["posts"] },
+              "id": { "type": "string" },
+              "attributes": {
+                "$ref": "#/components/schemas/PostUpdateAttributes"
+              },
+              "relationships": {
+                "$ref": "#/components/schemas/PostWriteRelationships"
+              }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PostCreatedEventDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PostResource" }
+        },
+        "required": ["data"]
+      },
+      "PostUpdatedEventDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PostResource" }
+        },
+        "required": ["data"]
+      },
+      "PostPublishedEventDocument": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PostResource" }
+        },
+        "required": ["data"]
+      },
+      "PostDeletedEventDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["posts"] },
+              "id": { "type": "string" }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
+      },
+      "PostUnpublishedEventDocument": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["posts"] },
+              "id": { "type": "string" }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": ["data"]
       }
     },
     "securitySchemes": { "BearerAuth": { "type": "http", "scheme": "Bearer" } }
@@ -5194,6 +6081,33 @@
       "name": "session.revoked",
       "rooms": ["user:{userId}"],
       "payload": "SessionRevokedEventDocument"
+    },
+    {
+      "name": "post.created",
+      "payload": "PostCreatedEventDocument",
+      "rooms": ["posts:all", "user:{authorId}"]
+    },
+    {
+      "name": "post.updated",
+      "payload": "PostUpdatedEventDocument",
+      "rooms": ["posts:all", "user:{authorId}"],
+      "conditionalRooms": [{ "room": "posts", "when": "published" }]
+    },
+    {
+      "name": "post.published",
+      "payload": "PostPublishedEventDocument",
+      "rooms": ["posts", "posts:all", "user:{authorId}"]
+    },
+    {
+      "name": "post.unpublished",
+      "payload": "PostUnpublishedEventDocument",
+      "rooms": ["posts"]
+    },
+    {
+      "name": "post.deleted",
+      "payload": "PostDeletedEventDocument",
+      "rooms": ["posts:all", "user:{authorId}"],
+      "conditionalRooms": [{ "room": "posts", "when": "wasPublished" }]
     }
   ],
   "x-realtime-messages": [

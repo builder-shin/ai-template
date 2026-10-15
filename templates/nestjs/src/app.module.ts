@@ -38,6 +38,7 @@ import { AuditLogsModule } from "./modules/audit-logs/index.js";
 import { AuthModule, JwtPrincipalResolver } from "./modules/auth/index.js";
 import { registerDomain } from "./modules/registry.js";
 import { RealtimeModule } from "./modules/realtime/index.js";
+import { PostsModule } from "./modules/posts/index.js";
 
 @Global()
 @Module({})
@@ -63,6 +64,7 @@ export class AppModule {
         RolesModule.register(infrastructure, [realtime]),
         AuditLogsModule.register(infrastructure),
         files,
+        PostsModule.register(infrastructure, [files, realtime]),
         auth,
         realtime,
         ...(infrastructure ? [DbModule, RedisModule, RateLimitModule, StorageModule] : []),

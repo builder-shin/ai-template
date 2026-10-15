@@ -7,13 +7,17 @@ import { FilesService, registerFileJobs } from "./files/index.js";
 import { UsersRepository, MeRealtimeBridge } from "./users/index.js";
 import { registerFileReadRule } from "./files/index.js";
 import { registerPeriodic } from "../core/jobs/names.js";
+import { PostsRepository } from "./posts/index.js";
 export { registerJob, registerPeriodic } from "../core/jobs/names.js";
 const avatarReadRule: Parameters<typeof registerFileReadRule>[0] = (tx, _viewer, ids) =>
   new UsersRepository().publicAvatarIds(tx, ids);
+const coverReadRule: Parameters<typeof registerFileReadRule>[0] = (tx, viewer, ids) =>
+  new PostsRepository().readableCoverIds(tx, ids, viewer);
 export function registerDomain(app: INestApplicationContext): void {
   registerAuthJobs(app);
   app.get<MeRealtimeBridge>(MeRealtimeBridge).register();
   registerFileReadRule(avatarReadRule);
+  registerFileReadRule(coverReadRule);
   app
     .get<IncludeRegistry>(IncludeRegistry)
     .register("users", (tx, ids) => app.get<UsersRepository>(UsersRepository).load(tx, ids));

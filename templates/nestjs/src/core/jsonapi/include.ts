@@ -49,6 +49,7 @@ export class IncludeRegistry {
     paths: readonly string[],
     primary: readonly ResourceObject[],
     viewer: Principal | undefined,
+    filesLoader?: Loader,
   ): Promise<readonly ResourceObject[]> {
     const primaryKeys = new Set(primary.map(key));
     const cache = new Map(primary.map((resource) => [key(resource), publicResource(resource)]));
@@ -73,7 +74,7 @@ export class IncludeRegistry {
           attempted.add(key(identifier));
         }
       for (const [type, ids] of batches) {
-        const loader = this.loaders.get(type);
+        const loader = type === "files" && filesLoader ? filesLoader : this.loaders.get(type);
         if (!loader) throw new Error(`include 로더가 없다: ${type}`);
         for (const resource of await loader(tx, [...ids], viewer)) {
           if (resource.type === type && ids.has(resource.id))

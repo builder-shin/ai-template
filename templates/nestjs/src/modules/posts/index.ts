@@ -1,1 +1,11 @@
-export {};
+export { PostsModule } from "./posts.module.js";
+export { PostsService } from "./service.js";
+export { PostsRepository, type PostRecord } from "./repository.js";
+export { POST_STATUSES, postStatusSchema, type PostStatus } from "./schemas.js";
+export { canSee, canModify, type PostAction } from "./policies.js";
+export { nextStatus, publicationTime } from "./transitions.js";
+export { eventRooms, type PostEventName } from "./events.js";
+export { seedPosts } from "./seed.js";
+export { cacheKey } from "./cache.js";
+export { listPosts } from "./operations.js";
+export { postCreateDocumentSchema, postUpdateDocumentSchema } from "./schemas.js";

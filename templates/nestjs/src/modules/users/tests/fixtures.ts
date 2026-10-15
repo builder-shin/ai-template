@@ -102,6 +102,7 @@ export function fixture() {
       .assignments.filter((a) => a.userId === id)
       .map((a) => ({ ...a, role: required(db().roles.find((r) => r.id === a.roleId)) }));
   const tx = {
+    post: { findMany: () => Promise.resolve([]) },
     $executeRaw: () => {
       trace.push("role:admin");
       return Promise.resolve(1);

@@ -4,11 +4,15 @@ import { loadSettings, type Settings } from "./core/config/settings.js";
 import { PrismaService } from "./core/db/prisma.service.js";
 import { UnitOfWork } from "./core/db/unit-of-work.js";
 import { seedSystem } from "./modules/roles/index.js";
+import { seedPosts } from "./modules/posts/index.js";
 
 export async function seed(settings: Settings = loadSettings()): Promise<void> {
   const prisma = new PrismaService(settings);
   try {
-    await new UnitOfWork(prisma).run((tx) => seedSystem(tx, settings));
+    await new UnitOfWork(prisma).run(async (tx) => {
+      const { adminUserId } = await seedSystem(tx, settings);
+      await seedPosts(tx, adminUserId);
+    });
   } finally {
     await prisma.$disconnect();
   }

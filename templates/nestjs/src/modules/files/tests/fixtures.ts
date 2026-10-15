@@ -31,7 +31,10 @@ export function fixture(overrides: Partial<Settings> = {}) {
       active = structuredClone(committed);
       events.push("begin");
       try {
-        const result = await fn({ user: { findMany: () => Promise.resolve([]) } } as unknown as Tx);
+        const result = await fn({
+          user: { findMany: () => Promise.resolve([]), count: () => Promise.resolve(0) },
+          post: { findMany: () => Promise.resolve([]), count: () => Promise.resolve(0) },
+        } as unknown as Tx);
         if (fail) throw new Error("commit 실패");
         committed = active;
         events.push("commit");
@@ -45,6 +48,9 @@ export function fixture(overrides: Partial<Settings> = {}) {
     },
   } as unknown as PrismaService);
   class MemoryRepository extends FilesRepository {
+    override lock(): Promise<void> {
+      return Promise.resolve();
+    }
     override lockQuota(_tx: Tx, id: string) {
       events.push("lock:" + id);
       return Promise.resolve();

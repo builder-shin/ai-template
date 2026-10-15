@@ -137,13 +137,34 @@ export class FilesService {
       this.removeObject(afterCommit, file.key);
     });
   }
-  detach(tx: Tx, ids: readonly string[]): Promise<void> {
-    return this.repository.detach(tx, ids);
+  async detach(tx: Tx, ids: readonly string[], afterCommit?: AfterCommit): Promise<void> {
+    const targets = [...new Set(ids)];
+    await this.repository.detach(tx, targets);
+    afterCommit?.(() =>
+      this.unit.run(async (cleanupTx, cleanupCommit) => {
+        for (const file of await this.repository.claimDetached(cleanupTx, targets))
+          this.removeObject(cleanupCommit, file.key);
+      }),
+    );
+  }
+  async loadReferenced(tx: Tx, ids: readonly string[]) {
+    const targets = [...new Set(ids)];
+    const files = await this.repository.findMany(tx, targets);
+    return Promise.all(
+      files
+        .filter((file) => targets.includes(file.id) && file.status === "ready")
+        .map((file) => this.downloadResource(file)),
+    );
   }
   purgePending(): Promise<void> {
     return this.unit.run(async (tx, afterCommit) => {
       const files = await this.repository.purgeCandidates(tx, new Date(Date.now() - 86_400_000));
       for (const file of files) {
+        if (file.detachedAt !== null) {
+          for (const claimed of await this.repository.claimDetached(tx, [file.id]))
+            this.removeObject(afterCommit, claimed.key);
+          continue;
+        }
         await this.repository.delete(tx, file.id);
         this.removeObject(afterCommit, file.key);
       }

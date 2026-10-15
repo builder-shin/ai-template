@@ -45,9 +45,14 @@ const sessionOverlaps = () =>
 it("앱의 모든 등록 라우트에 허용 목록 밖의 겹침이 없다", async () => {
   const { app } = await testApp([]);
   const routes = registeredRoutes(app);
-  expect(routes).toHaveLength(34);
+  expect(routes).toHaveLength(39);
   expect(routes).toEqual(
     expect.arrayContaining([
+      { method: "GET", path: "/api/v1/posts" },
+      { method: "POST", path: "/api/v1/posts" },
+      { method: "GET", path: "/api/v1/posts/:id" },
+      { method: "PATCH", path: "/api/v1/posts/:id" },
+      { method: "DELETE", path: "/api/v1/posts/:id" },
       { method: "GET", path: "/api/v1/users" },
       { method: "GET", path: "/api/v1/users/:id" },
       { method: "PATCH", path: "/api/v1/users/:id" },

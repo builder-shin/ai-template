@@ -15,6 +15,9 @@ export interface FileRecord {
 export type NewFile = Pick<FileRecord, "ownerId" | "key" | "filename" | "contentType" | "size">;
 @Injectable()
 export class FilesRepository {
+  async lock(tx: Tx, id: string): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM files WHERE id = ${id}::uuid FOR UPDATE`;
+  }
   lockQuota(tx: Tx, id: string): Promise<void> {
     return advisoryXactLock(tx, `files:quota:${id}`);
   }
@@ -42,6 +45,24 @@ export class FilesRepository {
   }
   async detach(tx: Tx, ids: readonly string[]): Promise<void> {
     await tx.file.updateMany({ where: { id: { in: [...ids] } }, data: { detachedAt: new Date() } });
+  }
+  async claimDetached(tx: Tx, ids: readonly string[]): Promise<FileRecord[]> {
+    const claimed: FileRecord[] = [];
+    for (const id of [...new Set(ids)].sort()) {
+      await this.lock(tx, id);
+      const file = await this.find(tx, id);
+      if (!file?.detachedAt) continue;
+      const referenced =
+        (await tx.user.count({ where: { avatarFileId: id } })) ||
+        (await tx.post.count({ where: { coverImageId: id } }));
+      if (referenced) {
+        await tx.file.update({ where: { id }, data: { detachedAt: null } });
+        continue;
+      }
+      await this.delete(tx, id);
+      claimed.push(file);
+    }
+    return claimed;
   }
   purgeCandidates(tx: Tx, cutoff: Date): Promise<FileRecord[]> {
     return tx.file.findMany({
