@@ -76,9 +76,7 @@ jobs:
       - run: pnpm --dir templates/nestjs check
       - name: 적용한 마이그레이션과 스키마의 drift 확인
         working-directory: templates/nestjs
-        run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
-        env:
-          NODE_OPTIONS: --env-file=.env
+        run: node --env-file=.env node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
       - run: pnpm --dir templates/nestjs test:e2e
       - name: 빌드한 API의 네 계층 계측과 health 제외 확인
         working-directory: templates/nestjs
@@ -112,14 +110,27 @@ jobs:
           git commit -m "chore: initialize harness fixture"
           node -e 'require("node:fs").writeFileSync("src/hook-secret-fixture.ts", "export const token = " + JSON.stringify("ghp_" + require("node:crypto").randomBytes(18).toString("hex")) + ";\n")'
           git add src/hook-secret-fixture.ts
-          if pnpm tool betterleaks git --pre-commit --staged --no-banner --redact; then
-            echo "비밀 검사기가 가짜 비밀을 놓쳤다" >&2
-            exit 1
-          fi
-          if git commit -m "test: reject fake secret"; then
-            echo "커밋 hook이 가짜 비밀을 놓쳤다" >&2
-            exit 1
-          fi
+          scanner_status=0
+          pnpm tool betterleaks git --pre-commit --staged --no-banner --redact \
+            --report-format json --report-path "$RUNNER_TEMP/nestjs-hook-secrets.json" \
+            > "$RUNNER_TEMP/nestjs-hook-scan.log" 2>&1 || scanner_status=$?
+          hook_status=0
+          git commit -m "test: reject fake secret" \
+            > "$RUNNER_TEMP/nestjs-hook-commit.log" 2>&1 || hook_status=$?
+          cat "$RUNNER_TEMP/nestjs-hook-scan.log" "$RUNNER_TEMP/nestjs-hook-commit.log"
+          node -e '
+            const fs = require("node:fs");
+            const [report, hook, scannerStatus, hookStatus] = process.argv.slice(1);
+            const findings = JSON.parse(fs.readFileSync(report, "utf8"));
+            const output = fs.readFileSync(hook, "utf8").replace(/\x1b\[[0-9;]*m/g, "");
+            const secrets = output.match(/(?:^|\n)┃\s+secrets\s+❯[^\n]*\n([\s\S]*?)(?=\n┃|$)/)?.[1] ?? "";
+            if (scannerStatus !== "1" || hookStatus !== "1" ||
+                !Array.isArray(findings) || !findings.some((entry) =>
+                  entry.RuleID === "github-pat" && entry.File === "src/hook-secret-fixture.ts") ||
+                !/\bleaks found: [1-9]\d*\b/.test(secrets))
+              throw new Error("가짜 비밀의 github-pat 탐지와 secrets hook 실패를 확인하지 못했다");
+          ' "$RUNNER_TEMP/nestjs-hook-secrets.json" "$RUNNER_TEMP/nestjs-hook-commit.log" \
+            "$scanner_status" "$hook_status"
           git rm --cached src/hook-secret-fixture.ts
           rm src/hook-secret-fixture.ts
           printf 'export const hookProbe={value:1}\n' > src/hook-format-fixture.ts
@@ -140,7 +151,8 @@ jobs:
           docker compose -p nestjs -f templates/nestjs/compose.yaml --profile app down -v
           docker image rm ai-template-nestjs:ci nestjs-app:local || true
           rm -rf "$RUNNER_TEMP/aitpl-nestjs-harness"
-          rm -f "$RUNNER_TEMP/nestjs-image.yaml"
+          rm -f "$RUNNER_TEMP/nestjs-image.yaml" "$RUNNER_TEMP/nestjs-hook-secrets.json" \
+            "$RUNNER_TEMP/nestjs-hook-scan.log" "$RUNNER_TEMP/nestjs-hook-commit.log"
 
   nextjs:
     runs-on: ubuntu-latest

@@ -16,7 +16,10 @@ it("실패 잡은 처음 포함 다섯 번 실행하고 실측 지연 뒤 최종
   const host = new WorkerHost(queue);
   const attempts: { attempt: number; time: number }[] = [];
   const failures: number[] = [];
+  const failureLogCounts: number[] = [];
   const logs = vi.spyOn(Logger.prototype, "error");
+  const finalFailureLogCount = () =>
+    logs.mock.calls.filter(([message]) => message === "잡 최종 실패: test.always_fails").length;
   const jitter = vi.spyOn(Math, "random").mockReturnValue(0.5);
   registerJob("test.always_fails", (_data, context) => {
     attempts.push({ attempt: context.attempt, time: performance.now() });
@@ -25,7 +28,10 @@ it("실패 잡은 처음 포함 다섯 번 실행하고 실측 지연 뒤 최종
   try {
     await host.start();
     host.worker?.on("failed", (job) => {
-      if (job) failures.push(job.attemptsMade);
+      if (job) {
+        failures.push(job.attemptsMade);
+        failureLogCounts.push(finalFailureLogCount());
+      }
     });
     expect(queue.queue.opts.connection).toBe(redis.connection("bullmq"));
     expect(host.worker?.opts.connection).toBe(queue.queue.opts.connection);
@@ -53,9 +59,8 @@ it("실패 잡은 처음 포함 다섯 번 실행하고 실측 지연 뒤 최종
     expect(await failed?.getState()).toBe("failed");
     expect(failed?.attemptsMade).toBe(5);
     await expect.poll(() => failures).toEqual([1, 2, 3, 4, 5]);
-    expect(
-      logs.mock.calls.filter(([message]) => message === "잡 최종 실패: test.always_fails"),
-    ).toHaveLength(1);
+    expect(failureLogCounts).toEqual([0, 0, 0, 0, 1]);
+    expect(finalFailureLogCount()).toBe(1);
     expect(await queue.queue.getDelayedCount()).toBe(0);
   } finally {
     logs.mockRestore();

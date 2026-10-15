@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { parseEnv } from "node:util";
+import { runInNewContext } from "node:vm";
 import { parse } from "yaml";
 import { parseArgs, usage } from "../../src/conformance/args.ts";
 import {
@@ -148,6 +149,113 @@ describe("적합성 대상", () => {
       "test:flows",
       "test/flows/smoke.test.ts",
     ]);
+  });
+});
+
+describe("NestJS CI 음성 대조", () => {
+  interface Step {
+    name?: string;
+    run?: string;
+    env?: Record<string, string>;
+  }
+  const workflow = parse(
+    readFileSync(new URL("../../../.github/workflows/ci.yml", import.meta.url), "utf8"),
+  ) as { jobs: { nestjs: { env: Record<string, string>; steps: Step[] } } };
+  const steps = workflow.jobs.nestjs.steps;
+
+  it("drift는 현재 Node가 허용하는 환경 옵션과 CLI env 파일로 Prisma를 실행한다", () => {
+    const step = steps.find((entry) => entry.run?.includes("migrate diff"));
+    expect(step).toBeDefined();
+    const options = {
+      ...workflow.jobs.nestjs.env,
+      ...step?.env,
+    }.NODE_OPTIONS;
+    expect(
+      (options ?? "")
+        .split(/\s+/)
+        .filter(Boolean)
+        .filter((flag) => !process.allowedNodeEnvironmentFlags.has(flag.split("=")[0] ?? flag)),
+    ).toEqual([]);
+    const args = step?.run?.split(/\s+/) ?? [];
+    expect(args.slice(0, 3)).toEqual([
+      "node",
+      "--env-file=.env",
+      "node_modules/prisma/build/index.js",
+    ]);
+    expect(args.slice(3)).toEqual([
+      "migrate",
+      "diff",
+      "--from-config-datasource",
+      "--to-schema",
+      "prisma/schema.prisma",
+      "--exit-code",
+    ]);
+  });
+
+  function validationCode(): string {
+    const run = steps.find((entry) => entry.run?.includes("reject fake secret"))?.run ?? "";
+    const code = [...run.matchAll(/node -e '([\s\S]*?)'/g)]
+      .map((match) => match[1])
+      .find((script) => script?.includes("process.argv.slice(1)"));
+    if (code === undefined)
+      throw new Error("CI가 탐지 규칙과 실제 secrets hook 실패를 검증해야 한다");
+    return code;
+  }
+
+  const finding = [{ RuleID: "github-pat", File: "src/hook-secret-fixture.ts" }];
+  const secretFailure = "┃  secrets ❯ \nWRN leaks found: 1\n\n┃  lint ❯ \n";
+  interface Control {
+    scannerStatus: string;
+    hookStatus: string;
+    report?: unknown;
+    hookOutput: string;
+  }
+  const detected: Control = {
+    scannerStatus: "1",
+    hookStatus: "1",
+    report: finding,
+    hookOutput: secretFailure,
+  };
+
+  function runValidation(code: string, control: Control): void {
+    // CI의 실제 검증 코드를 실행하되 파일·종료 결과만 주입한다. 도구나 hook은 띄우지 않는다.
+    runInNewContext(code, {
+      process: {
+        argv: ["node", "report", "hook", control.scannerStatus, control.hookStatus],
+      },
+      require: (name: string) => {
+        if (name !== "node:fs") throw new Error(`시험에서 허용하지 않은 모듈: ${name}`);
+        return {
+          readFileSync: (path: string) => {
+            if (path === "hook") return control.hookOutput;
+            if (control.report === undefined) throw new Error("탐지 보고서가 없다");
+            return JSON.stringify(control.report);
+          },
+        };
+      },
+    });
+  }
+
+  it("github-pat 탐지와 secrets hook의 실제 양수 탐지 실패만 음성 대조로 인정한다", () => {
+    const code = validationCode();
+    expect(() => {
+      runValidation(code, detected);
+    }).not.toThrow();
+  });
+
+  it.each([
+    ["다운로드 실패", { scannerStatus: "2", report: undefined }],
+    ["검사기 성공", { scannerStatus: "0" }],
+    ["다른 규칙", { report: [{ RuleID: "generic-password", File: "src/hook-secret-fixture.ts" }] }],
+    ["다른 파일", { report: [{ RuleID: "github-pat", File: "src/other.ts" }] }],
+    ["hook 성공", { hookStatus: "0" }],
+    ["무관한 lint 실패", { hookOutput: "┃  lint ❯ \nWRN leaks found: 1\n" }],
+    ["비밀 없는 secrets 결과", { hookOutput: "┃  secrets ❯ \nINF no leaks found\n" }],
+  ] as const)("%s 상황을 비밀 거절의 증거로 인정하지 않는다", (_name, override) => {
+    const code = validationCode();
+    expect(() => {
+      runValidation(code, { ...detected, ...override });
+    }).toThrow();
   });
 });
 
