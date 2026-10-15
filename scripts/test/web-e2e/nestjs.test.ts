@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
+import { runNestCiShell } from "./fixtures/nestjs-ci-shell.ts";
 import { describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 import { record, validateCompose } from "../../src/web-e2e/config.ts";
@@ -296,3 +299,88 @@ it.each(["web", "admin"] as const)(
     expect(Object.keys(jobs)).toHaveLength(15);
   },
 );
+
+describe("NestJS CI의 소유권 인계와 생성 계약", () => {
+  const doc = record(parse(readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8")));
+  const steps = record(record(doc.jobs).nestjs).steps as Record<string, unknown>[];
+  const copyIndex = steps.findIndex((step) =>
+    String(step.run).includes("git archive HEAD:templates/nestjs"),
+  );
+  const copyScript = String(steps[copyIndex]?.run);
+  const probeIndex = steps.findIndex((step) =>
+    String(step.run).includes("--publish 127.0.0.1:18001:8000"),
+  );
+  const cleanup = steps.find((step) => step.if === "${{ always() }}");
+
+  it("I1 사본 setup 전에 이전 소유 스택과 이미지 probe를 제거한다", () => {
+    expect(copyIndex).toBeGreaterThan(probeIndex);
+    const handoff = steps
+      .slice(probeIndex + 1, copyIndex)
+      .map((step) => String(step.run))
+      .join("\n");
+    const setup = copyScript.slice(0, copyScript.indexOf("git add ."));
+    const result = runNestCiShell(handoff + "\n" + setup);
+    expect(result, result.stderr).toMatchObject({ code: 0, stderr: "" });
+    expect(result.stdout).toContain("사본 setup 완료:/ci/aitpl-nestjs-harness/nestjs");
+    expect(result.stdout).toContain("최종 probe:0");
+  });
+
+  it.each(["/workspace/templates/nestjs", "/ci/aitpl-nestjs-harness/nestjs"])(
+    "I1 %s 소유 단계에서 실패해도 always 정리가 스택과 probe를 비운다",
+    (owner) => {
+      expect(cleanup).toBeDefined();
+      const result = runNestCiShell(String(cleanup?.run), owner);
+      expect(result, result.stderr).toMatchObject({ code: 0, stderr: "" });
+      expect(result.stdout).toContain("최종 스택:\n최종 probe:0");
+    },
+  );
+
+  it("I2 widgets 등록 뒤 생성 계약을 갱신하여 빠른 검사를 통과한다", () => {
+    const start = copyScript.indexOf("pnpm gen:module widgets");
+    expect(start).toBeGreaterThan(-1);
+    const result = runNestCiShell(copyScript.slice(start));
+    expect(result, result.stderr).toMatchObject({ code: 0, stderr: "" });
+    expect(result.stdout).toContain("생성 계약 검사 완료");
+  });
+});
+
+it("I3 실제 E2E 구독 emit이 posts 채널 객체를 전송한다", async () => {
+  const source = ts.createSourceFile(
+    "flows.ts",
+    readFileSync(resolve(root, "templates/nestjs/tests/e2e/flows.ts"), "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const emits: ts.CallExpression[] = [];
+  function visit(node: ts.Node) {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === "emitWithAck"
+    )
+      emits.push(node);
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  expect(emits).toHaveLength(1);
+  const [emit] = emits;
+  if (!emit) throw new Error("실제 E2E 구독 emit이 없다");
+  const code = ts.transpileModule("result = " + emit.getText(source), {
+    compilerOptions: { target: ts.ScriptTarget.ES2023 },
+  }).outputText;
+  const sent: unknown[][] = [];
+  const context = {
+    result: undefined as unknown,
+    socket: {
+      timeout: (milliseconds: number) => ({
+        emitWithAck: (event: unknown, payload: unknown) => {
+          sent.push([milliseconds, event, payload]);
+          return Promise.resolve({ ok: true });
+        },
+      }),
+    },
+  };
+  runInNewContext(code, context);
+  await expect(context.result).resolves.toEqual({ ok: true });
+  expect(sent).toEqual([[5000, "subscribe", { channel: "posts" }]]);
+});

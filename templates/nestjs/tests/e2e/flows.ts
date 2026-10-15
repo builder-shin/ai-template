@@ -66,7 +66,7 @@ it("가입과 메일 인증과 로그인 뒤 별도 worker의 발행 commit·Soc
       socket.once("connect_error", no);
       socket.connect();
     });
-    const ack: unknown = await socket.timeout(5000).emitWithAck("subscribe", "posts");
+    const ack: unknown = await socket.timeout(5000).emitWithAck("subscribe", { channel: "posts" });
     expect(ack).toEqual({ ok: true });
     const delivered = new Promise<{ payload: unknown; committed: number }>((yes, no) => {
       deliveryTimer = setTimeout(() => {

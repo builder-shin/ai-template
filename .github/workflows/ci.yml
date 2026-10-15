@@ -93,6 +93,10 @@ jobs:
           test "$(curl --fail --silent --retry 60 --retry-connrefused --retry-delay 1 \
             --retry-max-time 60 --max-time 2 --output /dev/null --write-out '%{http_code}' \
             http://127.0.0.1:18001/health/live)" = 200
+      - name: 하네스 사본에 CI 스택 소유권 인계
+        run: |
+          docker rm -f "aitpl-nestjs-image-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" || true
+          docker compose -p nestjs -f templates/nestjs/compose.yaml --profile app down -v
       - name: 독립 git 사본의 실제 hook과 widgets 전체 빠른 검사
         shell: bash
         run: |
@@ -143,6 +147,7 @@ jobs:
           pnpm exec prettier --check src/hook-format-fixture.ts
           git diff --exit-code
           pnpm gen:module widgets
+          pnpm gen
           pnpm check --fast
       - name: NestJS CI 소유 스택과 이미지 정리
         if: ${{ always() }}
