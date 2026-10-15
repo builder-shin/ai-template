@@ -1,6 +1,7 @@
 import { performance } from "node:perf_hooks";
 import { expect, it, vi } from "vitest";
 import { z } from "zod";
+import { Logger } from "@nestjs/common";
 import { JobQueue } from "../../src/core/jobs/queue.js";
 import { WorkerHost } from "../../src/core/jobs/worker-host.js";
 import { SchedulerHost } from "../../src/core/jobs/scheduler-host.js";
@@ -14,6 +15,8 @@ it("실패 잡은 처음 포함 다섯 번 실행하고 실측 지연 뒤 최종
   const queue = new JobQueue(redis);
   const host = new WorkerHost(queue);
   const attempts: { attempt: number; time: number }[] = [];
+  const failures: number[] = [];
+  const logs = vi.spyOn(Logger.prototype, "error");
   const jitter = vi.spyOn(Math, "random").mockReturnValue(0.5);
   registerJob("test.always_fails", (_data, context) => {
     attempts.push({ attempt: context.attempt, time: performance.now() });
@@ -21,6 +24,9 @@ it("실패 잡은 처음 포함 다섯 번 실행하고 실측 지연 뒤 최종
   });
   try {
     await host.start();
+    host.worker?.on("failed", (job) => {
+      if (job) failures.push(job.attemptsMade);
+    });
     expect(queue.queue.opts.connection).toBe(redis.connection("bullmq"));
     expect(host.worker?.opts.connection).toBe(queue.queue.opts.connection);
     const hooks: (() => Promise<void> | void)[] = [];
@@ -46,8 +52,13 @@ it("실패 잡은 처음 포함 다섯 번 실행하고 실측 지연 뒤 최종
     const [failed] = await queue.queue.getFailed();
     expect(await failed?.getState()).toBe("failed");
     expect(failed?.attemptsMade).toBe(5);
+    await expect.poll(() => failures).toEqual([1, 2, 3, 4, 5]);
+    expect(
+      logs.mock.calls.filter(([message]) => message === "잡 최종 실패: test.always_fails"),
+    ).toHaveLength(1);
     expect(await queue.queue.getDelayedCount()).toBe(0);
   } finally {
+    logs.mockRestore();
     jitter.mockRestore();
     await host.onModuleDestroy();
     await queue.onModuleDestroy();

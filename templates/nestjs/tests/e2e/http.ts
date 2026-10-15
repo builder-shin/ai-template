@@ -31,17 +31,7 @@ export async function api(
 }
 export async function verificationToken(email: string): Promise<string | undefined> {
   const base = environment().E2E_MAILPIT_URL ?? "http://127.0.0.1:28025";
-  const listing = await fetch(`${base}/api/v1/messages`, { signal: AbortSignal.timeout(5000) });
-  const messages = z
-    .object({
-      messages: z.array(
-        z.object({ ID: z.string(), To: z.array(z.object({ Address: z.string() })) }),
-      ),
-    })
-    .parse(await listing.json());
-  for (const mail of messages.messages.filter((mail) =>
-    mail.To.some((to) => to.Address === email),
-  )) {
+  for (const mail of await messagesFor(email)) {
     const detail = await fetch(`${base}/api/v1/message/${mail.ID}`, {
       signal: AbortSignal.timeout(5000),
     });
@@ -50,4 +40,21 @@ export async function verificationToken(email: string): Promise<string | undefin
     if (token) return token;
   }
   return undefined;
+}
+export async function messagesFor(email: string) {
+  const base = environment().E2E_MAILPIT_URL ?? "http://127.0.0.1:28025";
+  const listing = await fetch(`${base}/api/v1/messages`, { signal: AbortSignal.timeout(5000) });
+  if (!listing.ok) throw new Error("Mailpit 목록을 읽지 못했다");
+  const messages = z
+    .object({
+      messages: z.array(
+        z.object({
+          ID: z.string(),
+          Subject: z.string(),
+          To: z.array(z.object({ Address: z.string() })),
+        }),
+      ),
+    })
+    .parse(await listing.json());
+  return messages.messages.filter((mail) => mail.To.some((to) => to.Address === email));
 }

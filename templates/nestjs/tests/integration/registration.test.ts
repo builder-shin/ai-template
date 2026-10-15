@@ -47,14 +47,25 @@ async function fixture() {
     ) => post("registrations", "registrations", { email, password, name: "가입자", locale: "ko" }),
   };
 }
-async function messages() {
+async function messages(email?: string) {
   const response = await fetch(`${getState().mailpitUrl}/api/v1/messages`, {
     signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) throw new Error("Mailpit 목록을 읽지 못했다");
-  return z
-    .object({ messages: z.array(z.object({ ID: z.string(), Subject: z.string() })) })
+  const listing = z
+    .object({
+      messages: z.array(
+        z.object({
+          ID: z.string(),
+          Subject: z.string(),
+          To: z.array(z.object({ Address: z.string() })),
+        }),
+      ),
+    })
     .parse(await response.json()).messages;
+  return email
+    ? listing.filter((message) => message.To.some((to) => to.Address === email))
+    : listing;
 }
 async function verificationTokens() {
   const tokens: string[] = [];
@@ -88,16 +99,49 @@ it("가입 메일의 링크로 한 번 인증하고 환영 메일을 받으며 �
   const registered = await f.register();
   expect(registered.status).toBe(201);
   const [token] = await waitTokens(1);
+  expect((await messages("registration@example.com")).map((message) => message.Subject)).toEqual([
+    "이메일을 인증해 주세요",
+  ]);
   const verified = await f.post("email-verifications", "email-verifications", { token });
   expect(verified.status).toBe(201);
   await expect
-    .poll(async () => (await messages()).some((m) => m.Subject === "가입을 환영합니다"), {
-      timeout: 10000,
-    })
+    .poll(
+      async () =>
+        (await messages("registration@example.com")).some((m) => m.Subject === "가입을 환영합니다"),
+      {
+        timeout: 10000,
+      },
+    )
     .toBe(true);
   const reused = await f.post("email-verifications", "email-verifications", { token });
   expect(reused.status).toBe(422);
   expect(failure(reused.text).errors[0]?.code).toBe("auth.verification_token_invalid");
+});
+it("영어 가입의 인증과 환영 메일 제목은 Mailpit 원문과 정확히 같다", async () => {
+  const f = await fixture();
+  const registered = await f.post("registrations", "registrations", {
+    email: "english-registration@example.com",
+    password: "password-123", // betterleaks:allow 사유: CI 가입 fixture의 가짜 비밀번호
+    name: "영어 가입자",
+    locale: "en",
+  });
+  expect(registered.status).toBe(201);
+  const [token] = await waitTokens(1);
+  expect(
+    (await messages("english-registration@example.com")).map((message) => message.Subject),
+  ).toEqual(["Please verify your email"]);
+  expect((await f.post("email-verifications", "email-verifications", { token })).status).toBe(201);
+  await expect
+    .poll(
+      async () =>
+        (await messages("english-registration@example.com"))
+          .map((message) => message.Subject)
+          .sort(),
+      {
+        timeout: 10000,
+      },
+    )
+    .toEqual(["Please verify your email", "Welcome"]);
 });
 it("재발송은 본문 없는 202이고 최신 메일 토큰만 유효하다", async () => {
   const f = await fixture();

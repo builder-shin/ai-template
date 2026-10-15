@@ -30,6 +30,10 @@ jobs:
       - run: pnpm check
       - name: Compare the FastAPI spec with the contract (implemented operations)
         run: pnpm run -s spec-compare contract/openapi.yaml templates/fastapi/openapi.json
+      - name: NestJS 전체 operation 계약 비교
+        run: pnpm spec-compare contract/openapi.yaml templates/nestjs/openapi.json
+      - name: NestJS 전체 컴포넌트 구조 비교
+        run: pnpm spec-compare --schemas contract/openapi.yaml templates/nestjs/openapi.json
       - name: Scan git history for secrets
         run: pnpm run -s tool betterleaks git . --no-banner --redact
 
@@ -49,6 +53,94 @@ jobs:
       - run: uv run poe check
       - run: uv run poe test:e2e
       - run: docker build .
+
+  nestjs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      npm_config_verify_deps_before_run: error
+      PNPM_VERIFY_DEPS_BEFORE_RUN: error
+      PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: error
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: "12.6.0"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: templates/nestjs/pnpm-lock.yaml
+      - run: pnpm --dir templates/nestjs install --frozen-lockfile
+      - run: pnpm --dir templates/nestjs setup
+      - run: pnpm --dir templates/nestjs check
+      - name: 적용한 마이그레이션과 스키마의 drift 확인
+        working-directory: templates/nestjs
+        run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+        env:
+          NODE_OPTIONS: --env-file=.env
+      - run: pnpm --dir templates/nestjs test:e2e
+      - name: 빌드한 API의 네 계층 계측과 health 제외 확인
+        working-directory: templates/nestjs
+        run: OTEL_ENABLED=true pnpm exec tsx --env-file=.env scripts/otel-probe.ts
+      - run: docker build -t ai-template-nestjs:ci templates/nestjs
+      - name: 이미지 UID 10001과 API live health 확인
+        run: |
+          test "$(docker run --rm --entrypoint id ai-template-nestjs:ci -u)" = 10001
+          container="aitpl-nestjs-image-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          printf 'services:\n  api:\n    image: ai-template-nestjs:ci\n' > "$RUNNER_TEMP/nestjs-image.yaml"
+          docker compose -p nestjs -f templates/nestjs/compose.yaml \
+            -f "$RUNNER_TEMP/nestjs-image.yaml" --profile app run --detach --no-deps \
+            --name "$container" --publish 127.0.0.1:18001:8000 api
+          test "$(curl --fail --silent --retry 60 --retry-connrefused --retry-delay 1 \
+            --retry-max-time 60 --max-time 2 --output /dev/null --write-out '%{http_code}' \
+            http://127.0.0.1:18001/health/live)" = 200
+      - name: 독립 git 사본의 실제 hook과 widgets 전체 빠른 검사
+        shell: bash
+        run: |
+          copy="$RUNNER_TEMP/aitpl-nestjs-harness/nestjs"
+          test ! -e "$copy"
+          mkdir -p "$copy"
+          git archive HEAD:templates/nestjs | tar -x -C "$copy"
+          cd "$copy"
+          git init -b main
+          git config user.name CI
+          git config user.email ci@example.com
+          pnpm install --frozen-lockfile
+          pnpm setup
+          git add .
+          git commit -m "chore: initialize harness fixture"
+          node -e 'require("node:fs").writeFileSync("src/hook-secret-fixture.ts", "export const token = " + JSON.stringify("ghp_" + require("node:crypto").randomBytes(18).toString("hex")) + ";\n")'
+          git add src/hook-secret-fixture.ts
+          if pnpm tool betterleaks git --pre-commit --staged --no-banner --redact; then
+            echo "비밀 검사기가 가짜 비밀을 놓쳤다" >&2
+            exit 1
+          fi
+          if git commit -m "test: reject fake secret"; then
+            echo "커밋 hook이 가짜 비밀을 놓쳤다" >&2
+            exit 1
+          fi
+          git rm --cached src/hook-secret-fixture.ts
+          rm src/hook-secret-fixture.ts
+          printf 'export const hookProbe={value:1}\n' > src/hook-format-fixture.ts
+          git add src/hook-format-fixture.ts
+          if pnpm exec prettier --check src/hook-format-fixture.ts >/dev/null 2>&1; then
+            echo "포맷 음성 fixture가 이미 올바르다" >&2
+            exit 1
+          fi
+          git commit -m "test: format and restage fixture"
+          pnpm exec prettier --check src/hook-format-fixture.ts
+          git diff --exit-code
+          pnpm gen:module widgets
+          pnpm check --fast
+      - name: NestJS CI 소유 스택과 이미지 정리
+        if: ${{ always() }}
+        run: |
+          docker rm -f "aitpl-nestjs-image-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" || true
+          docker compose -p nestjs -f templates/nestjs/compose.yaml --profile app down -v
+          docker image rm ai-template-nestjs:ci nestjs-app:local || true
+          rm -rf "$RUNNER_TEMP/aitpl-nestjs-harness"
+          rm -f "$RUNNER_TEMP/nestjs-image.yaml"
 
   nextjs:
     runs-on: ubuntu-latest
@@ -172,6 +264,30 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm conformance fastapi
+
+  conformance-nestjs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      npm_config_verify_deps_before_run: error
+      PNPM_VERIFY_DEPS_BEFORE_RUN: error
+      PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: error
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: "12.6.0"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm conformance nestjs
+      - name: NestJS 적합성 소유 스택과 이미지 정리
+        if: ${{ always() }}
+        run: |
+          docker compose -p nestjs -f templates/nestjs/compose.yaml --profile app down -v
+          docker image rm nestjs-app:local || true
 
   # 목 서버는 로컬 프로세스로 뜬다. Docker가 필요 없다.
   conformance-mock:

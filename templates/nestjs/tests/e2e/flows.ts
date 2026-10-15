@@ -6,7 +6,7 @@ import { z } from "zod";
 import { startProcessTree, stopProcessTree } from "../../scripts/process-tree.mjs";
 import { environment } from "../../scripts/child-environment.mjs";
 import { e2eEnvironment } from "../../scripts/e2e-options.js";
-import { api, resource, verificationToken } from "./http.js";
+import { api, messagesFor, resource, verificationToken } from "./http.js";
 
 it("가입과 메일 인증과 로그인 뒤 별도 worker의 발행 commit·Socket.IO와 23바이트 업로드를 확인한다", async () => {
   const email = `${randomUUID()}@example.test`;
@@ -20,11 +20,19 @@ it("가입과 메일 인증과 로그인 뒤 별도 worker의 발행 commit·Soc
   });
   expect(registered.status).toBe(201);
   await expect.poll(() => verificationToken(email), { timeout: 15000 }).toBeTypeOf("string");
+  expect((await messagesFor(email)).map((mail) => mail.Subject)).toEqual([
+    "이메일을 인증해 주세요",
+  ]);
   const verified = await api("email-verifications", {
     method: "POST",
     data: { type: "email-verifications", attributes: { token: await verificationToken(email) } },
   });
   expect(verified.status).toBe(201);
+  await expect
+    .poll(async () => (await messagesFor(email)).map((mail) => mail.Subject).sort(), {
+      timeout: 15000,
+    })
+    .toEqual(["가입을 환영합니다", "이메일을 인증해 주세요"]);
   const login = await api("sessions", {
     method: "POST",
     data: { type: "sessions", attributes: { grantType: "password", email, password } },

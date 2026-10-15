@@ -30,18 +30,20 @@ const MOCK_ADMIN = {
   password: "conformance-admin-password", // betterleaks:allow 목 대상의 시드 관리자
 };
 
+/** 두 백엔드의 compose app 프로필이 공유하는 부수 채널과 시드 관리자. */
+const COMPOSE_ENV = {
+  CONFORMANCE_MAILPIT_URL: "http://localhost:28025",
+  CONFORMANCE_ADMIN_EMAIL: "compose-admin@example.com",
+  CONFORMANCE_ADMIN_PASSWORD: "compose-app-profile-admin-password", // betterleaks:allow compose app 프로필의 시드 관리자
+};
+
 export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
   fastapi: {
     kind: "compose",
     name: "fastapi",
     composeFile: "templates/fastapi/compose.yaml",
     baseUrl: "http://localhost:8000",
-    env: {
-      CONFORMANCE_MAILPIT_URL: "http://localhost:28025",
-      // compose.yaml의 x-app이 시드하는 관리자(SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD)와 같은 값이다.
-      CONFORMANCE_ADMIN_EMAIL: "compose-admin@example.com",
-      CONFORMANCE_ADMIN_PASSWORD: "compose-app-profile-admin-password", // betterleaks:allow compose app 프로필의 시드 관리자
-    },
+    env: COMPOSE_ENV,
   },
   mock: {
     kind: "process",
@@ -80,6 +82,13 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
       CONFORMANCE_ADMIN_EMAIL: MOCK_ADMIN.email,
       CONFORMANCE_ADMIN_PASSWORD: MOCK_ADMIN.password,
     },
+  },
+  nestjs: {
+    kind: "compose",
+    name: "nestjs",
+    composeFile: "templates/nestjs/compose.yaml",
+    baseUrl: "http://localhost:8000",
+    env: COMPOSE_ENV,
   },
 };
 

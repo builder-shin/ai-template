@@ -3,25 +3,71 @@ x-app: &app
   image: nestjs-app:local
   build: .
   profiles: [app]
-  env_file: [.env]
+  # app 프로필은 적합성·CI용 공개 fixture이며 개발 setup의 .env 설정과 독립이다.
   environment: &app-environment
+    APP_ENV: production
+    LOG_LEVEL: info
     DATABASE_URL: postgresql://app:app@postgres:5432/app # betterleaks:allow 사유: 개발 compose 예시 계정
     REDIS_URL: redis://valkey:6379/0
     S3_ENDPOINT_URL: http://seaweedfs:8333
+    S3_PUBLIC_ENDPOINT_URL: http://127.0.0.1:28333
+    S3_REGION: us-east-1
+    S3_ACCESS_KEY_ID: app
+    S3_SECRET_ACCESS_KEY: app-secret # betterleaks:allow 사유: compose 스토리지의 공개 fixture
+    S3_BUCKET: app
+    STORAGE_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+    FILE_MAX_SIZE: "10485760"
+    FILE_ALLOWED_TYPES: image/png,image/jpeg,image/webp,image/gif
+    FILE_USER_QUOTA: "1073741824"
+    JWT_SECRET: compose-app-profile-jwt-signing-key # betterleaks:allow 사유: app 프로필의 공개 fixture
+    IDENTIFIER_HASH_SECRET: compose-app-profile-identifier-hash-key # betterleaks:allow 사유: app 프로필의 공개 fixture
+    RECENT_LOGIN_SECONDS: "600"
     SMTP_URL: smtp://mailpit:1025
+    MAIL_FROM: AI Template <no-reply@example.com>
+    FRONTEND_URL: http://localhost:3000
+    REALTIME_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+    API_URL: http://localhost:8000
+    OAUTH_REDIRECT_URIS: http://localhost:3000/oauth/callback
+    OAUTH_GOOGLE_CLIENT_ID: local-google-client
+    OAUTH_GOOGLE_CLIENT_SECRET: local-google-secret # betterleaks:allow 사유: compose 모의 OAuth 공개 fixture
+    OAUTH_GOOGLE_AUTHORIZE_URL: http://127.0.0.1:28080/google/authorize
     OAUTH_GOOGLE_TOKEN_URL: http://oauth:8080/google/token
     OAUTH_GOOGLE_PROFILE_URL: http://oauth:8080/google/userinfo
+    OAUTH_KAKAO_CLIENT_ID: local-kakao-client
+    OAUTH_KAKAO_CLIENT_SECRET: local-kakao-secret # betterleaks:allow 사유: compose 모의 OAuth 공개 fixture
+    OAUTH_KAKAO_AUTHORIZE_URL: http://127.0.0.1:28080/kakao/authorize
     OAUTH_KAKAO_TOKEN_URL: http://oauth:8080/kakao/token
     OAUTH_KAKAO_PROFILE_URL: http://oauth:8080/kakao/userinfo
+    OAUTH_NAVER_CLIENT_ID: local-naver-client
+    OAUTH_NAVER_CLIENT_SECRET: local-naver-secret # betterleaks:allow 사유: compose 모의 OAuth 공개 fixture
+    OAUTH_NAVER_AUTHORIZE_URL: http://127.0.0.1:28080/naver/authorize
     OAUTH_NAVER_TOKEN_URL: http://oauth:8080/naver/token
     OAUTH_NAVER_PROFILE_URL: http://oauth:8080/naver/userinfo
+    SEED_ADMIN_EMAIL: compose-admin@example.com
+    SEED_ADMIN_PASSWORD: compose-app-profile-admin-password # betterleaks:allow 사유: app 프로필의 공개 시드 관리자
+    OTEL_ENABLED: "false"
+    OTEL_SERVICE_NAME: app
     OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+    RATE_LIMIT_GLOBAL: "1000000"
+    RATE_LIMIT_LOGIN_IP: "1000000"
+    RATE_LIMIT_LOGIN_IDENTIFIER: "1000000"
+    RATE_LIMIT_REGISTRATION_IP: "1000000"
+    RATE_LIMIT_MAIL_IP: "1000000"
+    RATE_LIMIT_MAIL_EMAIL: "1000000"
+    RATE_LIMIT_PASSWORD_CHANGE_USER: "1000000"
+    PORT: "8000"
+    FORWARDED_ALLOW_IPS: ""
 services:
   migrate:
     <<: *app
     command: [node, node_modules/prisma/build/index.js, migrate, deploy]
     depends_on:
       postgres: { condition: service_healthy }
+  seed:
+    <<: *app
+    command: [node, dist/seed.js]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
   storage-init:
     <<: *app
     command: [node, dist/storage-init.js]
@@ -35,6 +81,7 @@ services:
     ports: ["127.0.0.1:8000:8000"]
     depends_on: &runtime-dependencies
       migrate: { condition: service_completed_successfully }
+      seed: { condition: service_completed_successfully }
       storage-init: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
       mailpit: { condition: service_healthy }
