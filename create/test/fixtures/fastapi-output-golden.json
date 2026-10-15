@@ -1,0 +1,1340 @@
+{
+  "web": [
+    {
+      "path": ".betterleaks.toml",
+      "bytes": 159,
+      "sha256": "850c39348ee01f697e382e52da2398f6ea1f4be42f823bd7081153774fefe5c3",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-errors.test.mjs",
+      "bytes": 7153,
+      "sha256": "1a615a329f216aa9a1a360b774554234acf3d6573daac539edf57ed291a763f5",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-fixture.mjs",
+      "bytes": 3900,
+      "sha256": "8b2b4dc9353cad00fa9279fcc80b29f5d444e7f357c3c27866dce348c19a8112",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-frontends.test.mjs",
+      "bytes": 1245,
+      "sha256": "d4b71db09845dec69bb731847caa8d1a61a374b1e7808859d75edd1912ea679a",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-settings.test.mjs",
+      "bytes": 11990,
+      "sha256": "9c425fbd7094dac8a81d89eabcd80ef711a0f748d17d87892bf00026fb6babeb",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch.mjs",
+      "bytes": 9431,
+      "sha256": "2bd33a6c1e9ad0a65f66e354e98feb41cb1e666356bc36f9ac07eddc3dc84a0b",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch.test.mjs",
+      "bytes": 14197,
+      "sha256": "8f8ac57c5f2b3b3cb27a559871ee1d269dd4c157da8bc851260fcdaec4e30ee6",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/post-tool-use.mjs",
+      "bytes": 60,
+      "sha256": "2eb179d181af418cba037cfecc73e85cbd5a7c433eb6f0e83e47baf27b976b8d",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/pre-tool-use.mjs",
+      "bytes": 59,
+      "sha256": "85968d9ec687eb7f37d8f48bcfddeb0d53232d1999a9c8cb53956d36e76e65e9",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/session-start.mjs",
+      "bytes": 61,
+      "sha256": "79fad9da949904cdbce79fbd66af72f517df15d14550484f3778909da86ae57a",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/stop-check.mjs",
+      "bytes": 53,
+      "sha256": "22096d3612b9a9b030292df267d45759a8ff2800e8b47b258727018858792e4a",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/settings.json",
+      "bytes": 2143,
+      "sha256": "54f8f6173fe261d24c59fdfa4086679573ab3a9b50885af10fdd73641d6d9738",
+      "mode": "100644"
+    },
+    {
+      "path": ".editorconfig",
+      "bytes": 12,
+      "sha256": "5a1a948fb3fd8d68bee00abb4d6d05b6437033cf330d0b1b90f62c79622b41e6",
+      "mode": "100644"
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 19,
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 916,
+      "sha256": "95f4cee7632deda19ca64d41bdfe06799406d7b5dad11af3058d72ae60d30afd",
+      "mode": "100644"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 22,
+      "sha256": "0aeeb0746a7b4ef41fcdc6ef4b68c7d8f2b6802ab3cac9bac570aafdcaddc610",
+      "mode": "100644"
+    },
+    {
+      "path": ".mcp.json",
+      "bytes": 154,
+      "sha256": "b8f229ddc2daf5ecb9b609855e677bf11ef9e1e84c17b4a09db33d29e7a8d4e2",
+      "mode": "100644"
+    },
+    {
+      "path": ".prettierrc.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 9818,
+      "sha256": "b102ec7438a0aecd8a197d0feeaf69260835a4e35ec622239c116e3567c4a952",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/.betterleaks.toml",
+      "bytes": 27,
+      "sha256": "27630a96d6c55755cc37620f3933d5cab94b1eb78a726a32e11212972525d76e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/.claude/settings.json",
+      "bytes": 39,
+      "sha256": "25d0eb3fa40f12bc1a1c695b5062dd8ef9e6a242e084df7f03ca23427631d7de",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/compose.yaml",
+      "bytes": 259,
+      "sha256": "e0cb79e564ffb780a38bb1e1aa7ee64545798603713ab74e37e3fddea5d4bd9d",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/lefthook.yml",
+      "bytes": 23,
+      "sha256": "44149f036256b834280f69810d21fd061c9af3179e02932dd8ea479addbd35d3",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/openapi.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/package.json",
+      "bytes": 404,
+      "sha256": "634bf6e83e84aa437102dfeaa840efe36eaa0525a3fec7bd62ff35d5d8064d0a",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/pyproject.toml",
+      "bytes": 23,
+      "sha256": "38037d56d75e10791ce18f0db7196a9c95e75dc84943921f089a2c546d482f30",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/README.md",
+      "bytes": 27,
+      "sha256": "23baed7dcf18be8362b602db2ec8c0ec91f92b1ad3a458f76c36b2c0ed224a63",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/uv.lock",
+      "bytes": 12,
+      "sha256": "dbab12665d98aef021ba64953c61b0ed8a908cfb56a1c01e2fcb4b052b71a2a1",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.betterleaks.toml",
+      "bytes": 27,
+      "sha256": "27630a96d6c55755cc37620f3933d5cab94b1eb78a726a32e11212972525d76e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.claude/settings.json",
+      "bytes": 39,
+      "sha256": "25d0eb3fa40f12bc1a1c695b5062dd8ef9e6a242e084df7f03ca23427631d7de",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.env.example",
+      "bytes": 104,
+      "sha256": "df5a1de681ca21b8926f7b7e4b1f8caedc777815bc4a9ffc71ca285f74d9fed9",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.gitattributes",
+      "bytes": 19,
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.mcp.json",
+      "bytes": 94,
+      "sha256": "d2e020f689f79dd65969115897a2ce72beacefc97ad707925f09366b9d69660d",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.prettierrc.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/bin/start.sh",
+      "bytes": 18,
+      "sha256": "b4d644d4279594903f1a9911956432d9473041f2984fc6014c14d7402c7d126c",
+      "mode": "100755"
+    },
+    {
+      "path": "apps/web/Dockerfile",
+      "bytes": 1957,
+      "sha256": "e138f51f8b0d8847ec1be77a6e6a99d3f3dc1d43bb77ceb34109ecf4db74a3e3",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/Dockerfile.dockerignore",
+      "bytes": 385,
+      "sha256": "5fc66eb6e4b6384fa82d6eaa47429f900aa8571941fd7bd9211a4f5b00cf784e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/docs/conventions/error-codes.md",
+      "bytes": 16,
+      "sha256": "c7eec260228cca97980eada28c8ec14fec0994cbf4c1ae3c2a09a8a927046a13",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/docs/공백 문서.md",
+      "bytes": 29,
+      "sha256": "80c61be0e8e54cfac10c96b5639dbb1c9ed5b10b32d2f2184c5594ff757eb369",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/gen.config.json",
+      "bytes": 67,
+      "sha256": "2e603bc6a889e6a2702522b45916bacb3416f559cf64178b4e9902608afc4ff5",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/lefthook.yml",
+      "bytes": 23,
+      "sha256": "44149f036256b834280f69810d21fd061c9af3179e02932dd8ea479addbd35d3",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/package.json",
+      "bytes": 242,
+      "sha256": "d8534892d6d6d6e243881fa0ecc1db6e035ed0b6a203190f8c20ed99b2b4d34d",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/README.md",
+      "bytes": 27,
+      "sha256": "bddb6f70ab4b032dd0999402b35ae31e0d0d37b803ae6dfbc868706a87390281",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/tsconfig.base.json",
+      "bytes": 36,
+      "sha256": "671920f9e86e8620695b89c0328206cb79c2ae66dd7bf466a0644e20d1cfd9f1",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/untracked.txt",
+      "bytes": 23,
+      "sha256": "7a09be8f10b54111b1f0e1c4fdb1909eff4c1e395c96ed8d375f9f7cae30c760",
+      "mode": "100644"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 11,
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+      "mode": "100644"
+    },
+    {
+      "path": "contract/mock/bin/start.sh",
+      "bytes": 20,
+      "sha256": "b6e84aeeffa0210d33b9e3c4af9a1c00b7ca8e1d7a2cb9ea89540c283f51656b",
+      "mode": "100755"
+    },
+    {
+      "path": "contract/mock/src/generated/api.ts",
+      "bytes": 23,
+      "sha256": "8f53191f7073bfbf2f2b3944db221fd4482b6dc02360c43487f4e5711af1cec8",
+      "mode": "100644"
+    },
+    {
+      "path": "contract/openapi.yaml",
+      "bytes": 15,
+      "sha256": "f39db8e8ede3dc2457c613e2a304e6d478f6e5ec660e4746464f41e76ac77006",
+      "mode": "100644"
+    },
+    {
+      "path": "contract/typespec/main.tsp",
+      "bytes": 14,
+      "sha256": "25eb5acf1a67e05e515ece58120bbc4061b79dac9f4eb2dcf59d5558bfa49ace",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/conventions/error-codes.md",
+      "bytes": 16,
+      "sha256": "c7eec260228cca97980eada28c8ec14fec0994cbf4c1ae3c2a09a8a927046a13",
+      "mode": "100644"
+    },
+    {
+      "path": "lefthook.yml",
+      "bytes": 311,
+      "sha256": "74de60a26f39c24573e2494e4f69d86c965d1f935a3447901ad63372f2fc17fc",
+      "mode": "100644"
+    },
+    {
+      "path": "package.json",
+      "bytes": 868,
+      "sha256": "93ba5e63207d3ac250858b5c94eba2c9e873139250887ed526c7f8ed06d17492",
+      "mode": "100644"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 378,
+      "sha256": "c1f9a4e61c10053b9adddba5a2fd4c97013dfbf815bb8c830374d6f61dbc6083",
+      "mode": "100644"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "bytes": 137,
+      "sha256": "af4cf6c5a83f3f950c4dc37e080872cf4d537305334b19b5348387fbbdde86fb",
+      "mode": "100644"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3052,
+      "sha256": "22140965e165847b382dd1e8feba3884f70424873adf9ee4812f081bbb359326",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/apps.mjs",
+      "bytes": 976,
+      "sha256": "fcd024688acae11e5bc27f8cc44e4ff8fa1556fa73b1dcb85e8b07242c784cf2",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/check.mjs",
+      "bytes": 3194,
+      "sha256": "0a87a2e9edea37f8248cd72983d6635e0b9583a3704f030e79a44aeb052a9f96",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/format.mjs",
+      "bytes": 1294,
+      "sha256": "9fc45d9c9a60916e61a2453db20cb87d4f5561171b0fa1767fa80c3416f435b1",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/frontend-e2e.mjs",
+      "bytes": 1337,
+      "sha256": "73096efbd4a002b361b29635e40250256636d19edcd561561ed3ecde68a138f6",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/frontend-runners.test.mjs",
+      "bytes": 2930,
+      "sha256": "f7a5dc071e106a57a26ac2bd77092bf8cebd2e66655b60822733f7dbedbb9d3b",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/process.mjs",
+      "bytes": 2644,
+      "sha256": "ca878c89d1a341e631cecdf56ca896671bb3d4c0720503fb242b1c4c0fe0d5e1",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/process.test.mjs",
+      "bytes": 1752,
+      "sha256": "d73dc9c657d934ba4d41883ef7a3afef5edb2bd7b64798dbf6596af90454b133",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/runners.test.mjs",
+      "bytes": 12209,
+      "sha256": "eaf315262ec93f2bbcdaba4a869e69caafa6c2223c7cc673268a0a7407004f92",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/setup.mjs",
+      "bytes": 1727,
+      "sha256": "27fcebed2290b4ed3b9104bcbbb3836eb8d8891ac8321bec6e225cff75b76173",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/staged-format.mjs",
+      "bytes": 1435,
+      "sha256": "d7e71a84d0515c3f0abd77bdc46c356b9f1d407e8e24e2f33d1c8e0ed16942de",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/test-e2e.mjs",
+      "bytes": 794,
+      "sha256": "cd254e971e85b95d614e0451366828190ad137e88d23dd5d48b818ddf79600b0",
+      "mode": "100644"
+    },
+    {
+      "path": "tsconfig.base.json",
+      "bytes": 36,
+      "sha256": "671920f9e86e8620695b89c0328206cb79c2ae66dd7bf466a0644e20d1cfd9f1",
+      "mode": "100644"
+    },
+    {
+      "path": "turbo.json",
+      "bytes": 893,
+      "sha256": "bbcf9e0b0a02122033851fbd2ce217febc13bba63f3ce2fcb10ab95b6d66caa6",
+      "mode": "100644"
+    }
+  ],
+  "admin": [
+    {
+      "path": ".betterleaks.toml",
+      "bytes": 159,
+      "sha256": "850c39348ee01f697e382e52da2398f6ea1f4be42f823bd7081153774fefe5c3",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-errors.test.mjs",
+      "bytes": 7153,
+      "sha256": "1a615a329f216aa9a1a360b774554234acf3d6573daac539edf57ed291a763f5",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-fixture.mjs",
+      "bytes": 3900,
+      "sha256": "8b2b4dc9353cad00fa9279fcc80b29f5d444e7f357c3c27866dce348c19a8112",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-frontends.test.mjs",
+      "bytes": 1245,
+      "sha256": "d4b71db09845dec69bb731847caa8d1a61a374b1e7808859d75edd1912ea679a",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-settings.test.mjs",
+      "bytes": 11990,
+      "sha256": "9c425fbd7094dac8a81d89eabcd80ef711a0f748d17d87892bf00026fb6babeb",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch.mjs",
+      "bytes": 9431,
+      "sha256": "2bd33a6c1e9ad0a65f66e354e98feb41cb1e666356bc36f9ac07eddc3dc84a0b",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch.test.mjs",
+      "bytes": 14197,
+      "sha256": "8f8ac57c5f2b3b3cb27a559871ee1d269dd4c157da8bc851260fcdaec4e30ee6",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/post-tool-use.mjs",
+      "bytes": 60,
+      "sha256": "2eb179d181af418cba037cfecc73e85cbd5a7c433eb6f0e83e47baf27b976b8d",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/pre-tool-use.mjs",
+      "bytes": 59,
+      "sha256": "85968d9ec687eb7f37d8f48bcfddeb0d53232d1999a9c8cb53956d36e76e65e9",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/session-start.mjs",
+      "bytes": 61,
+      "sha256": "79fad9da949904cdbce79fbd66af72f517df15d14550484f3778909da86ae57a",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/stop-check.mjs",
+      "bytes": 53,
+      "sha256": "22096d3612b9a9b030292df267d45759a8ff2800e8b47b258727018858792e4a",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/settings.json",
+      "bytes": 2143,
+      "sha256": "54f8f6173fe261d24c59fdfa4086679573ab3a9b50885af10fdd73641d6d9738",
+      "mode": "100644"
+    },
+    {
+      "path": ".editorconfig",
+      "bytes": 12,
+      "sha256": "5a1a948fb3fd8d68bee00abb4d6d05b6437033cf330d0b1b90f62c79622b41e6",
+      "mode": "100644"
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 19,
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 920,
+      "sha256": "83e8741ea5b702ea1dce9c8b37d2dfa94ae16e1a5dfb80d94996ec932d5ce2ff",
+      "mode": "100644"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 22,
+      "sha256": "0aeeb0746a7b4ef41fcdc6ef4b68c7d8f2b6802ab3cac9bac570aafdcaddc610",
+      "mode": "100644"
+    },
+    {
+      "path": ".mcp.json",
+      "bytes": 154,
+      "sha256": "b8f229ddc2daf5ecb9b609855e677bf11ef9e1e84c17b4a09db33d29e7a8d4e2",
+      "mode": "100644"
+    },
+    {
+      "path": ".prettierrc.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 9834,
+      "sha256": "178e853eafb02d65a471e6272efb5cd06018b9336dbac1abc23143eb211fdbc0",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.betterleaks.toml",
+      "bytes": 27,
+      "sha256": "27630a96d6c55755cc37620f3933d5cab94b1eb78a726a32e11212972525d76e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.claude/settings.json",
+      "bytes": 39,
+      "sha256": "25d0eb3fa40f12bc1a1c695b5062dd8ef9e6a242e084df7f03ca23427631d7de",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.env.example",
+      "bytes": 104,
+      "sha256": "df5a1de681ca21b8926f7b7e4b1f8caedc777815bc4a9ffc71ca285f74d9fed9",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.gitattributes",
+      "bytes": 19,
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.mcp.json",
+      "bytes": 94,
+      "sha256": "d2e020f689f79dd65969115897a2ce72beacefc97ad707925f09366b9d69660d",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.prettierrc.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/bin/start.sh",
+      "bytes": 18,
+      "sha256": "b4d644d4279594903f1a9911956432d9473041f2984fc6014c14d7402c7d126c",
+      "mode": "100755"
+    },
+    {
+      "path": "apps/admin/Dockerfile",
+      "bytes": 2011,
+      "sha256": "5f3422aab77de936785d820aee75087c6501416d8f618059af9bed72e0607c1e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/Dockerfile.dockerignore",
+      "bytes": 385,
+      "sha256": "5fc66eb6e4b6384fa82d6eaa47429f900aa8571941fd7bd9211a4f5b00cf784e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/docs/conventions/error-codes.md",
+      "bytes": 16,
+      "sha256": "c7eec260228cca97980eada28c8ec14fec0994cbf4c1ae3c2a09a8a927046a13",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/docs/공백 문서.md",
+      "bytes": 29,
+      "sha256": "80c61be0e8e54cfac10c96b5639dbb1c9ed5b10b32d2f2184c5594ff757eb369",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/gen.config.json",
+      "bytes": 67,
+      "sha256": "2e603bc6a889e6a2702522b45916bacb3416f559cf64178b4e9902608afc4ff5",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/lefthook.yml",
+      "bytes": 23,
+      "sha256": "44149f036256b834280f69810d21fd061c9af3179e02932dd8ea479addbd35d3",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/package.json",
+      "bytes": 244,
+      "sha256": "adf8c1bff73e5ea7147cb8688248f71b8ef8a20fb10cc11fe6029d1405ea8b14",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/README.md",
+      "bytes": 29,
+      "sha256": "2b4f71abcb48775cdec3f16012020ec9754eae02195087c31714315290bbe824",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/tsconfig.base.json",
+      "bytes": 36,
+      "sha256": "671920f9e86e8620695b89c0328206cb79c2ae66dd7bf466a0644e20d1cfd9f1",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/.betterleaks.toml",
+      "bytes": 27,
+      "sha256": "27630a96d6c55755cc37620f3933d5cab94b1eb78a726a32e11212972525d76e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/.claude/settings.json",
+      "bytes": 39,
+      "sha256": "25d0eb3fa40f12bc1a1c695b5062dd8ef9e6a242e084df7f03ca23427631d7de",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/compose.yaml",
+      "bytes": 259,
+      "sha256": "e0cb79e564ffb780a38bb1e1aa7ee64545798603713ab74e37e3fddea5d4bd9d",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/lefthook.yml",
+      "bytes": 23,
+      "sha256": "44149f036256b834280f69810d21fd061c9af3179e02932dd8ea479addbd35d3",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/openapi.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/package.json",
+      "bytes": 404,
+      "sha256": "634bf6e83e84aa437102dfeaa840efe36eaa0525a3fec7bd62ff35d5d8064d0a",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/pyproject.toml",
+      "bytes": 23,
+      "sha256": "38037d56d75e10791ce18f0db7196a9c95e75dc84943921f089a2c546d482f30",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/README.md",
+      "bytes": 27,
+      "sha256": "23baed7dcf18be8362b602db2ec8c0ec91f92b1ad3a458f76c36b2c0ed224a63",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/uv.lock",
+      "bytes": 12,
+      "sha256": "dbab12665d98aef021ba64953c61b0ed8a908cfb56a1c01e2fcb4b052b71a2a1",
+      "mode": "100644"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 11,
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+      "mode": "100644"
+    },
+    {
+      "path": "contract/mock/bin/start.sh",
+      "bytes": 20,
+      "sha256": "b6e84aeeffa0210d33b9e3c4af9a1c00b7ca8e1d7a2cb9ea89540c283f51656b",
+      "mode": "100755"
+    },
+    {
+      "path": "contract/mock/src/generated/api.ts",
+      "bytes": 23,
+      "sha256": "8f53191f7073bfbf2f2b3944db221fd4482b6dc02360c43487f4e5711af1cec8",
+      "mode": "100644"
+    },
+    {
+      "path": "contract/openapi.yaml",
+      "bytes": 15,
+      "sha256": "f39db8e8ede3dc2457c613e2a304e6d478f6e5ec660e4746464f41e76ac77006",
+      "mode": "100644"
+    },
+    {
+      "path": "contract/typespec/main.tsp",
+      "bytes": 14,
+      "sha256": "25eb5acf1a67e05e515ece58120bbc4061b79dac9f4eb2dcf59d5558bfa49ace",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/conventions/error-codes.md",
+      "bytes": 16,
+      "sha256": "c7eec260228cca97980eada28c8ec14fec0994cbf4c1ae3c2a09a8a927046a13",
+      "mode": "100644"
+    },
+    {
+      "path": "lefthook.yml",
+      "bytes": 313,
+      "sha256": "0c34ef722e2abf56f2ea9e88d3e91c0e50ee2402d6b9eb05273b05a93343a584",
+      "mode": "100644"
+    },
+    {
+      "path": "package.json",
+      "bytes": 876,
+      "sha256": "9fb3ca6360894d2e3aa3b07463fdaf57371ed19b7095a3f9cfc4293c7af8c1d7",
+      "mode": "100644"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 380,
+      "sha256": "5a5677dcead9f09c6882c523b9b7228ede925b3970816ebce3f0a3c9fd277dc9",
+      "mode": "100644"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "bytes": 139,
+      "sha256": "f8b151b6a30f9d9f0c12a769df85022b00ce9b61130f2d67b9d8824e1aaeae64",
+      "mode": "100644"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3066,
+      "sha256": "b40dde1276378c49f39e5d7a7a2d378bd96bbf1c7bb9581da66fd7e5a09aba4e",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/apps.mjs",
+      "bytes": 976,
+      "sha256": "fcd024688acae11e5bc27f8cc44e4ff8fa1556fa73b1dcb85e8b07242c784cf2",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/check.mjs",
+      "bytes": 3194,
+      "sha256": "0a87a2e9edea37f8248cd72983d6635e0b9583a3704f030e79a44aeb052a9f96",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/format.mjs",
+      "bytes": 1294,
+      "sha256": "9fc45d9c9a60916e61a2453db20cb87d4f5561171b0fa1767fa80c3416f435b1",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/frontend-e2e.mjs",
+      "bytes": 1337,
+      "sha256": "73096efbd4a002b361b29635e40250256636d19edcd561561ed3ecde68a138f6",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/frontend-runners.test.mjs",
+      "bytes": 2930,
+      "sha256": "f7a5dc071e106a57a26ac2bd77092bf8cebd2e66655b60822733f7dbedbb9d3b",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/process.mjs",
+      "bytes": 2644,
+      "sha256": "ca878c89d1a341e631cecdf56ca896671bb3d4c0720503fb242b1c4c0fe0d5e1",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/process.test.mjs",
+      "bytes": 1752,
+      "sha256": "d73dc9c657d934ba4d41883ef7a3afef5edb2bd7b64798dbf6596af90454b133",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/runners.test.mjs",
+      "bytes": 12209,
+      "sha256": "eaf315262ec93f2bbcdaba4a869e69caafa6c2223c7cc673268a0a7407004f92",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/setup.mjs",
+      "bytes": 1727,
+      "sha256": "27fcebed2290b4ed3b9104bcbbb3836eb8d8891ac8321bec6e225cff75b76173",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/staged-format.mjs",
+      "bytes": 1435,
+      "sha256": "d7e71a84d0515c3f0abd77bdc46c356b9f1d407e8e24e2f33d1c8e0ed16942de",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/test-e2e.mjs",
+      "bytes": 794,
+      "sha256": "cd254e971e85b95d614e0451366828190ad137e88d23dd5d48b818ddf79600b0",
+      "mode": "100644"
+    },
+    {
+      "path": "tsconfig.base.json",
+      "bytes": 36,
+      "sha256": "671920f9e86e8620695b89c0328206cb79c2ae66dd7bf466a0644e20d1cfd9f1",
+      "mode": "100644"
+    },
+    {
+      "path": "turbo.json",
+      "bytes": 899,
+      "sha256": "78fd279f2b6fa1c48e09484de69e8cb57d6c6f0ddc3d92af917d350561ed2de3",
+      "mode": "100644"
+    }
+  ],
+  "web+admin": [
+    {
+      "path": ".betterleaks.toml",
+      "bytes": 159,
+      "sha256": "850c39348ee01f697e382e52da2398f6ea1f4be42f823bd7081153774fefe5c3",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-errors.test.mjs",
+      "bytes": 7153,
+      "sha256": "1a615a329f216aa9a1a360b774554234acf3d6573daac539edf57ed291a763f5",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-fixture.mjs",
+      "bytes": 3900,
+      "sha256": "8b2b4dc9353cad00fa9279fcc80b29f5d444e7f357c3c27866dce348c19a8112",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-frontends.test.mjs",
+      "bytes": 1245,
+      "sha256": "d4b71db09845dec69bb731847caa8d1a61a374b1e7808859d75edd1912ea679a",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch-settings.test.mjs",
+      "bytes": 11990,
+      "sha256": "9c425fbd7094dac8a81d89eabcd80ef711a0f748d17d87892bf00026fb6babeb",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch.mjs",
+      "bytes": 9431,
+      "sha256": "2bd33a6c1e9ad0a65f66e354e98feb41cb1e666356bc36f9ac07eddc3dc84a0b",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/dispatch.test.mjs",
+      "bytes": 14197,
+      "sha256": "8f8ac57c5f2b3b3cb27a559871ee1d269dd4c157da8bc851260fcdaec4e30ee6",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/post-tool-use.mjs",
+      "bytes": 60,
+      "sha256": "2eb179d181af418cba037cfecc73e85cbd5a7c433eb6f0e83e47baf27b976b8d",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/pre-tool-use.mjs",
+      "bytes": 59,
+      "sha256": "85968d9ec687eb7f37d8f48bcfddeb0d53232d1999a9c8cb53956d36e76e65e9",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/session-start.mjs",
+      "bytes": 61,
+      "sha256": "79fad9da949904cdbce79fbd66af72f517df15d14550484f3778909da86ae57a",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/hooks/stop-check.mjs",
+      "bytes": 53,
+      "sha256": "22096d3612b9a9b030292df267d45759a8ff2800e8b47b258727018858792e4a",
+      "mode": "100644"
+    },
+    {
+      "path": ".claude/settings.json",
+      "bytes": 2143,
+      "sha256": "54f8f6173fe261d24c59fdfa4086679573ab3a9b50885af10fdd73641d6d9738",
+      "mode": "100644"
+    },
+    {
+      "path": ".editorconfig",
+      "bytes": 12,
+      "sha256": "5a1a948fb3fd8d68bee00abb4d6d05b6437033cf330d0b1b90f62c79622b41e6",
+      "mode": "100644"
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 19,
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 1040,
+      "sha256": "e2f437a2b5aa31538b4cc4cff3d007f5fdd00dc5f7fa6431a9894969f3c407a4",
+      "mode": "100644"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 22,
+      "sha256": "0aeeb0746a7b4ef41fcdc6ef4b68c7d8f2b6802ab3cac9bac570aafdcaddc610",
+      "mode": "100644"
+    },
+    {
+      "path": ".mcp.json",
+      "bytes": 154,
+      "sha256": "b8f229ddc2daf5ecb9b609855e677bf11ef9e1e84c17b4a09db33d29e7a8d4e2",
+      "mode": "100644"
+    },
+    {
+      "path": ".prettierrc.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 10240,
+      "sha256": "f18aaf38b43c1a321fdcaef574a58d347d40b5c7c7ea51e8e7e917a0a9528a7c",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.betterleaks.toml",
+      "bytes": 27,
+      "sha256": "27630a96d6c55755cc37620f3933d5cab94b1eb78a726a32e11212972525d76e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.claude/settings.json",
+      "bytes": 39,
+      "sha256": "25d0eb3fa40f12bc1a1c695b5062dd8ef9e6a242e084df7f03ca23427631d7de",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.env.example",
+      "bytes": 104,
+      "sha256": "df5a1de681ca21b8926f7b7e4b1f8caedc777815bc4a9ffc71ca285f74d9fed9",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.gitattributes",
+      "bytes": 19,
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.mcp.json",
+      "bytes": 94,
+      "sha256": "d2e020f689f79dd65969115897a2ce72beacefc97ad707925f09366b9d69660d",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/.prettierrc.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/bin/start.sh",
+      "bytes": 18,
+      "sha256": "b4d644d4279594903f1a9911956432d9473041f2984fc6014c14d7402c7d126c",
+      "mode": "100755"
+    },
+    {
+      "path": "apps/admin/Dockerfile",
+      "bytes": 2011,
+      "sha256": "5f3422aab77de936785d820aee75087c6501416d8f618059af9bed72e0607c1e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/Dockerfile.dockerignore",
+      "bytes": 385,
+      "sha256": "5fc66eb6e4b6384fa82d6eaa47429f900aa8571941fd7bd9211a4f5b00cf784e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/docs/conventions/error-codes.md",
+      "bytes": 16,
+      "sha256": "c7eec260228cca97980eada28c8ec14fec0994cbf4c1ae3c2a09a8a927046a13",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/docs/공백 문서.md",
+      "bytes": 29,
+      "sha256": "80c61be0e8e54cfac10c96b5639dbb1c9ed5b10b32d2f2184c5594ff757eb369",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/gen.config.json",
+      "bytes": 67,
+      "sha256": "2e603bc6a889e6a2702522b45916bacb3416f559cf64178b4e9902608afc4ff5",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/lefthook.yml",
+      "bytes": 23,
+      "sha256": "44149f036256b834280f69810d21fd061c9af3179e02932dd8ea479addbd35d3",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/package.json",
+      "bytes": 244,
+      "sha256": "adf8c1bff73e5ea7147cb8688248f71b8ef8a20fb10cc11fe6029d1405ea8b14",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/README.md",
+      "bytes": 29,
+      "sha256": "2b4f71abcb48775cdec3f16012020ec9754eae02195087c31714315290bbe824",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/admin/tsconfig.base.json",
+      "bytes": 36,
+      "sha256": "671920f9e86e8620695b89c0328206cb79c2ae66dd7bf466a0644e20d1cfd9f1",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/.betterleaks.toml",
+      "bytes": 27,
+      "sha256": "27630a96d6c55755cc37620f3933d5cab94b1eb78a726a32e11212972525d76e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/.claude/settings.json",
+      "bytes": 39,
+      "sha256": "25d0eb3fa40f12bc1a1c695b5062dd8ef9e6a242e084df7f03ca23427631d7de",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/compose.yaml",
+      "bytes": 259,
+      "sha256": "e0cb79e564ffb780a38bb1e1aa7ee64545798603713ab74e37e3fddea5d4bd9d",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/lefthook.yml",
+      "bytes": 23,
+      "sha256": "44149f036256b834280f69810d21fd061c9af3179e02932dd8ea479addbd35d3",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/openapi.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/package.json",
+      "bytes": 404,
+      "sha256": "634bf6e83e84aa437102dfeaa840efe36eaa0525a3fec7bd62ff35d5d8064d0a",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/pyproject.toml",
+      "bytes": 23,
+      "sha256": "38037d56d75e10791ce18f0db7196a9c95e75dc84943921f089a2c546d482f30",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/README.md",
+      "bytes": 27,
+      "sha256": "23baed7dcf18be8362b602db2ec8c0ec91f92b1ad3a458f76c36b2c0ed224a63",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/api/uv.lock",
+      "bytes": 12,
+      "sha256": "dbab12665d98aef021ba64953c61b0ed8a908cfb56a1c01e2fcb4b052b71a2a1",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.betterleaks.toml",
+      "bytes": 27,
+      "sha256": "27630a96d6c55755cc37620f3933d5cab94b1eb78a726a32e11212972525d76e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.claude/settings.json",
+      "bytes": 39,
+      "sha256": "25d0eb3fa40f12bc1a1c695b5062dd8ef9e6a242e084df7f03ca23427631d7de",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.env.example",
+      "bytes": 104,
+      "sha256": "df5a1de681ca21b8926f7b7e4b1f8caedc777815bc4a9ffc71ca285f74d9fed9",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.gitattributes",
+      "bytes": 19,
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.mcp.json",
+      "bytes": 94,
+      "sha256": "d2e020f689f79dd65969115897a2ce72beacefc97ad707925f09366b9d69660d",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/.prettierrc.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/bin/start.sh",
+      "bytes": 18,
+      "sha256": "b4d644d4279594903f1a9911956432d9473041f2984fc6014c14d7402c7d126c",
+      "mode": "100755"
+    },
+    {
+      "path": "apps/web/Dockerfile",
+      "bytes": 1957,
+      "sha256": "e138f51f8b0d8847ec1be77a6e6a99d3f3dc1d43bb77ceb34109ecf4db74a3e3",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/Dockerfile.dockerignore",
+      "bytes": 385,
+      "sha256": "5fc66eb6e4b6384fa82d6eaa47429f900aa8571941fd7bd9211a4f5b00cf784e",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/docs/conventions/error-codes.md",
+      "bytes": 16,
+      "sha256": "c7eec260228cca97980eada28c8ec14fec0994cbf4c1ae3c2a09a8a927046a13",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/docs/공백 문서.md",
+      "bytes": 29,
+      "sha256": "80c61be0e8e54cfac10c96b5639dbb1c9ed5b10b32d2f2184c5594ff757eb369",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/gen.config.json",
+      "bytes": 67,
+      "sha256": "2e603bc6a889e6a2702522b45916bacb3416f559cf64178b4e9902608afc4ff5",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/lefthook.yml",
+      "bytes": 23,
+      "sha256": "44149f036256b834280f69810d21fd061c9af3179e02932dd8ea479addbd35d3",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/package.json",
+      "bytes": 242,
+      "sha256": "d8534892d6d6d6e243881fa0ecc1db6e035ed0b6a203190f8c20ed99b2b4d34d",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/README.md",
+      "bytes": 27,
+      "sha256": "bddb6f70ab4b032dd0999402b35ae31e0d0d37b803ae6dfbc868706a87390281",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/tsconfig.base.json",
+      "bytes": 36,
+      "sha256": "671920f9e86e8620695b89c0328206cb79c2ae66dd7bf466a0644e20d1cfd9f1",
+      "mode": "100644"
+    },
+    {
+      "path": "apps/web/untracked.txt",
+      "bytes": 23,
+      "sha256": "7a09be8f10b54111b1f0e1c4fdb1909eff4c1e395c96ed8d375f9f7cae30c760",
+      "mode": "100644"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 11,
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+      "mode": "100644"
+    },
+    {
+      "path": "contract/mock/bin/start.sh",
+      "bytes": 20,
+      "sha256": "b6e84aeeffa0210d33b9e3c4af9a1c00b7ca8e1d7a2cb9ea89540c283f51656b",
+      "mode": "100755"
+    },
+    {
+      "path": "contract/mock/src/generated/api.ts",
+      "bytes": 23,
+      "sha256": "8f53191f7073bfbf2f2b3944db221fd4482b6dc02360c43487f4e5711af1cec8",
+      "mode": "100644"
+    },
+    {
+      "path": "contract/openapi.yaml",
+      "bytes": 15,
+      "sha256": "f39db8e8ede3dc2457c613e2a304e6d478f6e5ec660e4746464f41e76ac77006",
+      "mode": "100644"
+    },
+    {
+      "path": "contract/typespec/main.tsp",
+      "bytes": 14,
+      "sha256": "25eb5acf1a67e05e515ece58120bbc4061b79dac9f4eb2dcf59d5558bfa49ace",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/conventions/error-codes.md",
+      "bytes": 16,
+      "sha256": "c7eec260228cca97980eada28c8ec14fec0994cbf4c1ae3c2a09a8a927046a13",
+      "mode": "100644"
+    },
+    {
+      "path": "lefthook.yml",
+      "bytes": 311,
+      "sha256": "74de60a26f39c24573e2494e4f69d86c965d1f935a3447901ad63372f2fc17fc",
+      "mode": "100644"
+    },
+    {
+      "path": "package.json",
+      "bytes": 928,
+      "sha256": "90b308289a9aedb0d1421b2a4153cbcb588e1104e67ca3333a90c247202a7495",
+      "mode": "100644"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 473,
+      "sha256": "e0fa5f34f4b88e153e2a8ae6dbe7d1518080efd3d8d8b8f59a4ca64c139b817d",
+      "mode": "100644"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "bytes": 152,
+      "sha256": "6469c83a506af3a86ece01cd928e676b2223650c9c1e2f14ea3fb45ba81f3eb5",
+      "mode": "100644"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3402,
+      "sha256": "8efa99d5c0b1755f37057f0d7c52a4658d1ba14a6e0b87341fd78998b4d72d98",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/apps.mjs",
+      "bytes": 976,
+      "sha256": "fcd024688acae11e5bc27f8cc44e4ff8fa1556fa73b1dcb85e8b07242c784cf2",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/check.mjs",
+      "bytes": 3194,
+      "sha256": "0a87a2e9edea37f8248cd72983d6635e0b9583a3704f030e79a44aeb052a9f96",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/format.mjs",
+      "bytes": 1294,
+      "sha256": "9fc45d9c9a60916e61a2453db20cb87d4f5561171b0fa1767fa80c3416f435b1",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/frontend-e2e.mjs",
+      "bytes": 1337,
+      "sha256": "73096efbd4a002b361b29635e40250256636d19edcd561561ed3ecde68a138f6",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/frontend-runners.test.mjs",
+      "bytes": 2930,
+      "sha256": "f7a5dc071e106a57a26ac2bd77092bf8cebd2e66655b60822733f7dbedbb9d3b",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/process.mjs",
+      "bytes": 2644,
+      "sha256": "ca878c89d1a341e631cecdf56ca896671bb3d4c0720503fb242b1c4c0fe0d5e1",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/process.test.mjs",
+      "bytes": 1752,
+      "sha256": "d73dc9c657d934ba4d41883ef7a3afef5edb2bd7b64798dbf6596af90454b133",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/runners.test.mjs",
+      "bytes": 12209,
+      "sha256": "eaf315262ec93f2bbcdaba4a869e69caafa6c2223c7cc673268a0a7407004f92",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/setup.mjs",
+      "bytes": 1727,
+      "sha256": "27fcebed2290b4ed3b9104bcbbb3836eb8d8891ac8321bec6e225cff75b76173",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/staged-format.mjs",
+      "bytes": 1435,
+      "sha256": "d7e71a84d0515c3f0abd77bdc46c356b9f1d407e8e24e2f33d1c8e0ed16942de",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/test-e2e.mjs",
+      "bytes": 794,
+      "sha256": "cd254e971e85b95d614e0451366828190ad137e88d23dd5d48b818ddf79600b0",
+      "mode": "100644"
+    },
+    {
+      "path": "tsconfig.base.json",
+      "bytes": 36,
+      "sha256": "671920f9e86e8620695b89c0328206cb79c2ae66dd7bf466a0644e20d1cfd9f1",
+      "mode": "100644"
+    },
+    {
+      "path": "turbo.json",
+      "bytes": 1442,
+      "sha256": "be23501ce3e848533a63809b13d33954689a4119cc306080943e25b878c22bb9",
+      "mode": "100644"
+    }
+  ]
+}
