@@ -91,7 +91,7 @@ export class PostsService {
         });
       const status = nextStatus("draft", attributes.status ?? "draft");
       const coverImageId = input.relationships?.coverImage?.data?.id ?? null;
-      if (coverImageId) {
+      if (coverImageId !== null) {
         await this.posts.lockCovers(tx, [coverImageId]);
         await this.posts.attachCover(tx, viewer, coverImageId);
       }
