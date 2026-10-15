@@ -2,9 +2,9 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished } from "vitest";
 import { genModule } from "../gen-module.js";
-import { generatorFixture } from "./fixtures/generated-module.js";
+import { generatorFixture, generatorFixtureOwner } from "./fixtures/generated-module.js";
 import {
   actions,
   descriptions,
@@ -17,16 +17,30 @@ import {
   variable,
 } from "./fixtures/generated-oracles.js";
 
-let fixture: ReturnType<typeof generatorFixture>;
+const created: { fixture: ReturnType<typeof generatorFixture>; closes: number }[] = [];
+function recordedFixture(sourceRoot?: string) {
+  const original = generatorFixture(sourceRoot);
+  const record = { fixture: original, closes: 0 };
+  created.push(record);
+  return {
+    ...original,
+    close: () => {
+      record.closes++;
+      original.close();
+    },
+  };
+}
 const names = ["fixture-widgets", "a-fixture-gadgets"];
 const addedPermissions = names.flatMap((name) => [`${name}:create`, `${name}:manage`]);
-const read = (path: string) => parse(fixture.read(path));
 function oracleTests(nested = false) {
+  let fixture: ReturnType<typeof generatorFixture>;
+  const owner = generatorFixtureOwner(recordedFixture);
+  const read = (path: string) => parse(fixture.read(path));
   let allPermissions: string[];
   let allActions: string[];
   let allDescriptions: Record<string, string>;
   beforeEach(async () => {
-    fixture = generatorFixture();
+    fixture = owner.create();
     const original = oracleBaseline(fixture.read);
     let baseline = original;
     if (nested) {
@@ -36,7 +50,7 @@ function oracleTests(nested = false) {
           ? "outer-fixture-widgets"
           : "widgets";
         await genModule(outer.root, name);
-        fixture = generatorFixture(outer.root);
+        fixture = owner.create(outer.root);
         baseline = oracleBaseline(fixture.read);
         expect(baseline.permissions).toEqual([
           ...original.permissions,
@@ -54,7 +68,7 @@ function oracleTests(nested = false) {
           [`${name}:manage`]: `모든 ${name} 리소스를 관리한다.`,
         });
       } finally {
-        outer.close();
+        owner.close(outer);
       }
     }
     expect(baseline.permissions.slice(0, 8)).toEqual(permissions);
@@ -83,7 +97,7 @@ function oracleTests(nested = false) {
     for (const name of names) await genModule(fixture.root, name);
   });
   afterEach(() => {
-    fixture.close();
+    owner.closeAll();
   });
   it("생성 사본 감사의 정확한 action 순서를 독립 literal로 확장한다", () => {
     const source = read("src/core/audit/tests/record.test.ts");
@@ -256,4 +270,21 @@ function oracleTests(nested = false) {
 oracleTests();
 describe("바깥 모듈을 생성한 사본에서 같은 엄격 단언을 재생한다", () => {
   oracleTests(true);
+});
+it("부모와 중첩 hook이 만든 모든 사본을 teardown 뒤 정확히 한 번 정리한다", () => {
+  onTestFinished(() => {
+    try {
+      expect(
+        created.map(({ fixture: copy, closes }) => ({
+          root: copy.root,
+          exists: existsSync(copy.root),
+          closes,
+        })),
+      ).toEqual(
+        created.map(({ fixture: copy }) => ({ root: copy.root, exists: false, closes: 1 })),
+      );
+    } finally {
+      for (const { fixture: copy } of created) if (existsSync(copy.root)) copy.close();
+    }
+  });
 });

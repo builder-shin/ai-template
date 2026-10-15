@@ -28,6 +28,25 @@ export function generatorFixture(sourceRoot = process.cwd()) {
     read: (path: string) => readFileSync(join(root, path), "utf8"),
   };
 }
+/** 한 hook 범위가 만든 사본만 소유하고, 설정·본문 실패 뒤에도 남은 사본을 닫는다. */
+export function generatorFixtureOwner(create = generatorFixture) {
+  const owned = new Set<ReturnType<typeof generatorFixture>>();
+  const close = (fixture: ReturnType<typeof generatorFixture>) => {
+    if (!owned.delete(fixture)) throw new Error("이 hook 범위가 소유한 사본이 아니다");
+    fixture.close();
+  };
+  return {
+    create: (sourceRoot?: string) => {
+      const fixture = create(sourceRoot);
+      owned.add(fixture);
+      return fixture;
+    },
+    close,
+    closeAll: () => {
+      for (const fixture of owned) close(fixture);
+    },
+  };
+}
 /** 설치·서버 실행 없이 생성한 순수 모듈과 실제 exporter를 별도 모듈 캐시에서 평가한다. */
 export function fixtureLoader(root: string, aliases: Record<string, unknown> = {}) {
   const nativeRequire = createRequire(import.meta.url);
