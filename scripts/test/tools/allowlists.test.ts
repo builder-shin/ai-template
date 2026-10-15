@@ -11,6 +11,7 @@ const secret = 'password = "Rv8Dm2qZ5nK7sX4jP9cL6wT3bH1fY0aG"'; // betterleaks:a
 it.each([
   [".betterleaks.toml", "templates/nextjs/pnpm-lock.yaml", true],
   ["templates/nextjs/.betterleaks.toml", "pnpm-lock.yaml", false],
+  ["templates/nestjs/.betterleaks.toml", "pnpm-lock.yaml", false],
 ])(
   "%s의 잠금 파일 정책과 수기 소스 탐지를 확인한다",
   (config, lockfile, scanLockfile) => {

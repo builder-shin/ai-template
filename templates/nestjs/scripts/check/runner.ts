@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { inputFiles } from "./files.js";
 import { gitEnvironment } from "./git-environment.js";
+import { changedTests, inputHashes } from "./changed-tests.js";
 import type { Stage, StageName } from "./stages.js";
 
 function inputHash(stage: Stage, root: string): string {
@@ -28,7 +29,7 @@ function inputHash(stage: Stage, root: string): string {
   return hash.digest("hex");
 }
 
-function cached(path: string, hash: string, command: readonly string[]): boolean {
+function cached(path: string, hash: string, command: readonly string[], selected = false): boolean {
   try {
     const data: unknown = JSON.parse(readFileSync(path, "utf8"));
     return (
@@ -37,7 +38,8 @@ function cached(path: string, hash: string, command: readonly string[]): boolean
       "hash" in data &&
       data.hash === hash &&
       "command" in data &&
-      JSON.stringify(data.command) === JSON.stringify(command)
+      JSON.stringify(selected && "baseCommand" in data ? data.baseCommand : data.command) ===
+        JSON.stringify(command)
     );
   } catch {
     return false;
@@ -91,14 +93,22 @@ export async function runStages(
     try {
       const hash = inputHash(stage, options.root);
       const path = join(options.cacheDir, `${stage.name}.json`);
-      if (cached(path, hash, stage.command)) {
+      if (cached(path, hash, stage.command, stage.selectChangedModules)) {
         messages.push(`${stage.name} 건너뜀(입력 변화 없음)`);
         continue;
       }
-      const result = await execute(stage.command, options.root);
+      const hashes = stage.selectChangedModules
+        ? inputHashes(options.root, stage.inputs)
+        : undefined;
+      const command =
+        options.fast && hashes ? [...stage.command, ...changedTests(path, hashes)] : stage.command;
+      const result = await execute(command, options.root);
       if (!result.ok)
         return { ok: false, failed: stage.name, output: result.output, seconds: seconds() };
-      writeFileSync(path, `${JSON.stringify({ hash, command: stage.command })}\n`);
+      writeFileSync(
+        path,
+        `${JSON.stringify({ hash, command, ...(hashes ? { baseCommand: stage.command, inputHashes: hashes } : {}) })}\n`,
+      );
     } catch (error) {
       return { ok: false, failed: stage.name, output: `${String(error)}\n`, seconds: seconds() };
     }

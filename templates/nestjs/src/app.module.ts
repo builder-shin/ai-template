@@ -55,7 +55,9 @@ export class AppModule {
   ): DynamicModule {
     const auth = AuthModule.register(infrastructure);
     const realtime = RealtimeModule.register(infrastructure, auth);
-    const files = FilesModule.register(infrastructure);
+    const files = FilesModule.register(infrastructure, [
+      // gen:module file references
+    ]);
     return {
       module: AppModule,
       imports: [

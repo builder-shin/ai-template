@@ -6,7 +6,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": [".claude/hooks/post-edit.mjs"]
+            "args": [".claude/hooks/post-tool-use.mjs"]
           }
         ]
       }
@@ -28,7 +28,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": [".claude/hooks/guard-command.mjs"]
+            "args": [".claude/hooks/pre-tool-use.mjs"]
           }
         ]
       }

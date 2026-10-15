@@ -9,6 +9,7 @@ if (!pnpm) {
     ...environment(),
     npm_config_verify_deps_before_run: "error",
     PNPM_VERIFY_DEPS_BEFORE_RUN: "error",
+    PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "error",
   };
   const installed = spawnSync(process.execPath, [pnpm, "install", "--frozen-lockfile"], {
     stdio: "inherit",

@@ -15,6 +15,8 @@ pnpm exec prisma migrate diff --from-empty --to-schema prisma/schema.prisma --sc
 후속 마이그레이션은 직전 HEAD의 schema.prisma를 임시 before.prisma로 저장하고
 `--from-empty` 대신 `--from-schema <임시>/before.prisma`를 사용한다.
 SQL을 검토하고 새 일반 커밋으로 남긴다. 커밋한 마이그레이션은 수정·삭제하지 않는다.
+`npx`·`pnpm dlx`로 Prisma를 실행하지 않는다. `prisma db push`, `--accept-data-loss`와
+raw `prisma migrate reset`도 사용하지 않는다. reset은 소유·로컬 검사가 있는 명령만 쓴다.
 
 준비된 개발 환경에서는 `pnpm db:revision <이름>`으로 shadow DB를 쓰는 create-only 초안을 만든다.
 `pnpm db:migrate`는 소유 검사 뒤 deploy하며 `pnpm db:reset`은 로컬 DB만 지운다.

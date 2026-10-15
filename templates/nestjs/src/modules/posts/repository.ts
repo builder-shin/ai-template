@@ -19,6 +19,9 @@ export interface PostRecord {
 }
 @Injectable()
 export class PostsRepository {
+  coverReferenceCount(tx: Tx, id: string): Promise<number> {
+    return tx.post.count({ where: { coverImageId: id } });
+  }
   async list(tx: Tx, query: ParsedQuery, viewer: Principal | undefined) {
     const { author, status, q } = query.filter;
     const drafts =

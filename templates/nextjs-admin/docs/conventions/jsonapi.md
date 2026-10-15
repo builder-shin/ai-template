@@ -40,7 +40,7 @@
 | 실시간 이벤트 페이로드 | `<Resource><Event>EventDocument` (예: `PostPublishedEventDocument`) |
 
 - 그 밖의 보조 스키마(`PostStatus`, `SessionGrant` 등)도 리소스 이름으로 시작한다.
-- 리소스에 속하지 않는 공용 스키마는 다음뿐이다: `ErrorCode`, `ErrorDocument`, `ErrorObject`, `ErrorSource`, `PageMeta`, `PaginationLinks`, `CollectionMeta`, `Locale`, `OAuthProvider`, `HealthReport`, 그리고 실시간 구독 메시지의 `RealtimeChannel`, `RealtimeSubscription`, `RealtimeAck`. 늘리려면 룰셋(`redocly.yaml`의 `shared`)과 이 목록을 함께 고친다.
+- 리소스에 속하지 않는 공용 스키마는 다음뿐이다: `ErrorCode`, `PermissionCode`, `AuditLogAction`, `UserStatus`, `ErrorDocument`, `ErrorObject`, `ErrorSource`, `PageMeta`, `PaginationLinks`, `CollectionMeta`, `Locale`, `OAuthProvider`, `HealthReport`, 그리고 실시간 구독 메시지의 `RealtimeChannel`, `RealtimeSubscription`, `RealtimeAck`. 늘리려면 룰셋(`redocly.yaml`의 `shared`)과 이 목록을 함께 고친다.
 - 백엔드 스펙에는 계약의 스키마 이름이 모두 있어야 한다. 백엔드 생성기가 중첩 모델에 붙이는 보조 이름(예: `PostCreateData`)은 더 있어도 된다. 프론트 코드는 계약에 있는 이름만 참조한다.
 
 ## 쿼리 파라미터

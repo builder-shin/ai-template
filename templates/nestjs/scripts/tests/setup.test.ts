@@ -6,7 +6,28 @@ import { afterEach, expect, it, vi } from "vitest";
 import { prepareEnvironment } from "../setup-env.js";
 import { setup } from "../setup.js";
 import { PutBucketCorsCommand, type S3Client } from "@aws-sdk/client-s3";
-const fixture = vi.hoisted(() => ({ events: [] as unknown[], fail: false, storageFail: false }));
+const fixture = vi.hoisted(() => ({
+  events: [] as unknown[],
+  fail: false,
+  storageFail: false,
+  generateFail: false,
+}));
+vi.mock("../setup-harness.js", () => ({
+  prepareHarness: () => {
+    fixture.events.push("harness");
+    return Promise.resolve();
+  },
+}));
+vi.mock("../../src/seed.js", () => {
+  fixture.events.push("seed import");
+  if (!fixture.events.includes("generate")) throw new Error("생성 전에 시드를 가져왔다");
+  return {
+    seed: () => {
+      fixture.events.push("seed");
+      return Promise.resolve();
+    },
+  };
+});
 vi.mock("../../src/core/storage/client.js", () => ({
   storageClients: () => ({
     internal: {
@@ -54,6 +75,7 @@ vi.mock("../db/migrate.js", () => ({
 vi.mock("../gen.js", () => ({
   generate: () => {
     fixture.events.push("generate");
+    if (fixture.generateFail) throw new Error("생성 실패");
   },
 }));
 vi.mock("../runtime.js", () => ({
@@ -74,6 +96,7 @@ afterEach(() => {
   fixture.events = [];
   fixture.fail = false;
   fixture.storageFail = false;
+  fixture.generateFail = false;
   vi.clearAllMocks();
 });
 it("환경 파일이 없으면 공개 예시를 복사한다", () => {
@@ -104,6 +127,7 @@ it("setup은 기동과 소유 확인 뒤 생성하고 세 DB를 migrate한다", 
     await setup();
     expect(fixture.events).toEqual([
       "environment",
+      "harness",
       ["docker", ["compose", "up", "-d", "--wait"]],
       "owned-databases",
       "generate",
@@ -131,6 +155,8 @@ it("setup은 기동과 소유 확인 뒤 생성하고 세 DB를 migrate한다", 
       ],
       "internal.destroy",
       "public.destroy",
+      "seed import",
+      "seed",
     ]);
   } finally {
     prepare.mockRestore();
@@ -156,7 +182,19 @@ it("기동 실패 뒤에는 DB 생성과 migrate를 실행하지 않는다", asy
   try {
     await expect(setup()).rejects.toThrow("기동 실패");
     expect(execFileSync).toHaveBeenCalledOnce();
-    expect(fixture.events).toHaveLength(1);
+    expect(fixture.events).toHaveLength(2);
+  } finally {
+    prepare.mockRestore();
+  }
+});
+it("생성 실패 뒤에는 시드를 실행하지 않는다", async () => {
+  const prepare = vi
+    .spyOn(await import("../setup-env.js"), "prepareEnvironment")
+    .mockImplementation(() => undefined);
+  fixture.generateFail = true;
+  try {
+    await expect(setup()).rejects.toThrow("생성 실패");
+    expect(fixture.events).not.toContain("seed");
   } finally {
     prepare.mockRestore();
   }

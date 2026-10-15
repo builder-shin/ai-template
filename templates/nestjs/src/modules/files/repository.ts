@@ -13,8 +13,10 @@ export interface FileRecord {
   createdAt: Date;
 }
 export type NewFile = Pick<FileRecord, "ownerId" | "key" | "filename" | "contentType" | "size">;
+export type FileReferenceRule = (tx: Tx, id: string) => Promise<number>;
 @Injectable()
 export class FilesRepository {
+  constructor(private readonly references: readonly FileReferenceRule[] = []) {}
   async lock(tx: Tx, id: string): Promise<void> {
     await tx.$queryRaw`SELECT id FROM files WHERE id = ${id}::uuid FOR UPDATE`;
   }
@@ -52,9 +54,13 @@ export class FilesRepository {
       await this.lock(tx, id);
       const file = await this.find(tx, id);
       if (!file?.detachedAt) continue;
-      const referenced =
+      let referenced =
         (await tx.user.count({ where: { avatarFileId: id } })) ||
         (await tx.post.count({ where: { coverImageId: id } }));
+      for (const reference of this.references) {
+        if (referenced) break;
+        referenced = await reference(tx, id);
+      }
       if (referenced) {
         await tx.file.update({ where: { id }, data: { detachedAt: null } });
         continue;

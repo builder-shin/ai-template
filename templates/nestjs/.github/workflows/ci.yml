@@ -23,3 +23,5 @@ jobs:
           cache: pnpm
       - run: pnpm setup
       - run: pnpm check
+      - run: pnpm test:e2e
+      - run: docker build -t nestjs-ci .

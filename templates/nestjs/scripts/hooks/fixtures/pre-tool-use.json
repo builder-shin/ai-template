@@ -1,0 +1,54 @@
+{
+  "denied": [
+    ["Read", { "file_path": ".env" }, ".env"],
+    ["Write", { "file_path": ".env.production" }, ".env"],
+    ["Edit", { "file_path": "src/generated/prisma/client.ts" }, "생성물"],
+    ["Write", { "file_path": "openapi.json" }, "pnpm gen"],
+    [
+      "Edit",
+      { "file_path": "prisma/migrations/20261013000000_posts/migration.sql" },
+      "커밋된 마이그레이션"
+    ],
+    ["Bash", { "command": "npx prisma migrate dev" }, "고정한 로컬 CLI"],
+    ["Bash", { "command": "pnpm dlx prisma studio" }, "고정한 로컬 CLI"],
+    ["Bash", { "command": "npx prettier ." }, "고정한 로컬 CLI"],
+    ["Bash", { "command": "pnpm exec prisma db push" }, "db push"],
+    ["Bash", { "command": "pnpm exec prisma migrate reset --force" }, "pnpm db:reset"],
+    ["Bash", { "command": "pnpm exec prisma migrate dev --accept-data-loss" }, "데이터 손실"],
+    ["Bash", { "command": "git commit --no-verify -m x" }, "hook"],
+    ["Bash", { "command": "git push --force" }, "force"],
+    ["Bash", { "command": "git push origin main -f" }, "force"],
+    ["Bash", { "command": "git -c core.hooksPath=/tmp/empty commit -m x" }, "hook"],
+    ["Bash", { "command": "LEFTHOOK=0 git commit -m x" }, "hook"],
+    ["Bash", { "command": "bash -c 'cat .env'" }, ".env"],
+    ["PowerShell", { "command": "Get-Content .\\.env.production" }, ".env"],
+    [
+      "Bash",
+      { "command": "rm prisma/migrations/20261013000000_posts/migration.sql" },
+      "커밋된 마이그레이션"
+    ],
+    [
+      "Bash",
+      {
+        "command": "pnpm exec prisma migrate deploy --url postgresql://fixture@db.example.test/app"
+      },
+      "로컬"
+    ],
+    ["Bash", { "command": "printf x > .env" }, ".env"]
+  ],
+  "allowed": [
+    ["Read", { "file_path": ".env.example" }],
+    ["Read", { "file_path": "src/generated/prisma/client.ts" }],
+    ["Edit", { "file_path": "prisma/migrations/20261014000000_widgets/migration.sql" }],
+    ["Bash", { "command": "pnpm exec prisma generate" }],
+    ["Bash", { "command": "pnpm db:reset" }],
+    ["Bash", { "command": "cat .env.example" }],
+    ["Bash", { "command": "git status --short" }],
+    [
+      "Bash",
+      {
+        "command": "pnpm exec prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script"
+      }
+    ]
+  ]
+}

@@ -19,6 +19,13 @@ export default {
         "/",
       );
       if (
+        /(?:^|\/)(?:[^/]+\.)?controller\.ts$/.test(file) &&
+        /(?:^|\/)prisma\.service\.[jt]s$/.test(target)
+      ) {
+        context.report({ node, messageId: "boundary" });
+        return;
+      }
+      if (
         !allowed &&
         (target.startsWith("src/generated/") ||
           /(?:^|\/)generated\//.test(source) ||

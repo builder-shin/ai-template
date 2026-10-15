@@ -6,6 +6,7 @@ import { expect, it } from "vitest";
 const root = process.cwd();
 const fixtureRoot = join(root, "scripts/lint/fixtures");
 const negatives = [
+  ["controller-prisma", "src/modules/posts/controller.ts", "aitpl/prisma-import-boundary"],
   ["no-unsafe-raw-sql", "src/query.ts", "aitpl/no-unsafe-raw-sql"],
   ["no-unsafe-raw-sql", "src/execute.ts", "aitpl/no-unsafe-raw-sql"],
   [

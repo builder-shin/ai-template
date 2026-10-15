@@ -50,6 +50,19 @@ export function harnessProblems(root: string): string[] {
   const files = projectFiles(root);
   const fileSet = new Set(files);
   const problems: string[] = [];
+  if (fileSet.has("package.json")) {
+    const data = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
+      scripts?: Record<string, string>;
+    };
+    for (const [name, command] of Object.entries(data.scripts ?? {}))
+      if (command.includes("not-yet.mjs"))
+        problems.push(`package.json: 아직 없는 명령 ${name}이 남았다`);
+  }
+  if (
+    fileSet.has("eslint.config.js") &&
+    /["']eslint-plugin-import["']/.test(readFileSync(join(root, "eslint.config.js"), "utf8"))
+  )
+    problems.push("eslint.config.js: eslint-plugin-import 대신 boundaries와 프로젝트 규칙을 쓴다");
   if (!fileSet.has("AGENTS.md")) problems.push("AGENTS.md — 프로젝트 루트에 지침을 둔다");
   else {
     const count = lineCount(readFileSync(join(root, "AGENTS.md"), "utf8"));

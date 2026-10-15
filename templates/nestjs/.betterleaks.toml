@@ -1,0 +1,17 @@
+prefilter = '''
+filter.matchesAny(attributes["path"], [
+  `^pnpm-lock\.yaml$`,
+  `^openapi\.json$`,
+])
+'''
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "잠금 파일의 @inquirer/password 패키지 이름"
+condition = "AND"
+targetRules = ["generic-password"]
+paths = ['''^pnpm-lock\.yaml$''']
+regexTarget = "line"
+regexes = ['''@inquirer/password''']

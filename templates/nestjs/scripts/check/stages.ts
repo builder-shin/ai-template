@@ -5,6 +5,7 @@ export interface Stage {
   readonly command: readonly string[];
   readonly fastSkip?: boolean;
   readonly fastCommand?: readonly string[];
+  readonly selectChangedModules?: boolean;
 }
 
 const cli = (path: string, ...args: string[]) => [process.execPath, path, ...args];
@@ -40,6 +41,7 @@ export const STAGES: readonly Stage[] = [
   {
     name: "typecheck",
     inputs: [
+      ".claude",
       "src",
       "scripts",
       "tests",
@@ -63,6 +65,7 @@ export const STAGES: readonly Stage[] = [
   {
     name: "test",
     inputs: [
+      ".claude",
       "src",
       "scripts",
       "tests",
@@ -80,5 +83,6 @@ export const STAGES: readonly Stage[] = [
       "integration",
     ),
     fastCommand: cli("node_modules/vitest/vitest.mjs", "run", "--project", "unit"),
+    selectChangedModules: true,
   },
 ];

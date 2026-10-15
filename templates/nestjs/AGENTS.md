@@ -14,17 +14,15 @@ Node 24.15 이상·25 미만, pnpm 12.6.0, NestJS 12.1.2를 쓰는 ESM 백엔드
 | `pnpm setup`, `pnpm gen`                               | 인프라·세 DB 준비, Prisma 클라이언트 생성           |
 | `pnpm db:migrate`, `pnpm db:reset`, `pnpm db:revision` | 소유 검사 뒤 deploy·로컬 reset·revision             |
 | `pnpm dev`, `pnpm test:e2e`, `pnpm e2e:serve`          | 개발 세 역할, 실제 E2E, 격리한 명령 서버를 실행한다 |
-| `pnpm gen:module <이름>`                               | Task 21에서 구현한다                                |
-
-아직 구현하지 않은 명령은 담당 Task를 stderr에 알리고 종료 코드 1로 끝난다.
-네 Claude hook은 exec form 선언만 있으며 모듈은 Task 21에서 더한다.
+| `pnpm gen:module <이름>`                               | 골든 복사·등록·권한·이벤트·모델·단위 시험을 만든다  |
+| `pnpm tool betterleaks <인자...>`                      | 고정한 비밀 검사 도구를 실행한다                    |
 
 ## 구조
 
 | 경로                          | 내용                                              |
 | ----------------------------- | ------------------------------------------------- |
 | `src/core/config/settings.ts` | 52개 필수 환경 키를 검증하는 Zod 스키마와 DI 토큰 |
-| `src/modules/posts/`          | 후속 구현과 생성기의 골든 모듈 자리               |
+| `src/modules/posts/`          | 컨트롤러·서비스·저장소·정책·이벤트·시험의 골든    |
 | `scripts/check/`              | 환경 예시와 설정 키의 일치 검사                   |
 | `api-style/lint.mjs`          | 독립 프로젝트에 포함한 JSON:API 룰셋 사본         |
 | `scripts/process-tree.mjs`    | 독립 프로젝트에 포함한 프로세스 종료 도구 사본    |
@@ -44,10 +42,21 @@ Node 24.15 이상·25 미만, pnpm 12.6.0, NestJS 12.1.2를 쓰는 ESM 백엔드
 - Prisma 생성 클라이언트는 추적하지 않는다. setup과 check는 lint 앞에서 생성한다.
 - DB가 다른 도구 소유이면 변경하지 않는다. reset은 로컬 호스트만 허용한다.
 - 생성물은 직접 고치지 않는다. 마이그레이션 절차는 [레시피](docs/recipes/migration.md)를 따른다.
+- 새 리소스는 계약부터 확장하고 [모듈 절차](docs/recipes/module.md)로 만든다. 기존 마이그레이션·모듈을 덮어쓰지 않는다.
+- 컨트롤러는 PrismaService를 가져오지 않는다. 서비스에 저장소를 주입하고 다른 모듈은 index.ts만 가져온다.
+- 파일 관계를 더하면 같은 Tx의 참조 검사를 FilesModule에 등록하여 정리 작업이 살아 있는 파일을 지우지 않게 한다.
 - 로딩 UI는 스피너나 스켈레톤만 쓰고 로딩 문구는 쓰지 않는다.
 - 커밋은 영문 Conventional Commits다. AI 태그·트레일러와 hook 우회는 쓰지 않는다.
 
 ## 완료 기준
 
 완료 기준은 `pnpm check`다. 로컬 `--fast`는 통합을 제외하고 단위 시험을 실행한다.
+성공한 시험 기준선이 있으면 바뀐 모듈의 시험을 선택하며 공통 변경·기준선 없음·시험 없는 모듈은 전체 단위를 실행한다.
 통합은 준비된 인프라에서 직렬로 실행하며 app_test·Redis 15·Mailpit 메시지만 비운다.
+PostToolUse는 편집 파일만 포맷·린트하고 Stop은 재진입을 제외하고 빠른 check를 실행한다.
+PreToolUse는 비밀 파일·생성물·커밋된 마이그레이션과 위험 명령을 거절한다.
+독립 git 루트에서 setup이 설치하는 lefthook은 pre-commit 포맷·재스테이징·린트·Betterleaks와 pre-push check를 실행한다.
+
+[아키텍처](docs/architecture.md)·[스택](docs/stack.md)과
+[endpoint](docs/recipes/endpoint.md)·[job](docs/recipes/job.md)·[permission](docs/recipes/permission.md)·
+[mail-template](docs/recipes/mail-template.md)·[realtime-event](docs/recipes/realtime-event.md)를 따른다.
