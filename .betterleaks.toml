@@ -27,7 +27,7 @@ useDefault = true
 description = "생성한 프런트엔드 잠금 파일의 @inquirer/password 패키지 이름"
 condition = "AND"
 targetRules = ["generic-password"]
-paths = ['''^templates/(?:nextjs(?:-admin)?|nestjs)/pnpm-lock\.yaml$''', '''^prototypes/nestjs/pnpm-lock\.yaml$''']
+paths = ['''^templates/(?:nextjs(?:-admin)?|nestjs)/pnpm-lock\.yaml$''', '''^prototypes/nestjs/pnpm-lock\.yaml$''', '''^create/test/fixtures/(?:nestjs|nextjs(?:-admin)?)/pnpm-lock\.yaml$''']
 regexTarget = "line"
 regexes = ['''@inquirer/password''']
 

@@ -1,0 +1,31 @@
+# 조합 루트 문맥에서 API와 그 의존성만 설치한다.
+FROM node:24.19.0-bookworm-slim AS base
+WORKDIR /app
+RUN npm install --global pnpm@12.6.0
+
+FROM base AS build
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/package.json
+RUN pnpm install --frozen-lockfile --filter api...
+COPY apps/api ./apps/api
+RUN DATABASE_URL=postgresql://build:build@127.0.0.1:1/build pnpm --filter api exec prisma generate # betterleaks:allow 사유: 연결하지 않는 빌드 주소
+RUN pnpm --filter api build
+
+FROM base AS production
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/package.json
+RUN pnpm install --frozen-lockfile --prod --filter api...
+
+FROM base AS runtime
+ENV NODE_ENV=production
+RUN groupadd --gid 10001 app && useradd --uid 10001 --gid 10001 --no-create-home app
+COPY --from=production --chown=10001:10001 /app/node_modules ./node_modules
+COPY --from=production --chown=10001:10001 /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=build --chown=10001:10001 /app/apps/api/dist ./apps/api/dist
+COPY --from=build --chown=10001:10001 /app/apps/api/prisma ./apps/api/prisma
+COPY --from=build --chown=10001:10001 /app/apps/api/prisma.config.ts ./apps/api/prisma.config.ts
+COPY --from=build --chown=10001:10001 /app/apps/api/package.json ./apps/api/package.json
+WORKDIR /app/apps/api
+USER 10001:10001
+EXPOSE 8000
+CMD ["node", "--import", "./dist/core/telemetry/register.js", "dist/main.js"]

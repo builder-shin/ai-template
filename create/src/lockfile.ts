@@ -1,6 +1,216 @@
 import { isDeepStrictEqual } from "node:util";
 import { isMap, parseAllDocuments } from "yaml";
 import { CreateError } from "./errors.ts";
+import { optionalReachability, type LockDocument } from "./lock-graph.ts";
+
+export interface AppLockSource {
+  readonly app: string;
+  readonly source: string;
+}
+export function mergeApiLock(
+  resolvedFrontendLock: string,
+  apiLock: string,
+  { typescriptPin }: { typescriptPin: string },
+): string {
+  const frontDocs = documents(resolvedFrontendLock),
+    apiDocs = documents(apiLock);
+  if (
+    !isDeepStrictEqual(
+      frontDocs.slice(0, -1).map((doc) => doc.toJS() as unknown),
+      apiDocs.slice(0, -1).map((doc) => doc.toJS() as unknown),
+    )
+  )
+    resolutionFailure("api", "도구 설치 문서");
+  const front = dependencyDocument(frontDocs).doc.toJS() as LockDocument;
+  const api = dependencyDocument(apiDocs).doc.toJS() as LockDocument;
+  verifyMetadata(api, front, typescriptPin, "api");
+  if (!Object.hasOwn(api.importers, ".")) resolutionFailure("api", "원본 importer . 누락");
+  optionalReachability(front, Object.keys(front.importers));
+  optionalReachability(api, Object.keys(api.importers));
+  const merged = structuredClone(front);
+  const sharedConflicts: string[] = [];
+  for (const [key, importer] of Object.entries(api.importers)) {
+    if (key !== ".") resolutionFailure("api", `importers.${key}`);
+    if (Object.hasOwn(merged.importers, "apps/api"))
+      resolutionFailure("api", "apps/api importer 중복");
+    merged.importers["apps/api"] = importer;
+  }
+  for (const section of ["packages", "snapshots"] as const) {
+    for (const [key, value] of Object.entries(api[section])) {
+      const existing = merged[section][key];
+      if (existing !== undefined) {
+        if (section === "packages" && !samePackage(value, existing, typescriptPin))
+          resolutionFailure("api", `packages.${key}`);
+        if (section === "snapshots" && !isDeepStrictEqual(value, existing))
+          sharedConflicts.push(key);
+      } else merged[section][key] = value;
+    }
+  }
+  const reachable = optionalReachability(merged, Object.keys(merged.importers));
+  for (const key of sharedConflicts)
+    if (
+      !sharedOptional(
+        recordAt(api.snapshots, key),
+        recordAt(front.snapshots, key),
+        reachable.get(key) === false,
+      )
+    )
+      resolutionFailure("api", `snapshots.${key}`);
+  for (const key of Object.keys(api.snapshots)) {
+    if (!Object.hasOwn(front.snapshots, key))
+      merged.snapshots[key] = optionalRecord(recordAt(merged.snapshots, key), reachable.get(key));
+  }
+  const doc = dependencyDocument(frontDocs).doc;
+  for (const section of ["importers", "packages", "snapshots"]) doc.set(section, merged[section]);
+  const prefix = toolPrefix(apiLock, apiDocs);
+  return prefix + doc.toString({ lineWidth: 0 });
+}
+export function alignDerivedTypeScriptPeers(apiLock: string, typescriptPin: string): string {
+  const docs = documents(apiLock),
+    doc = dependencyDocument(docs).doc;
+  const lock = doc.toJS() as LockDocument;
+  for (const [key, value] of Object.entries(lock.packages))
+    doc.setIn(["packages", key], alignedPackage(value, typescriptPin));
+  return toolPrefix(apiLock, docs) + doc.toString({ lineWidth: 0 });
+}
+export function verifyAppResolutions(
+  sources: readonly AppLockSource[],
+  lock: string,
+  { typescriptPin }: { typescriptPin: string },
+): void {
+  const docs = documents(lock),
+    after = dependencyDocument(docs).doc.toJS() as LockDocument;
+  const originals = sources.map(({ app, source }) => ({
+    app,
+    source,
+    docs: documents(source),
+    before: dependencyDocument(documents(source)).doc.toJS() as LockDocument,
+  }));
+  for (const { app, before } of originals)
+    if (app === "api" && !Object.hasOwn(before.importers, "."))
+      resolutionFailure(app, "원본 importer . 누락");
+  const frontendSnapshots = new Map(
+    originals
+      .filter(({ app }) => app !== "api")
+      .flatMap(({ before }) => Object.entries(before.snapshots)),
+  );
+  // 원본 간선의 필수 경로만 증거로 쓴다. 정렬한 node optional 표시는 전제가 아니다.
+  const originalReachability = originals.map(({ before }) =>
+    optionalReachability(before, Object.keys(before.importers)),
+  );
+  const reachable = optionalReachability(after, Object.keys(after.importers));
+  for (const { app, source, docs: beforeDocs, before } of originals) {
+    if (
+      !isDeepStrictEqual(
+        beforeDocs.slice(0, -1).map((doc) => doc.toJS() as unknown),
+        docs.slice(0, -1).map((doc) => doc.toJS() as unknown),
+      )
+    )
+      resolutionFailure(app, "도구 설치 문서");
+    if (app === "api" && toolPrefix(source, beforeDocs) !== toolPrefix(lock, docs))
+      resolutionFailure(app, "도구 문서 원문");
+    verifyMetadata(before, after, typescriptPin, app);
+    for (const [key, value] of Object.entries(before.importers)) {
+      if (!isDeepStrictEqual(value, after.importers[key === "." ? `apps/${app}` : key]))
+        resolutionFailure(app, `${key} importer`);
+    }
+    for (const [key, value] of Object.entries(before.packages)) {
+      if (!samePackage(value, after.packages[key], typescriptPin))
+        resolutionFailure(app, `packages.${key}`);
+    }
+    for (const [key, value] of Object.entries(before.snapshots)) {
+      const frontend = frontendSnapshots.get(key);
+      let expected = value;
+      if (app === "api" && !frontend) expected = optionalRecord(value, reachable.get(key));
+      else if (
+        app === "api" &&
+        frontend &&
+        sharedOptional(
+          value,
+          frontend,
+          originalReachability.some((paths) => paths.get(key) === false),
+        )
+      )
+        expected = frontend;
+      if (!isDeepStrictEqual(expected, after.snapshots[key]))
+        resolutionFailure(app, `snapshots.${key}`);
+    }
+  }
+}
+
+function sharedOptional(
+  api: Record<string, unknown>,
+  frontend: Record<string, unknown>,
+  mandatory: boolean,
+): boolean {
+  if (
+    !mandatory ||
+    !Object.hasOwn(api, "optional") ||
+    api.optional !== true ||
+    Object.hasOwn(frontend, "optional")
+  )
+    return false;
+  const copy = { ...api };
+  Reflect.deleteProperty(copy, "optional");
+  return isDeepStrictEqual(copy, frontend);
+}
+
+function recordAt(
+  records: Record<string, Record<string, unknown>>,
+  key: string,
+): Record<string, unknown> {
+  const value = records[key];
+  if (value === undefined) resolutionFailure("api", `snapshots.${key}`);
+  return value;
+}
+function toolPrefix(source: string, docs: ReturnType<typeof documents>): string {
+  const start = dependencyDocument(docs).doc.range[0];
+  return source.slice(0, start);
+}
+function resolutionFailure(app: string, key: string): never {
+  throw new CreateError(
+    `${app}: ${key}: 해석 결과가 바뀌었다`,
+    "원본 잠금 파일의 모든 레코드를 보존한다.",
+  );
+}
+function alignedPackage(value: Record<string, unknown>, pin: string): Record<string, unknown> {
+  const peers = value.peerDependencies as Record<string, unknown> | undefined;
+  return typeof peers?.typescript === "string"
+    ? { ...value, peerDependencies: { ...peers, typescript: pin } }
+    : value;
+}
+function samePackage(before: Record<string, unknown>, after: unknown, pin: string): boolean {
+  return isDeepStrictEqual(before, after) || isDeepStrictEqual(alignedPackage(before, pin), after);
+}
+function optionalRecord(
+  value: Record<string, unknown>,
+  optional: boolean | undefined,
+): Record<string, unknown> {
+  if (optional === undefined) return value;
+  const result = { ...value };
+  if (optional) result.optional = true;
+  else Reflect.deleteProperty(result, "optional");
+  return result;
+}
+function verifyMetadata(before: LockDocument, after: LockDocument, pin: string, app: string): void {
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (["importers", "packages", "snapshots"].includes(key)) continue;
+    if (key === "overrides" && app === "api" && !Object.hasOwn(before, key)) continue;
+    if (!isDeepStrictEqual(before[key], after[key])) resolutionFailure(app, key);
+  }
+  if (!Object.hasOwn(before, "overrides") && Object.hasOwn(after, "overrides")) {
+    const typescript = (
+      before.importers["."]?.devDependencies as
+        Record<string, { specifier?: string; version?: string }> | undefined
+    )?.typescript;
+    if (
+      !isDeepStrictEqual(after.overrides, { typescript: pin }) ||
+      typescript?.specifier !== pin ||
+      typescript.version !== pin
+    )
+      resolutionFailure(app, "TypeScript override");
+  }
+}
 
 function documents(source: string) {
   const docs = parseAllDocuments(source);

@@ -2,7 +2,69 @@ import { isDeepStrictEqual } from "node:util";
 import { parseDocument } from "yaml";
 import { CreateError } from "./errors.ts";
 
+export interface WorkspaceDocument {
+  packages?: string[];
+  minimumReleaseAge?: number;
+  allowBuilds?: Record<string, boolean>;
+  overrides?: Record<string, string>;
+  [key: string]: unknown;
+}
+interface WorkspaceInput {
+  frontends: readonly WorkspaceDocument[];
+  api?: WorkspaceDocument;
+  includeApi?: boolean;
+}
+
+export function mergeWorkspace(input: WorkspaceInput): WorkspaceDocument;
 export function mergeWorkspace(
+  sources: readonly { app: string; source: string }[],
+  typescript: string,
+): string;
+export function mergeWorkspace(
+  input: WorkspaceInput | readonly { app: string; source: string }[],
+  typescript?: string,
+): WorkspaceDocument | string {
+  if (Array.isArray(input)) {
+    if (typescript === undefined)
+      throw new CreateError("TypeScript pin이 없다", "프론트의 고정 버전을 지정한다.");
+    return mergeLegacyWorkspace(input, typescript);
+  }
+  const { frontends, api, includeApi = true } = input as WorkspaceInput;
+  const first = frontends[0];
+  if (!first) throw new CreateError("프론트 workspace가 없다", "프론트 앱을 하나 이상 지정한다.");
+  const result = structuredClone(first);
+  const fail = (key: string): never => {
+    throw new CreateError(
+      `workspace 설정이 다르다: ${key}`,
+      "workspace 정책과 잠금 파일을 맞추고 커밋한다.",
+    );
+  };
+  for (const next of frontends.slice(1))
+    for (const key of ["minimumReleaseAge", "allowBuilds", "overrides"])
+      if (!isDeepStrictEqual(first[key], next[key])) fail(key);
+  if (api && includeApi) {
+    for (const key of ["minimumReleaseAge", "overrides"])
+      if (!isDeepStrictEqual(first[key], api[key])) fail(key);
+    result.allowBuilds = { ...first.allowBuilds };
+    for (const [key, value] of Object.entries(api.allowBuilds ?? {})) {
+      if (Object.hasOwn(result.allowBuilds, key) && result.allowBuilds[key] !== value)
+        fail(`allowBuilds.${key}`);
+      result.allowBuilds[key] = value;
+    }
+  }
+  result.packages = [
+    ...new Set([
+      ...(includeApi ? ["apps/api"] : []),
+      ...frontends
+        .flatMap((doc) => doc.packages ?? [])
+        .filter((path) => path !== "apps/api" && path !== "contract/*"),
+      "contract/*",
+    ]),
+  ];
+  return result;
+}
+
+function mergeLegacyWorkspace(
   sources: readonly { app: string; source: string }[],
   typescript: string,
 ): string {

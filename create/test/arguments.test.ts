@@ -81,14 +81,14 @@ describe("CLI 입력", () => {
     [
       [],
       ["my-app"],
-      ["my-app", "--template", "nestjs"],
+      ["my-app", "--template", "express"],
       ["my-app", "extra", "--template", "nextjs"],
       ["my-app", "--unknown"],
       ["my-app", "--template"],
       ["my-app", "--template", "nextjs", "--api", "fastapi", "--web"],
       ["my-app", "--api", "fastapi"],
       ["my-app", "--web"],
-      ["my-app", "--api", "nestjs", "--web"],
+      ["my-app", "--api", "express", "--web"],
       ["my-app", "--template", "nextjs", "--template", "fastapi"],
       ["my-app", "--template", "nextjs", "--no-git=false"],
     ].map((args) => [args]),
@@ -142,7 +142,7 @@ describe("CLI 입력", () => {
   it.each([
     ["my-app", "--admin"],
     ["my-app", "--template", "nextjs-admin", "--admin"],
-    ["my-app", "--api", "nestjs", "--admin"],
+    ["my-app", "--api", "express", "--admin"],
     ["my-app", "--api", "fastapi", "--admin", "--admin"],
   ])("admin의 틀린 조합 인자는 오류 2다: %j", (...args) => {
     expect(() => parseArguments(args, {})).toThrow(expect.objectContaining({ exitCode: 2 }));
