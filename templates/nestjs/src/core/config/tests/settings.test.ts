@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_SECRETS, SettingsError, loadSettings, settingsSchema } from "../settings.js";
 
@@ -11,6 +12,18 @@ const example = Object.fromEntries<string | undefined>(
 );
 
 describe("설정", () => {
+  it("compose app 공개 fixture는 모든 운영 설정과 예시 비밀 거절을 만족한다", () => {
+    const fixture = parseEnv(
+      readFileSync(new URL("../../../../tests/fixtures/.env.example", import.meta.url), "utf8"),
+    );
+    const result = settingsSchema.safeParse(fixture);
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error("compose 운영 설정이 유효해야 한다");
+    expect(result.data.APP_ENV).toBe("production");
+    for (const [key, value] of Object.entries(EXAMPLE_SECRETS))
+      expect(settingsSchema.safeParse({ ...fixture, [key]: value }).success).toBe(false);
+  });
+
   it("키는 FastAPI 50개와 PORT·FORWARDED_ALLOW_IPS다", () => {
     expect(Object.keys(settingsSchema.shape)).toHaveLength(52);
     expect(Object.keys(example).sort()).toEqual(Object.keys(settingsSchema.shape).sort());

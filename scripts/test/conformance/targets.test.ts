@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 import { parse } from "yaml";
-import {
-  EXAMPLE_SECRETS,
-  settingsSchema,
-} from "../../../templates/nestjs/src/core/config/settings.ts";
 import { parseArgs, usage } from "../../src/conformance/args.ts";
 import {
   type ComposeTarget,
@@ -209,12 +206,15 @@ describe("NestJS compose 적합성 연결", () => {
     const api = compose.services.api;
     expect(api?.env_file).toBeUndefined();
     const env = api?.environment ?? {};
-    const result = settingsSchema.safeParse(env);
-    expect(result.success).toBe(true);
-    if (!result.success) throw new Error("compose 운영 설정이 유효해야 한다");
-    expect(result.data.APP_ENV).toBe("production");
-    for (const [key, value] of Object.entries(EXAMPLE_SECRETS))
-      expect(settingsSchema.safeParse({ ...env, [key]: value }).success).toBe(false);
+    // 같은 literal fixture의 운영 검증과 예시 비밀 거절은 Nest 소유 설정 시험이 맡는다.
+    const fixture = parseEnv(
+      readFileSync(
+        new URL("../../../templates/nestjs/tests/fixtures/.env.example", import.meta.url),
+        "utf8",
+      ),
+    );
+    expect(env).toEqual(fixture);
+    expect(env.APP_ENV).toBe("production");
   });
 
   it("app 프로필의 관리자와 부수 주소와 높은 한도는 적합성 흐름과 같다", () => {
