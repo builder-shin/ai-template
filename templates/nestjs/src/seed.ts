@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { pathToFileURL } from "node:url";
+import { isEntrypoint } from "./core/config/runtime.js";
 import { loadSettings, type Settings } from "./core/config/settings.js";
 import { PrismaService } from "./core/db/prisma.service.js";
 import { UnitOfWork } from "./core/db/unit-of-work.js";
@@ -17,7 +17,7 @@ export async function seed(settings: Settings = loadSettings()): Promise<void> {
     await prisma.$disconnect();
   }
 }
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntrypoint(import.meta.url)) {
   try {
     await seed();
   } catch (error) {

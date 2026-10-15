@@ -78,6 +78,11 @@ class EchoController {
 class EchoTestModule {}
 
 describe("HTTP 파이프라인", () => {
+  it("대소문자를 바꾼 API 경로로 협상과 전역 한도를 우회하지 못한다", async () => {
+    const { http } = await testApp([EchoTestModule]);
+    expect((await http.get("/api/v1/korean").set("Accept", "application/json")).status).toBe(406);
+    expect((await http.get("/API/v1/korean").set("Accept", "application/json")).status).toBe(404);
+  });
   it("JSON:API가 아닌 Content-Type 본문은 415다", async () => {
     const { http } = await testApp([EchoTestModule]);
     const res = await http.post("/api/v1/echo").set("Content-Type", "application/json").send("{}");

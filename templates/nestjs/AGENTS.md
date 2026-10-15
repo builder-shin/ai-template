@@ -1,20 +1,20 @@
 # NestJS backend
 
 Node 24.15 이상·25 미만, pnpm 12.6.0, NestJS 12.1.2를 쓰는 ESM 백엔드 템플릿이다.
-계정 영속성·인프라와 검사 하네스를 제공한다. API·개발 서버는 후속 Task에서 구현한다.
+계정 영속성·인프라·API·개발 실행기와 검사 하네스를 제공한다.
 
 ## 명령
 
-| 명령                                                   | 하는 일                                   |
-| ------------------------------------------------------ | ----------------------------------------- |
-| `pnpm fix`                                             | Prettier·ESLint로 자동 수정한다           |
-| `pnpm test`                                            | 단위와 통합 시험을 돌린다                 |
-| `pnpm build`                                           | SWC로 NestJS 소스를 컴파일한다            |
-| `pnpm check [--fast]`                                  | 생성·린트·타입·하네스·시험을 검사한다     |
-| `pnpm setup`, `pnpm gen`                               | 인프라·세 DB 준비, Prisma 클라이언트 생성 |
-| `pnpm db:migrate`, `pnpm db:reset`, `pnpm db:revision` | 소유 검사 뒤 deploy·로컬 reset·revision   |
-| `pnpm dev`, `pnpm test:e2e`, `pnpm e2e:serve`          | Task 20에서 구현한다                      |
-| `pnpm gen:module <이름>`                               | Task 21에서 구현한다                      |
+| 명령                                                   | 하는 일                                             |
+| ------------------------------------------------------ | --------------------------------------------------- |
+| `pnpm fix`                                             | Prettier·ESLint로 자동 수정한다                     |
+| `pnpm test`                                            | 단위와 통합 시험을 돌린다                           |
+| `pnpm build`                                           | SWC로 NestJS 소스를 컴파일한다                      |
+| `pnpm check [--fast]`                                  | 생성·린트·타입·하네스·시험을 검사한다               |
+| `pnpm setup`, `pnpm gen`                               | 인프라·세 DB 준비, Prisma 클라이언트 생성           |
+| `pnpm db:migrate`, `pnpm db:reset`, `pnpm db:revision` | 소유 검사 뒤 deploy·로컬 reset·revision             |
+| `pnpm dev`, `pnpm test:e2e`, `pnpm e2e:serve`          | 개발 세 역할, 실제 E2E, 격리한 명령 서버를 실행한다 |
+| `pnpm gen:module <이름>`                               | Task 21에서 구현한다                                |
 
 아직 구현하지 않은 명령은 담당 Task를 stderr에 알리고 종료 코드 1로 끝난다.
 네 Claude hook은 exec form 선언만 있으며 모듈은 Task 21에서 더한다.

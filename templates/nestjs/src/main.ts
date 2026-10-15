@@ -1,5 +1,7 @@
 import "reflect-metadata";
-import { pathToFileURL } from "node:url";
+import { isEntrypoint, listenHost } from "./core/config/runtime.js";
+import { installShutdown } from "./core/http/shutdown.js";
+import { writeReadiness } from "./core/runtime/readiness.js";
 import { createApp } from "./core/http/create-app.js";
 import { SETTINGS, type Settings } from "./core/config/settings.js";
 import { JsonLogger } from "./core/logging/json-logger.js";
@@ -18,11 +20,18 @@ export async function bootstrap(): Promise<void> {
       );
     },
   });
-  app.enableShutdownHooks();
-  await app.listen(app.get<Settings>(SETTINGS).PORT, "0.0.0.0");
+  installShutdown(app.getHttpServer(), () => app.close());
+  try {
+    await app.listen(app.get<Settings>(SETTINGS).PORT, listenHost(), () => {
+      writeReadiness("api");
+    });
+  } catch (error) {
+    await app.close();
+    throw error;
+  }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntrypoint(import.meta.url)) {
   void bootstrap().catch((error: unknown) => {
     new JsonLogger().error(error);
     process.exitCode = 1;

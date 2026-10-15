@@ -23,6 +23,7 @@ export async function createApp(
   const logger = new JsonLogger(logLevels(settings.LOG_LEVEL));
   const server = express();
   server.enable("strict routing");
+  server.enable("case sensitive routing");
   server.disable("x-powered-by");
   server.set("trust proxy", settings.FORWARDED_ALLOW_IPS);
   const app = await NestFactory.create<NestExpressApplication>(

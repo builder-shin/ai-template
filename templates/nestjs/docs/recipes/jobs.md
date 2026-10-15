@@ -22,7 +22,8 @@ BullMQ가 내부에서 만드는 차단 연결은 BullMQ가 소유하고 닫는�
 처음 포함 최대 다섯 번 실행하며 재시도 n회의 지연은 `min(5000 * n, 60000) + random(0..1000)`밀리초다.
 완료 잡은 지우고 최종 실패 잡은 failed 기록으로 남긴다.
 통합 시험은 실제 지연·SMTP와 직접 구성한 host와 큐의 수동 종료를 확인하는 사례를 포함한다.
-Nest 컨텍스트의 실제 DI 시작과 진행 중 잡의 종료 순서는 별도 운영·CI 검증에서 확인한다.
+Nest 컨텍스트의 실제 DI 시작과 진행 중 잡의 종료 순서는 [CI 전용 수명 시험](../../tests/integration/jobs-lifecycle.test.ts)이 확인한다.
+worker 종료는 진행 중 잡의 commit과 완료 기록을 기다린 뒤 큐·Prisma·Redis를 닫는다.
 
 메일 파일은 `src/modules/<모듈>/templates/<ko|en>/<메일>.{subject.txt,txt,html}`에 둔다.
 `loadMailTemplates`로 선택한 로케일을 읽고 `renderMail`로 `{{이름}}` 값을 치환한다.

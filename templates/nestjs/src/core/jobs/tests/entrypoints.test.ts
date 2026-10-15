@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type * as NestCore from "@nestjs/core";
 import type * as SettingsModule from "../../config/settings.js";
 import { JsonLogger } from "../../logging/json-logger.js";
@@ -95,7 +95,12 @@ const wrappers = [
   ["worker", worker, WorkerHost, [JobsModule, MailModule]],
   ["scheduler", scheduler, SchedulerHost, [JobsModule]],
 ] as const;
+const originalClose = context.close;
+afterEach(async () => {
+  await context.close();
+});
 beforeEach(() => {
+  context.close = originalClose;
   state.events.length = 0;
   state.failure = "";
   state.registerArgs = [];
@@ -117,13 +122,7 @@ it.each(wrappers)(
     expect(state.logLevel).toBe("info");
     expect(state.domainApp).toBe(context);
     expect(state.hostTokens).toEqual([Host]);
-    expect(state.events).toEqual([
-      "context",
-      "shutdown",
-      "domain",
-      `${name}-start`,
-      `${name}-ready`,
-    ]);
+    expect(state.events).toEqual(["context", "domain", `${name}-start`, `${name}-ready`]);
   },
 );
 it.each(wrappers)(
@@ -132,7 +131,7 @@ it.each(wrappers)(
     state.failure = "start";
     await expect(start()).rejects.toThrow("호스트 시작 실패");
     expect(state.hostTokens).toEqual([Host]);
-    expect(state.events).toEqual(["context", "shutdown", "domain", `${name}-start`, "close"]);
+    expect(state.events).toEqual(["context", "domain", `${name}-start`, "close"]);
   },
 );
 it.each(wrappers)(
@@ -141,6 +140,6 @@ it.each(wrappers)(
     state.failure = "domain";
     await expect(start()).rejects.toThrow("도메인 등록 실패");
     expect(state.hostTokens).toEqual([]);
-    expect(state.events).toEqual(["context", "shutdown", "domain", "close"]);
+    expect(state.events).toEqual(["context", "domain", "close"]);
   },
 );

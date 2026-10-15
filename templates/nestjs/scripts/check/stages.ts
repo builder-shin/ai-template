@@ -39,7 +39,15 @@ export const STAGES: readonly Stage[] = [
   },
   {
     name: "typecheck",
-    inputs: ["src", "scripts", "tests", "prisma.config.ts", "vitest.config.ts", ...config],
+    inputs: [
+      "src",
+      "scripts",
+      "tests",
+      "prisma.config.ts",
+      "vitest.config.ts",
+      "vitest.e2e.config.ts",
+      ...config,
+    ],
     command: cli("node_modules/typescript/bin/tsc", "--noEmit"),
   },
   {

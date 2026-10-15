@@ -7,6 +7,66 @@ import { setTimeout } from "node:timers/promises";
 import { describe, expect, it, vi } from "vitest";
 import { startProcessTree, stopProcessTree } from "./process-tree.mjs";
 
+describe("주입한 프로세스 종료 의존성", () => {
+  const child = Object.assign(new ChildProcess(), { pid: 999999 });
+  const missing = Object.assign(new Error("없음"), { code: "ESRCH" });
+  function clock() {
+    let time = 0;
+    return {
+      now: () => time,
+      sleep: async (ms: number) => {
+        time += ms;
+      },
+    };
+  }
+  it("Darwin 그룹 SIGTERM이 EPERM이어도 유예 안에 ESRCH가 되면 성공한다", async () => {
+    const denied = Object.assign(new Error("거부"), { code: "EPERM" });
+    const replies = [denied, denied, denied, missing];
+    const kill = vi.fn(() => {
+      throw replies.shift();
+    });
+    await expect(
+      stopProcessTree(child, 100, { platform: "darwin", kill, ...clock() }),
+    ).resolves.toBeUndefined();
+    expect(kill.mock.calls).toHaveLength(4);
+  });
+  it("Darwin에서 유예 끝까지 EPERM이면 처음 기억한 원래 EPERM을 던진다", async () => {
+    const first = Object.assign(new Error("처음 거부"), { code: "EPERM" });
+    const later = Object.assign(new Error("다음 거부"), { code: "EPERM" });
+    const kill = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw first;
+      })
+      .mockImplementation(() => {
+        throw later;
+      });
+    await expect(
+      stopProcessTree(child, 100, { platform: "darwin", kill, ...clock() }),
+    ).rejects.toBe(first);
+    expect(kill.mock.calls.map(([, signal]) => signal)).not.toContain("SIGKILL");
+  });
+  it("Linux의 그룹 신호 EPERM은 즉시 실패한다", async () => {
+    const denied = Object.assign(new Error("거부"), { code: "EPERM" });
+    const kill = vi.fn(() => {
+      throw denied;
+    });
+    await expect(stopProcessTree(child, 100, { platform: "linux", kill, ...clock() })).rejects.toBe(
+      denied,
+    );
+    expect(kill).toHaveBeenCalledTimes(1);
+  });
+  it("Windows는 taskkill로 소유한 트리를 정리한다", async () => {
+    const taskkill = vi.fn();
+    const kill = vi.fn(() => {
+      throw missing;
+    });
+    await stopProcessTree(child, 100, { platform: "win32", taskkill, kill, ...clock() });
+    expect(taskkill).toHaveBeenCalledExactlyOnceWith(999999);
+    expect(kill).toHaveBeenCalledWith(999999, 0);
+  });
+});
+
 function alive(pid: number) {
   try {
     process.kill(pid, 0);
@@ -149,7 +209,7 @@ describe("그룹 종료 확인의 플랫폼별 오류", () => {
       return true;
     });
     await stub(platform, kill, async () => {
-      await expect(stopProcessTree(child, 1000)).rejects.toBe(denied);
+      await expect(stopProcessTree(child, 1000, { taskkill: () => {} })).rejects.toBe(denied);
       expect(kill.mock.calls.filter(([, signal]) => signal === 0)).toEqual([
         [platform === "win32" ? 999999 : -999999, 0],
       ]);
@@ -160,19 +220,35 @@ describe("그룹 종료 확인의 플랫폼별 오류", () => {
     "Darwin의 실제 종료 신호 (%s) 권한 오류는 유지한다",
     async (deniedSignal) => {
       const denied = Object.assign(new Error("거부"), { code: "EPERM" });
+      let deniedOnce = false;
       const kill = vi.fn((_pid: number, signal: string | number) => {
-        if (signal === deniedSignal) throw denied;
+        if (signal === deniedSignal || (signal === 0 && deniedOnce)) {
+          deniedOnce = true;
+          throw denied;
+        }
         return true;
       });
       await stub("darwin", kill, async () => {
-        await expect(stopProcessTree(child, 0)).rejects.toBe(denied);
+        let time = 0;
+        await expect(
+          stopProcessTree(child, 0, {
+            now: () => time,
+            sleep: async (ms: number) => {
+              time += ms;
+            },
+          }),
+        ).rejects.toBe(denied);
         expect(kill.mock.calls).toEqual(
           deniedSignal === "SIGTERM"
-            ? [[-999999, "SIGTERM"]]
+            ? [
+                [-999999, "SIGTERM"],
+                [-999999, 0],
+              ]
             : [
                 [-999999, "SIGTERM"],
                 [-999999, 0],
                 [-999999, "SIGKILL"],
+                ...Array.from({ length: 81 }, () => [-999999, 0]),
               ],
         );
       });

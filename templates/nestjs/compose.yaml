@@ -1,5 +1,63 @@
 # 개발 인프라. 포트는 127.0.0.1에만 열며 이름은 compose가 프로젝트 폴더에서 정한다.
+x-app: &app
+  image: nestjs-app:local
+  build: .
+  profiles: [app]
+  env_file: [.env]
+  environment: &app-environment
+    DATABASE_URL: postgresql://app:app@postgres:5432/app # betterleaks:allow 사유: 개발 compose 예시 계정
+    REDIS_URL: redis://valkey:6379/0
+    S3_ENDPOINT_URL: http://seaweedfs:8333
+    SMTP_URL: smtp://mailpit:1025
+    OAUTH_GOOGLE_TOKEN_URL: http://oauth:8080/google/token
+    OAUTH_GOOGLE_PROFILE_URL: http://oauth:8080/google/userinfo
+    OAUTH_KAKAO_TOKEN_URL: http://oauth:8080/kakao/token
+    OAUTH_KAKAO_PROFILE_URL: http://oauth:8080/kakao/userinfo
+    OAUTH_NAVER_TOKEN_URL: http://oauth:8080/naver/token
+    OAUTH_NAVER_PROFILE_URL: http://oauth:8080/naver/userinfo
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
 services:
+  migrate:
+    <<: *app
+    command: [node, node_modules/prisma/build/index.js, migrate, deploy]
+    depends_on:
+      postgres: { condition: service_healthy }
+  storage-init:
+    <<: *app
+    command: [node, dist/storage-init.js]
+    depends_on:
+      seaweedfs: { condition: service_healthy }
+  api:
+    <<: *app
+    environment:
+      <<: *app-environment
+      PORT: "8000"
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on: &runtime-dependencies
+      migrate: { condition: service_completed_successfully }
+      storage-init: { condition: service_completed_successfully }
+      valkey: { condition: service_healthy }
+      mailpit: { condition: service_healthy }
+      oauth: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:8000/health/live',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  worker:
+    <<: *app
+    command: [node, --import, ./dist/core/telemetry/register.js, dist/worker.js]
+    depends_on: *runtime-dependencies
+  scheduler:
+    <<: *app
+    command: [node, --import, ./dist/core/telemetry/register.js, dist/scheduler.js]
+    depends_on: *runtime-dependencies
   postgres:
     image: postgres:18.6-alpine
     environment:
@@ -60,6 +118,15 @@ services:
       interval: 2s
       timeout: 5s
       retries: 60
+  lgtm:
+    image: grafana/otel-lgtm:0.34.0
+    profiles: [observability]
+    ports: ["127.0.0.1:23000:3000", "127.0.0.1:24317:4317", "127.0.0.1:24318:4318"]
+    healthcheck:
+      test: [CMD, /otel-lgtm/docker/healthcheck.sh]
+      interval: 5s
+      timeout: 5s
+      retries: 30
 volumes:
   postgres-data:
   seaweedfs-data:
