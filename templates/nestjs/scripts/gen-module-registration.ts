@@ -1,4 +1,5 @@
 import type { ModuleNames } from "./gen-module-transform.js";
+import { extendModuleOracles } from "./gen-module-oracles.js";
 
 export function registerModule(
   read: (path: string) => string,
@@ -132,6 +133,7 @@ export function registerModule(
         `  { name: "${name}", permission: null },\n  { name: "${name}:all", permission: "${name}:manage" },\n])`,
       ),
   );
+  for (const [path, text] of extendModuleOracles(read, names)) output.set(path, text);
   for (const [path, text] of output) {
     const previous = read(path);
     const collision = path.endsWith("schema.prisma")

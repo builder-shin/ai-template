@@ -14,6 +14,9 @@ export function generatorFixture() {
     });
   mkdirSync(join(root, "scripts/tests"), { recursive: true });
   cpSync("scripts/tests/gen-bootstrap.test.ts", join(root, "scripts/tests/gen-bootstrap.test.ts"));
+  mkdirSync(join(root, "tests/integration"), { recursive: true });
+  for (const file of ["audit-logs.test.ts", "permissions.test.ts", "seed.test.ts"])
+    cpSync(`tests/integration/${file}`, join(root, "tests/integration", file));
   return {
     root,
     close: () => {

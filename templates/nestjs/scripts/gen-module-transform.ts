@@ -27,17 +27,17 @@ export function renameGolden(source: string, names: ModuleNames): string {
   const identifier = (value: string) =>
     value
       .replace(/^POST(?=_)/, names.constant)
-      .replace(/^Posts(?=[A-Z_]|$)/, names.pluralClass)
-      .replace(/^Post(?=[A-Z_]|$)/, names.model)
-      .replace(/^posts(?=[A-Z_]|$)/, names.plural)
-      .replace(/^post(?=[A-Z_]|$)/, names.single);
+      .replace(/Posts?(?=[A-Z_]|$)/g, (token) =>
+        token === "Posts" ? names.pluralClass : names.model,
+      )
+      .replace(/^posts?(?=[A-Z_]|$)/, (token) => (token === "posts" ? names.plural : names.single));
   const literal = (value: string) =>
     value
       .replace(/\bFROM posts\b/g, `FROM ${names.table}`)
-      .replace(/\bposts\b/g, names.name)
-      .replace(/\bpost\b/g, names.singular)
-      .replace(/Posts(?=[A-Z_]|\b)/g, names.pluralClass)
-      .replace(/Post(?=[A-Z_]|\b)/g, names.model);
+      .replace(/\bposts?\b/g, (token) => (token === "posts" ? names.name : names.singular))
+      .replace(/Posts?(?=[A-Z_]|\b)/g, (token) =>
+        token === "Posts" ? names.pluralClass : names.model,
+      );
   const parsed = ts.createSourceFile("module.ts", source, ts.ScriptTarget.Latest, true);
   const result = ts.transform(parsed, [
     (context) => {
