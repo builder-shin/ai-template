@@ -41,12 +41,16 @@ export class FilesService {
         status: 422,
         code: "file.too_large",
         title: "파일 크기가 허용 범위를 넘었다",
+        source: { pointer: "/data/attributes/size" },
+        meta: { params: { max: this.settings.FILE_MAX_SIZE } },
       });
     if (!this.settings.FILE_ALLOWED_TYPES.includes(attributes.contentType))
       throw new ApiError({
         status: 422,
         code: "file.type_not_allowed",
         title: "파일 타입을 허용하지 않는다",
+        source: { pointer: "/data/attributes/contentType" },
+        meta: { params: { allowed: [...this.settings.FILE_ALLOWED_TYPES].sort().join(", ") } },
       });
     return this.unit.run(async (tx) => {
       await this.repository.lockQuota(tx, principal.userId);
@@ -59,6 +63,8 @@ export class FilesService {
           status: 422,
           code: "file.quota_exceeded",
           title: "파일 한도를 넘었다",
+          source: { pointer: "/data/attributes/size" },
+          meta: { params: { quota: this.settings.FILE_USER_QUOTA } },
         });
       const file = await this.repository.create(tx, {
         ...attributes,

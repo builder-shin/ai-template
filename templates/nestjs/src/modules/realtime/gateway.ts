@@ -41,7 +41,7 @@ export class RealtimeGateway implements OnModuleInit {
                   title: "실시간 인증을 확인하지 못했다",
                 };
           next(
-            Object.assign(new Error(init.title), {
+            Object.assign(new Error(init.code), {
               data: { status: String(init.status), code: init.code, title: init.title },
             }),
           );
@@ -91,13 +91,19 @@ export class RealtimeGateway implements OnModuleInit {
           status: "422",
           code: "validation.invalid_choice",
           title: "실시간 채널 요청이 잘못됐다",
+          source: { pointer: "/channel" },
         },
       };
     const channel = realtimeDeclarations().channels.find((c) => c.name === parsed.data.channel);
     if (!channel)
       return {
         ok: false,
-        error: { status: "422", code: "validation.invalid_choice", title: "실시간 채널이 없다" },
+        error: {
+          status: "422",
+          code: "validation.invalid_choice",
+          title: "실시간 채널이 없다",
+          source: { pointer: "/channel" },
+        },
       };
     if (join && channel.permission && !socket.data.principal?.permissions.has(channel.permission))
       return {

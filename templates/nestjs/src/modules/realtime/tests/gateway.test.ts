@@ -154,13 +154,13 @@ it("DB 실패 중 연결을 유지하고 회복 뒤 사라진 관리 권한의 �
   expect(socket.connected).toBe(true);
   fail = false;
   manage = false;
+  const disconnected = new Promise<string>((resolve) => socket.once("disconnect", resolve));
   await f.control.publishRecheck("member");
-  await emitAck(socket, "unsubscribe", { channel: "posts" });
-  expect(socket.connected).toBe(true);
-  await vi.waitFor(() => {
-    expect(f.rooms(socket)?.has("posts:all")).toBe(false);
-  });
-  expect(await emitAck(socket, "subscribe", { channel: "posts:all" })).toMatchObject({
+  // 기존 사례 이름은 유지한다. 계약은 구독 권한을 잃은 연결 자체의 종료를 요구한다.
+  expect(await disconnected).toBe("io server disconnect");
+  expect(socket.connected).toBe(false);
+  const renewed = await f.connect(member);
+  expect(await emitAck(renewed, "subscribe", { channel: "posts:all" })).toMatchObject({
     ok: false,
     error: { code: "permission.denied" },
   });

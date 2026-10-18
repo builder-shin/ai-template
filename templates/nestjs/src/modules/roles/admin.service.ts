@@ -60,6 +60,7 @@ export class RolesAdminService {
           action: "role.created",
           actorUserId: principal.userId,
           target: { type: "roles", id: role.id },
+          meta: { name: role.name, permissions: [...this.roles.permissions(role)].sort() },
         });
         return { data: this.roles.resource(role) };
       }),
@@ -71,6 +72,12 @@ export class RolesAdminService {
         await advisoryXactLock(tx, "role:admin");
         await this.roles.lock(tx, id);
         const role = await this.current(tx, id);
+        if (!canGrant(principal.permissions, this.roles.permissions(role)))
+          throw new ApiError({
+            status: 403,
+            code: "permission.denied",
+            title: "자신에게 없는 권한을 가진 역할은 고칠 수 없다",
+          });
         if (
           role.system &&
           ((input.name !== undefined && input.name !== role.name) ||

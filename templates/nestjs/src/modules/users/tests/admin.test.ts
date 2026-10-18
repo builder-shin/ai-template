@@ -72,7 +72,12 @@ it.each<Parameters<UsersAdminService["update"]>[2]>([
   { relationships: { roles: { data: [{ type: "roles", id: memberId }] } } },
 ])("마지막 활성 admin을 제거하는 $attributes $relationships 갱신은 거절한다", async (data) => {
   const { f, service } = setup();
-  await expect(service.update(admin, uid, data)).rejects.toMatchObject({
+  // 자기 변경의 403을 먼저 통과하도록 다른 관리자가 일반 역할로 같은 실제 권한을 가진다.
+  const role = f.state.roles.find((r) => r.id === customId);
+  if (!role) throw new Error("관리 역할이 없다");
+  role.permissions = [...admin.permissions];
+  f.state.assignments.push({ userId: otherId, roleId: customId });
+  await expect(service.update({ ...admin, userId: otherId }, uid, data)).rejects.toMatchObject({
     init: { status: 422, code: "role.last_admin_protected" },
   });
   expect(f.state.assignments).toContainEqual({ userId: uid, roleId: adminId });

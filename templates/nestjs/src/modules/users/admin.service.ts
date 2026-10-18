@@ -77,24 +77,33 @@ export class UsersAdminService {
           title: "탈퇴 상태는 관리 작업으로 바꿀 수 없다",
           source: { pointer: "/data/attributes/status" },
         });
+      if (
+        principal.userId === id ||
+        !canGrant(principal.permissions, await this.roles.permissionsOf(tx, id))
+      )
+        throw new ApiError({
+          status: 403,
+          code: "permission.denied",
+          title: "자신이나 자신에게 없는 권한을 가진 사용자는 고칠 수 없다",
+        });
       const requested = input.relationships?.roles;
       const ids =
         requested === undefined ? undefined : [...new Set(requested.data.map((r) => r.id))];
-      if (ids?.some((roleId) => !z.regexes.uuid().test(roleId)))
-        throw new ApiError({
-          status: 404,
-          code: "resource.not_found",
-          title: "지정한 역할이 없다",
-          source: { pointer: "/data/relationships/roles/data" },
-        });
-      const roles = ids === undefined ? undefined : await this.roles.findIds(tx, ids);
-      if (roles && roles.length !== ids?.length)
-        throw new ApiError({
-          status: 404,
-          code: "resource.not_found",
-          title: "지정한 역할이 없다",
-          source: { pointer: "/data/relationships/roles/data" },
-        });
+      const roles =
+        ids === undefined
+          ? undefined
+          : await this.roles.findIds(
+              tx,
+              ids.filter((roleId) => z.regexes.uuid().test(roleId)),
+            );
+      for (const [index, reference] of requested?.data.entries() ?? [])
+        if (!roles?.some((role) => role.id === reference.id))
+          throw new ApiError({
+            status: 404,
+            code: "resource.not_found",
+            title: "지정한 역할이 없다",
+            source: { pointer: `/data/relationships/roles/data/${String(index)}` },
+          });
       if (roles?.some((r) => !canGrant(principal.permissions, this.roles.permissions(r))))
         throw new ApiError({
           status: 403,
@@ -120,6 +129,20 @@ export class UsersAdminService {
           action: "user.roles_changed",
           actorUserId: principal.userId,
           target: { type: "users", id },
+          meta: {
+            added: roles
+              .filter((r) => !user.roles.some((held) => held.roleId === r.id))
+              .map((r) => r.name)
+              .sort(),
+            removed: (
+              await this.roles.findIds(
+                tx,
+                user.roles.filter((held) => !ids.includes(held.roleId)).map((held) => held.roleId),
+              )
+            )
+              .map((r) => r.name)
+              .sort(),
+          },
         });
         changed.push("roles");
       }

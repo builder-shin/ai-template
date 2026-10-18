@@ -14,7 +14,11 @@ import { parseQuery } from "../../src/core/jsonapi/query.js";
 import { listPosts } from "../../src/modules/posts/index.js";
 import { adminFixture } from "./admin-fixture.js";
 import { getState } from "./state.js";
+import { queryObserver } from "./query-observer.js";
 const databases: PrismaService[] = [];
+const originalQuery = Object.getOwnPropertyDescriptor(pg.Client.prototype, "query")
+  ?.value as pg.Client["query"];
+const observeQuery = queryObserver(originalQuery);
 afterEach(async () => {
   for (const db of databases.splice(0)) await db.$disconnect();
   vi.restoreAllMocks();
@@ -22,25 +26,10 @@ afterEach(async () => {
 function observed() {
   const db = new PrismaService(getState().settings);
   databases.push(db);
-  const sql: string[] = [];
-  const original = Object.getOwnPropertyDescriptor(pg.Client.prototype, "query")
-    ?.value as pg.Client["query"];
+  const { sql, query } = observeQuery();
   vi.spyOn(pg.Client.prototype, "query").mockImplementation(
     // eslint-disable-next-line @typescript-eslint/no-misused-promises -- pg.query의 callback·Promise 오버로드와 수신자를 그대로 위임한다
-    new Proxy(original, {
-      apply(target, receiver: unknown, args: unknown[]) {
-        const first = args[0];
-        if (typeof first === "string") sql.push(first);
-        else if (
-          first &&
-          typeof first === "object" &&
-          "text" in first &&
-          typeof first.text === "string"
-        )
-          sql.push(first.text);
-        return Reflect.apply(target, receiver, args) as unknown;
-      },
-    }),
+    query,
   );
   return { db, sql };
 }

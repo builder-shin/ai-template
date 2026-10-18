@@ -73,8 +73,8 @@ it("비밀번호 로그인은 30일 세션과 해시 refresh를 만들고 성공
     {
       action: "session.login_succeeded",
       actorUserId: userId,
-      targetType: "sessions",
-      targetId: result.data.id,
+      targetType: "users",
+      targetId: userId,
       meta: {},
     },
   ]);

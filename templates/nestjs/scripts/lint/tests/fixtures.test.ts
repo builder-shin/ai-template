@@ -1,7 +1,7 @@
 import { ESLint } from "eslint";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { expect, it } from "vitest";
+import { beforeAll, expect, it } from "vitest";
 
 const root = process.cwd();
 const fixtureRoot = join(root, "scripts/lint/fixtures");
@@ -29,8 +29,10 @@ const negatives = [
   ["ban-ts-comment", "src/service.ts", "@typescript-eslint/ban-ts-comment"],
 ] as const;
 
+const linters = new Map<string, ESLint>();
 function eslint(base: string, fix = false) {
-  return new ESLint({
+  if (!fix && linters.has(base)) return linters.get(base) as ESLint;
+  const engine = new ESLint({
     cwd: root,
     ignore: false,
     fix,
@@ -41,10 +43,28 @@ function eslint(base: string, fix = false) {
       },
     ],
   });
+  if (!fix) linters.set(base, engine);
+  return engine;
 }
-it.each(negatives)("음성 fixture가 지정 규칙을 위반한다: %s/%s", async (name, file, rule) => {
+const negativeResults = new Map<string, ESLint.LintResult>();
+const positiveResults = new Map<string, ESLint.LintResult>();
+// 타입 프로그램의 초기 로딩은 fixture 준비 단계에 속한다. 각 사례는 실제 lint 결과를 검사한다.
+beforeAll(async () => {
+  for (const [name, file] of negatives) {
+    const base = join(fixtureRoot, "negative", name);
+    const path = join(base, file);
+    const [result] = await eslint(base).lintFiles([path]);
+    if (!result) throw new Error(`음성 fixture 결과가 없다: ${path}`);
+    negativeResults.set(path, result);
+  }
+  for (const result of await eslint(positiveRoot).lintFiles(
+    positives.map((file) => join(positiveRoot, file)),
+  ))
+    positiveResults.set(result.filePath, result);
+});
+it.each(negatives)("음성 fixture가 지정 규칙을 위반한다: %s/%s", (name, file, rule) => {
   const base = join(fixtureRoot, "negative", name);
-  const [result] = await eslint(base).lintFiles([join(base, file)]);
+  const result = negativeResults.get(join(base, file));
   expect(result?.fatalErrorCount).toBe(0);
   expect(result?.messages.filter((message) => message.ruleId === rule).length).toBeGreaterThan(0);
 });
@@ -52,8 +72,8 @@ const positiveRoot = join(fixtureRoot, "positive");
 const positives = readdirSync(positiveRoot, { recursive: true, encoding: "utf8" }).filter((file) =>
   file.endsWith(".ts"),
 );
-it.each(positives)("양성 fixture는 위반이 없다: %s", async (file) => {
-  const [result] = await eslint(positiveRoot).lintFiles([join(positiveRoot, file)]);
+it.each(positives)("양성 fixture는 위반이 없다: %s", (file) => {
+  const result = positiveResults.get(join(positiveRoot, file));
   expect(result?.messages).toEqual([]);
 });
 it("자동 수정이 데코레이터 생성자의 값 import를 보존한다", async () => {

@@ -68,7 +68,7 @@ export class SessionsService {
       await recordAudit(tx, {
         action: "session.login_succeeded",
         actorUserId: user.id,
-        target: { type: "sessions", id: session.id },
+        target: { type: "users", id: user.id },
         meta: { method: "oauth", provider: code.provider },
       });
       return document;
@@ -121,7 +121,7 @@ export class SessionsService {
       await recordAudit(tx, {
         action: "session.login_succeeded",
         actorUserId: user.id,
-        target: { type: "sessions", id: session.id },
+        target: { type: "users", id: user.id },
       });
       return { document };
     });

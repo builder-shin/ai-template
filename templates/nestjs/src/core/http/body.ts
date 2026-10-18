@@ -15,7 +15,6 @@ function invalidDocument(): ApiError {
     status: 400,
     code: "jsonapi.invalid_document",
     title: "Invalid document",
-    source: { pointer: "" },
   });
 }
 

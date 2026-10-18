@@ -26,7 +26,8 @@ export class SessionRecheck {
       try {
         const current = await this.authenticate(principal);
         socket.data.principal = current;
-        if (!current.permissions.has("posts:manage")) await socket.leave("posts:all");
+        if (socket.rooms.has("posts:all") && !current.permissions.has("posts:manage"))
+          socket.disconnect(true);
       } catch (error) {
         if (error instanceof ApiError && error.init.code === "auth.token_invalid")
           socket.disconnect(true);

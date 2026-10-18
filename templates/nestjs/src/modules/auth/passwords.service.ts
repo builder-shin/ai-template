@@ -71,6 +71,7 @@ export class PasswordsService {
           status: 401,
           code: "auth.invalid_credentials",
           title: "Invalid credentials",
+          source: { pointer: "/data/attributes/currentPassword" },
           headers: { "WWW-Authenticate": "Bearer" },
         });
       const at = new Date();
