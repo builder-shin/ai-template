@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
+import { moduleNames } from "../../gen-module-transform.js";
 
 export function generatorFixture(sourceRoot = process.cwd()) {
   const root = mkdtempSync(join(tmpdir(), "aitpl-module-fixture-"));
@@ -76,7 +77,16 @@ export function fixtureLoader(root: string, aliases: Record<string, unknown> = {
     };
     runInNewContext(
       source,
-      { module, exports: module.exports, require, Buffer, URL, TextEncoder, TextDecoder },
+      {
+        module,
+        exports: module.exports,
+        require,
+        Buffer,
+        URL,
+        TextEncoder,
+        TextDecoder,
+        structuredClone,
+      },
       { filename: file },
     );
     return module.exports;
@@ -130,4 +140,37 @@ export function expectedChannels(source: string): { name: string; permission: st
   }
   visit(parsed);
   return values;
+}
+
+/** 앱이 명시적으로 가져온 생성 저장소만 VM에 연결하고 빈 바깥 모델을 선언한다. */
+export function generatedReferenceContext(root: string, load: (path: string) => unknown) {
+  const source = ts.createSourceFile(
+    "app.ts",
+    readFileSync(join(root, "src/app.module.ts"), "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const bindings: Record<string, unknown> = {};
+  const delegates: Record<string, { count: () => Promise<number> }> = {};
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier))
+      continue;
+    const path = /^\.\/modules\/([a-z-]+)\/index\.js$/.exec(statement.moduleSpecifier.text);
+    const imports = statement.importClause?.namedBindings;
+    if (
+      !path?.[1] ||
+      !imports ||
+      !ts.isNamedImports(imports) ||
+      !imports.elements.some((item) => item.name.text.endsWith("Repository"))
+    )
+      continue;
+    const names = moduleNames(path[1]);
+    const repository = `${names.pluralClass}Repository`;
+    if (!imports.elements.some((item) => item.name.text === repository)) continue;
+    const exports = load(`src/modules/${names.name}/repository.ts`) as Record<string, unknown>;
+    if (!exports[repository]) throw new Error(`${repository}: 선언한 저장소가 없다`);
+    bindings[repository] = exports[repository];
+    delegates[names.single] = { count: () => Promise.resolve(0) };
+  }
+  return { bindings, delegates };
 }

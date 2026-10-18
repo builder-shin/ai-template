@@ -29,7 +29,8 @@ it("프론트 전용 해석 뒤 API 정책·잠금을 복원하고 frozen 전후
         if (!args.includes("install")) return;
         workspaces.push(parse(sourceText(cwd, "pnpm-workspace.yaml")) as Record<string, unknown>);
         const keys = Object.keys(dependency(sourceText(cwd, "pnpm-lock.yaml")).importers);
-        expect(keys.includes("apps/api")).toBe(args.includes("--frozen-lockfile"));
+        expect(keys.includes("apps/api")).toBe(false);
+        expect(keys.includes("tools/api")).toBe(!cwd.endsWith("/apps/api"));
       },
     },
   );
@@ -37,21 +38,27 @@ it("프론트 전용 해석 뒤 API 정책·잠금을 복원하고 frozen 전후
     "--version",
     "install --lockfile-only",
     "install --frozen-lockfile",
+    "install --frozen-lockfile",
     "exec prettier --write .claude/settings.json lefthook.yml .mcp.json package.json turbo.json .github/workflows/ci.yml AGENTS.md README.md",
     "--filter web run gen",
     "--filter admin run gen",
   ]);
   expect(workspaces[0]).toMatchObject({
-    packages: ["apps/web", "apps/admin", "contract/*"],
+    packages: ["tools/api", "apps/web", "apps/admin", "contract/*"],
     allowBuilds: { lefthook: false },
   });
   expect(
     (requiredFixture(workspaces[0]).allowBuilds as Record<string, unknown>).argon2,
   ).toBeUndefined();
   expect(workspaces[1]).toMatchObject({
-    packages: ["apps/api", "apps/web", "apps/admin", "contract/*"],
-    allowBuilds: { argon2: true, lefthook: false },
+    packages: ["tools/api", "apps/web", "apps/admin", "contract/*"],
+    allowBuilds: { lefthook: false },
     overrides: { typescript: "6.0.3" },
+  });
+  expect(workspaces[2]).toEqual({
+    minimumReleaseAge: 1440,
+    overrides: { typescript: "6.0.3" },
+    allowBuilds: { argon2: true, lefthook: false },
   });
 });
 it.each(["--lockfile-only", "--frozen-lockfile"])(

@@ -12,6 +12,18 @@ export const NESTJS_ASSET_EDITS: Readonly<Record<string, readonly AssetEdit[]>> 
     },
     { find: "docker build apps/api", replace: "docker build -f apps/api/Dockerfile ." },
   ],
+  "apps/web/Dockerfile": [
+    {
+      find: "COPY apps/api/package.json ./apps/api/package.json",
+      replace: "COPY tools/api/package.json ./tools/api/package.json",
+    },
+  ],
+  "apps/admin/Dockerfile": [
+    {
+      find: "COPY apps/api/package.json ./apps/api/package.json",
+      replace: "COPY tools/api/package.json ./tools/api/package.json",
+    },
+  ],
   "scripts/apps.mjs": [
     {
       find: "export function appNames(root) {",
@@ -67,7 +79,8 @@ export const NESTJS_ASSET_EDITS: Readonly<Record<string, readonly AssetEdit[]>> 
   "README.md": [
     {
       find: "FastAPI와 Next.js BFF 조합 프로젝트다. Node 24, pnpm 12.6.0, uv와 Docker가 필요하다.",
-      replace: "NestJS와 Next.js BFF 조합 프로젝트다. Node 24, pnpm 12.6.0과 Docker가 필요하다.",
+      replace:
+        "NestJS와 Next.js BFF 조합 프로젝트다. Node 24, pnpm 12.6.0과 Docker가 필요하다.\n\n프론트는 루트 잠금을 쓰고 실제 API는 apps/api의 원본 잠금으로 독립 설치한다. tools/api는 의존성 없는 작업 proxy이므로 기존 pnpm --filter api run 명령을 유지한다. API 의존성 변경과 exec는 pnpm --dir apps/api로 실행하고, 루트와 API의 frozen 설치 뒤 pnpm check와 프론트 빌드를 확인한다.",
     },
   ],
   "AGENTS.md": [
@@ -85,7 +98,7 @@ export const NESTJS_ASSET_EDITS: Readonly<Record<string, readonly AssetEdit[]>> 
     {
       find: "- 프론트 잠금 파일의 앱 importer는",
       replace:
-        "- API·프론트는 루트 잠금 파일 하나를 공유한다. 프론트 해석을 먼저 검증하고 API 잠금을 병합한 뒤 frozen 설치 전후로 모든 원본을 검증한다. API 빌드 정책은 충돌 없는 합집합이다. 생성 뒤 의존성 변경은 프로젝트가 소유하며 전체 check·빌드로 검증한다.\n- 프론트 잠금 파일의 앱 importer는",
+        "- 프론트는 루트 잠금을 공유하고 실제 apps/api는 원본 잠금·workspace로 독립 설치한다. tools/api는 의존성 없는 스크립트 proxy이며 filter api·Turbo 명령을 실제 API에 전달한다. API add/remove/exec는 pnpm --dir apps/api로 실행한다. 두 경계의 frozen 설치 뒤 전체 check·빌드로 검증한다.\n- 프론트 잠금 파일의 앱 importer는",
     },
   ],
 };

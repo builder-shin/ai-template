@@ -189,5 +189,55 @@ export function extendModuleOracles(
   expect((await f.http.delete("/api/v1/${names.name}/" + resourceDocument(${created}.text).data.id).set("Authorization", "Bearer " + f.token)).status).toBe(204);
 `;
   output.set(audit, text.replace(anchor, scenario + anchor));
+  const routePath = "src/core/http/tests/route-audit.test.ts";
+  const routeSource = read(routePath);
+  const routeTree = ts.createSourceFile(routePath, routeSource, ts.ScriptTarget.Latest, true);
+  const edits: { start: number; end: number; text: string }[] = [];
+  function route(node: ts.Node) {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.getText(routeTree) === "expect(routes).toHaveLength"
+    ) {
+      const count = node.arguments[0];
+      if (!count || !ts.isNumericLiteral(count))
+        throw new Error(`${routePath}: 라우트 개수 literal이 없다`);
+      edits.push({
+        start: count.getStart(routeTree),
+        end: count.end,
+        text: String(Number(count.text) + 5),
+      });
+    }
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.getText(routeTree) === "expect.arrayContaining"
+    ) {
+      const array = node.arguments[0];
+      if (
+        array &&
+        ts.isArrayLiteralExpression(array) &&
+        array.getText(routeTree).includes('"/api/v1/posts"')
+      ) {
+        const added = [
+          { method: "GET", path: `/api/v1/${names.name}` },
+          { method: "POST", path: `/api/v1/${names.name}` },
+          { method: "GET", path: `/api/v1/${names.name}/:id` },
+          { method: "PATCH", path: `/api/v1/${names.name}/:id` },
+          { method: "DELETE", path: `/api/v1/${names.name}/:id` },
+        ];
+        edits.push({
+          start: array.end - 1,
+          end: array.end - 1,
+          text: `${array.elements.hasTrailingComma ? "" : ","}${added.map((value) => JSON.stringify(value)).join(",")}`,
+        });
+      }
+    }
+    ts.forEachChild(node, route);
+  }
+  route(routeTree);
+  if (edits.length !== 2) throw new Error(`${routePath}: 엄격한 라우트 예상값이 하나가 아니다`);
+  let routes = routeSource;
+  for (const edit of edits.sort((a, b) => b.start - a.start))
+    routes = routes.slice(0, edit.start) + edit.text + routes.slice(edit.end);
+  output.set(routePath, routes);
   return output;
 }

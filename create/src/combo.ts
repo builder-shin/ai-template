@@ -1,11 +1,13 @@
 import { copyFileSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { mergeFrontendLocks, verifyAppResolutions, verifyFrontendResolutions } from "./lockfile.ts";
 import {
-  mergeApiLock,
-  mergeFrontendLocks,
-  verifyAppResolutions,
-  verifyFrontendResolutions,
-} from "./lockfile.ts";
+  apiProxyWorkspace,
+  apiProxyLock,
+  configureApiProxy,
+  installApiBoundary,
+  verifyApiBoundary,
+} from "./nestjs-api-workspace.ts";
 import { mergeWorkspace } from "./workspace.ts";
 import { renameStandalone } from "./standalone.ts";
 import type { PnpmRunner } from "./pnpm.ts";
@@ -75,8 +77,11 @@ export function writeCombo(
   const apiLock = descriptor.ownsPackageJson
     ? readFileSync(join(api, "pnpm-lock.yaml"), "utf8")
     : undefined;
-  const apiWorkspace = descriptor.ownsPackageJson
-    ? (parse(readFileSync(join(api, "pnpm-workspace.yaml"), "utf8")) as WorkspaceDocument)
+  const apiWorkspaceSource = descriptor.ownsPackageJson
+    ? readFileSync(join(api, "pnpm-workspace.yaml"), "utf8")
+    : undefined;
+  const apiWorkspace = apiWorkspaceSource
+    ? (parse(apiWorkspaceSource) as WorkspaceDocument)
     : undefined;
   const first = frontends[0];
   if (!first) throw new CreateError("조합 프론트 앱이 없다", "프론트 앱을 하나 이상 지정한다.");
@@ -179,6 +184,14 @@ export function writeCombo(
       .join("\n\n"),
   };
   for (const { path, content } of inputs) {
+    if (path.startsWith("nestjs-only/")) {
+      if (backend === "nestjs") {
+        const destination = join(root, path.slice("nestjs-only/".length));
+        mkdirSync(dirname(destination), { recursive: true });
+        writeFileSync(destination, content);
+      }
+      continue;
+    }
     if (path.startsWith("apps/api/Dockerfile.nestjs")) {
       if (backend === "nestjs") {
         const destination = join(root, path.replace("Dockerfile.nestjs", "Dockerfile"));
@@ -203,9 +216,12 @@ export function writeCombo(
   );
   if (backend === "nestjs")
     for (const path of Object.keys(NESTJS_ASSET_EDITS)) {
+      const app = /^apps\/([^/]+)\//.exec(path)?.[1];
+      if (app && !frontends.some((item) => item.name === app)) continue;
       const destination = join(root, path);
       writeFileSync(destination, applyAssetEdits(path, readFileSync(destination, "utf8"), backend));
     }
+  if (backend === "nestjs") configureApiProxy(root);
   writeHarness(root, ["api", ...frontends.map((app) => app.name)]);
   const sources = (file: string) =>
     frontends.map((app) => ({
@@ -216,23 +232,23 @@ export function writeCombo(
     const doc = parse(source) as WorkspaceDocument;
     return { ...doc, packages: [`apps/${app}`, ...(doc.packages ?? [])] };
   });
-  const finalWorkspace = apiWorkspace
-    ? mergeWorkspace({ frontends: frontendWorkspaces, api: apiWorkspace })
-    : undefined;
+  // 설치 경계는 나누되 기존 정책 충돌은 생성 전에 계속 거절한다.
+  if (apiWorkspace) mergeWorkspace({ frontends: frontendWorkspaces, api: apiWorkspace });
   const workspacePath = join(root, "pnpm-workspace.yaml");
   writeFileSync(
     workspacePath,
     apiWorkspace
-      ? stringify(mergeWorkspace({ frontends: frontendWorkspaces, includeApi: false }))
+      ? stringify(
+          apiProxyWorkspace(mergeWorkspace({ frontends: frontendWorkspaces, includeApi: false })),
+        )
       : mergeWorkspace(sources("pnpm-workspace.yaml"), typescript),
   );
   const locks = sources("pnpm-lock.yaml");
-  writeFileSync(join(root, "pnpm-lock.yaml"), mergeFrontendLocks(locks));
+  const frontendLock = mergeFrontendLocks(locks);
+  writeFileSync(join(root, "pnpm-lock.yaml"), apiLock ? apiProxyLock(frontendLock) : frontendLock);
   for (const app of frontends)
     for (const file of ["pnpm-lock.yaml", "pnpm-workspace.yaml"])
       rmSync(join(root, "apps", app.name, file));
-  if (apiLock)
-    for (const file of ["pnpm-lock.yaml", "pnpm-workspace.yaml"]) rmSync(join(api, file));
   pnpm(root, ["install", "--lockfile-only"]);
   for (const lock of locks)
     verifyFrontendResolutions(
@@ -240,27 +256,18 @@ export function writeCombo(
       readFileSync(join(root, "pnpm-lock.yaml"), "utf8"),
       lock.app,
     );
-  const allLocks = [...locks, ...(apiLock ? [{ app: "api", source: apiLock }] : [])];
   const verify = () => {
-    verifyAppResolutions(allLocks, readFileSync(join(root, "pnpm-lock.yaml"), "utf8"), {
-      typescriptPin: typescript,
-    });
-  };
-  if (apiLock && finalWorkspace) {
     verifyAppResolutions(locks, readFileSync(join(root, "pnpm-lock.yaml"), "utf8"), {
       typescriptPin: typescript,
     });
-    writeFileSync(workspacePath, stringify(finalWorkspace));
-    writeFileSync(
-      join(root, "pnpm-lock.yaml"),
-      mergeApiLock(readFileSync(join(root, "pnpm-lock.yaml"), "utf8"), apiLock, {
-        typescriptPin: typescript,
-      }),
-    );
-    verify();
-  }
-  pnpm(root, ["install", "--frozen-lockfile"]);
+  };
   if (apiLock) verify();
+  if (apiLock && apiWorkspaceSource) verifyApiBoundary(root, apiLock, apiWorkspaceSource);
+  pnpm(root, ["install", "--frozen-lockfile"]);
+  if (apiLock && apiWorkspaceSource) {
+    verify();
+    installApiBoundary(root, apiLock, apiWorkspaceSource, pnpm);
+  }
   pnpm(root, [
     "exec",
     "prettier",

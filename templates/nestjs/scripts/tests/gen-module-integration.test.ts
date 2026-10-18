@@ -12,6 +12,7 @@ import {
   expectedPermissions,
   fixtureLoader,
   generatorFixture,
+  generatedReferenceContext,
 } from "./fixtures/generated-module.js";
 
 let fixture: ReturnType<typeof generatorFixture>;
@@ -40,7 +41,9 @@ it("생성한 파일 저장소 설정은 살아 있는 새 표지를 같은 트�
     ts.forEachChild(node, visit);
   }
   visit(app);
+  const context = generatedReferenceContext(fixture.root, load);
   const module = runInNewContext(expression, {
+    ...context.bindings,
     infrastructure: true,
     FilesModule,
     FixtureWidgetsRepository,
@@ -69,6 +72,7 @@ it("생성한 파일 저장소 설정은 살아 있는 새 표지를 같은 트�
     ]),
   );
   const tx = {
+    ...context.delegates,
     $queryRaw: (_sql: TemplateStringsArray, id: string) => {
       trace.push(["lock", id]);
       return Promise.resolve([]);

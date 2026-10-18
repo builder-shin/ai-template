@@ -133,6 +133,20 @@ export function registerModule(
         `  { name: "${name}", permission: null },\n  { name: "${name}:all", permission: "${name}:manage" },\n])`,
       ),
   );
+  for (const [family, anchor, transaction] of [
+    ["files", "const result = await fn({", "state"],
+    ["users", "const tx = {", "db"],
+    ["posts", "const tx = {", "db"],
+  ] as const) {
+    replace(
+      `src/modules/${family}/tests/fixtures.ts`,
+      anchor,
+      `\n${single}: {
+        findMany: () => { ${transaction}(); return Promise.resolve([]); },
+        count: () => { ${transaction}(); return Promise.resolve(0); },
+      },`,
+    );
+  }
   for (const [path, text] of extendModuleOracles(read, names)) output.set(path, text);
   for (const [path, text] of output) {
     const previous = read(path);
@@ -141,7 +155,7 @@ export function registerModule(
       : previous.includes(`"${name}:manage"`) ||
         previous.includes(`"${name}:create"`) ||
         previous.includes(`"${singular}.created"`) ||
-        previous.includes(`${pluralClass}Module`);
+        new RegExp(`\\b${pluralClass}Module\\b`).test(previous);
     if (collision) throw new Error(`${path}: ${name} 등록이 이미 있다`);
     if (text === previous) throw new Error(`${path}: 새 모듈을 등록하지 못했다`);
   }

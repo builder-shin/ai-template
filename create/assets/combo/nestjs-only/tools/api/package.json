@@ -1,0 +1,19 @@
+{
+  "name": "api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "node ../../scripts/api-command.mjs setup",
+    "dev": "node ../../scripts/api-command.mjs dev",
+    "check": "node ../../scripts/api-command.mjs check",
+    "fix": "node ../../scripts/api-command.mjs fix",
+    "test": "node ../../scripts/api-command.mjs test",
+    "test:e2e": "node ../../scripts/api-command.mjs test:e2e",
+    "gen": "node ../../scripts/api-command.mjs gen",
+    "build": "node ../../scripts/api-command.mjs build",
+    "db:migrate": "node ../../scripts/api-command.mjs db:migrate",
+    "db:reset": "node ../../scripts/api-command.mjs db:reset",
+    "e2e:serve": "node ../../scripts/api-command.mjs e2e:serve",
+    "tool": "node ../../scripts/api-command.mjs tool"
+  }
+}

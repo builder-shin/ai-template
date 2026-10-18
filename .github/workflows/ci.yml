@@ -700,8 +700,8 @@ jobs:
         working-directory: ${{ env.NEST_ROOT }}/work/both
         run: |
           cp pnpm-lock.yaml "$NEST_ROOT/before-r1-lock.yaml"
-          pnpm --filter api remove nodemailer
-          pnpm --filter api add -E nodemailer@10.1.0
+          pnpm --dir apps/api remove nodemailer
+          pnpm --dir apps/api add -E nodemailer@10.1.0
           node --input-type=module - "$GITHUB_WORKSPACE" "$NEST_ROOT" <<'NODE'
           import { readFileSync, writeFileSync } from "node:fs";
           import { join } from "node:path";
@@ -717,6 +717,8 @@ jobs:
           console.log(JSON.stringify(changes, null, 2));
           NODE
       - run: pnpm install --frozen-lockfile
+        working-directory: ${{ env.NEST_ROOT }}/work/both
+      - run: pnpm --dir apps/api install --frozen-lockfile
         working-directory: ${{ env.NEST_ROOT }}/work/both
       - name: R1 갱신 뒤 전체 앱 검사
         run: pnpm check

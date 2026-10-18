@@ -23,14 +23,12 @@ it.each([["web"], ["admin"], ["web", "admin"]] as const)(
     });
     expect(sourceText(target, "apps/api/compose.yaml")).toContain("image: my-nest-api # 이미지");
     expect(sourceText(target, "apps/api/Dockerfile")).toContain(
-      "pnpm install --frozen-lockfile --filter api...",
+      "RUN pnpm install --frozen-lockfile",
     );
     expect(sourceText(target, "apps/api/Dockerfile")).toContain(
-      "pnpm install --frozen-lockfile --prod --filter api...",
+      "RUN pnpm install --frozen-lockfile --prod",
     );
-    expect(sourceText(target, "apps/api/Dockerfile")).toContain(
-      "pnpm --filter api exec prisma generate",
-    );
+    expect(sourceText(target, "apps/api/Dockerfile")).toContain("pnpm exec prisma generate");
     expect(sourceText(target, "apps/api/Dockerfile")).toContain("USER 10001:10001");
     expect(sourceText(target, "apps/api/Dockerfile.dockerignore")).toContain("**/node_modules");
     const ci = parse(sourceText(target, ".github/workflows/ci.yml")) as {
@@ -55,7 +53,12 @@ it.each([["web"], ["admin"], ["web", "admin"]] as const)(
       ).toBe("../../contract");
     }
     expect(existsSync(join(target, "contract/typespec/main.tsp"))).toBe(true);
-    expect(existsSync(join(target, "apps/api/pnpm-lock.yaml"))).toBe(false);
+    expect(sourceText(target, "apps/api/pnpm-lock.yaml")).toBe(
+      sourceText(root, "templates/nestjs/pnpm-lock.yaml"),
+    );
+    expect(sourceText(target, "apps/api/pnpm-workspace.yaml")).toBe(
+      sourceText(root, "templates/nestjs/pnpm-workspace.yaml"),
+    );
     expect(git(target, "status", "--porcelain")).toBe("");
     const unit = spawnSync(
       process.execPath,
