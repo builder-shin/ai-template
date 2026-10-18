@@ -80,14 +80,15 @@ it("DB 실패 중 재검사는 연결을 유지하고 회복 뒤 사라진 관�
   expect(socket.connected).toBe(true);
   expect(await b.call({ kind: "rooms", socketId: socket.id })).toContain("posts:all");
   await b.call({ kind: "fail-db", enabled: false });
+  const disconnect = new Promise<string>((resolve) => socket.once("disconnect", resolve));
   await a.call({ kind: "recheck", userId: f.user.id });
-  await expect
-    .poll(() => b.call({ kind: "rooms", socketId: socket.id }))
-    .not.toContain("posts:all");
-  expect(socket.connected).toBe(true);
-  expect(await ack(socket, "subscribe", "posts:all")).toMatchObject({
+  expect(await disconnect).toBe("io server disconnect");
+  expect(socket.connected).toBe(false);
+  const renewed = await connect(b.url, f.firstToken);
+  expect(renewed.connected).toBe(true);
+  expect(await ack(renewed, "subscribe", "posts:all")).toMatchObject({
     ok: false,
-    error: { code: "permission.denied" },
+    error: { status: "403", code: "permission.denied" },
   });
 });
 it("Redis DB 15에서 만료된 티켓은 connect_error로 거절한다", async () => {

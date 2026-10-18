@@ -129,8 +129,8 @@ it("감사만 읽을 수 있는 사용자에게 공개 actor와 고정 대상 �
   const doc = collection(listed.text);
   expect(doc.data.length).toBeGreaterThan(0);
   expect(doc.data[0]?.attributes).toMatchObject({
-    targetType: null,
-    targetId: null,
+    targetType: "users",
+    targetId: f.user.id,
     ipAddress: null,
   });
   expect(doc.included?.[0]?.attributes).toEqual({ name: "내 정보 회원" });
@@ -141,6 +141,44 @@ it("감사만 읽을 수 있는 사용자에게 공개 actor와 고정 대상 �
   const single = await f.get("audit-logs/" + id + "?include=actor", access);
   expect(single.status).toBe(200);
   expect(resourceDocument(single.text).data.id).toBe(id);
+  const internal = await f.unit.run((tx) =>
+    tx.auditLog.create({
+      data: {
+        action: "session.login_succeeded",
+        actorUserId: f.user.id,
+        targetType: "sessions",
+        targetId: f.session.id,
+        identifierHash: "internal-session-audit",
+        meta: {},
+      },
+    }),
+  );
+  const hidden = await f.get("audit-logs/" + internal.id + "?include=actor", access);
+  expect(hidden.status).toBe(200);
+  const hiddenDoc = resourceDocument(hidden.text);
+  expect(hiddenDoc.data).toMatchObject({
+    id: internal.id,
+    attributes: {
+      action: "session.login_succeeded",
+      targetType: null,
+      targetId: null,
+      ipAddress: null,
+    },
+  });
+  expect(hiddenDoc.included).toEqual([
+    { type: "users", id: f.user.id, attributes: { name: "내 정보 회원" } },
+  ]);
+  for (const value of [f.session.id, f.user.email, "internal-session-audit"])
+    expect(JSON.stringify(hiddenDoc)).not.toContain(value);
+  const hiddenList = await f.get("audit-logs?filter[actor]=" + f.user.id, access);
+  expect(hiddenList.status).toBe(200);
+  expect(
+    collection(hiddenList.text).data.find((row) => row.id === internal.id)?.attributes,
+  ).toMatchObject({
+    targetType: null,
+    targetId: null,
+    ipAddress: null,
+  });
   const empty = await f.get(
     "audit-logs?filter[createdFrom]=2099-01-01T00:00:00Z&filter[createdTo]=2099-01-01T00:00:00Z",
     access,
