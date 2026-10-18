@@ -687,6 +687,10 @@ jobs:
           const report = hoistShadows(
             readFileSync(join(root, "work/both/node_modules/.modules.yaml"), "utf8"),
             readFileSync(join(root, "work/standalone-web/node_modules/.modules.yaml"), "utf8"),
+            {
+              combo: readFileSync(join(root, "work/both/pnpm-lock.yaml"), "utf8"),
+              standalone: readFileSync(join(root, "work/standalone-web/pnpm-lock.yaml"), "utf8"),
+            },
           );
           writeFileSync(join(root, "reports/hoist-audit.json"), JSON.stringify(report, null, 2) + "\n");
           console.log(JSON.stringify({ ...report, apiOnlyCount: report.apiOnly.length }, null, 2));

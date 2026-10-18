@@ -15,3 +15,12 @@ targetRules = ["generic-password"]
 paths = ['''^pnpm-lock\.yaml$''']
 regexTarget = "line"
 regexes = ['''@inquirer/password''']
+
+# 공개 OAuth 스키마의 정확한 타입 참조만 허용하며 같은 파일의 다른 비밀은 검사한다.
+[[allowlists]]
+description = "공개 OAuth 스키마의 PasswordFlow 타입 참조"
+condition = "AND"
+targetRules = ["generic-password"]
+paths = ['''^api-style/lint\.mjs$''']
+regexTarget = "match"
+regexes = ['''^password:"PasswordFlow",$'''] # betterleaks:allow 사유: 공개 OAuth 스키마 코드 참조를 고정한 정규식
