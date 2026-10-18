@@ -90,9 +90,17 @@ jobs:
           docker compose -p nestjs -f templates/nestjs/compose.yaml \
             -f "$RUNNER_TEMP/nestjs-image.yaml" --profile app run --detach --no-deps \
             --name "$container" --publish 127.0.0.1:18001:8000 api
-          test "$(curl --fail --silent --retry 60 --retry-connrefused --retry-delay 1 \
-            --retry-max-time 60 --max-time 2 --output /dev/null --write-out '%{http_code}' \
-            http://127.0.0.1:18001/health/live)" = 200
+          if ! timeout 60s bash -c '
+            until code=$(curl --fail --silent --show-error --max-time 2 \
+              --output /dev/null --write-out "%{http_code}" \
+              http://127.0.0.1:18001/health/live) && [ "$code" = 200 ]; do
+              sleep 1
+            done
+          '; then
+            docker container inspect --format '{{json .State}}' "$container" || true
+            docker logs "$container" || true
+            exit 1
+          fi
       - name: 하네스 사본에 CI 스택 소유권 인계
         run: |
           docker rm -f "aitpl-nestjs-image-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" || true
@@ -626,9 +634,17 @@ jobs:
           docker compose -p "$NEST_COMPOSE" -f apps/api/compose.yaml \
             -f "$NEST_ROOT/api-image.yaml" --profile app run --detach --no-deps \
             --name "$API_CONTAINER" --publish 127.0.0.1:18001:8000 api
-          test "$(curl --fail --silent --retry 60 --retry-connrefused --retry-delay 1 \
-            --retry-max-time 60 --max-time 2 --output /dev/null --write-out '%{http_code}' \
-            http://127.0.0.1:18001/health/live)" = 200
+          if ! timeout 60s bash -c '
+            until code=$(curl --fail --silent --show-error --max-time 2 \
+              --output /dev/null --write-out "%{http_code}" \
+              http://127.0.0.1:18001/health/live) && [ "$code" = 200 ]; do
+              sleep 1
+            done
+          '; then
+            docker container inspect --format '{{json .State}}' "$API_CONTAINER" || true
+            docker logs "$API_CONTAINER" || true
+            exit 1
+          fi
       - name: 조합 web·admin 컨테이너 시작 확인
         shell: bash
         run: |
