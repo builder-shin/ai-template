@@ -5,10 +5,6 @@ import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 
-interface AppSettings {
-  permissions: { allow: string[]; deny: string[] };
-}
-
 const vocabulary = [
   "setup",
   "dev",
@@ -21,10 +17,31 @@ const vocabulary = [
   "db:reset",
 ];
 
-export function mergeSettings(apps: Record<string, AppSettings>) {
+export function mergeSettings(apps: Record<string, unknown>) {
+  const permissions = Object.entries(apps).map(([app, settings]) => {
+    const invalid = () =>
+      new CreateError(
+        `${app} 앱 권한 설정이 잘못되었다`,
+        ".claude/settings.json의 permissions와 allow·deny 문자열 목록을 확인한다.",
+      );
+    if (!settings || typeof settings !== "object" || Array.isArray(settings)) throw invalid();
+    const value = "permissions" in settings ? settings.permissions : undefined;
+    if (value === undefined) return { app, allow: [], deny: [] };
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw invalid();
+    const declared = value as Record<string, unknown>;
+    const list = (kind: "allow" | "deny"): string[] => {
+      const rules = declared[kind];
+      if (rules === undefined) return [];
+      if (!Array.isArray(rules)) throw invalid();
+      const values: unknown[] = rules;
+      if (!values.every((rule): rule is string => typeof rule === "string")) throw invalid();
+      return values;
+    };
+    return { app, allow: list("allow"), deny: list("deny") };
+  });
   const rules = (kind: "allow" | "deny") =>
-    Object.entries(apps).flatMap(([app, settings]) =>
-      settings.permissions[kind].flatMap((rule) => {
+    permissions.flatMap(({ app, ...settings }) =>
+      settings[kind].flatMap((rule) => {
         // 프론트의 계약 경로는 앱 밖의 루트 계약으로 옮긴다.
         if (app !== "api" && /^(Read|Edit|Write|Glob|Grep)\(\.\/contract\//.test(rule))
           return [rule];
@@ -152,7 +169,7 @@ export function writeHarness(root: string, apps: readonly string[]): void {
   const settings = Object.fromEntries(
     Object.entries(sources(".claude/settings.json")).map(([app, source]) => [
       app,
-      JSON.parse(source) as AppSettings,
+      JSON.parse(source) as unknown,
     ]),
   );
   writeFileSync(

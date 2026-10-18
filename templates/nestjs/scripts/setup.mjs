@@ -11,10 +11,16 @@ if (!pnpm) {
     PNPM_VERIFY_DEPS_BEFORE_RUN: "error",
     PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "error",
   };
-  const installed = spawnSync(process.execPath, [pnpm, "install", "--frozen-lockfile"], {
-    stdio: "inherit",
-    env,
-  });
+  const javascript = /\.[cm]?js$/.test(pnpm);
+  const args = ["install", "--frozen-lockfile"];
+  const installed = spawnSync(
+    javascript ? process.execPath : pnpm,
+    javascript ? [pnpm, ...args] : args,
+    {
+      stdio: "inherit",
+      env,
+    },
+  );
   if (installed.status !== 0) process.exitCode = installed.status ?? 1;
   else {
     const setup = spawnSync(process.execPath, ["--import", "tsx", "scripts/setup.ts"], {

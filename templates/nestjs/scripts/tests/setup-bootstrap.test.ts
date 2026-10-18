@@ -1,5 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
@@ -57,4 +65,34 @@ it("bootstrap은 설치 실패 종료를 보존하고 준비를 실행하지 않
   });
   expect(result.status).toBe(23);
   expect(existsSync(join(root, "setup-effect"))).toBe(false);
+});
+
+it.each([false, true])("bootstrap은 native pnpm의 설치와 종료를 보존한다: %s", (fail) => {
+  const { root } = fixture(fail);
+  const cli = join(root, process.platform === "win32" ? "pnpm.exe" : "pnpm");
+  copyFileSync(process.execPath, cli);
+  const preload = join(root, "native-fixture.cjs");
+  writeFileSync(
+    preload,
+    `if(process.execPath===${JSON.stringify(cli)}) {
+      require('node:fs').writeFileSync('install.json', JSON.stringify(process.argv.slice(1)));
+      process.exit(${fail ? "23" : "0"});
+    }`,
+  );
+  const result = spawnSync(process.execPath, [join(process.cwd(), "scripts/setup.mjs")], {
+    cwd: root,
+    encoding: "utf8",
+    env: {
+      ...environment(),
+      npm_execpath: cli,
+      NODE_OPTIONS: `--require=${JSON.stringify(preload)}`,
+    },
+  });
+  expect(result.stderr).toBe("");
+  expect(result.status).toBe(fail ? 23 : 0);
+  expect(JSON.parse(readFileSync(join(root, "install.json"), "utf8"))).toEqual([
+    join(root, "install"),
+    "--frozen-lockfile",
+  ]);
+  expect(existsSync(join(root, "setup-effect"))).toBe(!fail);
 });

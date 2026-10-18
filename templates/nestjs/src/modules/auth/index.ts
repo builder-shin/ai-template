@@ -1,5 +1,6 @@
-export { AuthModule } from "./auth.module.js";
+// 공개 index가 roles·users를 순환해도 DI 토큰을 먼저 초기화한다.
 export { SessionsService } from "./sessions.service.js";
+export { AuthModule } from "./auth.module.js";
 export { SessionsRepository, type SessionRow, type RefreshRow } from "./sessions.repository.js";
 export { JwtPrincipalResolver } from "./principal.resolver.js";
 export {

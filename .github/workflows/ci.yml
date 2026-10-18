@@ -768,6 +768,8 @@ jobs:
       - run: uv run poe check
         working-directory: ${{ runner.temp }}/aitpl-fastapi
       - run: pnpm new "$RUNNER_TEMP/aitpl-nextjs" --template nextjs --name ci-web
+      - run: pnpm install --frozen-lockfile
+        working-directory: ${{ runner.temp }}/aitpl-nextjs
       - run: pnpm setup
         working-directory: ${{ runner.temp }}/aitpl-nextjs
       - run: pnpm exec playwright install-deps chromium
@@ -775,6 +777,8 @@ jobs:
       - run: pnpm check
         working-directory: ${{ runner.temp }}/aitpl-nextjs
       - run: pnpm new "$RUNNER_TEMP/aitpl-admin" --template nextjs-admin --name ci-admin
+      - run: pnpm install --frozen-lockfile
+        working-directory: ${{ runner.temp }}/aitpl-admin
       - run: pnpm setup
         working-directory: ${{ runner.temp }}/aitpl-admin
       - run: pnpm exec playwright install-deps chromium
@@ -806,6 +810,8 @@ jobs:
           printf 'owned=true\n' >> "$GITHUB_OUTPUT"
           pnpm new "$root/project" --template nestjs --name "$project"
           test ! -e "$root/project/src/generated"
+      - run: pnpm install --frozen-lockfile
+        working-directory: ${{ runner.temp }}/aitpl-ci-nest-standalone-${{ github.run_id }}-${{ github.run_attempt }}/project
       - run: pnpm setup
         working-directory: ${{ runner.temp }}/aitpl-ci-nest-standalone-${{ github.run_id }}-${{ github.run_attempt }}/project
       - run: pnpm gen
