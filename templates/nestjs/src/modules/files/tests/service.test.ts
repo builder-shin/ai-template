@@ -180,6 +180,38 @@ it("정확히 24시간 된 pending은 다음 정리까지 유지한다", async (
   await f.service.purgePending();
   expect(f.files.map((f) => f.id)).toEqual(["f1"]);
 });
+it("250개 정리 후보는 100개씩 세 트랜잭션에서 id 순서로 잠근다", async () => {
+  const f = make(),
+    ids = Array.from({ length: 250 }, (_, n) => String(n).padStart(3, "0"));
+  for (const id of [...ids].reverse())
+    f.add({ id, key: id, status: "ready", detachedAt: new Date() });
+  const run = vi.spyOn(f.unit, "run");
+  const claim = vi.spyOn(f.repository, "claimDetached");
+  const candidates = f.repository.purgeCandidates.bind(f.repository);
+  vi.spyOn(f.repository, "purgeCandidates").mockImplementation(async (...args) =>
+    (await candidates(...args)).reverse(),
+  );
+  await f.service.purgePending();
+  expect(run).toHaveBeenCalledTimes(3);
+  expect(claim.mock.calls.map(([, ids]) => ids)).toEqual(ids.map((id) => [id]));
+  expect(f.files).toEqual([]);
+  expect(f.events.filter((event) => event === "commit")).toHaveLength(3);
+});
+it("선택 뒤 ready가 된 pending은 행과 객체를 보존한다", async () => {
+  const f = make();
+  f.add({ createdAt: new Date(Date.now() - 86_400_001) });
+  f.objects.set(file.key, { ContentLength: 23, ContentType: "image/png" });
+  const select = f.repository.purgeCandidates.bind(f.repository);
+  vi.spyOn(f.repository, "purgeCandidates").mockImplementation(async (tx, ...args) => {
+    const rows = await select(tx, ...args);
+    await f.repository.ready(tx, "f1");
+    return rows;
+  });
+  await f.service.purgePending();
+  expect(f.files).toMatchObject([{ id: "f1", status: "ready" }]);
+  expect(f.objects.has(file.key)).toBe(true);
+  expect(f.events).not.toContain("delete-object");
+});
 it("include 로더는 숨겨진 파일을 제외하고 ready의 다운로드 정보를 유지한다", async () => {
   const f = make();
   f.add({ status: "ready" });

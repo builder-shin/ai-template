@@ -50,7 +50,7 @@ export class FilesRepository {
   }
   async claimDetached(tx: Tx, ids: readonly string[]): Promise<FileRecord[]> {
     const claimed: FileRecord[] = [];
-    for (const id of [...new Set(ids)].sort()) {
+    for (const id of [...new Set(ids.map((id) => id.toLowerCase()))].sort()) {
       await this.lock(tx, id);
       const file = await this.find(tx, id);
       if (!file?.detachedAt) continue;
@@ -70,11 +70,20 @@ export class FilesRepository {
     }
     return claimed;
   }
-  purgeCandidates(tx: Tx, cutoff: Date): Promise<FileRecord[]> {
+  async deletePending(tx: Tx, id: string, cutoff: Date): Promise<boolean> {
+    const { count } = await tx.file.deleteMany({
+      where: { id, status: "pending", detachedAt: null, createdAt: { lt: cutoff } },
+    });
+    return count === 1;
+  }
+  purgeCandidates(tx: Tx, cutoff: Date, take: number, after?: string): Promise<FileRecord[]> {
     return tx.file.findMany({
       where: {
         OR: [{ status: "pending", createdAt: { lt: cutoff } }, { detachedAt: { not: null } }],
+        ...(after === undefined ? {} : { id: { gt: after } }),
       },
+      orderBy: { id: "asc" },
+      take,
     });
   }
 }

@@ -1,5 +1,6 @@
 import { afterEach, expect, it } from "vitest";
-import type { AfterCommit } from "../../../core/db/unit-of-work.js";
+import type { AfterCommit, Tx } from "../../../core/db/unit-of-work.js";
+import { PostsRepository } from "../index.js";
 import { fixture, post, author, postId, fileId, required } from "./fixtures.js";
 const owned: ReturnType<typeof fixture>[] = [];
 afterEach(() => {
@@ -10,6 +11,19 @@ const setup = (initial = [post()]) => {
   owned.push(f);
   return f;
 };
+it("표지 잠금은 대소문자가 섞인 UUID도 PostgreSQL 순서로 한 번씩 얻는다", async () => {
+  const a = "01900000-0000-7000-8000-00000000000a";
+  const b = "01900000-0000-7000-8000-00000000000b";
+  const locked: string[] = [];
+  const tx = {
+    $queryRaw: (_sql: TemplateStringsArray, id: string) => {
+      locked.push(id);
+      return Promise.resolve([]);
+    },
+  } as unknown as Tx;
+  await new PostsRepository().lockCovers(tx, [b.toUpperCase(), a, a.toUpperCase()]);
+  expect(locked).toEqual([a, b]);
+});
 it("시간별 정리는 아바타의 mark-only 분리 뒤에도 공유 post 표지를 보존한다", async () => {
   const f = setup([post("draft", { coverImageId: fileId })]);
   await f.unit.run((tx) => f.files.detach(tx, [fileId]));

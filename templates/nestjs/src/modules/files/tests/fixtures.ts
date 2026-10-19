@@ -97,10 +97,28 @@ export function fixture(overrides: Partial<Settings> = {}) {
       for (const f of state()) if (ids.includes(f.id)) f.detachedAt = new Date();
       return Promise.resolve();
     }
-    override purgeCandidates(_tx: Tx, cutoff: Date) {
+    override deletePending(tx: Tx, id: string, cutoff: Date) {
+      const found = state().find((f) => f.id === id);
+      if (
+        !found ||
+        found.status !== "pending" ||
+        found.detachedAt !== null ||
+        found.createdAt >= cutoff
+      )
+        return Promise.resolve(false);
+      return this.delete(tx, id).then(() => true);
+    }
+    override purgeCandidates(_tx: Tx, cutoff: Date, take: number, after?: string) {
       return Promise.resolve(
-        state().filter(
-          (f) => f.detachedAt !== null || (f.status === "pending" && f.createdAt < cutoff),
+        structuredClone(
+          state()
+            .filter(
+              (f) =>
+                (after === undefined || f.id > after) &&
+                (f.detachedAt !== null || (f.status === "pending" && f.createdAt < cutoff)),
+            )
+            .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+            .slice(0, take),
         ),
       );
     }

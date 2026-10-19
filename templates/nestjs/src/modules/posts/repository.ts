@@ -83,7 +83,7 @@ export class PostsRepository {
     await tx.post.delete({ where: { id } });
   }
   async lockCovers(tx: Tx, ids: readonly string[]): Promise<void> {
-    for (const id of [...new Set(ids)].sort()) {
+    for (const id of [...new Set(ids.map((id) => id.toLowerCase()))].sort()) {
       if (!z.regexes.uuid().test(id))
         throw new ApiError({
           status: 404,

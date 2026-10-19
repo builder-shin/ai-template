@@ -10,6 +10,7 @@ import { presignUpload, presignDownload } from "../../core/storage/presign.js";
 import { storageFailure } from "../../core/storage/diagnostics.js";
 import { FilesRepository, type FileRecord } from "./repository.js";
 import { readableFileIds } from "./policies.js";
+const PURGE_BATCH = 100;
 export interface FileCreateAttributes {
   filename: string;
   contentType: string;
@@ -162,19 +163,26 @@ export class FilesService {
         .map((file) => this.downloadResource(file)),
     );
   }
-  purgePending(): Promise<void> {
-    return this.unit.run(async (tx, afterCommit) => {
-      const files = await this.repository.purgeCandidates(tx, new Date(Date.now() - 86_400_000));
-      for (const file of files) {
-        if (file.detachedAt !== null) {
-          for (const claimed of await this.repository.claimDetached(tx, [file.id]))
-            this.removeObject(afterCommit, claimed.key);
-          continue;
+  async purgePending(): Promise<void> {
+    const cutoff = new Date(Date.now() - 86_400_000);
+    let after: string | undefined;
+    for (;;) {
+      const batch = await this.unit.run(async (tx, afterCommit) => {
+        const files = await this.repository.purgeCandidates(tx, cutoff, PURGE_BATCH, after);
+        files.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+        for (const file of files) {
+          if (file.detachedAt !== null) {
+            for (const claimed of await this.repository.claimDetached(tx, [file.id]))
+              this.removeObject(afterCommit, claimed.key);
+          } else if (await this.repository.deletePending(tx, file.id, cutoff)) {
+            this.removeObject(afterCommit, file.key);
+          }
         }
-        await this.repository.delete(tx, file.id);
-        this.removeObject(afterCommit, file.key);
-      }
-    });
+        return files;
+      });
+      if (batch.length < PURGE_BATCH) return;
+      after = batch.at(-1)?.id;
+    }
   }
   async load(tx: Tx, ids: readonly string[], viewer: Principal | undefined) {
     const files = await this.repository.findMany(tx, ids);
