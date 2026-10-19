@@ -24,6 +24,7 @@ export function fixture(overrides: Partial<Settings> = {}) {
   const events: string[] = [];
   let fail = false;
   let headFailure: unknown;
+  let ownerLock = () => Promise.resolve();
   const state = () => {
     if (!active) throw new Error("트랜잭션 밖이다");
     return active;
@@ -35,6 +36,11 @@ export function fixture(overrides: Partial<Settings> = {}) {
       events.push("begin");
       try {
         const result = await fn({
+          $queryRaw: async (_sql: TemplateStringsArray, id: string) => {
+            events.push("lock-owner:" + id);
+            await ownerLock();
+            return [];
+          },
           user: {
             findMany: () => Promise.resolve([]),
             count: () => Promise.resolve(0),
@@ -213,6 +219,9 @@ export function fixture(overrides: Partial<Settings> = {}) {
     },
     set headFailure(value: unknown) {
       headFailure = value;
+    },
+    set ownerLock(value: () => Promise<void>) {
+      ownerLock = value;
     },
   };
 }

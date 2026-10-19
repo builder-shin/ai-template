@@ -142,7 +142,14 @@ it("삭제는 행 commit 뒤 객체를 제거한다", async () => {
   await f.service.delete(principal, "f1");
   expect(f.files).toEqual([]);
   expect(f.objects.size).toBe(0);
-  expect(f.events).toEqual(["begin", "clear-avatar", "delete-row", "commit", "delete-object"]);
+  expect(f.events).toEqual([
+    "begin",
+    "lock-owner:u1",
+    "clear-avatar",
+    "delete-row",
+    "commit",
+    "delete-object",
+  ]);
 });
 it("현재 아바타 파일을 지우면 사용자 참조도 같은 트랜잭션에서 비운다", async () => {
   const f = make();
@@ -155,7 +162,66 @@ it("현재 아바타 파일을 지우면 사용자 참조도 같은 트랜잭션
     ["u2", "other"],
   ]);
   expect(f.files).toEqual([]);
-  expect(f.events).toEqual(["begin", "clear-avatar", "delete-row", "commit", "delete-object"]);
+  expect(f.events).toEqual([
+    "begin",
+    "lock-owner:u1",
+    "clear-avatar",
+    "delete-row",
+    "commit",
+    "delete-object",
+  ]);
+});
+it("삭제는 소유자 잠금을 얻은 뒤 파일을 다시 읽고 참조와 행을 지운다", async () => {
+  const f = make();
+  f.add({ status: "ready" });
+  f.avatars.set("u1", "f1");
+  f.objects.set(file.key, { ContentLength: 23, ContentType: "image/png" });
+  let release!: () => void;
+  const locked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  f.ownerLock = () => locked;
+  const find = f.repository.find.bind(f.repository);
+  vi.spyOn(f.repository, "find").mockImplementation((...args) => {
+    f.events.push("read-file");
+    return find(...args);
+  });
+  const deletion = f.service.delete(principal, "f1");
+  try {
+    await vi.waitFor(() => {
+      expect(f.events).toContain("lock-owner:u1");
+    });
+    expect(f.events).toEqual(["begin", "lock-owner:u1"]);
+    release();
+    await deletion;
+    expect(f.files).toEqual([]);
+    expect(f.avatars.get("u1")).toBeNull();
+    expect(f.objects.size).toBe(0);
+    expect(f.events).toEqual([
+      "begin",
+      "lock-owner:u1",
+      "read-file",
+      "clear-avatar",
+      "delete-row",
+      "commit",
+      "delete-object",
+    ]);
+  } finally {
+    release();
+    await Promise.allSettled([deletion]);
+  }
+});
+it("소유자 잠금 실패는 아바타와 파일과 객체를 보존한다", async () => {
+  const f = make();
+  f.add({ status: "ready" });
+  f.avatars.set("u1", "f1");
+  f.objects.set(file.key, { ContentLength: 23, ContentType: "image/png" });
+  f.ownerLock = () => Promise.reject(new Error("소유자 잠금 실패"));
+  await expect(f.service.delete(principal, "f1")).rejects.toThrow("소유자 잠금 실패");
+  expect(f.files).toHaveLength(1);
+  expect(f.avatars.get("u1")).toBe("f1");
+  expect(f.objects.has(file.key)).toBe(true);
+  expect(f.events).toEqual(["begin", "lock-owner:u1", "rollback"]);
 });
 it("commit 실패 때 객체를 지우지 않는다", async () => {
   const f = make();

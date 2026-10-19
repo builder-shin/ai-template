@@ -91,13 +91,13 @@ it("자신에게 없는 역할 권한은 다른 사용자에게 부여할 수 �
   expect(r.status).toBe(403);
   expect(errorCode(r.text)).toBe("permission.denied");
 });
-it("users:manage만 가진 관리자는 일반 회원에게 admin 역할을 부여할 수 없다", async () => {
+it("users:manage와 posts:create를 가진 관리자는 회원에게 admin 역할을 부여할 수 없다", async () => {
   const f = await adminFixture(),
     manager = await f.addUser("member"),
     member = await f.addUser("member");
   const admin = await f.unit.run(async (tx) => {
     const role = await tx.role.create({
-      data: { name: "역할 부여 관리자", permissions: ["users:manage"] },
+      data: { name: "역할 부여 관리자", permissions: ["users:manage", "posts:create"] },
     });
     await tx.userRole.deleteMany({ where: { userId: manager.user.id } });
     await tx.userRole.create({ data: { userId: manager.user.id, roleId: role.id } });
@@ -116,6 +116,11 @@ it("users:manage만 가진 관리자는 일반 회원에게 admin 역할을 부�
   );
   expect(r.status).toBe(403);
   expect(errorCode(r.text)).toBe("permission.denied");
+  expect(JSON.parse(r.text) as unknown).toMatchObject({
+    errors: [
+      { status: "403", code: "permission.denied", title: "자신에게 없는 권한은 부여할 수 없다" },
+    ],
+  });
   expect(
     await f.unit.run((tx) =>
       tx.userRole.findMany({ where: { userId: member.user.id }, orderBy: { roleId: "asc" } }),

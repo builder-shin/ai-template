@@ -20,6 +20,9 @@ export class FilesRepository {
   async lock(tx: Tx, id: string): Promise<void> {
     await tx.$queryRaw`SELECT id FROM files WHERE id = ${id}::uuid FOR UPDATE`;
   }
+  async lockOwner(tx: Tx, id: string): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM users WHERE id = ${id}::uuid FOR UPDATE`;
+  }
   lockQuota(tx: Tx, id: string): Promise<void> {
     return advisoryXactLock(tx, `files:quota:${id}`);
   }

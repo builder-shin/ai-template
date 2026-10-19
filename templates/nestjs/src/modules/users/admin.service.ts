@@ -65,23 +65,23 @@ export class UsersAdminService {
   }
   update(principal: Principal, id: string, input: Update) {
     return this.unit.run(async (tx, afterCommit) => {
-      // 관리 변경과 탈퇴의 잠금 순서를 맞추고 마지막 admin 판정을 직렬화한다.
-      await advisoryXactLock(tx, "role:admin");
-      await this.users.lock(tx, id);
-      const user = await this.current(tx, id);
       const status = input.attributes?.status;
-      if (user.status === "deleted")
-        throw new ApiError({
-          status: 409,
-          code: "resource.conflict",
-          title: "탈퇴한 사용자는 관리 작업으로 바꿀 수 없다",
-        });
       if (status === "deleted")
         throw new ApiError({
           status: 422,
           code: "validation.invalid_choice",
           title: "탈퇴 상태는 관리 작업으로 바꿀 수 없다",
           source: { pointer: "/data/attributes/status" },
+        });
+      // 관리 변경과 탈퇴의 잠금 순서를 맞추고 마지막 admin 판정을 직렬화한다.
+      await advisoryXactLock(tx, "role:admin");
+      await this.users.lock(tx, id);
+      const user = await this.current(tx, id);
+      if (user.status === "deleted")
+        throw new ApiError({
+          status: 409,
+          code: "resource.conflict",
+          title: "탈퇴한 사용자는 관리 작업으로 바꿀 수 없다",
         });
       if (
         principal.userId === id ||

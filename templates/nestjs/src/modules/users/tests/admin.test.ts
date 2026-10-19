@@ -179,6 +179,41 @@ it("관리 요청의 탈퇴 상태는 422와 status 포인터로 거절한다", 
     },
   });
 });
+it.each(["탈퇴", "없음"])(
+  "대상이 %s이어도 탈퇴 상태 요청은 조회 전에 Promise로 422를 거절한다",
+  async (target) => {
+    const { f, service } = setup();
+    const user = f.state.users.find((u) => u.id === otherId);
+    if (!user) throw new Error("대상 사용자가 없다");
+    user.status = "deleted";
+    const before = structuredClone(f.state);
+    const result = service.update(admin, target === "탈퇴" ? otherId : customId, {
+      attributes: { status: "deleted" },
+    });
+    expect(result).toBeInstanceOf(Promise);
+    await expect(result).rejects.toMatchObject({
+      init: {
+        status: 422,
+        code: "validation.invalid_choice",
+        source: { pointer: "/data/attributes/status" },
+      },
+    });
+    expect(f.trace).toEqual([]);
+    expect(f.state).toEqual(before);
+    expect(f.events).toEqual([]);
+  },
+);
+it("없는 사용자에 대한 유효한 관리 요청은 404다", async () => {
+  const { f, service } = setup();
+  const before = structuredClone(f.state);
+  const error = await service
+    .update(admin, customId, { attributes: { status: "active" } })
+    .catch((error: unknown) => error);
+  expect(error).toMatchObject({ init: { status: 404, code: "resource.not_found" } });
+  expect((error as { init: object }).init).not.toHaveProperty("source");
+  expect(f.state).toEqual(before);
+  expect(f.events).toEqual([]);
+});
 it("목록은 검색과 역할과 상태 필터와 정렬과 페이지와 roles include를 적용한다", async () => {
   const { service } = setup();
   const q = {
