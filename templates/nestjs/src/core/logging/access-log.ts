@@ -7,16 +7,22 @@ export function accessLog(req: Request, res: Response, logger: JsonLogger): void
   if (["/health/live", "/health/ready"].includes(req.path)) return;
   const start = performance.now();
   const traceId = currentTraceId();
-  res.once("finish", () => {
+  let logged = false;
+  const completed = () => {
+    if (logged) return;
+    logged = true;
     const write = () => {
       logger.log("요청 완료", {
         method: req.method,
         path: req.path,
         status: res.statusCode,
         durationMs: performance.now() - start,
+        ...(res.writableFinished ? {} : { aborted: true }),
       });
     };
     if (traceId) requestContext.run({ traceId }, write);
     else write();
-  });
+  };
+  res.once("finish", completed);
+  res.once("close", completed);
 }

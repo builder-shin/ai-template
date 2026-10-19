@@ -65,7 +65,9 @@ function issueError(issue: z.core.$ZodIssue, raw: unknown): ApiError {
     code,
     title: "Invalid request",
     source: { pointer: pointer(issue.path) },
-    meta: { params: status === 422 && malformedChoice ? { format: "unicode" } : params },
+    ...(status === 422
+      ? { meta: { params: malformedChoice ? { format: "unicode" } : params } }
+      : {}),
   });
 }
 export function validateRequest<S extends OperationSpec>(

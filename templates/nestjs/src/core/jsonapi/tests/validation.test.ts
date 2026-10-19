@@ -297,17 +297,18 @@ it.each([
     ]);
   },
 );
-it.each(["\ud800", "\udc00"])(
-  "data.type의 짝 없는 서로게이트는 문서 오류를 유지한다: %s",
-  (type) => {
-    const error = errorsOf(() => validateRequest(choices, choiceRaw({}, type)));
-    expect(error.status).toBe(400);
-    expect(error.errors[0]?.init).toMatchObject({
-      code: "jsonapi.invalid_document",
-      source: { pointer: "/data/type" },
-    });
-  },
-);
+it.each([
+  ["상위", "\ud800"],
+  ["하위", "\udc00"],
+])("data.type의 짝 없는 서로게이트는 문서 오류를 유지한다: %s", (_name, type) => {
+  const error = errorsOf(() => validateRequest(choices, choiceRaw({}, type)));
+  expect(error.status).toBe(400);
+  expect(error.errors[0]?.init).toMatchObject({
+    code: "jsonapi.invalid_document",
+    source: { pointer: "/data/type" },
+  });
+  expect(error.errors[0]?.init.meta).toBeUndefined();
+});
 it("짝을 이룬 이모지 선택지와 제약 없는 문자열은 받는다", () => {
   expect(
     validateRequest(
@@ -345,16 +346,16 @@ it.each([
     expect(error.errors[0]?.init).toMatchObject({
       code: "validation.invalid_choice",
       source: { pointer },
-      meta: { params },
     });
+    expect(error.errors[0]?.init.meta).toEqual({ params });
   },
 );
-it.each(["users", "😀"])("일반 type 불일치는 충돌과 기존 params를 유지한다: %s", (type) => {
+it.each(["users", "😀"])("일반 type 불일치는 params 없는 충돌이다: %s", (type) => {
   const error = errorsOf(() => validateRequest(choices, choiceRaw({}, type)));
   expect(error.status).toBe(409);
   expect(error.errors[0]?.init).toMatchObject({
     code: "resource.conflict",
     source: { pointer: "/data/type" },
-    meta: { params: { choices: ["choices"] } },
   });
+  expect(error.errors[0]?.init.meta).toBeUndefined();
 });

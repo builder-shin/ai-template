@@ -25,19 +25,26 @@ export class ApiExceptionFilter implements ExceptionFilter {
     this.respond(exception, host.switchToHttp().getResponse<Response>());
   }
   respond(exception: unknown, res: Response): void {
-    if (res.headersSent) return;
     let failure: ApiError | ApiErrors;
     if (exception instanceof ApiError || exception instanceof ApiErrors) failure = exception;
     else {
       const original = exception instanceof HttpException ? exception.getStatus() : 500;
       const status = original === 405 ? 404 : statusCodes[original] ? original : 500;
       if (status === 500)
-        this.logger.error(exception instanceof Error ? exception : new Error("예상하지 못한 오류"));
+        this.logger.error(
+          exception instanceof Error
+            ? exception
+            : new Error("예상하지 못한 오류", { cause: exception }),
+        );
       failure = new ApiError({
         status,
         code: statusCodes[status] ?? "internal.unexpected",
         title: STATUS_CODES[status] ?? "Internal Server Error",
       });
+    }
+    if (res.headersSent) {
+      if (!res.writableEnded) res.destroy();
+      return;
     }
     const status = failure instanceof ApiErrors ? failure.status : failure.init.status;
     const errors = failure instanceof ApiErrors ? failure.errors : [failure];
@@ -52,7 +59,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
           title: init.title,
           ...(init.detail === undefined ? {} : { detail: init.detail }),
           ...(init.source === undefined ? {} : { source: init.source }),
-          meta: { ...init.meta, traceId },
+          ...(init.meta === undefined ? {} : { meta: init.meta }),
         };
       }),
       meta: { traceId },

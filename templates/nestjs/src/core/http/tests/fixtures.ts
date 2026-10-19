@@ -1,11 +1,11 @@
 import "reflect-metadata";
-import { readFileSync } from "node:fs";
 import { SetMetadata, type DynamicModule, type Type } from "@nestjs/common";
 import { OPERATION_METADATA } from "../../jsonapi/decorators.js";
 import { afterEach, expect } from "vitest";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import request from "supertest";
 import { loadSettings } from "../../config/settings.js";
+import { exampleEnv } from "../../config/tests/env-example.js";
 import { createApp, type AppOverrides } from "../create-app.js";
 
 export const mediaType = "application/vnd.api+json";
@@ -13,14 +13,7 @@ export const mediaType = "application/vnd.api+json";
 export function publicFixtureOperation(): MethodDecorator {
   return SetMetadata(OPERATION_METADATA, { auth: "none" });
 }
-const env = Object.fromEntries(
-  readFileSync(new URL("../../../../.env.example", import.meta.url), "utf8")
-    .split("\n")
-    .flatMap((line) => {
-      const match = /^([A-Z][A-Z0-9_]*)=(.*?)(?:\s+#.*)?$/.exec(line);
-      return match ? [[match[1] as string, match[2]]] : [];
-    }),
-);
+const env = exampleEnv();
 export const settings = loadSettings({ ...env, APP_ENV: "test", LOG_LEVEL: "error" });
 const apps: NestExpressApplication[] = [];
 afterEach(async () => {
@@ -49,7 +42,7 @@ export interface ErrorDocument {
     title: string;
     detail?: string;
     source?: Record<string, string>;
-    meta: { traceId: string; params?: unknown };
+    meta?: { params?: unknown };
   }[];
   meta: { traceId: string };
 }

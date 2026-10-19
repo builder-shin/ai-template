@@ -59,7 +59,8 @@ it.each([
   expect(r.status).toBe(400);
   const doc = errorDocument(r.text);
   expect(doc.errors.map((e) => [e.status, e.code, e.source?.pointer])).toEqual(expected);
-  expect(doc.errors.every((e) => e.meta.traceId === doc.meta.traceId)).toBe(true);
+  expect(doc.errors.every((e) => !Object.hasOwn(e.meta ?? {}, "traceId"))).toBe(true);
+  expect(doc.meta.traceId).toMatch(/^[0-9a-f]{32}$/);
   expect(f.state.users[0]?.name).toBe("회원");
   expect(f.events).toEqual([]);
 });
@@ -96,8 +97,8 @@ it.each([600, 2])("탈퇴 HTTP의 재인증 challenge는 실제 %s초 창과 일
   );
   const doc = errorDocument(r.text);
   expect(doc.errors[0]?.code).toBe("auth.reauthentication_required");
-  expect(doc.meta.traceId).toEqual(expect.any(String));
-  expect(doc.errors[0]?.meta.traceId).toBe(doc.meta.traceId);
+  expect(doc.meta.traceId).toMatch(/^[0-9a-f]{32}$/);
+  expect(doc.errors[0]?.meta ?? {}).not.toHaveProperty("traceId");
   expect(f.state.users[0]?.status).toBe("active");
 });
 it("재인증 이외의 잘못된 세션 401은 bare Bearer를 유지한다", async () => {

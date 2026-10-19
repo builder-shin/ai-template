@@ -20,6 +20,12 @@ it("매개변수 이름과 TypeSpec 표기가 달라도 겹침을 찾는다", ()
   const b = { method: "GET", path: "/api/v1/sessions/{id}" };
   expect(unexpectedOverlaps([a, b], [])).toEqual([[a, b]]);
 });
+it("ALL 경로는 소문자 메서드와도 겹친다", () => {
+  const all = { method: "all", path: specific.path };
+  const get = { method: "get", path: specific.path };
+  expect(unexpectedOverlaps([all, get], [])).toEqual([[all, get]]);
+  expect(unexpectedOverlaps([get, all], [])).toEqual([[get, all]]);
+});
 @Controller("/api/v1/route-fixture-sessions")
 class SpecificController {
   @Delete("current") @publicFixtureOperation() current() {
@@ -38,20 +44,20 @@ class SpecificFirst {}
 @Module({ controllers: [DynamicController, SpecificController] })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest 시험 모듈은 선언용 클래스를 사용한다
 class DynamicFirst {}
-it.each([SpecificFirst, DynamicFirst])(
-  "구체 경로는 선언 순서와 관계없이 먼저 선택한다: %s",
-  async (module) => {
-    const { http } = await testApp([module]);
-    const res = await http.delete("/api/v1/route-fixture-sessions/current");
-    expect(res.status).toBe(200);
-    expect(JSON.parse(res.text) as unknown).toEqual({ data: { id: "current" } });
-    expect(
-      JSON.parse((await http.delete("/api/v1/route-fixture-sessions/abc")).text) as unknown,
-    ).toEqual({
-      data: { id: "dynamic" },
-    });
-  },
-);
+it.each([
+  ["구체 경로 먼저", SpecificFirst],
+  ["동적 경로 먼저", DynamicFirst],
+] as const)("구체 경로는 선언 순서와 관계없이 먼저 선택한다: %s", async (_name, module) => {
+  const { http } = await testApp([module]);
+  const res = await http.delete("/api/v1/route-fixture-sessions/current");
+  expect(res.status).toBe(200);
+  expect(JSON.parse(res.text) as unknown).toEqual({ data: { id: "current" } });
+  expect(
+    JSON.parse((await http.delete("/api/v1/route-fixture-sessions/abc")).text) as unknown,
+  ).toEqual({
+    data: { id: "dynamic" },
+  });
+});
 @Controller("/api/v1/duplicate")
 class DuplicateA {
   @Get() get() {

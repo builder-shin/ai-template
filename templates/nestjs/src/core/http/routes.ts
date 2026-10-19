@@ -39,8 +39,9 @@ function same(a: RouteKey, b: RouteKey): boolean {
   return a.method.toUpperCase() === b.method.toUpperCase() && a.path === b.path;
 }
 function overlaps(a: RouteKey, b: RouteKey): boolean {
-  if (a.method.toUpperCase() !== b.method.toUpperCase() && a.method !== "ALL" && b.method !== "ALL")
-    return false;
+  const leftMethod = a.method.toUpperCase();
+  const rightMethod = b.method.toUpperCase();
+  if (leftMethod !== rightMethod && leftMethod !== "ALL" && rightMethod !== "ALL") return false;
   const left = a.path.split("/");
   const right = b.path.split("/");
   if (left.length !== right.length) return false;

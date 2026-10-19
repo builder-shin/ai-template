@@ -12,7 +12,7 @@ import {
   UnauthorizedException,
   HttpException,
 } from "@nestjs/common";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { ApiError, ApiErrors } from "../../jsonapi/errors.js";
 import { PrismaService } from "../../db/prisma.service.js";
@@ -77,6 +77,8 @@ class EchoController {
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest 시험 모듈은 선언용 클래스를 사용한다
 class EchoTestModule {}
 
+afterEach(() => vi.restoreAllMocks());
+
 describe("HTTP 파이프라인", () => {
   it("대소문자를 바꾼 API 경로로 협상과 전역 한도를 우회하지 못한다", async () => {
     const { http } = await testApp([EchoTestModule]);
@@ -93,8 +95,8 @@ describe("HTTP 파이프라인", () => {
       status: "415",
       code: "jsonapi.unsupported_media_type",
     });
-    expect(document.errors[0]?.meta.traceId).toMatch(/^[0-9a-f]{32}$/);
-    expect(document.meta.traceId).toBe(document.errors[0]?.meta.traceId);
+    expect(document.errors[0]?.meta).toBeUndefined();
+    expect(document.meta.traceId).toMatch(/^[0-9a-f]{32}$/);
   });
   it.each([`${mediaType};charset=utf-8`, `${mediaType};ext="https://example.com"`])(
     "Content-Type 매개변수는 415다: %s",
@@ -245,6 +247,7 @@ describe("HTTP 파이프라인", () => {
     expect(res.headers["www-authenticate"]).toBe("Bearer");
   });
   it("전역 한도는 협상보다 먼저이며 API 경로에만 적용한다", async () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     const { http } = await testApp([EchoTestModule], {
       providers: [
         {
@@ -266,6 +269,7 @@ describe("HTTP 파이프라인", () => {
     expect(res.status).toBe(429);
     expect(res.headers["retry-after"]).toBe("5");
     expect((await http.get("/health/live")).status).toBe(200);
+    expect(stderr).not.toHaveBeenCalled();
   });
   it.each(["/api/v1/korean", "/health/live", "/unknown"])(
     "HEAD는 어느 경로든 404다: %s",
@@ -292,11 +296,17 @@ describe("HTTP 파이프라인", () => {
     }
   });
   it("문서는 비 ASCII를 소문자 이스케이프로 쓰고 204는 비운다", async () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     const { http } = await testApp([EchoTestModule]);
     const res = await http.get("/api/v1/korean");
     expect(res.headers["content-type"]).toBe(mediaType);
     expect(res.text).toContain('"\\uac00\\ud83d\\ude00"');
-    expect((await http.delete("/api/v1/echo")).text).toBe("");
+    const deleted = await http.delete("/api/v1/echo");
+    expect(deleted.status).toBe(204);
+    expect(deleted.text).toBe("");
+    expect(deleted.headers["content-type"]).toBeUndefined();
+    expect(deleted.headers["content-length"]).toBeUndefined();
+    expect(stderr).not.toHaveBeenCalled();
   });
   it("도메인 오류의 위치와 매개변수를 유지하고 혼합 상태를 묶는다", async () => {
     const { http } = await testApp([EchoTestModule]);
@@ -311,15 +321,25 @@ describe("HTTP 파이프라인", () => {
     expect(errorDocument(mixed.text).errors.map((error) => error.status)).toEqual(["404", "422"]);
   });
   it("예상하지 못한 오류는 구현 메시지를 숨긴 500이다", async () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     const { http } = await testApp([EchoTestModule]);
     const res = await http.get("/api/v1/unexpected");
     expect(res.status).toBe(500);
     expect(errorDocument(res.text).errors[0]?.code).toBe("internal.unexpected");
     expect(res.text).not.toContain("비공개");
+    expect(stderr).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(stderr.mock.calls[0]?.[0])) as unknown).toMatchObject({
+      level: "error",
+      message: "비공개 구현 오류",
+    });
   });
   it("인프라를 끄면 Prisma와 Redis 제공자를 만들지 않는다", async () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     const { app } = await testApp([EchoTestModule]);
     expect(() => app.get(PrismaService)).toThrow();
     expect(() => app.get(RedisClients)).toThrow();
+    expect(stderr).toHaveBeenCalledTimes(2);
+    for (const [line] of stderr.mock.calls)
+      expect(JSON.parse(String(line)) as unknown).toMatchObject({ level: "error" });
   });
 });

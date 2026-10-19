@@ -12,6 +12,11 @@ export class DocumentInterceptor implements NestInterceptor {
     return next.handle().pipe(
       map((document) => {
         if (!req.path.startsWith("/api/") || res.headersSent) return document;
+        if (res.statusCode === 204) {
+          res.removeHeader("Content-Type");
+          res.removeHeader("Content-Length");
+          return undefined;
+        }
         writeDocument(res, res.statusCode, document ?? null);
         return undefined;
       }),

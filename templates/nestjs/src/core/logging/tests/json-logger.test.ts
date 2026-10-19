@@ -66,13 +66,16 @@ class LogController {
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest 시험 모듈은 선언용 클래스를 사용한다
 class LogTestModule {}
 it("접근 로그는 쿼리를 빼고 상태와 지연을 한 줄에 남기며 헬스체크는 제외한다", async () => {
-  const { http } = await testApp([LogTestModule], { settings: { ...settings, LOG_LEVEL: "info" } });
   const lines = capture(process.stdout);
+  const { http } = await testApp([LogTestModule], { settings: { ...settings, LOG_LEVEL: "info" } });
+  expect(lines.some((line) => line.message === "Starting Nest application...")).toBe(true);
+  expect(lines.some((line) => line.message === "Nest application successfully started")).toBe(true);
   const res = await http.get("/api/v1/log?token=private-query");
   await http.get("/health/live?probe=1");
   const access = lines.filter((line) => line.path !== undefined);
   expect(access).toHaveLength(1);
   expect(access[0]).toMatchObject({ method: "GET", path: "/api/v1/log", status: 200 });
+  expect(access[0]).not.toHaveProperty("aborted");
   expect(access[0]?.durationMs).toBeGreaterThanOrEqual(0);
   expect(JSON.stringify(lines)).not.toContain("private-query");
   expect(lines.find((line) => line.message === "요청 처리")?.traceId).toBe(access[0]?.traceId);

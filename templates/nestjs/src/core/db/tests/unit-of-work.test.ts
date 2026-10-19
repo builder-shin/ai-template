@@ -93,3 +93,35 @@ it("겹치는 실행의 훅을 서로 섞지 않는다", async () => {
   ]);
   expect(order.filter((value) => value.endsWith("훅"))).toEqual(["첫 훅", "둘째 훅"]);
 });
+it("겹친 실행에서 rollback한 실행의 훅은 commit한 실행이 실행하지 않는다", async () => {
+  const order: string[] = [];
+  const { uow } = fixture(order);
+  let releaseFirst!: () => void;
+  let releaseSecond!: () => void;
+  const firstGate = new Promise<void>((resolve) => {
+    releaseFirst = resolve;
+  });
+  const secondGate = new Promise<void>((resolve) => {
+    releaseSecond = resolve;
+  });
+  const failure = new Error("둘째 실행 rollback");
+  const first = uow.run(async (_tx, afterCommit) => {
+    afterCommit(() => {
+      order.push("첫 훅");
+    });
+    await firstGate;
+  });
+  const second = uow.run(async (_tx, afterCommit) => {
+    afterCommit(() => {
+      order.push("둘째 훅");
+    });
+    await secondGate;
+    throw failure;
+  });
+  const rejected = expect(second).rejects.toBe(failure);
+  releaseFirst();
+  await first;
+  releaseSecond();
+  await rejected;
+  expect(order.filter((value) => value.endsWith("훅"))).toEqual(["첫 훅"]);
+});
