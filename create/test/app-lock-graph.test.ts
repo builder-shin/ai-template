@@ -28,6 +28,29 @@ function graph(): LockDocument {
     },
   };
 }
+it.each([
+  { label: "pnpm 9 importer", importer: "real@1.0.0", snapshot: "2.0.0" },
+  { label: "pnpm 9 snapshot", importer: "1.0.0", snapshot: "@scope/leaf@2.0.0" },
+  { label: "pnpm 9 양쪽", importer: "real@1.0.0", snapshot: "@scope/leaf@2.0.0" },
+  { label: "npm 접두사", importer: "npm:real@1.0.0", snapshot: "npm:@scope/leaf@2.0.0" },
+])("$label 별칭 간선은 실제 패키지를 따른다", ({ importer, snapshot }) => {
+  const lock: LockDocument = {
+    importers: {
+      ".": { dependencies: { [importer === "1.0.0" ? "real" : "alias"]: { version: importer } } },
+    },
+    packages: { "real@1.0.0": {}, "@scope/leaf@2.0.0": {} },
+    snapshots: {
+      "real@1.0.0": {
+        optionalDependencies: { [snapshot === "2.0.0" ? "@scope/leaf" : "leaf-alias"]: snapshot },
+      },
+      "@scope/leaf@2.0.0": {},
+    },
+  };
+  expect(Object.fromEntries(optionalReachability(lock, ["."]))).toEqual({
+    "real@1.0.0": false,
+    "@scope/leaf@2.0.0": true,
+  });
+});
 it("필수 경로가 선택 경로보다 우선하고 peer 문맥을 포함한 정확한 간선을 따른다", () => {
   expect(Object.fromEntries(optionalReachability(graph(), ["apps/api"]))).toEqual({
     "root@1.0.0(peer@2.0.0)": false,

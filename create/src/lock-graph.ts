@@ -31,9 +31,11 @@ export function optionalReachability(
       )) {
         const version = importer !== undefined ? (value as { version?: unknown }).version : value;
         if (typeof version !== "string") fail(`${section}.${name}`);
-        let key = (version as string).startsWith("npm:")
-          ? (version as string).slice(4)
-          : `${name}@${version as string}`;
+        let key = Object.hasOwn(lock.snapshots, version as string)
+          ? (version as string)
+          : (version as string).startsWith("npm:")
+            ? (version as string).slice(4)
+            : `${name}@${version as string}`;
         if (importer !== undefined && (version as string).startsWith("link:")) {
           const target = posix.normalize(posix.join(importer, (version as string).slice(5)));
           if (!Object.hasOwn(lock.importers, target)) fail(`link:${target}`);
