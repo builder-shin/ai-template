@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { expect, it } from "vitest";
-import { applyAssetEdits } from "../src/asset-edits.ts";
+import { applyAssetEdits, NESTJS_ASSET_EDITS } from "../src/asset-edits.ts";
 import { selectFrontendSteps } from "../src/frontend-config.ts";
 import { temporaryFolder, write } from "./helpers.ts";
 
@@ -34,6 +34,18 @@ const assets = resolve(import.meta.dirname, "../assets/combo");
 const workflow = ".github/workflows/ci.yml";
 const original = () =>
   selectFrontendSteps(readFileSync(join(assets, workflow), "utf8"), ["web", "admin"]);
+it("자산 교체문의 달러 패턴을 문자 그대로 넣는다", () => {
+  const path = "literal-fixture";
+  Object.defineProperty(NESTJS_ASSET_EDITS, path, {
+    value: [{ find: "anchor", replace: "$& $$" }],
+    configurable: true,
+  });
+  try {
+    expect(applyAssetEdits(path, "before anchor after", "nestjs")).toBe("before $& $$ after");
+  } finally {
+    Reflect.deleteProperty(NESTJS_ASSET_EDITS, path);
+  }
+});
 it("FastAPI 자산은 원문 바이트를 유지하고 NestJS는 선택 뒤 API 이미지와 도구를 바꾼다", () => {
   const source = original();
   expect(applyAssetEdits(workflow, source, "fastapi")).toBe(source);

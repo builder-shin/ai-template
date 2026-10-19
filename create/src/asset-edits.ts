@@ -110,7 +110,7 @@ export function applyAssetEdits(path: string, text: string, backend: Backend): s
         `자산 편집 기준이 바뀌었다: ${path}`,
         "조합 자산과 정확한 편집 표를 함께 검토한다.",
       );
-    text = text.replace(find, replace);
+    text = text.replace(find, () => replace);
   }
   return text;
 }

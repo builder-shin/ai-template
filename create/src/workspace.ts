@@ -15,6 +15,15 @@ interface WorkspaceInput {
   includeApi?: boolean;
 }
 
+function validateWorkspaceKeys(document: WorkspaceDocument): void {
+  for (const key of Object.keys(document))
+    if (!["packages", "minimumReleaseAge", "allowBuilds", "overrides"].includes(key))
+      throw new CreateError(
+        `지원하지 않는 workspace 설정이다: ${key}`,
+        "workspace 정책과 병합 규칙을 함께 검토한다.",
+      );
+}
+
 export function mergeWorkspace(input: WorkspaceInput): WorkspaceDocument;
 export function mergeWorkspace(
   sources: readonly { app: string; source: string }[],
@@ -30,6 +39,7 @@ export function mergeWorkspace(
     return mergeLegacyWorkspace(input, typescript);
   }
   const { frontends, api, includeApi = true } = input as WorkspaceInput;
+  for (const document of [...frontends, ...(api ? [api] : [])]) validateWorkspaceKeys(document);
   const first = frontends[0];
   if (!first) throw new CreateError("프론트 workspace가 없다", "프론트 앱을 하나 이상 지정한다.");
   const result = structuredClone(first);
@@ -77,6 +87,7 @@ function mergeLegacyWorkspace(
         "프론트 workspace가 올바르지 않다",
         "pnpm-workspace.yaml의 YAML을 고치고 커밋한다.",
       );
+    validateWorkspaceKeys(doc.toJS() as WorkspaceDocument);
     return doc;
   };
   const merged = document(first.source);
