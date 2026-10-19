@@ -102,8 +102,8 @@ function rewrite(source: string, path: string, names: ModuleNames): string {
           throw new Error(`${path}: 권한 설명 예상값은 명시 literal이어야 한다`);
         map[item.name.text] = item.initializer.text;
       }
-      map[`${names.name}:create`] = `${names.name} 리소스를 만든다.`;
-      map[`${names.name}:manage`] = `모든 ${names.name} 리소스를 관리한다.`;
+      map[`${names.name}:create`] = `Create ${names.name}.`;
+      map[`${names.name}:manage`] = `Manage every ${names.singular}, including drafts.`;
       replace(node, map);
       return;
     }

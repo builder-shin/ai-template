@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { environment } from "../../scripts/child-environment.mjs";
 
@@ -69,4 +69,3 @@ export function failure(result) {
     (`${result.stdout ?? ""}${result.stderr ?? ""}`.trim() || "검사를 실행하지 못했다")
   );
 }
-export const projectRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));

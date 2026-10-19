@@ -5,7 +5,7 @@ import { seedSystem, RolesRepository } from "../../src/modules/roles/index.js";
 import { verifyPassword } from "../../src/core/security/passwords.js";
 import { recordAudit } from "../../src/core/audit/record.js";
 
-it("실제 DB에서 시드를 두 번 실행해도 역할 둘·관리자 하나·권한 여덟이다", async () => {
+it("실제 DB에서 시드를 두 번 실행해도 역할·관리자·권한이 늘지 않는다", async () => {
   const { prisma, settings } = getState();
   const unit = new UnitOfWork(prisma);
   const first = await unit.run((tx) => seedSystem(tx, settings));

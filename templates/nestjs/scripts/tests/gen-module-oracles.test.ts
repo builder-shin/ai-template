@@ -42,6 +42,8 @@ function oracleTests(nested = false) {
   beforeEach(async () => {
     fixture = owner.create();
     const original = oracleBaseline(fixture.read);
+    const anchor = original.actions.indexOf("post.deleted_by_admin") + 1;
+    expect(anchor).toBeGreaterThan(0);
     let baseline = original;
     if (nested) {
       const outer = fixture;
@@ -58,37 +60,37 @@ function oracleTests(nested = false) {
           `${name}:manage`,
         ]);
         expect(baseline.actions).toEqual([
-          ...original.actions.slice(0, 13),
+          ...original.actions.slice(0, anchor),
           `${name.slice(0, -1)}.deleted_by_admin`,
-          ...original.actions.slice(13),
+          ...original.actions.slice(anchor),
         ]);
         expect(baseline.descriptions).toEqual({
           ...original.descriptions,
-          [`${name}:create`]: `${name} 리소스를 만든다.`,
-          [`${name}:manage`]: `모든 ${name} 리소스를 관리한다.`,
+          [`${name}:create`]: `Create ${name}.`,
+          [`${name}:manage`]: `Manage every ${name.slice(0, -1)}, including drafts.`,
         });
       } finally {
         owner.close(outer);
       }
     }
     expect(baseline.permissions.slice(0, 8)).toEqual(permissions);
-    expect(baseline.actions.slice(0, 13)).toEqual(actions);
+    expect(baseline.actions.slice(0, anchor)).toEqual(actions);
     expect(
       Object.fromEntries(Object.keys(descriptions).map((key) => [key, baseline.descriptions[key]])),
     ).toEqual(descriptions);
     allPermissions = [...baseline.permissions, ...addedPermissions];
     allActions = [
-      ...baseline.actions.slice(0, 13),
+      ...baseline.actions.slice(0, anchor),
       "a-fixture-gadget.deleted_by_admin",
       "fixture-widget.deleted_by_admin",
-      ...baseline.actions.slice(13),
+      ...baseline.actions.slice(anchor),
     ];
     allDescriptions = {
       ...baseline.descriptions,
       ...Object.fromEntries(
         names.flatMap((name) => [
-          [`${name}:create`, `${name} 리소스를 만든다.`],
-          [`${name}:manage`, `모든 ${name} 리소스를 관리한다.`],
+          [`${name}:create`, `Create ${name}.`],
+          [`${name}:manage`, `Manage every ${name.slice(0, -1)}, including drafts.`],
         ]),
       ),
     };
@@ -274,6 +276,7 @@ describe("바깥 모듈을 생성한 사본에서 같은 엄격 단언을 재생
 it("부모와 중첩 hook이 만든 모든 사본을 teardown 뒤 정확히 한 번 정리한다", () => {
   onTestFinished(() => {
     try {
+      expect(created.length).toBeGreaterThan(0);
       expect(
         created.map(({ fixture: copy, closes }) => ({
           root: copy.root,

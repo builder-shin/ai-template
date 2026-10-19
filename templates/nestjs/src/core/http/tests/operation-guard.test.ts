@@ -160,7 +160,7 @@ it("권한 목록의 허용하지 않은 정렬은 400이다", async () => {
   expect(res.status).toBe(400);
   expect(errorDocument(res.text).errors[0]?.code).toBe("jsonapi.unsupported_sort");
 });
-it("권한 여덟 개의 설명은 플랫폼의 영어 문구와 정확히 같다", async () => {
+it("권한 설명은 플랫폼의 영어 문구와 정확히 같다", async () => {
   const { http } = await fixture();
   const res = await http.get("/api/v1/permissions").set("Authorization", "Bearer reader");
   expect(res.status).toBe(200);

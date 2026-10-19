@@ -68,3 +68,31 @@ it("실제 hook은 stdin fixture를 공식 PreToolUse 거절 JSON으로 바꾼�
     },
   });
 });
+it.each([
+  ["git commit -n -m x", "deny"],
+  ["git commit -an -m x", "deny"],
+  ["git push origin +main", "deny"],
+  ["git push -vf origin main", "deny"],
+  ["git push --force-with-lease", "deny"],
+  ["pnpx tsx a", "deny"],
+  ["yarn dlx tsx a", "deny"],
+  ["bunx tsx a", "deny"],
+  ["npm exec tsx a", "deny"],
+  ["LEFTHOOK=false git commit -m x", "deny"],
+  ["HUSKY=0 git push", "deny"],
+  ["HUSKY_SKIP_HOOKS=true git commit -m x", "deny"],
+  ["HUSKY_SKIP_HOOKS=1 git push", "deny"],
+  ["LEFTHOOK=1 git commit -m x", "allow"],
+  ["HUSKY=1 git push", "allow"],
+  ["HUSKY=true git commit -m x", "allow"],
+  ["HUSKY_SKIP_HOOKS=0 git push", "allow"],
+  ...[";", "&&", "||", "|", "\n"].flatMap((separator) => [
+    [`git push ${separator} rm -rf dist`, "allow"],
+    [`git commit -m x ${separator} echo --no-verify -n`, "allow"],
+    [`git status ${separator} git push origin +main`, "deny"],
+  ]),
+])("명령 구간과 옵션 값에 따라 %s를 %s한다", (command, decision) => {
+  expect(preToolUseDecision({ tool_name: "Bash", tool_input: { command }, cwd }).decision).toBe(
+    decision,
+  );
+});

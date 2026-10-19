@@ -55,7 +55,7 @@ export function registerModule(
   replace(
     "src/modules/roles/permissions.ts",
     '  "posts:manage": "Manage every post, including drafts.",',
-    `\n  "${name}:create": "${name} 리소스를 만든다.",\n  "${name}:manage": "모든 ${name} 리소스를 관리한다.",`,
+    `\n  "${name}:create": "Create ${name}.",\n  "${name}:manage": "Manage every ${singular}, including drafts.",`,
   );
   replace(
     "src/core/audit/actions.ts",

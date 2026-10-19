@@ -32,7 +32,7 @@ it("감사는 전달한 트랜잭션에 대상·식별자·메타를 기록한�
     },
   ]);
 });
-it("대상 없는 감사도 기본 빈 메타를 저장하고 계약의 13개 행위만 허용한다", async () => {
+it("대상 없는 감사도 기본 빈 메타를 저장하고 계약 행위만 허용한다", async () => {
   const rows: { action: string; meta: object }[] = [];
   const tx = {
     auditLog: {

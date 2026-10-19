@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { adminFixture, collection, resourceDocument } from "./admin-fixture.js";
 import { sessionDocument } from "./session-fixture.js";
 import { newOpaqueToken } from "../../src/core/security/tokens.js";
-it("열세 감사 행위는 실제 원인 API를 통해 기록되고 목록에서 조회된다", async () => {
+it("감사 행위는 실제 원인 API를 통해 기록되고 목록에서 조회된다", async () => {
   const f = await adminFixture(),
     member = await f.addUser("member");
   const original = "me-fixture-password"; // betterleaks:allow 사유: CI의 가짜 비밀번호다

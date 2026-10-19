@@ -38,13 +38,44 @@ it("posts를 fixture-widgets로 복사하고 등록·권한·이벤트·모델�
     "new FixtureWidgetsRepository().readableCoverIds",
   );
   expect(read("src/core/security/permissions.ts")).toContain('"fixture-widgets:manage"');
-  expect(read("src/modules/roles/permissions.ts")).toContain('"fixture-widgets:create":');
+  expect(read("src/modules/roles/permissions.ts")).toContain(
+    '"fixture-widgets:create": "Create fixture-widgets."',
+  );
+  expect(read("src/modules/roles/permissions.ts")).toContain(
+    '"fixture-widgets:manage": "Manage every fixture-widget, including drafts."',
+  );
   expect(read("src/core/realtime/declarations.ts")).toContain('"fixture-widget.created"');
   expect(read("src/modules/realtime/schemas.ts")).toContain(
     'defineRealtimeChannel("fixture-widgets:all", "fixture-widgets:manage")',
   );
   expect(read("prisma/schema.prisma")).toMatch(/model FixtureWidget\s*\{/);
-  expect(read("prisma/schema.prisma")).toMatch(/fixtureWidgets\s+FixtureWidget\[\]/);
+  const schema = read("prisma/schema.prisma");
+  expect(/model User \{([^}]+)\}/.exec(schema)?.[1]).toMatch(/fixtureWidgets\s+FixtureWidget\[\]/);
+  expect(/model File \{([^}]+)\}/.exec(schema)?.[1]).toMatch(/fixtureWidgets\s+FixtureWidget\[\]/);
+  const model = /model FixtureWidget \{([^}]+)\}/.exec(schema)?.[1];
+  expect(
+    model
+      ?.split("\n")
+      .map((line) => line.trim().replace(/\s+/g, " "))
+      .filter(Boolean),
+  ).toEqual([
+    "id String @id @default(uuid(7)) @db.Uuid",
+    'authorId String @map("author_id") @db.Uuid',
+    "title String",
+    "body String",
+    "status FixtureWidgetStatus @default(draft)",
+    'publishedAt DateTime? @map("published_at") @db.Timestamptz(6)',
+    'coverImageId String? @map("cover_image_id") @db.Uuid',
+    'createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)',
+    'updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)',
+    "author User @relation(fields: [authorId], references: [id], onDelete: Cascade)",
+    "coverImage File? @relation(fields: [coverImageId], references: [id], onDelete: SetNull)",
+    "@@index([status, createdAt])",
+    "@@index([authorId, status])",
+    "@@index([publishedAt])",
+    "@@index([coverImageId])",
+    '@@map("fixture_widgets")',
+  ]);
   expect(read("prisma/schema.prisma")).toContain('@@map("fixture_widgets")');
 });
 it("생성한 정책이 작성자와 관리자 권한을 실제 구분한다", async () => {
@@ -59,6 +90,7 @@ it("생성한 정책이 작성자와 관리자 권한을 실제 구분한다", a
   };
   const policy = load("policies");
   const item = { authorId: "owner", status: "draft" };
+  expect(policy.canModify?.(item, { userId: "owner", permissions: new Set() })).toBe(true);
   expect(
     policy.canModify?.(item, { userId: "other", permissions: new Set(["fixture-widgets:manage"]) }),
   ).toBe(true);

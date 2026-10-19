@@ -35,7 +35,8 @@ function fileReason(root, raw, edit) {
 function commandReason(root, raw) {
   // 감싼 Bash/PowerShell 명령도 전체 단어열에서 검사한다. 셸을 실행하지 않는다.
   const command = raw.replaceAll("\\", "/");
-  if (/\b(?:npx\b|pnpm\s+dlx\b)/i.test(command)) return "고정한 로컬 CLI를 pnpm exec으로 실행한다";
+  if (/\b(?:npx|pnpx|bunx)\b|\b(?:pnpm|yarn)\s+dlx\b|\bnpm\s+exec\b/i.test(command))
+    return "고정한 로컬 CLI를 pnpm exec으로 실행한다";
   if (/\bprisma\s+db\s+push\b/i.test(command))
     return "prisma db push 대신 pnpm db:revision과 pnpm db:migrate를 쓴다";
   if (/\bprisma\s+migrate\s+reset\b/i.test(command))
@@ -43,17 +44,24 @@ function commandReason(root, raw) {
   if (/--accept-data-loss\b/i.test(command))
     return "데이터 손실 옵션 대신 검토한 마이그레이션을 쓴다";
   if (
-    /--no-verify\b|core\.hooksPath|(?:LEFTHOOK|HUSKY|HUSKY_SKIP_HOOKS)\s*=\s*["']?(?:0|false|1\b)/i.test(
+    /\b(?:LEFTHOOK|HUSKY)\s*=\s*["']?(?:0|false)\b|\bHUSKY_SKIP_HOOKS\s*=\s*["']?(?:1|true)\b/i.test(
       command,
     )
   )
     return "git hook을 건너뛰거나 끄지 않는다. 실패한 검사를 고친다";
-  if (
-    /\bgit\b[^;\n]*\bpush\b[^;\n]*(?:--force(?:-with-lease)?\b|(?:^|\s)-\w*f\w*(?:\s|$))/i.test(
-      command,
+  for (const [git] of command.matchAll(/\bgit\b[^;&|\n]*/gi)) {
+    if (
+      /core\.hooksPath/i.test(git) ||
+      (/\b(?:commit|push)\b/i.test(git) && /--no-verify\b/i.test(git)) ||
+      (/\bcommit\b/i.test(git) && /(?:^|\s)-[a-z]*n[a-z]*(?=\s|$|["'])/i.test(git))
     )
-  )
-    return "git push force 옵션 대신 일반 push를 쓴다";
+      return "git hook을 건너뛰거나 끄지 않는다. 실패한 검사를 고친다";
+    if (
+      /\bpush\b/i.test(git) &&
+      /--force(?:-with-lease)?\b|(?:^|\s)-[a-z]*f[a-z]*(?=\s|$|["'])|(?:^|\s)\+[^\s]+/i.test(git)
+    )
+      return "git push force 옵션 대신 일반 push를 쓴다";
+  }
   for (const match of command.matchAll(/postgres(?:ql)?:\/\/[^\s'";]+/gi)) {
     try {
       if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(match[0]).hostname))

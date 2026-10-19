@@ -9,7 +9,7 @@ import {
 } from "./common.mjs";
 
 export function postToolUse(input, run = runLocal) {
-  if (!["Edit", "Write"].includes(input.tool_name)) return {};
+  if (!["Edit", "Write", "MultiEdit"].includes(input.tool_name)) return {};
   const file = relativeFile(input.cwd, String(input.tool_input.file_path ?? ""));
   if (!file || protectedFile(file) || file === "openapi.json" || file.startsWith("src/generated/"))
     return {};
