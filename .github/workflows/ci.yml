@@ -74,6 +74,9 @@ jobs:
       - run: pnpm --dir templates/nestjs install --frozen-lockfile
       - run: pnpm --dir templates/nestjs setup
       - run: pnpm --dir templates/nestjs check
+      - name: 실제 PostgreSQL 잠금 경쟁 시험 실행 확인
+        working-directory: templates/nestjs
+        run: node node_modules/vitest/vitest.mjs run --project integration --reporter=verbose tests/integration/login-password-race.test.ts tests/integration/files-purge-lock-order.test.ts
       - name: 적용한 마이그레이션과 스키마의 drift 확인
         working-directory: templates/nestjs
         run: node --env-file=.env node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
