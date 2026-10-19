@@ -63,6 +63,7 @@ it.each([
           prepare: () => Promise.reject(error),
           specs: () => [],
           readyTimeoutMs: 50,
+          health: async () => {},
         },
       ),
     ).toBe(1);
@@ -79,7 +80,7 @@ it("없는 명령은 command 단계를 구별하고 실행 파일 경로의 비�
         command: [join(tmpdir(), randomUUID(), secret)],
         cwd: process.cwd(),
       },
-      { prepare: async () => {}, specs: () => [], readyTimeoutMs: 50 },
+      { prepare: async () => {}, specs: () => [], readyTimeoutMs: 50, health: async () => {} },
     ),
   ).toBe(1);
   expect(output()).toContain("실행기 실패: 단계=command 분류=command_missing\n");

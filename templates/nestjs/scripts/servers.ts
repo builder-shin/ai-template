@@ -69,10 +69,12 @@ export async function startServers(options: {
         entry.error = error;
       });
       // 원문은 마지막 출력만 보관하며 표시 전에 상속 환경과 자식 환경을 함께 가린다.
-      for (const stream of [child.stdout, child.stderr])
-        stream?.on("data", (chunk: Buffer) => {
-          tails[spec.role] = (tails[spec.role] + chunk.toString()).slice(-32768);
+      for (const stream of [child.stdout, child.stderr]) {
+        stream?.setEncoding("utf8");
+        stream?.on("data", (chunk: string) => {
+          tails[spec.role] = (tails[spec.role] + chunk).slice(-32768);
         });
+      }
     }
   } catch (error) {
     await stopAll();

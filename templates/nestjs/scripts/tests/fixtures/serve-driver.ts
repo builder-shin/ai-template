@@ -16,5 +16,6 @@ process.exitCode = await runE2eServe(
         argv: ["--import", "tsx", resolve("scripts/tests/fixtures/server.mjs"), role],
       })),
     readyTimeoutMs: 10000,
+    health: async () => {},
   },
 );

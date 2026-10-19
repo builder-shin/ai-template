@@ -14,8 +14,12 @@ export async function build(cwd: string = process.cwd()): Promise<void> {
       windowsHide: true,
     },
   );
+  let stopping: Promise<void> | undefined;
+  let failure: { error: unknown } | undefined;
   const stop = () => {
-    void stopProcessTree(child);
+    stopping ??= stopProcessTree(child).catch((error: unknown) => {
+      failure = { error };
+    });
   };
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
@@ -27,9 +31,13 @@ export async function build(cwd: string = process.cwd()): Promise<void> {
         else no(new Error("E2E 빌드가 실패했다"));
       });
     });
+  } catch (error: unknown) {
+    failure ??= { error };
   } finally {
-    await stopProcessTree(child);
+    stop();
+    await stopping;
     process.off("SIGINT", stop);
     process.off("SIGTERM", stop);
   }
+  if (failure) throw failure.error;
 }

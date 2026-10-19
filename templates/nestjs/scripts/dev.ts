@@ -66,8 +66,9 @@ export async function runDev(options: {
           [child.stderr, process.stderr],
         ] as const) {
           let pending = "";
-          stream?.on("data", (data: Buffer) => {
-            pending += data.toString();
+          stream?.setEncoding("utf8");
+          stream?.on("data", (data: string) => {
+            pending += data;
             const lines = pending.split("\n");
             pending = lines.pop() ?? "";
             for (const line of lines) output.write(`[${spec.role}] ${scrub(line)}\n`);

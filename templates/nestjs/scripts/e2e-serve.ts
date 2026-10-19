@@ -19,6 +19,7 @@ export interface E2eServeDeps {
   prepare(env: Record<string, string>): Promise<void>;
   specs(): readonly ServerSpec[];
   readyTimeoutMs: number;
+  health(deadline: number, signal: AbortSignal): Promise<void>;
 }
 const root = resolve(import.meta.dirname, "..");
 export const realDeps: E2eServeDeps = {
@@ -42,22 +43,28 @@ export const realDeps: E2eServeDeps = {
       ],
     })),
   readyTimeoutMs: 60000,
+  health: healthy,
 };
-async function healthy(deadline: number): Promise<void> {
+async function healthy(deadline: number, signal: AbortSignal): Promise<void> {
   while (Date.now() < deadline) {
+    signal.throwIfAborted();
     try {
       if (
         (
           await fetch("http://127.0.0.1:18000/health/ready", {
-            signal: AbortSignal.timeout(Math.max(1, Math.min(1000, deadline - Date.now()))),
+            signal: AbortSignal.any([
+              signal,
+              AbortSignal.timeout(Math.max(1, Math.min(1000, deadline - Date.now()))),
+            ]),
           })
         ).status === 200
       )
         return;
     } catch {
+      signal.throwIfAborted();
       /* 시작 중 연결 거절은 같은 준비 한도 안에서 기다린다. */
     }
-    await setTimeout(25);
+    await setTimeout(25, undefined, { signal });
   }
   throw new Error("API 준비 한도를 넘겼다");
 }
@@ -65,6 +72,7 @@ export async function runE2eServe(
   options: { webUrl: string; command: readonly string[]; cwd: string; signal?: AbortSignal },
   deps: E2eServeDeps = realDeps,
 ): Promise<number> {
+  const controller = new AbortController();
   let interrupted: number | undefined;
   let notify!: (code: number) => void;
   const abort = new Promise<number>((resolve) => {
@@ -72,6 +80,7 @@ export async function runE2eServe(
   });
   const interrupt = (code: number) => {
     interrupted ??= code;
+    controller.abort();
     notify(interrupted);
   };
   const onInt = () => {
@@ -106,7 +115,8 @@ export async function runE2eServe(
     const deadline = Date.now() + deps.readyTimeoutMs;
     const readiness = (async () => {
       await servers.ready(deps.readyTimeoutMs);
-      if (deps === realDeps) await healthy(deadline);
+      controller.signal.throwIfAborted();
+      await deps.health(deadline, controller.signal);
     })();
     const status = await Promise.race([readiness.then(() => undefined), abort]);
     if (status !== undefined) code = status;
@@ -140,6 +150,7 @@ export async function runE2eServe(
     process.stderr.write(scrub(runnerDiagnostic(phase, error)));
     code = 1;
   } finally {
+    controller.abort();
     const cleanup = await Promise.allSettled([
       command ? stopProcessTree(command) : Promise.resolve(),
       servers?.stopAll() ?? Promise.resolve(),

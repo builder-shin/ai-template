@@ -92,3 +92,59 @@ it("준비 기록이 없는 종료 서버는 준비 성공으로 처리하지 �
     await rm(dir, { recursive: true, force: true });
   }
 });
+it.each(["stdout", "stderr"] as const)(
+  "서버 꼬리 출력은 나뉜 한글 바이트를 온전히 보관한다: %s",
+  async (stream) => {
+    const dir = await mkdtemp(join(tmpdir(), "aitpl-server-utf8-"));
+    const servers = await startServers({
+      cwd: process.cwd(),
+      env: {},
+      readyDir: dir,
+      specs: [
+        {
+          role: "api",
+          argv: [
+            "-e",
+            `process.${stream}.write(Buffer.from([0xea]));setTimeout(()=>process.${stream}.write(Buffer.from([0xb0,0x80,10])),50)`,
+          ],
+        },
+      ],
+    });
+    try {
+      await expect.poll(() => servers.tails().api).toBe("가\n");
+    } finally {
+      await servers.stopAll();
+      await rm(dir, { recursive: true, force: true });
+    }
+  },
+);
+it("준비 한도를 넘긴 서버는 실패를 알리고 소유 자식을 정리한다", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "aitpl-server-timeout-"));
+  const pid = join(dir, "pid");
+  const servers = await startServers({
+    cwd: process.cwd(),
+    env: {},
+    readyDir: dir,
+    specs: [
+      {
+        role: "api",
+        argv: [
+          "-e",
+          "require('node:fs').writeFileSync(process.argv[1],String(process.pid));setInterval(()=>{},1000)",
+          pid,
+        ],
+      },
+    ],
+  });
+  try {
+    await expect.poll(async () => readFile(pid, "utf8")).toMatch(/^\d+$/);
+    const childPid = Number(await readFile(pid, "utf8"));
+    expect(gone(childPid)).toBe(false);
+    await expect(servers.ready(50)).rejects.toThrow("서버 준비 한도를 넘겼다");
+    await servers.stopAll();
+    expect(gone(childPid)).toBe(true);
+  } finally {
+    await servers.stopAll();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
