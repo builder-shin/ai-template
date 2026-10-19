@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { FilesRepository } from "../index.js";
 import type { Tx } from "../../../core/db/unit-of-work.js";
-it("파일 삭제의 소유자 잠금은 사용자 갱신과 같은 users 행을 FOR UPDATE로 잠근다", async () => {
+it("파일 삭제의 소유자 잠금은 외래 키의 KEY SHARE와 호환되는 FOR NO KEY UPDATE를 쓴다", async () => {
   const statements: { strings: readonly string[]; values: unknown[] }[] = [];
   const tx = {
     $queryRaw: (strings: TemplateStringsArray, ...values: unknown[]) => {
@@ -12,7 +12,7 @@ it("파일 삭제의 소유자 잠금은 사용자 갱신과 같은 users 행을
   await new FilesRepository().lockOwner(tx, "01900000-0000-7000-8000-000000000001");
   expect(statements).toEqual([
     {
-      strings: ["SELECT id FROM users WHERE id = ", "::uuid FOR UPDATE"],
+      strings: ["SELECT id FROM users WHERE id = ", "::uuid FOR NO KEY UPDATE"],
       values: ["01900000-0000-7000-8000-000000000001"],
     },
   ]);
