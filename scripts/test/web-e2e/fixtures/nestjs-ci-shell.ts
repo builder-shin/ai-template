@@ -1,5 +1,4 @@
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 
 // 외부 명령은 전부 셸 함수로 대체하며 빈 PATH로 실제 인프라 접근을 막는다.
 export function runNestCiShell(script: string, owner = "/workspace/templates/nestjs") {
@@ -65,27 +64,9 @@ cd() { ci_cwd="$1"; }
 ${script}
 printf '최종 스택:%s\\n최종 probe:%s\\n' "$stack_owner" "$image_live"
 `;
-  const utcStart = new Date().toISOString();
-  const tick = performance.now();
   const result = spawnSync("bash", ["--noprofile", "--norc", "-e", "-c", sandbox], {
     encoding: "buffer",
   });
-  const receipt = {
-    executable: "bash",
-    scriptSHA256: createHash("sha256").update(sandbox).digest("hex"),
-    nativeChildPID: result.pid,
-    utcStart,
-    utcEnd: new Date().toISOString(),
-    elapsedSeconds: (performance.now() - tick) / 1000,
-    nativeExit: result.status,
-    signal: result.signal,
-    stdoutBase64: result.stdout.toString("base64"),
-    stderrBase64: result.stderr.toString("base64"),
-    CPUSeconds: null,
-    providerTokens: null,
-    providerCurrency: null,
-  };
-  console.info("격리 셸 실행 영수증", JSON.stringify(receipt));
   if (result.error) throw result.error;
   return {
     code: result.status,

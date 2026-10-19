@@ -312,21 +312,26 @@ describe("NestJS CI의 소유권 인계와 생성 계약", () => {
   );
   const cleanup = steps.find((step) => step.if === "${{ always() }}");
 
-  it("I1 사본 setup 전에 이전 소유 스택과 이미지 probe를 제거한다", () => {
-    expect(copyIndex).toBeGreaterThan(probeIndex);
-    const handoff = steps
-      .slice(probeIndex + 1, copyIndex)
-      .map((step) => String(step.run))
-      .join("\n");
-    const setup = copyScript.slice(0, copyScript.indexOf("git add ."));
-    const result = runNestCiShell(handoff + "\n" + setup);
-    expect(result, result.stderr).toMatchObject({ code: 0, stderr: "" });
-    expect(result.stdout).toContain("사본 setup 완료:/ci/aitpl-nestjs-harness/nestjs");
-    expect(result.stdout).toContain("최종 probe:0");
-  });
+  it.skipIf(process.platform === "win32")(
+    "사본 setup 전에 이전 소유 스택과 이미지 probe를 제거한다",
+    () => {
+      expect(copyIndex).toBeGreaterThan(probeIndex);
+      const handoff = steps
+        .slice(probeIndex + 1, copyIndex)
+        .map((step) => String(step.run))
+        .join("\n");
+      const setup = copyScript.slice(0, copyScript.indexOf("git add ."));
+      const result = runNestCiShell(handoff + "\n" + setup);
+      expect(result, result.stderr).toMatchObject({ code: 0, stderr: "" });
+      expect(result.stdout).toContain("사본 setup 완료:/ci/aitpl-nestjs-harness/nestjs");
+      expect(result.stdout).toContain("최종 probe:0");
+    },
+  );
 
-  it.each(["/workspace/templates/nestjs", "/ci/aitpl-nestjs-harness/nestjs"])(
-    "I1 %s 소유 단계에서 실패해도 always 정리가 스택과 probe를 비운다",
+  it
+    .skipIf(process.platform === "win32")
+    .each(["/workspace/templates/nestjs", "/ci/aitpl-nestjs-harness/nestjs"])(
+    "%s 소유 단계에서 실패해도 always 정리가 스택과 probe를 비운다",
     (owner) => {
       expect(cleanup).toBeDefined();
       const result = runNestCiShell(String(cleanup?.run), owner);
@@ -335,16 +340,19 @@ describe("NestJS CI의 소유권 인계와 생성 계약", () => {
     },
   );
 
-  it("I2 widgets 등록 뒤 생성 계약을 갱신하여 빠른 검사를 통과한다", () => {
-    const start = copyScript.indexOf("pnpm gen:module widgets");
-    expect(start).toBeGreaterThan(-1);
-    const result = runNestCiShell(copyScript.slice(start));
-    expect(result, result.stderr).toMatchObject({ code: 0, stderr: "" });
-    expect(result.stdout).toContain("생성 계약 검사 완료");
-  });
+  it.skipIf(process.platform === "win32")(
+    "widgets 등록 뒤 생성 계약을 갱신하여 빠른 검사를 통과한다",
+    () => {
+      const start = copyScript.indexOf("pnpm gen:module widgets");
+      expect(start).toBeGreaterThan(-1);
+      const result = runNestCiShell(copyScript.slice(start));
+      expect(result, result.stderr).toMatchObject({ code: 0, stderr: "" });
+      expect(result.stdout).toContain("생성 계약 검사 완료");
+    },
+  );
 });
 
-it("I3 실제 E2E 구독 emit이 posts 채널 객체를 전송한다", async () => {
+it("실제 E2E 구독 emit이 posts 채널 객체를 전송한다", async () => {
   const source = ts.createSourceFile(
     "flows.ts",
     readFileSync(resolve(root, "templates/nestjs/tests/e2e/flows.ts"), "utf8"),
