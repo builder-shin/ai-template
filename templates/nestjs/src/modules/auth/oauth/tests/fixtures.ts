@@ -3,11 +3,14 @@ import { UnitOfWork, type Tx } from "../../../../core/db/unit-of-work.js";
 import type { PrismaService } from "../../../../core/db/prisma.service.js";
 import type { RedisClients } from "../../../../core/redis/clients.js";
 import { settings } from "../../../../core/http/tests/fixtures.js";
-import { OAuthClient } from "../../index.js";
-import { OAuthState } from "../../index.js";
-import { OAuthService } from "../../index.js";
-import type { OAuthProvider, ProviderIdentity } from "../../index.js";
-import type { AuthUser } from "../../index.js";
+import {
+  OAuthClient,
+  OAuthState,
+  OAuthService,
+  type OAuthProvider,
+  type ProviderIdentity,
+  type AuthUser,
+} from "../../index.js";
 export const VERIFIER = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
 export const CHALLENGE = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
 export const FRONT = "http://localhost:3000/oauth/callback";

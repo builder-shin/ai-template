@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { afterEach, beforeAll, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { hashPassword, verifyPassword } from "../../../core/security/passwords.js";
 import { hashIdentifier } from "../../../core/security/identifier.js";
 import { ApiError } from "../../../core/jsonapi/errors.js";
@@ -30,7 +30,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
-import { vi } from "vitest";
 const principal = (sessionId: string) => ({ userId, sessionId, permissions: new Set<never>() });
 it("재설정은 비밀번호·전체 세션·남은 토큰·감사를 함께 바꾸고 commit 뒤 폐기를 알린다", async () => {
   const f = passwordFixture();
@@ -63,6 +62,10 @@ it("재설정은 비밀번호·전체 세션·남은 토큰·감사를 함께 �
     ]);
     expect(revocations).toEqual([
       { userId, sessionIds: [first.id, second.id].sort(), reason: "password_reset" },
+    ]);
+    expect(f.events.filter((event) => event === "user-lock" || event === "token-delete")).toEqual([
+      "user-lock",
+      "token-delete",
     ]);
   } finally {
     off();
@@ -242,6 +245,12 @@ it.each(["ko", "en"])(
       `https://web.example.test/base/reset-password?token=${second ?? ""}`,
     );
     expect(f.messages[1]?.html).toContain("&lt;회원&gt;");
+    expect(f.messages[1]?.subject).toBe(
+      locale === "ko" ? "비밀번호를 재설정하세요" : "Reset your password",
+    );
+    expect(f.messages[1]?.text).toContain(
+      locale === "ko" ? "링크는 한 시간 동안 유효합니다." : "The link is valid for one hour.",
+    );
     expect(f.events.filter((e) => e === "commit" || e === "smtp")).toEqual([
       "commit",
       "smtp",
@@ -295,6 +304,10 @@ it("재설정 요청 HTTP는 본문 없는 202를 내보낸다", async () => {
     });
   expect(response.status).toBe(202);
   expect(response.text).toBe("");
+  expect(f.limits).toEqual([
+    ["mail.ip", "127.0.0.1"],
+    ["mail.email", hashIdentifier("absent@example.com", "password-fixture-identifier-key")],
+  ]);
 });
 it("재설정 HTTP의 짧은 새 비밀번호는 422 pointer를 내보낸다", async () => {
   const { http } = await testApp([]);

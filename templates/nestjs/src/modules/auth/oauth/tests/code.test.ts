@@ -37,8 +37,21 @@ it("일회용 코드는 같은 verifier일 때 한 번만 세션과 토큰을 �
   });
   expect(f.sessions.state.sessions).toHaveLength(1);
 });
+it("이메일이 없는 소셜 계정도 일회용 코드로 세션을 만든다", async () => {
+  const f = await codeFixture();
+  const user = f.sessions.state.users[0];
+  if (!user) throw new Error("사용자가 없다");
+  user.email = null;
+  user.emailVerifiedAt = null;
+  const result = await f.sessions.service.createWithOAuthCode(
+    { code: f.code, codeVerifier: VERIFIER },
+    f.client,
+  );
+  expect(result.data.type).toBe("sessions");
+  expect(f.sessions.state.sessions).toHaveLength(1);
+});
 it.each(["짧은 verifier", "다른 verifier", "만료", "없는 코드"])(
-  "%s는 401이며 세션을 만들지 않는다",
+  "코드 교환 조건 %s에서 401이며 세션을 만들지 않는다",
   async (kind) => {
     const f = await codeFixture();
     if (kind === "만료") f.oauth.memory.advance(60);

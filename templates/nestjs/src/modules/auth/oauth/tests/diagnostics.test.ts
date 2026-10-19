@@ -1,5 +1,6 @@
 import { Logger } from "@nestjs/common";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { OAuthClient, OAuthService } from "../../index.js";
 import { JsonLogger } from "../../../../core/logging/json-logger.js";
 import { requestContext } from "../../../../core/logging/context.js";
@@ -45,6 +46,76 @@ function poisonedError() {
   });
   return error;
 }
+it.each([
+  [new DOMException(PRIVATE, "TimeoutError"), "TimeoutError", undefined],
+  [new DOMException(PRIVATE, "AbortError"), "AbortError", undefined],
+  [new TypeError(PRIVATE), "TypeError", undefined],
+  [new SyntaxError(PRIVATE), "SyntaxError", undefined],
+  [new RangeError(PRIVATE), "RangeError", undefined],
+  [new z.ZodError([]), "ZodError", undefined],
+  [new Error(PRIVATE), "Error", undefined],
+  [PRIVATE, "unknown", undefined],
+  [Object.assign(new Error(PRIVATE), { code: "P2024" }), "Error", "P2024"],
+] as const)(
+  "콜백 오류 분류 [%#]에서 허용된 유형과 코드만 기록한다",
+  async (error, errorType, errorCode) => {
+    const f = oauthFixture();
+    const state = await start(f);
+    vi.spyOn(f.client, "exchange").mockRejectedValue(error);
+    const url = new URL(await f.service.callback("google", { state, code: PRIVATE }));
+    expect(url.searchParams.get("error")).toBe("auth.oauth_failed");
+    const row = diagnostic();
+    expect(row?.message).toEqual({
+      message: "소셜 로그인 콜백이 실패했다",
+      provider: "google",
+      phase: "exchange",
+      errorType,
+      ...(errorCode ? { errorCode } : {}),
+    });
+    expect(lines.join("")).not.toContain(PRIVATE);
+  },
+);
+it("fetch 실패 원인의 허용된 연결 코드를 안전하게 기록한다", async () => {
+  const f = oauthFixture();
+  const state = await start(f);
+  vi.spyOn(f.client, "exchange").mockRejectedValue(
+    new TypeError("fetch failed", { cause: { code: "ECONNREFUSED", message: PRIVATE } }),
+  );
+  await f.service.callback("google", { state, code: PRIVATE });
+  expect(diagnostic()).toMatchObject({
+    message: { errorType: "TypeError", errorCode: "ECONNREFUSED" },
+  });
+  expect(lines.join("")).not.toContain(PRIVATE);
+});
+it.each(["원인 접근자", "코드 접근자", "상속 코드"])(
+  "진단 조건 %s에서 getter와 상속 속성을 읽지 않는다",
+  async (kind) => {
+    const f = oauthFixture();
+    const state = await start(f);
+    const getter = vi.fn(() => {
+      throw new Error(PRIVATE);
+    });
+    const error = new TypeError(PRIVATE);
+    if (kind === "원인 접근자") Object.defineProperty(error, "cause", { get: getter });
+    else {
+      const cause =
+        kind === "상속 코드"
+          ? (Object.create({ code: "ECONNREFUSED" }) as object)
+          : Object.defineProperty({}, "code", { get: getter });
+      Object.defineProperty(error, "cause", { value: cause });
+    }
+    vi.spyOn(f.client, "exchange").mockRejectedValue(error);
+    await f.service.callback("google", { state, code: PRIVATE });
+    expect(diagnostic()?.message).toEqual({
+      message: "소셜 로그인 콜백이 실패했다",
+      provider: "google",
+      phase: "exchange",
+      errorType: "TypeError",
+    });
+    expect(getter).not.toHaveBeenCalled();
+    expect(lines.join("")).not.toContain(PRIVATE);
+  },
+);
 it.each(["exchange", "profile", "identity", "link", "issue_code"] as const)(
   "콜백 %s 실패는 안전한 JSON 진단과 trace를 남기고 oauth_failed를 유지한다",
   async (phase) => {
@@ -121,7 +192,7 @@ it.each([
 it.each([
   [null],
   [{ name: PRIVATE, code: PRIVATE, message: PRIVATE, stack: PRIVATE, profile: { email: PRIVATE } }],
-])("임의 throw 값 %j는 페이로드 없이 실패 단계만 진단한다", async (error: unknown) => {
+])("임의 throw 값 %j 처리 시 페이로드 없이 실패 단계만 진단한다", async (error: unknown) => {
   const f = oauthFixture();
   const state = await start(f);
   vi.spyOn(f.client, "exchange").mockRejectedValue(error);

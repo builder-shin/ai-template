@@ -1,5 +1,3 @@
-import { OAuthState } from "../index.js";
-import { memoryRedis } from "../oauth/tests/fixtures.js";
 import { createHash, randomUUID } from "node:crypto";
 import { UnitOfWork, type Tx, type AfterCommit } from "../../../core/db/unit-of-work.js";
 import type { PrismaService } from "../../../core/db/prisma.service.js";
@@ -10,6 +8,7 @@ import type { MailSender } from "../../../core/mail/sender.js";
 import { JobQueue } from "../../../core/jobs/queue.js";
 import type { JobName } from "../../../core/jobs/names.js";
 import {
+  OAuthState,
   AuthRepository,
   type AuthUser,
   SessionsRepository,
@@ -18,6 +17,7 @@ import {
   PasswordsService,
   AuthMails,
 } from "../index.js";
+import { memoryRedis } from "../oauth/tests/fixtures.js";
 export const now = new Date("2026-10-14T01:00:00Z");
 export const userId = "01900000-0000-7000-8000-000000000001";
 export const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -155,6 +155,7 @@ export function passwordFixture() {
         (t) =>
           t.tokenHash === values[0] && t.purpose === values[1] && t.expiresAt > (values[2] as Date),
       );
+      events.push("token-delete");
       return Promise.resolve(index < 0 ? [] : state().tokens.splice(index, 1));
     },
   } as unknown as Tx;

@@ -1,5 +1,3 @@
-import { OAuthState } from "../index.js";
-import { memoryRedis } from "../oauth/tests/fixtures.js";
 import { randomUUID } from "node:crypto";
 import { UnitOfWork, type Tx } from "../../../core/db/unit-of-work.js";
 import type { PrismaService } from "../../../core/db/prisma.service.js";
@@ -7,11 +5,18 @@ import type { Settings } from "../../../core/config/settings.js";
 import type { StrictLimiter } from "../../../core/ratelimit/strict.js";
 import type { StrictRule } from "../../../core/ratelimit/rules.js";
 import { RolesRepository } from "../../roles/index.js";
-import { AuthRepository, type AuthUser } from "../index.js";
-import { SessionsRepository, type SessionRow, type RefreshRow } from "../index.js";
-import { SessionsService } from "../index.js";
-import { JwtPrincipalResolver } from "../index.js";
 import type { ParsedQuery } from "../../../core/jsonapi/query.js";
+import {
+  OAuthState,
+  AuthRepository,
+  type AuthUser,
+  SessionsRepository,
+  type SessionRow,
+  type RefreshRow,
+  SessionsService,
+  JwtPrincipalResolver,
+} from "../index.js";
+import { memoryRedis } from "../oauth/tests/fixtures.js";
 export const now = new Date("2026-10-14T01:00:00.000Z");
 export const userId = "01900000-0000-7000-8000-000000000001";
 export const settings = {
@@ -145,7 +150,11 @@ export function sessionFixture(oauth = new OAuthState(memoryRedis().redis)) {
       return Promise.resolve(rows);
     }
     override unrevoked(_tx: Tx, id: string) {
-      return Promise.resolve(state().sessions.filter((s) => s.userId === id && !s.revokedAt));
+      return Promise.resolve(
+        state()
+          .sessions.filter((s) => s.userId === id && !s.revokedAt)
+          .sort((a, b) => a.id.localeCompare(b.id)),
+      );
     }
     override loginAt(_tx: Tx, _id: string, at: Date) {
       state().loginAt = at;

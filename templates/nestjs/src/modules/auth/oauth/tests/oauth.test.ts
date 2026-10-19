@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { expect, it } from "vitest";
-import { linkAccount } from "../../index.js";
-import { verifiesCodeChallenge } from "../../index.js";
+import { expect, it, vi } from "vitest";
+import { settings } from "../../../../core/http/tests/fixtures.js";
+import { linkAccount, verifiesCodeChallenge } from "../../index.js";
 import { oauthFixture, start, verifiedIdentity, FRONT, CHALLENGE, VERIFIER } from "./fixtures.js";
 const s256 = (verifier: string) => createHash("sha256").update(verifier).digest("base64url");
 it("허용하지 않은 redirectUri는 400 invalid_query다", async () => {
@@ -12,12 +12,17 @@ it("허용하지 않은 redirectUri는 400 invalid_query다", async () => {
       codeChallenge: CHALLENGE,
     }),
   ).rejects.toMatchObject({
-    init: { status: 400, code: "jsonapi.invalid_query", source: { parameter: "redirectUri" } },
+    init: {
+      status: 400,
+      code: "jsonapi.invalid_query",
+      title: "Invalid query",
+      source: { parameter: "redirectUri" },
+    },
   });
   expect(f.memory.values.size).toBe(0);
 });
 it.each(["", "a".repeat(42), "a".repeat(44), "a".repeat(42) + "="])(
-  "잘못된 codeChallenge %s는 상태를 만들지 않는다",
+  "잘못된 codeChallenge 값 %s로 상태를 만들지 않는다",
   async (codeChallenge) => {
     const f = oauthFixture();
     await expect(
@@ -28,6 +33,7 @@ it.each(["", "a".repeat(42), "a".repeat(44), "a".repeat(42) + "="])(
 );
 it("인가는 프론트 challenge와 별도의 제공자 verifier를 10분 저장한다", async () => {
   const f = oauthFixture();
+  const authorize = vi.spyOn(f.client, "authorizeUrl");
   const state = await start(f);
   const entry = [...f.memory.values.values()][0];
   expect(entry?.expires).toBe(600);
@@ -40,6 +46,11 @@ it("인가는 프론트 challenge와 별도의 제공자 verifier를 10분 저�
   expect(saved).toMatchObject({ provider: "google", redirectUri: FRONT, codeChallenge: CHALLENGE });
   expect(saved.verifier).toMatch(/^[A-Za-z0-9._~-]{43,128}$/);
   expect(saved.verifier).not.toBe(VERIFIER);
+  expect(authorize).toHaveBeenCalledWith("google", {
+    state,
+    codeChallenge: s256(saved.verifier),
+    redirectUri: `${settings.API_URL.replace(/\/$/, "")}/api/v1/oauth/google/callback`,
+  });
   await f.service.callback("google", { state, code: "provider-code" });
   expect(f.exchanges[0]).toEqual({
     provider: "google",
@@ -48,7 +59,7 @@ it("인가는 프론트 challenge와 별도의 제공자 verifier를 10분 저�
   });
 });
 it.each(["누락", "만료", "다른 제공자", "재사용"])(
-  "state %s는 400이며 한 번 소비한다",
+  "state가 %s 상태면 400이며 한 번 소비한다",
   async (kind) => {
     const f = oauthFixture();
     const state = kind === "누락" ? undefined : await start(f);
@@ -60,7 +71,12 @@ it.each(["누락", "만료", "다른 제공자", "재사용"])(
         code: "provider-code",
       }),
     ).rejects.toMatchObject({
-      init: { status: 400, code: "jsonapi.invalid_query", source: { parameter: "state" } },
+      init: {
+        status: 400,
+        code: "jsonapi.invalid_query",
+        title: "Invalid query",
+        source: { parameter: "state" },
+      },
     });
     if (kind === "다른 제공자")
       await expect(
@@ -71,7 +87,7 @@ it.each(["누락", "만료", "다른 제공자", "재사용"])(
 it.each([
   ["access_denied", "auth.oauth_denied"],
   ["server_error", "auth.oauth_failed"],
-] as const)("제공자 오류 %s는 프론트에 %s로 보낸다", async (error, expected) => {
+] as const)("제공자 오류 %s 발생 시 프론트에 %s로 보낸다", async (error, expected) => {
   const f = oauthFixture();
   const state = await start(f);
   expect(
@@ -80,7 +96,7 @@ it.each([
   expect(f.data.users).toEqual([]);
 });
 it.each(["코드 없음", "교환 실패", "조회 실패", "신원 오류", "저장 실패"])(
-  "%s는 프론트 oauth_failed이며 코드를 만들지 않는다",
+  "콜백 조건 %s에서 프론트 oauth_failed이며 코드를 만들지 않는다",
   async (kind) => {
     const f = oauthFixture();
     const state = await start(f);

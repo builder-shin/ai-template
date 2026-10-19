@@ -3,6 +3,9 @@ import { createHash, createHmac } from "node:crypto";
 import { verifyPassword } from "../../../core/security/passwords.js";
 import { ApiError } from "../../../core/jsonapi/errors.js";
 import { fixture, at, user } from "./fixtures.js";
+import { registrationLocale, VerificationService } from "../index.js";
+import { testApp, mediaType } from "../../../core/http/tests/fixtures.js";
+import { hashIdentifier } from "../../../core/security/identifier.js";
 const input = {
   email: " Member@Example.COM ",
   password: "password-123", // betterleaks:allow 사유: 가입 단위 시험의 가짜 비밀번호
@@ -14,6 +17,35 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+});
+it.each([
+  ["en-US,en;q=0.9,ko;q=0.8", "en"],
+  ["ko;q=0.5,en;q=0.4", "ko"],
+  ["en;q=1e-1", "ko"],
+  ["en;q=0x1", "ko"],
+  ["en;level=1", "ko"],
+  ["en;q=0", "ko"],
+  ["en;q=1;level=1", "ko"],
+  ["malformed header", "ko"],
+] as const)("가입 언어 %s에서 유효한 가중치로 %s 언어를 고른다", (header, expected) => {
+  expect(registrationLocale(header)).toBe(expected);
+});
+it("인증 메일 재발송 HTTP는 본문 없는 202를 내보낸다", async () => {
+  const f = fixture();
+  const { app, http } = await testApp([]);
+  app.get(VerificationService).request = f.verification.request.bind(f.verification);
+  const response = await http
+    .post("/api/v1/email-verification-requests")
+    .set("Content-Type", mediaType)
+    .send({
+      data: { type: "email-verification-requests", attributes: { email: "absent@example.com" } },
+    });
+  expect(response.status).toBe(202);
+  expect(response.text).toBe("");
+  expect(f.limits).toEqual([
+    ["mail.ip", "127.0.0.1"],
+    ["mail.email", hashIdentifier("absent@example.com", "registration-fixture-key")],
+  ]);
 });
 it("가입은 정규화 이메일과 비밀번호 해시와 member 역할을 함께 만들고 commit 뒤 인증 잡을 넣는다", async () => {
   const f = fixture();

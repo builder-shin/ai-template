@@ -43,6 +43,7 @@ it.each([
   expect(response.status).toBe(400);
   expect(errorDocument(response.text).errors[0]).toMatchObject({
     code: "jsonapi.invalid_query",
+    title: "Invalid query",
     source: { parameter },
   });
 });
