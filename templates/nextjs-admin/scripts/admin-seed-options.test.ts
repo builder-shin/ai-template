@@ -9,9 +9,9 @@ const input = vi.hoisted(() => ({
 }));
 
 // 계정 옵션의 실제 분기는 e2e/fixtures.ts에서 실행하고 외부 통신 경계만 바꾼다.
-vi.mock("../e2e/targets", () => ({
+vi.mock("../e2e/targets", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../e2e/targets")>()),
   targetName: () => input.name,
-  adapterName: (name: string) => (name === "mock" ? "mock" : "fastapi"),
   targetEnvironment: () => ({
     API_BASE_URL: "http://127.0.0.1:18101/api/v1",
     E2E_SEED_ADMIN_EMAIL: "configured-admin@example.com",

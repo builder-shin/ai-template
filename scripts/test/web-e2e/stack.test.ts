@@ -21,6 +21,28 @@ const base = [
 const compose = () => readFileSync(resolve(root, plan.composeFile), "utf8");
 
 describe("전용 스택의 명령과 주소", () => {
+  it.each(["web", "admin"] as const)("%s의 알 수 없는 백엔드는 계획과 설정에서 거절한다", (app) => {
+    expect(() => {
+      Reflect.apply(createPlan, undefined, ["offline-04", root, app, "unknown"]);
+    }).toThrow(/백엔드/);
+    const known = createPlan("offline-04", root, app);
+    const source = readFileSync(resolve(root, known.composeFile), "utf8");
+    expect(() => {
+      Reflect.apply(validateCompose, undefined, [source, { ...known, backend: "unknown" }]);
+    }).toThrow(/백엔드/);
+  });
+
+  it.each(["web", "admin"] as const)("%s의 각 백엔드는 선언한 compose 파일을 검증한다", (app) => {
+    for (const backend of ["fastapi", "nestjs"] as const) {
+      const selected = createPlan("offline-04", root, app, backend);
+      expect(selected.composeFile).toBe(
+        `scripts/compose/nextjs${app === "admin" ? "-admin" : ""}-e2e-${backend}.yaml`,
+      );
+      expect(() => {
+        validateCompose(readFileSync(resolve(root, selected.composeFile), "utf8"), selected);
+      }).not.toThrow();
+    }
+  });
   it("pnpm 12 native 실행 파일은 Node 스크립트로 취급하지 않는다", () => {
     expect(appCommand(plan, "C:/tools/pnpm-native.exe")).toEqual([
       "C:/tools/pnpm-native.exe",

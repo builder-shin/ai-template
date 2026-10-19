@@ -67,7 +67,7 @@ it("공유 API optional true만 필수 경로 증명 뒤 정렬하고 프론트 
       merged.replace("leaf: 1.0.0", "leaf: 1.1.0"),
       { typescriptPin: "6.0.3" },
     );
-  }).toThrow();
+  }).toThrow(/그래프/);
 });
 
 it.each([
@@ -120,5 +120,7 @@ it.each([
     if (kind === "API importer 누락") delete api.importers["."];
     if (kind === "프론트 그래프 누락") delete front.snapshots["leaf@1.0.0"];
   });
-  expect(() => mergeApiLock(input.resolved, input.api, { typescriptPin: "6.0.3" })).toThrow();
+  expect(() => mergeApiLock(input.resolved, input.api, { typescriptPin: "6.0.3" })).toThrow(
+    kind === "API 그래프 누락" || kind === "프론트 그래프 누락" ? /그래프/ : /해석/,
+  );
 });

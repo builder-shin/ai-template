@@ -49,8 +49,29 @@ it("의존성 구역이 달라도 admin과 같은 패키지를 비교한다", ()
         "nextjs-admin": { devDependencies: { zod: "4.6.6" } },
       }),
     ),
-  ).toHaveLength(1);
+  ).toEqual([
+    'zod: nestjs dependencies="4.6.5", nextjs-admin devDependencies="4.6.6" — 백엔드와 프론트의 공통 의존성을 같은 버전으로 고치고 잠금 파일을 갱신한다.',
+  ]);
 });
+it.each(["nestjs", "nextjs", "nextjs-admin"])(
+  "workspace %s가 없으면 정책 비교만 생략하고 패키지 버전을 비교한다",
+  (name) => {
+    const root = fixture({
+      nestjs: { dependencies: { zod: "4.6.5" } },
+      "nextjs-admin": { devDependencies: { zod: "4.6.6" } },
+      nextjsWorkspace: {
+        minimumReleaseAge: 0,
+        overrides: { typescript: "6.0.4" },
+        allowBuilds: {},
+      },
+    });
+    expect(verifyBackendDependencies(root)).toHaveLength(3);
+    unlinkSync(join(root, "templates", name, "pnpm-workspace.yaml"));
+    expect(verifyBackendDependencies(root)).toEqual([
+      'zod: nestjs dependencies="4.6.5", nextjs-admin devDependencies="4.6.6" — 백엔드와 프론트의 공통 의존성을 같은 버전으로 고치고 잠금 파일을 갱신한다.',
+    ]);
+  },
+);
 it("같은 직접 버전과 세 workspace의 TS override는 통과한다", () => {
   const pkg = { devDependencies: { typescript: "6.0.3" } };
   expect(

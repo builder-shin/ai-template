@@ -28,7 +28,13 @@ describe("주입한 프로세스 종료 의존성", () => {
     await expect(
       stopProcessTree(child, 100, { platform: "darwin", kill, ...clock() }),
     ).resolves.toBeUndefined();
-    expect(kill.mock.calls).toHaveLength(4);
+    expect(kill.mock.calls).toEqual([
+      [-child.pid, "SIGTERM"],
+      [-child.pid, 0],
+      [-child.pid, 0],
+      [-child.pid, 0],
+    ]);
+    expect(kill).not.toHaveBeenCalledWith(-child.pid, "SIGKILL");
   });
   it("Darwin에서 유예 끝까지 EPERM이면 처음 기억한 원래 EPERM을 던진다", async () => {
     const first = Object.assign(new Error("처음 거부"), { code: "EPERM" });

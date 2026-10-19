@@ -16,11 +16,7 @@ function equal(actual: unknown, expected: unknown, label: string): void {
 /** 환경 파일과 외부 자원을 해석하기 전에 수기 compose의 안전 경계를 확인한다. */
 export function validateCompose(text: string, plan: Plan): void {
   equal(plan.project, projectName(plan.runId, plan.app, plan.backend), "프로젝트");
-  equal(
-    plan.composeFile,
-    STACKS[plan.app].composeFile.replace("fastapi.yaml", `${plan.backend}.yaml`),
-    "compose 파일",
-  );
+  equal(plan.composeFile, STACKS[plan.app].composeFiles[plan.backend], "compose 파일");
   const urls = STACKS[plan.app].urls;
   const document = record(parse(text, { merge: true }) as unknown);
   equal(Object.keys(document).sort(), ["services", "volumes", "x-app"], "compose 구조");

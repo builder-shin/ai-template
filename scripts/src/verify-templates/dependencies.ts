@@ -25,6 +25,36 @@ function versions(file: string) {
   return result;
 }
 
+function compareDeclarations(
+  left: ReturnType<typeof versions>,
+  right: ReturnType<typeof versions>,
+  leftName: "nextjs" | "nestjs",
+  rightName: string,
+): string[] {
+  const backend = leftName === "nestjs";
+  const problems: string[] = [];
+  for (const [name, declarations] of left) {
+    const other = right.get(name);
+    if (!other) continue;
+    for (const a of declarations)
+      for (const b of other) {
+        const aOverride = a.section.includes("overrides");
+        const bOverride = b.section.includes("overrides");
+        if (backend ? aOverride || bOverride : aOverride !== bOverride) continue;
+        if (
+          backend
+            ? isDeepStrictEqual(a.version, b.version)
+            : JSON.stringify(a.version) === JSON.stringify(b.version)
+        )
+          continue;
+        problems.push(
+          `${name}: ${leftName} ${a.section}=${JSON.stringify(a.version)}, ${rightName} ${b.section}=${JSON.stringify(b.version)} — ${backend ? "백엔드와 프론트" : "두 package.json"}의 공통 의존성을 같은 버전으로 고치고 잠금 파일을 갱신한다.`,
+        );
+      }
+  }
+  return problems;
+}
+
 /** 앱에만 필요한 의존성은 허용하고 공통 패키지의 모든 선언을 비교한다. */
 export function verifyFrontendDependencies(repoRoot: string): string[] {
   const files = ["nextjs", "nextjs-admin"].map((name) =>
@@ -32,19 +62,7 @@ export function verifyFrontendDependencies(repoRoot: string): string[] {
   );
   if (files.some((file) => !existsSync(file))) return [];
   const [web, admin] = [versions(files[0] ?? ""), versions(files[1] ?? "")] as const;
-  const problems: string[] = [];
-  for (const [name, left] of web) {
-    const right = admin.get(name);
-    if (!right) continue;
-    for (const a of left)
-      for (const b of right) {
-        if (a.section.includes("overrides") !== b.section.includes("overrides")) continue;
-        if (JSON.stringify(a.version) === JSON.stringify(b.version)) continue;
-        problems.push(
-          `${name}: nextjs ${a.section}=${JSON.stringify(a.version)}, nextjs-admin ${b.section}=${JSON.stringify(b.version)} — 두 package.json의 공통 의존성을 같은 버전으로 고치고 잠금 파일을 갱신한다.`,
-        );
-      }
-  }
+  const problems = compareDeclarations(web, admin, "nextjs", "nextjs-admin");
   const workspaceFiles = ["nextjs", "nextjs-admin"].map((name) =>
     join(repoRoot, "templates", name, "pnpm-workspace.yaml"),
   );
@@ -70,18 +88,7 @@ export function verifyBackendDependencies(repoRoot: string): string[] {
   const problems: string[] = [];
   for (const [index, frontend] of names.slice(1).entries()) {
     const declarations = versions(files[index + 1] ?? "");
-    for (const [name, left] of backend) {
-      const right = declarations.get(name);
-      if (!right) continue;
-      for (const a of left)
-        for (const b of right) {
-          if (a.section.includes("overrides") || b.section.includes("overrides")) continue;
-          if (isDeepStrictEqual(a.version, b.version)) continue;
-          problems.push(
-            `${name}: nestjs ${a.section}=${JSON.stringify(a.version)}, ${frontend} ${b.section}=${JSON.stringify(b.version)} — 백엔드와 프론트의 공통 의존성을 같은 버전으로 고치고 잠금 파일을 갱신한다.`,
-          );
-        }
-    }
+    problems.push(...compareDeclarations(backend, declarations, "nestjs", frontend));
   }
   const workspaceFiles = names.map((name) =>
     join(repoRoot, "templates", name, "pnpm-workspace.yaml"),

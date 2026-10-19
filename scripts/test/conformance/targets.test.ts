@@ -310,7 +310,7 @@ describe("NestJS compose 적합성 연결", () => {
     { merge: true },
   ) as { services: Record<string, Service> };
 
-  it("app 프로필은 비밀 파일 없이 모든 운영 설정을 제공하고 개발 예시 비밀은 거절한다", () => {
+  it("app 프로필은 비밀 파일 없이 공개 운영 fixture와 같은 설정을 제공한다", () => {
     const api = compose.services.api;
     expect(api?.env_file).toBeUndefined();
     const env = api?.environment ?? {};

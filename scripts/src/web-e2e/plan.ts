@@ -13,9 +13,19 @@ export const URLS = {
 export type App = "web" | "admin";
 export type WebE2eBackend = "fastapi" | "nestjs";
 export const STACKS = {
-  web: { composeFile: COMPOSE_FILE, runIdVariable: "WEB_E2E_RUN_ID", urls: URLS },
+  web: {
+    composeFiles: {
+      fastapi: COMPOSE_FILE,
+      nestjs: "scripts/compose/nextjs-e2e-nestjs.yaml",
+    } satisfies Record<WebE2eBackend, string>,
+    runIdVariable: "WEB_E2E_RUN_ID",
+    urls: URLS,
+  },
   admin: {
-    composeFile: "scripts/compose/nextjs-admin-e2e-fastapi.yaml",
+    composeFiles: {
+      fastapi: "scripts/compose/nextjs-admin-e2e-fastapi.yaml",
+      nestjs: "scripts/compose/nextjs-admin-e2e-nestjs.yaml",
+    } satisfies Record<WebE2eBackend, string>,
     runIdVariable: "ADMIN_E2E_RUN_ID",
     urls: {
       web: "http://localhost:3101",
@@ -36,6 +46,8 @@ export function projectName(
   app: App = "web",
   backend: WebE2eBackend = "fastapi",
 ): string {
+  if (!Object.hasOwn(STACKS[app].composeFiles, backend))
+    throw new Error(`지원하지 않는 백엔드다: ${backend}`);
   if (["fastapi", "joon", "nestjs"].includes(runId) || !/^[a-z0-9][a-z0-9-]{0,39}$/.test(runId)) {
     throw new Error("실행 ID는 보호 이름을 피하고 영문 소문자·숫자·하이픈 1~40자로 적는다.");
   }
@@ -50,7 +62,7 @@ export function createPlan(
 ) {
   const project = projectName(runId, app, backend);
   const { runIdVariable, urls } = STACKS[app];
-  const composeFile = STACKS[app].composeFile.replace("fastapi.yaml", `${backend}.yaml`);
+  const composeFile = STACKS[app].composeFiles[backend];
   const base = ["docker", "compose", "-p", project, "-f", composeFile];
   const image = `ai-template-${app}-e2e-${backend}:${runId}`;
   return {
