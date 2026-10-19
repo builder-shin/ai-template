@@ -51,8 +51,7 @@ function commandReason(root, raw) {
     return "git hook을 건너뛰거나 끄지 않는다. 실패한 검사를 고친다";
   for (const [git] of command.matchAll(/\bgit\b[^;&|\n]*/gi)) {
     if (
-      /core\.hooksPath/i.test(git) ||
-      (/\b(?:commit|push)\b/i.test(git) && /--no-verify\b/i.test(git)) ||
+      /core\.hooksPath|--no-verify\b/i.test(git) ||
       (/\bcommit\b/i.test(git) && /(?:^|\s)-[a-z]*n[a-z]*(?=\s|$|["'])/i.test(git))
     )
       return "git hook을 건너뛰거나 끄지 않는다. 실패한 검사를 고친다";

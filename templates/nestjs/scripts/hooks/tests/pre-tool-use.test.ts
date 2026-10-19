@@ -71,6 +71,8 @@ it("실제 hook은 stdin fixture를 공식 PreToolUse 거절 JSON으로 바꾼�
 it.each([
   ["git commit -n -m x", "deny"],
   ["git commit -an -m x", "deny"],
+  ["git merge --no-verify topic", "deny"],
+  ["git rebase --no-verify main", "deny"],
   ["git push origin +main", "deny"],
   ["git push -vf origin main", "deny"],
   ["git push --force-with-lease", "deny"],
@@ -89,6 +91,8 @@ it.each([
   ...[";", "&&", "||", "|", "\n"].flatMap((separator) => [
     [`git push ${separator} rm -rf dist`, "allow"],
     [`git commit -m x ${separator} echo --no-verify -n`, "allow"],
+    [`git merge topic ${separator} echo --no-verify`, "allow"],
+    [`git rebase main ${separator} echo --no-verify`, "allow"],
     [`git status ${separator} git push origin +main`, "deny"],
   ]),
 ])("명령 구간과 옵션 값에 따라 %s를 %s한다", (command, decision) => {
