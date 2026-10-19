@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { loadSettings, type Settings } from "../../src/core/config/settings.js";
+import { exampleEnv } from "../../src/core/config/tests/env-example.js";
 import type * as Runtime from "../runtime.js";
 import type * as HttpModule from "../../src/core/http/create-app.js";
 import type * as FsPromises from "node:fs/promises";
@@ -19,6 +19,10 @@ const state = vi.hoisted(() => ({
   infrastructure: undefined as boolean | undefined,
 }));
 function installMocks() {
+  vi.doMock("../../src/generated/prisma/client.js", async (importOriginal) => {
+    if (!state.generated) throw new Error("생성 Prisma 클라이언트가 없다");
+    return importOriginal();
+  });
   vi.doMock("../runtime.js", async (importOriginal) => {
     const actual = await importOriginal<typeof Runtime>();
     return {
@@ -76,14 +80,7 @@ function installMocks() {
     };
   });
 }
-const env = Object.fromEntries(
-  readFileSync(new URL("../../.env.example", import.meta.url), "utf8")
-    .split("\n")
-    .flatMap((line) => {
-      const match = /^([A-Z][A-Z0-9_]*)=(.*?)(?:\s+#.*)?$/.exec(line);
-      return match ? [[match[1] as string, match[2]]] : [];
-    }),
-);
+const env = exampleEnv();
 beforeEach(() => {
   vi.resetModules();
   state.generated = false;

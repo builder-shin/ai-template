@@ -42,7 +42,7 @@ export function parseQuery(rawSearch: string, spec: QuerySpec): ParsedQuery {
   }
   const filter: Record<string, unknown> = {};
   const fields: Record<string, readonly string[]> = {};
-  let sort = parseSort(spec.defaultSort ?? "", spec);
+  let sort = raw.has("sort") ? [] : parseSort(spec.defaultSort ?? "", spec);
   let include: readonly string[] = [];
   const page = { number: 1, size: spec.page?.defaultSize ?? 20 };
   for (const [key, value] of raw) {

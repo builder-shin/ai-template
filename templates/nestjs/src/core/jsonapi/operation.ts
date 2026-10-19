@@ -40,6 +40,11 @@ export type OperationDeclaration<S extends OperationSpec = OperationSpec> = Omit
 const registry = new Map<string, OperationDeclaration>();
 export function defineOperation<const S extends OperationSpec>(spec: S): OperationDeclaration<S> {
   if (spec.query && spec.querySchema) throw new Error("쿼리 선언 방식은 하나만 쓴다");
+  for (const item of spec.query?.defaultSort?.split(",") ?? []) {
+    const field = item.startsWith("-") ? item.slice(1) : item;
+    if (!spec.query?.sort?.includes(field))
+      throw new Error(`기본 정렬이 sort 선언에 없다: ${spec.operationId} ${field}`);
+  }
   if (registry.has(spec.operationId))
     throw new Error(`operationId가 중복된다: ${spec.operationId}`);
   const responses = { ...spec.responses };

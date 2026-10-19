@@ -36,6 +36,12 @@ it("비어 있는 쿼리는 기본 정렬과 페이지를 쓴다", () => {
     page: { number: 1, size: 20 },
   });
 });
+it("클라이언트 정렬이 있으면 기본 정렬을 파싱하지 않는다", () => {
+  expect(parseQuery("sort=title", { ...spec, defaultSort: "-missing" }).sort).toEqual([
+    { field: "title", descending: false },
+  ]);
+  expect(parseQuery("sort=", spec).sort).toEqual([]);
+});
 it.each([
   "page[size]=1&page%5Bsize%5D=2",
   "filter[q]=a&filter[q]=b",

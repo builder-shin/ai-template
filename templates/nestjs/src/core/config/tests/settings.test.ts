@@ -2,14 +2,9 @@ import { readFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_SECRETS, SettingsError, loadSettings, settingsSchema } from "../settings.js";
+import { exampleEnv } from "./env-example.js";
 
-const example = Object.fromEntries<string | undefined>(
-  readFileSync(new URL("../../../../.env.example", import.meta.url), "utf8")
-    .split("\n")
-    .map((line) => /^([A-Z][A-Z0-9_]*)=(.*?)(?:\s+#.*)?$/.exec(line))
-    .filter((match) => match !== null)
-    .map((match) => [match[1] as string, match[2]] as const),
-);
+const example = exampleEnv();
 
 describe("설정", () => {
   it("compose app 공개 fixture는 모든 운영 설정과 예시 비밀 거절을 만족한다", () => {
@@ -110,8 +105,11 @@ describe("설정", () => {
       expect(() => loadSettings({ ...example, FILE_MAX_SIZE: value })).toThrow(/FILE_MAX_SIZE/);
     },
   );
-  it.each(["0", "65536"])("포트 범위를 벗어나면 거절한다: %s", (value) => {
-    expect(() => loadSettings({ ...example, PORT: value })).toThrow(/PORT/);
+  it.each([
+    ["0", "1 이상으로 적는다"],
+    ["65536", "65535 이하로 적는다"],
+  ])("포트 범위를 벗어나면 거절한다: %s", (value, message) => {
+    expect(() => loadSettings({ ...example, PORT: value })).toThrow(`설정 오류: PORT — ${message}`);
   });
   it.each([
     ["DATABASE_URL", "postgresql+psycopg://app:app@127.0.0.1/app"], // betterleaks:allow 사유: 시험용 로컬 URL
@@ -123,11 +121,28 @@ describe("설정", () => {
     expect(() => loadSettings({ ...example, [key]: value })).toThrow(new RegExp(key));
   });
   it.each([
-    ["APP_ENV", "staging"],
-    ["LOG_LEVEL", "verbose"],
-    ["OTEL_ENABLED", "yes"],
-  ])("열거형과 불리언의 잘못된 값을 거절한다: %s", (key, value) => {
-    expect(() => loadSettings({ ...example, [key]: value })).toThrow(new RegExp(key));
+    ["APP_ENV", "staging", "development, test, production 중 하나로 적는다"],
+    ["LOG_LEVEL", "verbose", "debug, info, warning, error 중 하나로 적는다"],
+    ["OTEL_ENABLED", "yes", "true 또는 false로 적는다"],
+  ])("열거형과 불리언의 잘못된 값을 거절한다: %s", (key, value, message) => {
+    expect(() => loadSettings({ ...example, [key]: value })).toThrow(
+      `설정 오류: ${key} — ${message}`,
+    );
+  });
+  it("운영 예시 비밀은 다른 설정 오류와 함께 한 번에 알린다", () => {
+    try {
+      loadSettings({ ...example, APP_ENV: "production", LOG_LEVEL: "verbose" });
+    } catch (error) {
+      expect(error).toBeInstanceOf(SettingsError);
+      expect((error as SettingsError).lines).toEqual([
+        "설정 오류: LOG_LEVEL — debug, info, warning, error 중 하나로 적는다",
+        ...Object.keys(EXAMPLE_SECRETS).map(
+          (key) => `설정 오류: ${key} — 운영에서는 .env.example의 값을 쓸 수 없다`,
+        ),
+      ]);
+      return;
+    }
+    expect.fail("운영 예시 비밀과 잘못된 열거형은 거절해야 한다");
   });
   it("오류 메시지에는 입력한 비밀 값을 싣지 않는다", () => {
     const value = "bad-private-url-value";

@@ -1,5 +1,6 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { extname } from "node:path";
 
 export function readinessDirectory(): string | undefined {
   return process.env.AITPL_READY_DIR;
@@ -13,6 +14,12 @@ export function isEntrypoint(url: string): boolean {
   try {
     return realpathSync(entry) === realpathSync(fileURLToPath(url));
   } catch {
-    return false;
+    if (extname(entry)) return false;
+    try {
+      const target = fileURLToPath(url);
+      return realpathSync(entry + extname(target)) === realpathSync(target);
+    } catch {
+      return false;
+    }
   }
 }

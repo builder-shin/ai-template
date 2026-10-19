@@ -13,6 +13,33 @@ const base = {
   responses: { 200: { description: "성공" } },
   errors: [],
 } as const;
+it.each(["missing", "-missing", "createdAt,-missing"])(
+  "기본 정렬은 sort에 선언한 필드만 쓴다: %s",
+  (defaultSort) => {
+    const operationId = `InvalidDefaultSort_${defaultSort}`;
+    expect(() =>
+      defineOperation({
+        ...base,
+        operationId,
+        method: "GET",
+        query: { sort: ["createdAt"], defaultSort },
+      }),
+    ).toThrow(`기본 정렬이 sort 선언에 없다: ${operationId} missing`);
+  },
+);
+it.each(["createdAt", "-createdAt"])(
+  "선언한 기본 정렬은 방향과 관계없이 받는다: %s",
+  (defaultSort) => {
+    expect(
+      defineOperation({
+        ...base,
+        operationId: `ValidDefaultSort_${defaultSort}`,
+        method: "GET",
+        query: { sort: ["createdAt"], defaultSort },
+      }).query.defaultSort,
+    ).toBe(defaultSort);
+  },
+);
 it("POST에는 403과 409 및 오류 코드를 자동으로 더한다", () => {
   const declaration = defineOperation({ ...base, operationId: "Task5Post", method: "POST" });
   expect(declaration.responses).toMatchObject({

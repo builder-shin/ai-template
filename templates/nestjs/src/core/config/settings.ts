@@ -29,7 +29,13 @@ function integer(max = Number.MAX_SAFE_INTEGER) {
     .string()
     .regex(/^\d+$/, "양의 정수로 적는다")
     .transform(Number)
-    .pipe(z.number().int().min(1).max(max));
+    .pipe(
+      z
+        .number()
+        .int()
+        .min(1, "1 이상으로 적는다")
+        .max(max, `${String(max)} 이하로 적는다`),
+    );
 }
 const commaList = z.string().transform((value) => [
   ...new Set(
@@ -68,8 +74,12 @@ const origins = nonEmptyList.transform((values, context) => {
 
 export const settingsSchema = z
   .object({
-    APP_ENV: z.enum(["development", "test", "production"]),
-    LOG_LEVEL: z.enum(["debug", "info", "warning", "error"]),
+    APP_ENV: z.enum(["development", "test", "production"], {
+      message: "development, test, production 중 하나로 적는다",
+    }),
+    LOG_LEVEL: z.enum(["debug", "info", "warning", "error"], {
+      message: "debug, info, warning, error 중 하나로 적는다",
+    }),
     DATABASE_URL: url("postgresql:"),
     REDIS_URL: url("redis:", "rediss:"),
     S3_ENDPOINT_URL: httpUrl,
@@ -108,7 +118,9 @@ export const settingsSchema = z
     OAUTH_NAVER_PROFILE_URL: httpUrl,
     SEED_ADMIN_EMAIL: nonEmpty,
     SEED_ADMIN_PASSWORD: z.string().min(8, "8자 이상 적는다"),
-    OTEL_ENABLED: z.enum(["true", "false"]).transform((value) => value === "true"),
+    OTEL_ENABLED: z
+      .enum(["true", "false"], { message: "true 또는 false로 적는다" })
+      .transform((value) => value === "true"),
     OTEL_SERVICE_NAME: nonEmpty,
     OTEL_EXPORTER_OTLP_ENDPOINT: httpUrl,
     RATE_LIMIT_GLOBAL: integer(),
@@ -156,5 +168,9 @@ export function loadSettings(env: NodeJS.ProcessEnv = process.env): Settings {
     if (!lines.has(key))
       lines.set(key, `설정 오류: ${key} — ${env[key] === undefined ? "값이 없다" : issue.message}`);
   }
+  if (env.APP_ENV === "production")
+    for (const [key, value] of Object.entries(EXAMPLE_SECRETS))
+      if (env[key] === value && !lines.has(key))
+        lines.set(key, `설정 오류: ${key} — 운영에서는 .env.example의 값을 쓸 수 없다`);
   throw new SettingsError([...lines.values()]);
 }
