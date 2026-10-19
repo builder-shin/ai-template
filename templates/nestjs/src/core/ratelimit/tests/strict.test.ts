@@ -17,13 +17,12 @@ it.each([
   async (rule, setting, seconds) => {
     const { clients, evalCommand } = store([3, 42]);
     const limiter = new StrictLimiter(clients, { ...settings, [setting]: 2 }, new JsonLogger([]));
-    await expect(limiter.enforce(rule, "subject")).rejects.toMatchObject({
-      init: {
-        status: 429,
-        code: "rate_limit.exceeded",
-        headers: { "Retry-After": "42" },
-        meta: { retryAfter: 42 },
-      },
+    await expect(limiter.enforce(rule, "subject")).rejects.toHaveProperty("init", {
+      status: 429,
+      code: "rate_limit.exceeded",
+      title: "Too many requests",
+      headers: { "Retry-After": "42" },
+      meta: { retryAfter: 42 },
     });
     expect(evalCommand).toHaveBeenCalledExactlyOnceWith(
       expect.any(String),

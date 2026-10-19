@@ -18,6 +18,7 @@ export function incoming(
 ): Request {
   return {
     path,
+    ip: remoteAddress,
     socket: { remoteAddress },
     headers: { "x-forwarded-for": forwardedFor },
   } as unknown as Request;

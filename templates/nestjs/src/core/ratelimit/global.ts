@@ -1,42 +1,25 @@
-import { dependencyFailure } from "../telemetry/diagnostics.js";
 import { Logger } from "@nestjs/common";
 import type { RedisClients } from "../redis/clients.js";
 import type { Settings } from "../config/settings.js";
 import type { GlobalLimiter } from "../http/pipeline.js";
-import { clientIp } from "../http/client-ip.js";
-import { ApiError } from "../jsonapi/errors.js";
-import { hitWindow, type WindowResult } from "./window.js";
+import { failOpen, rateLimited } from "./limit.js";
+import { hitWindow } from "./window.js";
 
 export function createGlobalLimiter(redis: RedisClients, settings: Settings): GlobalLimiter {
   const logger = new Logger("GlobalLimiter");
   return async (req) => {
     if (!req.path.startsWith("/api/")) return;
-    const forwarded = req.headers["x-forwarded-for"];
-    const ip = clientIp(
-      req.socket.remoteAddress ?? "",
-      typeof forwarded === "string" ? forwarded : undefined,
-      settings.FORWARDED_ALLOW_IPS,
-    );
-    const minute = String(Math.floor(Date.now() / 60000));
-    let result: WindowResult;
-    try {
-      result = await hitWindow(
+    const now = Date.now();
+    const minute = Math.floor(now / 60000);
+    const result = await failOpen(logger, () =>
+      hitWindow(
         redis.command,
-        redis.key("rl", "global", ip, minute),
+        redis.key("rl", "global", req.ip ?? "", String(minute)),
         settings.RATE_LIMIT_GLOBAL,
         60,
-      );
-    } catch (error) {
-      logger.warn("속도 제한 저장소를 사용할 수 없다", { failureKind: dependencyFailure(error) });
-      return;
-    }
-    if (!result.allowed)
-      throw new ApiError({
-        status: 429,
-        code: "rate_limit.exceeded",
-        title: "Too many requests",
-        headers: { "Retry-After": String(result.retryAfter) },
-        meta: { retryAfter: result.retryAfter },
-      });
+      ),
+    );
+    if (result && !result.allowed)
+      throw rateLimited(Math.max(1, Math.ceil(((minute + 1) * 60000 - now) / 1000)));
   };
 }

@@ -1,11 +1,10 @@
-import { dependencyFailure } from "../telemetry/diagnostics.js";
 import { Inject, Injectable } from "@nestjs/common";
 import { RedisClients } from "../redis/clients.js";
 import { SETTINGS, type Settings } from "../config/settings.js";
 import { JsonLogger } from "../logging/json-logger.js";
-import { ApiError } from "../jsonapi/errors.js";
+import { failOpen, rateLimited } from "./limit.js";
 import { STRICT_RULES, type StrictRule } from "./rules.js";
-import { hitWindow, type WindowResult } from "./window.js";
+import { hitWindow } from "./window.js";
 
 @Injectable()
 export class StrictLimiter {
@@ -16,27 +15,14 @@ export class StrictLimiter {
   ) {}
   async enforce(rule: StrictRule, subject: string): Promise<void> {
     const { setting, windowSeconds } = STRICT_RULES[rule];
-    let result: WindowResult;
-    try {
-      result = await hitWindow(
+    const result = await failOpen(this.logger, () =>
+      hitWindow(
         this.redis.command,
         this.redis.key("rl", "strict", rule, subject),
         this.settings[setting],
         windowSeconds,
-      );
-    } catch (error) {
-      this.logger.warn("속도 제한 저장소를 사용할 수 없다", {
-        failureKind: dependencyFailure(error),
-      });
-      return;
-    }
-    if (!result.allowed)
-      throw new ApiError({
-        status: 429,
-        code: "rate_limit.exceeded",
-        title: "Too many requests",
-        headers: { "Retry-After": String(result.retryAfter) },
-        meta: { retryAfter: result.retryAfter },
-      });
+      ),
+    );
+    if (result && !result.allowed) throw rateLimited(result.retryAfter);
   }
 }
