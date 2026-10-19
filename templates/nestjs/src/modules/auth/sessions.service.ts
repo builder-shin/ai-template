@@ -83,10 +83,16 @@ export class SessionsService {
     await this.limiter.enforce("login.ip", client.ip);
     await this.limiter.enforce("login.identifier", identifierHash);
     const result = await this.unit.run(async (tx) => {
-      const user = await this.auth.findByEmail(tx, email);
+      let user = await this.auth.findByEmail(tx, email);
       let valid = false;
       if (user?.passwordHash) valid = await verifyPassword(user.passwordHash, input.password);
       else await dummyVerify(input.password);
+      if (valid && user) {
+        const { passwordHash, status } = user;
+        await this.auth.lockUser(tx, user.id);
+        user = await this.auth.findById(tx, user.id);
+        valid = user?.passwordHash === passwordHash && user.status === status;
+      }
       const failure =
         !valid || !user
           ? "auth.invalid_credentials"

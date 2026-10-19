@@ -79,7 +79,14 @@ it("비밀번호 로그인은 30일 세션과 해시 refresh를 만들고 성공
     },
   ]);
   expect(f.state.loginAt).toEqual(now);
-  expect(f.events).toEqual(["begin", "audit", "commit"]);
+  expect(f.events).toEqual([
+    "begin",
+    "lock:user",
+    "find:user",
+    "session:create",
+    "audit",
+    "commit",
+  ]);
   expect(f.limits).toEqual([
     ["login.ip", "192.0.2.1"],
     [
@@ -89,6 +96,41 @@ it("비밀번호 로그인은 30일 세션과 해시 refresh를 만들고 성공
         .digest("hex"),
     ],
   ]);
+});
+it("비밀번호 로그인은 검증 뒤 사용자 잠금을 얻고 다시 읽은 해시로 세션을 만든다", async () => {
+  const f = fixture();
+  vi.mocked(passwords.verifyPassword).mockImplementationOnce(() => {
+    f.events.push("verify");
+    return Promise.resolve(true);
+  });
+  await f.service.createWithPassword(input, { ip: "ip" });
+  expect(f.events).toEqual([
+    "begin",
+    "verify",
+    "lock:user",
+    "find:user",
+    "session:create",
+    "audit",
+    "commit",
+  ]);
+});
+it("잠금을 기다리는 동안 해시가 바뀌면 401이고 세션을 만들지 않는다", async () => {
+  const f = fixture();
+  f.userChangeOnLock = { passwordHash: "changed-hash" };
+  await expect(f.service.createWithPassword(input, { ip: "ip" })).rejects.toMatchObject(
+    error("auth.invalid_credentials"),
+  );
+  expect(f.state.sessions).toEqual([]);
+  expect(f.state.audits).toEqual([expect.objectContaining({ action: "session.login_failed" })]);
+  expect(f.events).toEqual(["begin", "lock:user", "find:user", "audit", "commit"]);
+});
+it("잠금을 기다리는 동안 계정이 비활성화되면 401이고 세션을 만들지 않는다", async () => {
+  const f = fixture();
+  f.userChangeOnLock = { status: "deactivated" };
+  await expect(f.service.createWithPassword(input, { ip: "ip" })).rejects.toMatchObject(
+    error("auth.invalid_credentials"),
+  );
+  expect(f.state.sessions).toEqual([]);
 });
 it.each(["없는 계정", "틀린 비밀번호", "소셜 전용"])(
   "%s 로그인은 같은 401과 식별자 해시 감사를 commit한다",

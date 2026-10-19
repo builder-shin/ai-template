@@ -29,6 +29,8 @@ export function sessionFixture(oauth = new OAuthState(memoryRedis().redis)) {
   let committed: State = { users: [], sessions: [], refresh: [], audits: [], loginAt: null };
   let active: State | undefined;
   let failAudit = false;
+  let userChangeOnLock: Partial<AuthUser> = {};
+  let consumeRefreshOnLock = false;
   const events: string[] = [];
   const state = () => {
     if (!active) throw new Error("트랜잭션 밖 저장소 접근이다");
@@ -63,10 +65,17 @@ export function sessionFixture(oauth = new OAuthState(memoryRedis().redis)) {
   } as unknown as PrismaService);
   class MemoryAuth extends AuthRepository {
     override findByEmail(_tx: Tx, email: string) {
-      return Promise.resolve(state().users.find((u) => u.email === email) ?? null);
+      return Promise.resolve(structuredClone(state().users.find((u) => u.email === email) ?? null));
     }
     override findById(_tx: Tx, id: string) {
+      events.push("find:user");
       return Promise.resolve(state().users.find((u) => u.id === id) ?? null);
+    }
+    override lockUser(_tx: Tx, id: string) {
+      events.push("lock:user");
+      const user = state().users.find((u) => u.id === id);
+      if (user) Object.assign(user, userChangeOnLock);
+      return Promise.resolve();
     }
   }
   class MemorySessions extends SessionsRepository {
@@ -74,6 +83,7 @@ export function sessionFixture(oauth = new OAuthState(memoryRedis().redis)) {
       _tx: Tx,
       input: { userId: string; at: Date; expiresAt: Date; userAgent?: string },
     ) {
+      events.push("session:create");
       const row: SessionRow = {
         id: randomUUID(),
         userId: input.userId,
@@ -93,10 +103,15 @@ export function sessionFixture(oauth = new OAuthState(memoryRedis().redis)) {
     }
     override lock(tx: Tx, id: string) {
       events.push("lock");
+      if (consumeRefreshOnLock)
+        for (const token of state().refresh) if (token.sessionId === id) token.usedAt = now;
       return this.find(tx, id).then((s) => s ?? undefined);
     }
     override findRefresh(_tx: Tx, hash: string) {
-      return Promise.resolve(state().refresh.find((t) => t.tokenHash === hash) ?? null);
+      events.push("findRefresh");
+      return Promise.resolve(
+        structuredClone(state().refresh.find((t) => t.tokenHash === hash) ?? null),
+      );
     }
     override addRefresh(_tx: Tx, sessionId: string, tokenHash: string, expiresAt: Date) {
       state().refresh.push({ id: randomUUID(), sessionId, tokenHash, expiresAt, usedAt: null });
@@ -128,6 +143,9 @@ export function sessionFixture(oauth = new OAuthState(memoryRedis().redis)) {
           return (a[field].getTime() - b[field].getTime()) * (sort.descending ? -1 : 1);
         });
       return Promise.resolve(rows);
+    }
+    override unrevoked(_tx: Tx, id: string) {
+      return Promise.resolve(state().sessions.filter((s) => s.userId === id && !s.revokedAt));
     }
     override loginAt(_tx: Tx, _id: string, at: Date) {
       state().loginAt = at;
@@ -169,6 +187,12 @@ export function sessionFixture(oauth = new OAuthState(memoryRedis().redis)) {
     },
     set failAudit(value: boolean) {
       failAudit = value;
+    },
+    set userChangeOnLock(value: Partial<AuthUser>) {
+      userChangeOnLock = value;
+    },
+    set consumeRefreshOnLock(value: boolean) {
+      consumeRefreshOnLock = value;
     },
     set limitFailure(value: Error) {
       limitFailure = value;
