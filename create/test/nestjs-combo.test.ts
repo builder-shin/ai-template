@@ -63,7 +63,13 @@ it.each([["web"], ["admin"], ["web", "admin"]] as const)(
     const unit = spawnSync(
       process.execPath,
       ["--test", "scripts/*.test.mjs", ".claude/hooks/*.test.mjs"],
-      { cwd: target, encoding: "utf8", env: process.env },
+      {
+        cwd: target,
+        encoding: "utf8",
+        env: Object.fromEntries(
+          Object.entries(process.env).filter(([name]) => name.toLowerCase() !== "npm_execpath"),
+        ),
+      },
     );
     expect(unit.status, unit.stdout + unit.stderr).toBe(0);
   },

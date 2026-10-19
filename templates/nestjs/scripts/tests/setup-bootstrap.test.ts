@@ -47,7 +47,7 @@ it("bootstrap은 frozen 설치 뒤에만 준비 스크립트를 실행한다", (
   const result = spawnSync(process.execPath, [join(process.cwd(), "scripts/setup.mjs")], {
     cwd: root,
     encoding: "utf8",
-    env: { ...environment(), npm_execpath: cli },
+    env: environment({ npm_execpath: cli }),
   });
   expect(result.status).toBe(0);
   expect(JSON.parse(readFileSync(join(root, "install.json"), "utf8"))).toEqual([
@@ -61,7 +61,7 @@ it("bootstrap은 설치 실패 종료를 보존하고 준비를 실행하지 않
   const result = spawnSync(process.execPath, [join(process.cwd(), "scripts/setup.mjs")], {
     cwd: root,
     encoding: "utf8",
-    env: { ...environment(), npm_execpath: cli },
+    env: environment({ npm_execpath: cli }),
   });
   expect(result.status).toBe(23);
   expect(existsSync(join(root, "setup-effect"))).toBe(false);
@@ -82,11 +82,10 @@ it.each([false, true])("bootstrap은 native pnpm의 설치와 종료를 보존�
   const result = spawnSync(process.execPath, [join(process.cwd(), "scripts/setup.mjs")], {
     cwd: root,
     encoding: "utf8",
-    env: {
-      ...environment(),
+    env: environment({
       npm_execpath: cli,
       NODE_OPTIONS: `--require=${JSON.stringify(preload)}`,
-    },
+    }),
   });
   expect(result.stderr).toBe("");
   expect(result.status).toBe(fail ? 23 : 0);

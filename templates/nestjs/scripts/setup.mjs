@@ -1,16 +1,15 @@
 import { spawnSync } from "node:child_process";
-import { environment } from "./child-environment.mjs";
-const pnpm = environment().npm_execpath;
+import { environment, environmentValue } from "./child-environment.mjs";
+const pnpm = environmentValue("npm_execpath");
 if (!pnpm) {
   process.stderr.write("pnpm setup으로 실행한다\n");
   process.exitCode = 1;
 } else {
-  const env = {
-    ...environment(),
+  const env = environment({
     npm_config_verify_deps_before_run: "error",
     PNPM_VERIFY_DEPS_BEFORE_RUN: "error",
     PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "error",
-  };
+  });
   const javascript = /\.[cm]?js$/.test(pnpm);
   const args = ["install", "--frozen-lockfile"];
   const installed = spawnSync(

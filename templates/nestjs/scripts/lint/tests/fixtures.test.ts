@@ -29,42 +29,32 @@ const negatives = [
   ["ban-ts-comment", "src/service.ts", "@typescript-eslint/ban-ts-comment"],
 ] as const;
 
-const linters = new Map<string, ESLint>();
-function eslint(base: string, fix = false) {
-  if (!fix && linters.has(base)) return linters.get(base) as ESLint;
-  const engine = new ESLint({
+const fixtureBases = [...new Set(negatives.map(([name]) => `negative/${name}`)), "positive"];
+function eslint(fix = false) {
+  return new ESLint({
     cwd: root,
     ignore: false,
     fix,
     overrideConfigFile: join(root, "eslint.config.js"),
-    overrideConfig: [
-      {
-        settings: { "boundaries/root-path": base },
-      },
-    ],
+    overrideConfig: fixtureBases.map((base) => ({
+      files: [`scripts/lint/fixtures/${base}/**/*.ts`],
+      settings: { "boundaries/root-path": join(fixtureRoot, base) },
+    })),
   });
-  if (!fix) linters.set(base, engine);
-  return engine;
 }
-const negativeResults = new Map<string, ESLint.LintResult>();
-const positiveResults = new Map<string, ESLint.LintResult>();
+const results = new Map<string, ESLint.LintResult>();
 // 타입 프로그램의 초기 로딩은 fixture 준비 단계에 속한다. 각 사례는 실제 lint 결과를 검사한다.
 beforeAll(async () => {
-  for (const [name, file] of negatives) {
-    const base = join(fixtureRoot, "negative", name);
-    const path = join(base, file);
-    const [result] = await eslint(base).lintFiles([path]);
-    if (!result) throw new Error(`음성 fixture 결과가 없다: ${path}`);
-    negativeResults.set(path, result);
-  }
-  for (const result of await eslint(positiveRoot).lintFiles(
-    positives.map((file) => join(positiveRoot, file)),
-  ))
-    positiveResults.set(result.filePath, result);
+  const paths = [
+    ...negatives.map(([name, file]) => join(fixtureRoot, "negative", name, file)),
+    ...positives.map((file) => join(positiveRoot, file)),
+  ];
+  for (const result of await eslint().lintFiles(paths)) results.set(result.filePath, result);
+  for (const path of paths) if (!results.has(path)) throw new Error(`fixture 결과가 없다: ${path}`);
 });
 it.each(negatives)("음성 fixture가 지정 규칙을 위반한다: %s/%s", (name, file, rule) => {
   const base = join(fixtureRoot, "negative", name);
-  const result = negativeResults.get(join(base, file));
+  const result = results.get(join(base, file));
   expect(result?.fatalErrorCount).toBe(0);
   expect(result?.messages.filter((message) => message.ruleId === rule).length).toBeGreaterThan(0);
 });
@@ -73,12 +63,12 @@ const positives = readdirSync(positiveRoot, { recursive: true, encoding: "utf8" 
   file.endsWith(".ts"),
 );
 it.each(positives)("양성 fixture는 위반이 없다: %s", (file) => {
-  const result = positiveResults.get(join(positiveRoot, file));
+  const result = results.get(join(positiveRoot, file));
   expect(result?.messages).toEqual([]);
 });
 it("자동 수정이 데코레이터 생성자의 값 import를 보존한다", async () => {
   const path = join(positiveRoot, "src/modules/posts/decorated.ts");
-  const [result] = await eslint(positiveRoot, true).lintText(readFileSync(path, "utf8"), {
+  const [result] = await eslint(true).lintText(readFileSync(path, "utf8"), {
     filePath: path,
   });
   const output = result?.output ?? readFileSync(path, "utf8");

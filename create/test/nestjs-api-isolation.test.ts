@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { expect, it } from "vitest";
 import { parse } from "yaml";
 import { createProject } from "../src/create.ts";
@@ -70,13 +70,15 @@ it("R124 루트 그래프는 API 실제 의존성 대신 의존성 없는 api �
 it("R124 생성은 루트와 실제 API frozen 설치 뒤에만 web·admin gen을 실행한다", () => {
   const { target, calls } = generated();
   const installs = calls.filter(({ args }) => args.includes("install"));
-  expect(installs.map(({ cwd, args }) => ({ api: cwd.endsWith("/apps/api"), args }))).toEqual([
+  expect(
+    installs.map(({ cwd, args }) => ({ api: cwd.endsWith(join(sep, "apps", "api")), args })),
+  ).toEqual([
     { api: false, args: ["install", "--lockfile-only"] },
     { api: false, args: ["install", "--frozen-lockfile"] },
     { api: true, args: ["install", "--frozen-lockfile"] },
   ]);
   const apiInstall = calls.findIndex(
-    ({ cwd, args }) => cwd.endsWith("/apps/api") && args.includes("--frozen-lockfile"),
+    ({ cwd, args }) => cwd.endsWith(join(sep, "apps", "api")) && args.includes("--frozen-lockfile"),
   );
   expect(apiInstall).toBeGreaterThan(0);
   const gens = calls
@@ -153,7 +155,7 @@ it.each(["root-frozen", "api-frozen"])(
             calls.push(args);
             if (
               args.includes("--frozen-lockfile") &&
-              cwd.endsWith("/apps/api") === (phase === "api-frozen")
+              cwd.endsWith(join(sep, "apps", "api")) === (phase === "api-frozen")
             ) {
               const folder = phase === "api-frozen" ? cwd : join(cwd, "apps/api");
               write(folder, "pnpm-lock.yaml", sourceText(folder, "pnpm-lock.yaml") + "# changed\n");

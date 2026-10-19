@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { expect, it } from "vitest";
 import { parse } from "yaml";
 import { createProject } from "../src/create.ts";
@@ -30,7 +30,7 @@ it("프론트 전용 해석 뒤 API 정책·잠금을 복원하고 frozen 전후
         workspaces.push(parse(sourceText(cwd, "pnpm-workspace.yaml")) as Record<string, unknown>);
         const keys = Object.keys(dependency(sourceText(cwd, "pnpm-lock.yaml")).importers);
         expect(keys.includes("apps/api")).toBe(false);
-        expect(keys.includes("tools/api")).toBe(!cwd.endsWith("/apps/api"));
+        expect(keys.includes("tools/api")).toBe(!cwd.endsWith(join(sep, "apps", "api")));
       },
     },
   );
