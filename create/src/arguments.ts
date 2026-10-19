@@ -112,9 +112,9 @@ export function parseArguments(
     );
   }
   const backend = values.api ?? values.template;
-  if ((backend === "fastapi" || backend === "nestjs") && name === backend) {
+  if ((backend === "fastapi" || backend === "nestjs") && ["fastapi", "nestjs"].includes(name)) {
     throw new CreateError(
-      `${backend}는 템플릿의 개발 compose 프로젝트 이름이다`,
+      `${name}는 템플릿의 개발 compose 프로젝트 이름이다`,
       "다른 --name을 지정한다.",
       2,
     );

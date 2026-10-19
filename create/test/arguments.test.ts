@@ -4,6 +4,32 @@ import { parseArguments } from "../src/arguments.ts";
 import { CreateError } from "../src/errors.ts";
 
 describe("CLI 입력", () => {
+  it.each([
+    { label: "NestJS 단독", flags: ["--template", "nestjs"] },
+    { label: "FastAPI 단독", flags: ["--template", "fastapi"] },
+    { label: "NestJS 조합", flags: ["--api", "nestjs", "--web"] },
+    { label: "FastAPI 조합", flags: ["--api", "fastapi", "--web"] },
+  ])("$label 프로젝트는 두 개발 compose 이름을 오류 2로 거절한다", ({ flags }) => {
+    for (const name of ["fastapi", "nestjs"])
+      for (const args of [[name], ["target", "--name", name]])
+        expect(() => parseArguments([...args, ...flags], {})).toThrow(
+          expect.objectContaining({
+            name: "CreateError",
+            exitCode: 2,
+            message: `pnpm new: ${name}는 템플릿의 개발 compose 프로젝트 이름이다 — 다른 --name을 지정한다.`,
+          }),
+        );
+  });
+
+  it.each(["nextjs", "nextjs-admin"])("%s 단독 프로젝트는 두 백엔드 이름을 받는다", (template) => {
+    for (const name of ["fastapi", "nestjs"])
+      for (const args of [[name], ["target", "--name", name]])
+        expect(parseArguments([...args, "--template", template], {})).toMatchObject({
+          name,
+          template,
+        });
+  });
+
   it.each(["api", "web", "admin"])("조합 예약 이름은 두 입력 경로 모두 오류 2다: %s", (name) => {
     for (const args of [[name], ["target", "--name", name]]) {
       try {
