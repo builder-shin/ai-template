@@ -2,6 +2,7 @@ import { Inject, Injectable, type OnModuleDestroy } from "@nestjs/common";
 import { z } from "zod";
 import { RedisClients } from "../redis/clients.js";
 import { JsonLogger } from "../logging/json-logger.js";
+import { dependencyFailure } from "../telemetry/diagnostics.js";
 const recheckMessage = z.object({ userId: z.string().min(1) });
 @Injectable()
 export class ControlChannel implements OnModuleDestroy {
@@ -35,8 +36,11 @@ export class ControlChannel implements OnModuleDestroy {
       }
       void Promise.resolve()
         .then(() => handler(parsed.data.userId))
-        .catch(() => {
-          this.logger.warn("실시간 재검사를 실행하지 못했다");
+        .catch((error: unknown) => {
+          this.logger.warn("실시간 재검사를 실행하지 못했다", {
+            userId: parsed.data.userId,
+            failureKind: dependencyFailure(error),
+          });
         });
     };
     this.listener = listener;

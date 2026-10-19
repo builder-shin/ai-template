@@ -4,6 +4,7 @@ import { JwtPrincipalResolver } from "../auth/index.js";
 import type { Server, Socket } from "socket.io";
 import { JsonLogger } from "../../core/logging/json-logger.js";
 import { ApiError } from "../../core/jsonapi/errors.js";
+import { dependencyFailure } from "../../core/telemetry/diagnostics.js";
 export interface SocketData {
   principal?: Principal;
 }
@@ -31,7 +32,11 @@ export class SessionRecheck {
       } catch (error) {
         if (error instanceof ApiError && error.init.code === "auth.token_invalid")
           socket.disconnect(true);
-        else this.logger.warn("세션을 재검사하지 못해 연결을 유지한다");
+        else
+          this.logger.warn("세션을 재검사하지 못해 연결을 유지한다", {
+            userId,
+            failureKind: dependencyFailure(error),
+          });
       }
     }
   }

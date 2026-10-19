@@ -2,7 +2,6 @@ import { Module, type DynamicModule, type INestApplicationContext } from "@nestj
 import { TicketStore } from "../../core/realtime/tickets.js";
 import { RealtimePublisher, RuntimeRealtimePublisher } from "../../core/realtime/publisher.js";
 import { ControlChannel } from "../../core/realtime/control-channel.js";
-import { AuthModule } from "../auth/index.js";
 import { RealtimeController } from "./controller.js";
 import { RealtimeGateway } from "./gateway.js";
 import { SessionRecheck } from "./recheck.js";
@@ -13,10 +12,7 @@ function unavailable(): never {
 @Module({})
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest DI 모듈은 선언용 클래스를 사용한다
 export class RealtimeModule {
-  static register(
-    infrastructure: boolean,
-    auth: DynamicModule = AuthModule.register(infrastructure),
-  ): DynamicModule {
+  static register(infrastructure: boolean, auth: DynamicModule): DynamicModule {
     return {
       module: RealtimeModule,
       imports: infrastructure ? [auth] : [],

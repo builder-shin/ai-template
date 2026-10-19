@@ -2,10 +2,19 @@
 export function dependencyFailure(error: unknown): string {
   if (!(error instanceof Error)) return "unknown";
   const code = "code" in error ? error.code : undefined;
-  if (code === "ETIMEDOUT") return "timeout";
+  if (code === "ETIMEDOUT" || error.message === "Command timed out") return "timeout";
+  if (error.name === "MaxRetriesPerRequestError" || error.message === "Connection is closed.")
+    return "connection";
   if (
     typeof code === "string" &&
-    ["ECONNREFUSED", "ECONNRESET", "ENOTFOUND", "EHOSTUNREACH"].includes(code)
+    [
+      "ECONNREFUSED",
+      "ECONNRESET",
+      "ENOTFOUND",
+      "EHOSTUNREACH",
+      "ENETUNREACH",
+      "ECONNABORTED",
+    ].includes(code)
   )
     return "connection";
   if (error.name === "ReplyError") {

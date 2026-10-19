@@ -1,8 +1,29 @@
-import { expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
+import { setImmediate } from "node:timers/promises";
 import { ControlChannel } from "../control-channel.js";
 import { JsonLogger } from "../../logging/json-logger.js";
 import { redisFixture } from "./redis-fixture.js";
 import { deferred } from "./deferred.js";
+afterEach(() => vi.restoreAllMocks());
+it("재검사 처리기 실패는 사용자와 안전한 장애 분류만 기록한다", async () => {
+  const f = redisFixture();
+  const logger = new JsonLogger([]);
+  const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+  const channel = new ControlChannel(f.redis, logger);
+  try {
+    await channel.subscribe(() =>
+      Promise.reject(Object.assign(new Error("private-host"), { code: "ETIMEDOUT" })),
+    );
+    await channel.publishRecheck("회원");
+    await setImmediate();
+    expect(warn).toHaveBeenCalledExactlyOnceWith("실시간 재검사를 실행하지 못했다", {
+      userId: "회원",
+      failureKind: "timeout",
+    });
+  } finally {
+    await channel.onModuleDestroy();
+  }
+});
 it("같은 subscriber로 제어 채널을 받고 다른 채널은 무시한다", async () => {
   const f = redisFixture();
   const users: string[] = [];

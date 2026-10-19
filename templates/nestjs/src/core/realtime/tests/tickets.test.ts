@@ -8,7 +8,7 @@ const principal: Principal = {
   sessionId: "s",
   permissions: new Set(["posts:manage"]),
 };
-export function ticketFixture() {
+function ticketFixture() {
   let now = 0;
   const values = new Map<string, { value: string; until: number }>();
   const writes: { key: string; value: string; ttl: number }[] = [];

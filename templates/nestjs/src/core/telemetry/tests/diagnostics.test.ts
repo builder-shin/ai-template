@@ -7,8 +7,17 @@ import { StrictLimiter } from "../../ratelimit/strict.js";
 import { store, incoming } from "../../ratelimit/tests/fixtures.js";
 import { settings, testApp } from "../../http/tests/fixtures.js";
 import { HEALTH_CHECKS } from "../../../modules/health/index.js";
+import { MaxRetriesPerRequestError } from "ioredis/built/errors/index.js";
+import { dependencyFailure } from "../diagnostics.js";
 afterEach(() => vi.restoreAllMocks());
 const failures = [
+  [new Error("Command timed out"), "timeout"],
+  [new MaxRetriesPerRequestError(1), "connection"],
+  [new Error("Connection is closed."), "connection"],
+  ...["ENETUNREACH", "ECONNABORTED"].map(
+    (code) =>
+      [Object.assign(new Error("private-host private-key"), { code }), "connection"] as const,
+  ),
   [Object.assign(new Error("private-host private-key"), { code: "ECONNREFUSED" }), "connection"],
   [Object.assign(new Error("private-host private-key"), { code: "ETIMEDOUT" }), "timeout"],
   [Object.assign(new Error("WRONGTYPE private-key"), { name: "ReplyError" }), "redis_wrong_type"],
@@ -28,6 +37,9 @@ const failures = [
     "unknown",
   ],
 ] as const;
+it.each(failures)("의존 오류는 원문 없이 안전한 종류로 분류한다: %#", (error, kind) => {
+  expect(dependencyFailure(error)).toBe(kind);
+});
 it.each(failures)(
   "전역 저장소 장애를 안전한 분류만 남기고 통과한다: %#",
   async (error, failureKind) => {
