@@ -12,7 +12,7 @@ export async function setup(): Promise<void> {
   await prepareHarness();
   const settings = scriptSettings();
   execFileSync("docker", ["compose", "up", "-d", "--wait"], { stdio: "inherit" });
-  await ensureDatabases(settings.DATABASE_URL);
+  ensureDatabases(settings.DATABASE_URL);
   await generate();
   for (const url of databaseUrls(settings.DATABASE_URL)) await migrate(url);
   const clients = storageClients(settings);

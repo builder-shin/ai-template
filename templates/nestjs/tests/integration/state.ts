@@ -17,7 +17,10 @@ export function getState() {
   redis.pathname = "/15";
   const smtp = new URL(configured.SMTP_URL);
   const mailpit = new URL(`http://${smtp.hostname}`);
-  mailpit.port = Number(smtp.port) >= 20000 ? "28025" : "8025";
+  const ports: Record<string, string> = { "21025": "28025", "1025": "8025" };
+  const apiPort = ports[smtp.port];
+  if (!apiPort) throw new Error(`Mailpit API 포트를 알 수 없다: SMTP ${smtp.port}`);
+  mailpit.port = apiPort;
   const settings = {
     ...configured,
     APP_ENV: "test" as const,

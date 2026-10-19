@@ -35,6 +35,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
   expect(existsSync(root)).toBe(false);
   expect(existsSync(templateCheck)).toBe(true);
+  expect(existsSync(actualEntry)).toBe(true);
 });
 function runEntry(path: string) {
   return spawnSync(process.execPath, ["--import", loader, path], {

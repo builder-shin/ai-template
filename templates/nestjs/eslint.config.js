@@ -91,6 +91,14 @@ export default defineConfig(
   {
     files: ["**/*.js", "**/*.mjs"],
     extends: [tseslint.configs.disableTypeChecked],
-    rules: { "no-undef": "off" },
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        URL: "readonly",
+        setTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+      },
+    },
   },
 );

@@ -22,11 +22,9 @@ export const STAGES: readonly Stage[] = [
     inputs: [
       "prisma",
       "prisma.config.ts",
-      "src/generated",
       "scripts/gen.ts",
       "scripts/runtime.ts",
       "src",
-      "src/app.module.ts",
       ".env.example",
       "openapi.json",
       ...config,
@@ -36,7 +34,7 @@ export const STAGES: readonly Stage[] = [
   {
     name: "lint",
     inputs: ["."],
-    command: cli("node_modules/eslint/bin/eslint.js", "."),
+    command: cli("node_modules/eslint/bin/eslint.js", ".", "--max-warnings", "0"),
   },
   {
     name: "typecheck",

@@ -1,11 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { resetState } from "../../tests/integration/state.js";
+import { getState, resetState } from "../../tests/integration/state.js";
 import { ForeignDatabaseError } from "../db/guard.js";
 import { SettingsError } from "../../src/core/config/settings.js";
 import globalSetup from "../../tests/integration/global-setup.js";
 const fixture = vi.hoisted(() => ({
   events: [] as unknown[],
   fail: false,
+  smtpPort: "21025",
   guardError: null as Error | null,
   settingsError: null as Error | null,
   connectionError: new Error("연결 없음"),
@@ -16,7 +17,7 @@ vi.mock("../runtime.js", () => ({
     return {
       DATABASE_URL: "postgresql://fixture:fixture@fixture.invalid:5432/app", // betterleaks:allow 사유: 외부 접속 없는 시험용 가짜 계정
       REDIS_URL: "redis://fixture.invalid:26379/0",
-      SMTP_URL: "smtp://fixture.invalid:21025",
+      SMTP_URL: `smtp://fixture.invalid:${fixture.smtpPort}`,
       S3_ENDPOINT_URL: "http://fixture.invalid:28333",
     };
   },
@@ -91,6 +92,7 @@ afterEach(async () => {
   await (await import("../../tests/integration/state.js")).closeState().catch(() => undefined);
   fixture.events = [];
   fixture.fail = false;
+  fixture.smtpPort = "21025";
   fixture.guardError = null;
   fixture.settingsError = null;
   vi.unstubAllGlobals();
@@ -102,6 +104,20 @@ function fakeHttp() {
   });
   vi.stubGlobal("fetch", fetch);
 }
+it.each([
+  ["21025", "28025"],
+  ["1025", "8025"],
+])("알려진 SMTP 포트를 Mailpit API 포트로 바꾼다: %s", (smtp, api) => {
+  fixture.smtpPort = smtp;
+  expect(getState().mailpitUrl).toBe(`http://fixture.invalid:${api}`);
+});
+it("알 수 없는 SMTP 포트는 네트워크 호출 전에 거절한다", () => {
+  fakeHttp();
+  fixture.smtpPort = "3025";
+  expect(() => getState()).toThrow("Mailpit API 포트를 알 수 없다: SMTP 3025");
+  expect(fixture.events).toEqual([]);
+  expect(fetch).not.toHaveBeenCalled();
+});
 it("reset은 시험 DB만 TRUNCATE하고 Redis 15와 Mailpit만 지운다", async () => {
   fakeHttp();
   await resetState();

@@ -28,6 +28,7 @@ export default {
     const file = relative(root, context.filename).replaceAll("\\", "/");
     const directAllowed =
       file.startsWith("src/core/config/") || file === "scripts/child-environment.mjs";
+    const processes = new Set(["process"]);
     function check(node, source) {
       if (!file.startsWith("src/") || typeof source !== "string") return;
       const targets = [resolve(dirname(context.filename), source)];
@@ -50,6 +51,26 @@ export default {
     return {
       ImportDeclaration(node) {
         check(node, node.source.value);
+        if (directAllowed || !["node:process", "process"].includes(node.source.value)) return;
+        for (const specifier of node.specifiers) {
+          if (specifier.type === "ImportSpecifier") {
+            const name = specifier.imported.name ?? specifier.imported.value;
+            if (name === "env") context.report({ node: specifier, messageId: "direct" });
+          } else processes.add(specifier.local.name);
+        }
+      },
+      VariableDeclarator(node) {
+        if (
+          directAllowed ||
+          node.id.type !== "ObjectPattern" ||
+          node.init?.type !== "Identifier" ||
+          !processes.has(node.init.name)
+        )
+          return;
+        for (const property of node.id.properties) {
+          if (property.type === "Property" && (property.key.name ?? property.key.value) === "env")
+            context.report({ node: property, messageId: "direct" });
+        }
       },
       ExportNamedDeclaration(node) {
         if (node.source) check(node, node.source.value);
@@ -68,7 +89,7 @@ export default {
             : !node.computed && node.property.type === "Identifier"
               ? node.property.name
               : null;
-        if (node.object.type === "Identifier" && node.object.name === "process" && name === "env")
+        if (node.object.type === "Identifier" && processes.has(node.object.name) && name === "env")
           context.report({ node, messageId: "direct" });
       },
     };

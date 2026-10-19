@@ -9,7 +9,7 @@ export function databaseUrls(url: string): string[] {
     return parsed.href;
   });
 }
-export async function ensureDatabases(url: string): Promise<void> {
+export function ensureDatabases(url: string): void {
   assertLocalDatabase(url, "setup");
   const docker = (...args: string[]) => execFileSync("docker", args, { encoding: "utf8" });
   const config = JSON.parse(docker("compose", "config", "--format", "json")) as { name?: string };
@@ -49,5 +49,4 @@ export async function ensureDatabases(url: string): Promise<void> {
     );
   const existing = new Set(psql("SELECT datname FROM pg_database").trim().split(/\s+/));
   for (const name of names) if (!existing.has(name)) psql(`CREATE DATABASE "${name}"`);
-  await Promise.resolve();
 }

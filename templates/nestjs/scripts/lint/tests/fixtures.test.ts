@@ -21,6 +21,12 @@ const negatives = [
   ["test-boundary", "src/core/service.ts", "boundaries/dependencies"],
   ["no-direct-env", "src/service.ts", "aitpl/no-direct-env"],
   ["no-direct-env", "src/computed.ts", "aitpl/no-direct-env"],
+  ["no-direct-env", "src/import-env.ts", "aitpl/no-direct-env"],
+  ["no-direct-env", "src/import-process.ts", "aitpl/no-direct-env"],
+  ["no-direct-env", "src/destructure.ts", "aitpl/no-direct-env"],
+  ["no-unsafe-raw-sql", "src/destructure.ts", "aitpl/no-unsafe-raw-sql"],
+  ["no-undef", "src/service.mjs", "no-undef"],
+  ["consistent-type-imports", "src/service.ts", "@typescript-eslint/consistent-type-imports"],
   ["raw-env-import", "src/service.ts", "aitpl/no-direct-env"],
   ["raw-env-import", "src/modules/posts/deep/service.ts", "aitpl/no-direct-env"],
   ["raw-env-import", "src/alias.ts", "aitpl/no-direct-env"],
@@ -37,7 +43,7 @@ function eslint(fix = false) {
     fix,
     overrideConfigFile: join(root, "eslint.config.js"),
     overrideConfig: fixtureBases.map((base) => ({
-      files: [`scripts/lint/fixtures/${base}/**/*.ts`],
+      files: [`scripts/lint/fixtures/${base}/**/*.{ts,mjs}`],
       settings: { "boundaries/root-path": join(fixtureRoot, base) },
     })),
   });
@@ -51,7 +57,7 @@ beforeAll(async () => {
   ];
   for (const result of await eslint().lintFiles(paths)) results.set(result.filePath, result);
   for (const path of paths) if (!results.has(path)) throw new Error(`fixture 결과가 없다: ${path}`);
-});
+}, 30000); // 사유: 실제 Windows a56 실행의 타입 fixture 준비가 10000ms 훅 제한을 넘었다(완료 시간은 알 수 없다).
 it.each(negatives)("음성 fixture가 지정 규칙을 위반한다: %s/%s", (name, file, rule) => {
   const base = join(fixtureRoot, "negative", name);
   const result = results.get(join(base, file));
@@ -73,5 +79,11 @@ it("자동 수정이 데코레이터 생성자의 값 import를 보존한다", a
   });
   const output = result?.output ?? readFileSync(path, "utf8");
   expect(output).toContain('import { PrismaService } from "../../core/db/prisma.service.js";');
+  expect(result?.messages).toEqual([]);
+});
+it("타입 전용 import는 같은 줄의 type 지정자로 자동 수정한다", async () => {
+  const path = join(fixtureRoot, "negative/consistent-type-imports/src/service.ts");
+  const [result] = await eslint(true).lintText(readFileSync(path, "utf8"), { filePath: path });
+  expect(result?.output).toContain('import { type URL } from "node:url";');
   expect(result?.messages).toEqual([]);
 });
