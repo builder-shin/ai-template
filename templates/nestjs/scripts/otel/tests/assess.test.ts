@@ -1,4 +1,4 @@
-import { SpanKind, trace } from "@opentelemetry/api";
+import { context, SpanKind, trace } from "@opentelemetry/api";
 import { expect, it } from "vitest";
 import { assessTelemetry } from "../assess.js";
 import { telemetryFixture } from "../../../src/core/telemetry/tests/fixtures.js";
@@ -27,7 +27,6 @@ function requestSpans(omit?: string) {
   parent.end();
   return id;
 }
-import { context } from "@opentelemetry/api";
 it("인증 요청의 네 계층과 헬스 span 0개일 때만 게이트를 통과한다", () => {
   const id = requestSpans();
   expect(assessTelemetry(exporter.getFinishedSpans(), id, 0, true)).toEqual({
@@ -53,7 +52,7 @@ it("같은 시간 창의 다른 trace에 있는 Redis span은 통과 증거가 �
     .startSpan("redis GET", { attributes: { "db.system": "redis" } })
     .end();
   const result = assessTelemetry(exporter.getFinishedSpans(), id, 0, true);
-  expect(result.redis).toBe(0);
+  expect(result.redis).toBe(1);
   expect(result.sameTrace).toBe(false);
   expect(result.complete).toBe(false);
 });
@@ -69,14 +68,25 @@ it("인증 또는 헬스 HTTP 요청이 실패하면 span이 충분해도 거절
   expect(assessTelemetry(exporter.getFinishedSpans(), id, 0, false).complete).toBe(false);
 });
 
-it("요청과 무관한 백그라운드 span은 인증 요청의 게이트를 바꾸지 않는다", () => {
+it("다른 trace의 Redis span이 섞이면 전체 개수에 잡히고 게이트를 거절한다", () => {
   const id = requestSpans();
   tracer()
     .startSpan("redis PING", { attributes: { "db.system": "redis" } })
     .end();
   expect(assessTelemetry(exporter.getFinishedSpans(), id, 0, true)).toMatchObject({
-    redis: 1,
-    sameTrace: true,
-    complete: true,
+    redis: 2,
+    sameTrace: false,
+    complete: false,
+  });
+});
+it("다른 trace의 pg span은 개수에 잡히고 같은 trace가 아니다", () => {
+  const id = requestSpans("pg");
+  tracer()
+    .startSpan("pg", { attributes: { "db.system": "postgresql" } })
+    .end();
+  expect(assessTelemetry(exporter.getFinishedSpans(), id, 0, true)).toMatchObject({
+    pg: 1,
+    sameTrace: false,
+    complete: false,
   });
 });

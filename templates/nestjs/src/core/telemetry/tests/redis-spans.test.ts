@@ -46,6 +46,18 @@ it("명령의 수신자와 인자를 보존하고 완료 전에 span을 닫지 �
   await result;
   expect(exporter.getFinishedSpans()).toHaveLength(1);
 });
+it("같은 명령을 다시 전송해도 span은 하나만 만든다", async () => {
+  const cmd = new Command("GET", ["private-key"]);
+  const send = vi.fn((command: Command) => command.promise);
+  const conn = connection(send);
+  instrumentRedis(conn, tracer());
+  expect(conn.sendCommand(cmd)).toBe(cmd.promise);
+  expect(conn.sendCommand(cmd)).toBe(cmd.promise);
+  expect(send).toHaveBeenCalledTimes(2);
+  cmd.resolve("value");
+  await cmd.promise;
+  expect(exporter.getFinishedSpans()).toHaveLength(1);
+});
 it("부모 span을 이어 받고 중복 적용과 복제 연결에서도 명령당 하나만 만든다", async () => {
   const conn = connection((cmd) => {
     cmd.resolve("OK");

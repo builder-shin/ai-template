@@ -1,12 +1,13 @@
 import "reflect-metadata";
 import { Controller, Module } from "@nestjs/common";
-import { trace } from "@opentelemetry/api";
-import { expect, it } from "vitest";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { afterEach, expect, it, vi } from "vitest";
 import { Operation } from "../../jsonapi/decorators.js";
 import { testApp, mediaType } from "../../http/tests/fixtures.js";
 import { currentTraceId } from "../../logging/context.js";
 import { telemetryFixture, spansJson } from "./fixtures.js";
 const { exporter } = telemetryFixture();
+afterEach(() => vi.restoreAllMocks());
 @Controller()
 class FixtureController {
   @Operation({
@@ -61,15 +62,23 @@ it("처리기 span은 경로 템플릿과 operationId를 가지며 비동기 문
   expect(spansJson(spans)).not.toContain("private=query");
 });
 it("처리기 실패에도 span을 닫고 비공개 예외를 기록하지 않는다", async () => {
+  const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
   const { http } = await testApp([FixtureModule]);
   const res = await http.get("/api/v1/telemetry-failure").set("Accept", mediaType);
   expect(res.status).toBe(500);
   const span = exporter
     .getFinishedSpans()
     .find((span) => span.attributes["aitpl.operation_id"] === "telemetryFailureFixture");
-  expect(span?.status.code).toBe(2);
+  expect(span?.status.code).toBe(SpanStatusCode.ERROR);
   expect(span?.events).toEqual([]);
   expect(spansJson(exporter.getFinishedSpans())).not.toContain("private-handler-error");
+  const lines = stderr.mock.calls
+    .map(([chunk]) => chunk.toString())
+    .join("")
+    .trim()
+    .split("\n");
+  expect(lines).toHaveLength(1);
+  expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({ level: "error" });
 });
 it("헬스 처리기는 span을 만들지 않는다", async () => {
   const { http } = await testApp([]);

@@ -63,6 +63,21 @@ it("익명도 posts를 구독하고 해제하며 해제 후 이벤트를 받지 
   expect(await received).toEqual({ data: "글" });
   expect(await emitAck(socket, "unsubscribe", { channel: "posts" })).toEqual({ ok: true });
   expect(f.rooms(socket)?.has("posts")).toBe(false);
+  const sentinel = await f.connect();
+  expect(await emitAck(sentinel, "subscribe", { channel: "posts" })).toEqual({ ok: true });
+  const afterUnsubscribe = vi.fn();
+  socket.on("post.published", afterUnsubscribe);
+  const delivered = new Promise<unknown>((resolve) => sentinel.once("post.published", resolve));
+  f.publisher.queue(
+    (hook) => hooks.push(hook),
+    "post.published",
+    ["posts"],
+    () => ({ data: "다음 글" }),
+  );
+  await hooks[1]?.();
+  expect(await delivered).toEqual({ data: "다음 글" });
+  expect(await emitAck(socket, "unsubscribe", { channel: "posts" })).toEqual({ ok: true });
+  expect(afterUnsubscribe).not.toHaveBeenCalled();
 });
 it("허용하지 않은 Origin은 거절하고 헤더가 없으면 받는다", async () => {
   const f = await fixture();
@@ -123,24 +138,47 @@ it("commit 뒤 세션 폐기 이벤트를 보내고 해당 세션만 서버에�
   expect(f.rooms(socket)?.has("user:" + first.userId)).toBe(true);
   const bridge = new SessionRealtimeBridge(f.publisher, f.control);
   bridge.register();
+  const recheck = f.recheck.run.bind(f.recheck);
+  const rechecked = new Promise<void>((resolve) => {
+    vi.spyOn(f.recheck, "run").mockImplementation(async (...args) => {
+      await recheck(...args);
+      resolve();
+    });
+  });
+  const queue = f.publisher.queue.bind(f.publisher);
+  vi.spyOn(f.publisher, "queue").mockImplementation((afterCommit, ...args) => {
+    queue(
+      (hook) => {
+        afterCommit(async () => {
+          sessions.events.push("publish");
+          await hook();
+        });
+      },
+      ...args,
+    );
+  });
   try {
     const revoked = new Promise<unknown>((resolve) => socket.once("session.revoked", resolve));
     const disconnected = new Promise<string>((resolve) => socket.once("disconnect", resolve));
+    sessions.events.length = 0;
     await sessions.service.revokeCurrent(a);
     expect(await revoked).toEqual({ meta: { reason: "logout" } });
     expect(await disconnected).toBe("io server disconnect");
+    await rechecked;
+    expect(await emitAck(keep, "unsubscribe", { channel: "posts" })).toEqual({ ok: true });
     expect(keep.connected).toBe(true);
     expect(sessions.events.indexOf("commit")).toBeGreaterThan(-1);
+    expect(sessions.events.indexOf("publish")).toBeGreaterThan(sessions.events.indexOf("commit"));
   } finally {
     bridge.onModuleDestroy();
   }
 });
-it("DB 실패 중 연결을 유지하고 회복 뒤 사라진 관리 권한의 룸을 뺀다", async () => {
+it("DB 실패 중 연결을 유지하고 회복 뒤 관리 권한을 잃은 연결을 끊는다", async () => {
   let fail = false;
   let manage = true;
   const f = await fixture((p) =>
     fail
-      ? Promise.reject(new Error("DB 읽기 실패"))
+      ? Promise.reject(Object.assign(new Error("private-host"), { code: "ECONNREFUSED" }))
       : Promise.resolve({ ...p, permissions: new Set(manage ? ["posts:manage"] : []) }),
   );
   const socket = await f.connect(member);
@@ -149,14 +187,16 @@ it("DB 실패 중 연결을 유지하고 회복 뒤 사라진 관리 권한의 �
   fail = true;
   await f.control.publishRecheck("member");
   await vi.waitFor(() => {
-    expect(warn).toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledExactlyOnceWith("세션을 재검사하지 못해 연결을 유지한다", {
+      userId: "member",
+      failureKind: "connection",
+    });
   });
   expect(socket.connected).toBe(true);
   fail = false;
   manage = false;
   const disconnected = new Promise<string>((resolve) => socket.once("disconnect", resolve));
   await f.control.publishRecheck("member");
-  // 기존 사례 이름은 유지한다. 계약은 구독 권한을 잃은 연결 자체의 종료를 요구한다.
   expect(await disconnected).toBe("io server disconnect");
   expect(socket.connected).toBe(false);
   const renewed = await f.connect(member);

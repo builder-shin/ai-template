@@ -7,6 +7,7 @@ import { setImmediate } from "node:timers/promises";
 import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
 import { loadSettings } from "../src/core/config/settings.js";
 import { assessTelemetry } from "./otel/assess.js";
+import { isMain } from "./runtime.js";
 const mediaType = "application/vnd.api+json";
 export async function runProbe() {
   const settings = loadSettings();
@@ -76,13 +77,16 @@ export async function runProbe() {
     }
   }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  let result: ReturnType<typeof assessTelemetry>;
+export async function probeMain(probe: typeof runProbe = runProbe): Promise<void> {
+  let result: ReturnType<typeof assessTelemetry> | { complete: false; error: string };
   try {
-    result = await runProbe();
-  } catch {
-    result = assessTelemetry([], "", 0, false);
+    result = await probe();
+  } catch (error) {
+    const errorName = error instanceof Error ? error.name : "UnknownError";
+    process.stderr.write(`OTEL 확인 실패: probe ${errorName}\n`);
+    result = { complete: false, error: errorName };
   }
   process.stdout.write(JSON.stringify(result) + "\n");
   if (!result.complete) process.exitCode = 1;
 }
+if (isMain(import.meta.url)) await probeMain();

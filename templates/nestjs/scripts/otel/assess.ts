@@ -6,17 +6,14 @@ export function assessTelemetry(
   healthSpans: number,
   requestsSucceeded: boolean,
 ) {
-  const requestSpans = spans.filter((span) => span.spanContext().traceId === traceId);
-  const http = requestSpans.filter((span) => span.kind === SpanKind.SERVER);
-  const handler = requestSpans.filter(
-    (span) => typeof span.attributes["aitpl.operation_id"] === "string",
-  );
-  const pg = requestSpans.filter(
+  const http = spans.filter((span) => span.kind === SpanKind.SERVER);
+  const handler = spans.filter((span) => typeof span.attributes["aitpl.operation_id"] === "string");
+  const pg = spans.filter(
     (span) =>
       span.attributes["db.system"] === "postgresql" ||
       span.attributes["db.system.name"] === "postgresql",
   );
-  const redis = requestSpans.filter((span) => span.attributes["db.system"] === "redis");
+  const redis = spans.filter((span) => span.attributes["db.system"] === "redis");
   const groups = [http, handler, pg, redis];
   const sameTrace =
     groups.every((group) => group.length > 0) &&

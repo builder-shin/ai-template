@@ -1,5 +1,4 @@
 import { fork } from "node:child_process";
-import { performance } from "node:perf_hooks";
 import { afterEach, expect } from "vitest";
 import { io, type Socket } from "socket.io-client";
 import request from "supertest";
@@ -19,42 +18,29 @@ const reply = z.discriminatedUnion("kind", [
 ]);
 const sockets: Socket[] = [];
 const workers: ReturnType<typeof spawnWorker>[] = [];
-function spawnWorker() {
-  const start = new Date().toISOString();
-  const began = performance.now();
+export function spawnWorker() {
   const child = fork(new URL("./realtime-process.ts", import.meta.url), [], {
     execArgv: ["--import", new URL("./realtime-loader.mjs", import.meta.url).href],
     stdio: ["ignore", "pipe", "pipe", "ipc"],
   });
   let serial = 0,
     warnings = 0;
-  const stdout: Buffer[] = [],
-    stderr: Buffer[] = [];
+  let stdoutBytes = 0,
+    stderrBytes = 0;
   child.stdout?.on("data", (b: Buffer) => {
-    stdout.push(b);
+    stdoutBytes += b.length;
   });
   child.stderr?.on("data", (b: Buffer) => {
-    stderr.push(b);
+    stderrBytes += b.length;
   });
   const pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void }>();
   const exited = new Promise<{ code: number | null; signal: string | null }>((resolve) =>
     child.once("exit", (code, signal) => {
-      for (const wait of pending.values())
-        wait.reject(new Error("실시간 시험 프로세스가 먼저 종료됐다"));
-      pending.clear();
-      process.stdout.write(
-        JSON.stringify({
-          nativeChildPID: child.pid ?? null,
-          utcStart: start,
-          utcEnd: new Date().toISOString(),
-          elapsedSeconds: (performance.now() - began) / 1000,
-          nativeExit: code,
-          signal,
-          stdoutBytes: Buffer.concat(stdout).length,
-          stderrBytes: Buffer.concat(stderr).length,
-          CPUSeconds: null,
-        }) + "\n",
+      const error = new Error(
+        `실시간 시험 프로세스가 먼저 종료됐다: code=${String(code)} signal=${String(signal)} stdoutBytes=${String(stdoutBytes)} stderrBytes=${String(stderrBytes)}`,
       );
+      for (const wait of pending.values()) wait.reject(error);
+      pending.clear();
       resolve({ code, signal });
     }),
   );

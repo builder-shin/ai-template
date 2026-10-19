@@ -1,12 +1,15 @@
 import { SpanKind, SpanStatusCode, type Tracer } from "@opentelemetry/api";
-import type { Redis } from "ioredis";
+import type { Command, Redis } from "ioredis";
 const instrumented = new WeakSet<Redis>();
+const wrapped = new WeakSet<Command>();
 export function instrumentRedis(connection: Redis, tracer: Tracer): void {
   if (instrumented.has(connection)) return;
   instrumented.add(connection);
   // eslint-disable-next-line @typescript-eslint/unbound-method -- 아래 call이 원본 메서드에 실제 수신자를 전달한다
   const send = connection.sendCommand;
   connection.sendCommand = function (command, ...args) {
+    if (wrapped.has(command)) return send.call(this, command, ...args);
+    wrapped.add(command);
     return tracer.startActiveSpan(
       `redis ${command.name.toUpperCase()}`,
       { kind: SpanKind.CLIENT, attributes: { "db.system": "redis" } },
