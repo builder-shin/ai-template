@@ -70,7 +70,13 @@ export class UsersAdminService {
       await this.users.lock(tx, id);
       const user = await this.current(tx, id);
       const status = input.attributes?.status;
-      if (status === "deleted" || user.status === "deleted")
+      if (user.status === "deleted")
+        throw new ApiError({
+          status: 409,
+          code: "resource.conflict",
+          title: "탈퇴한 사용자는 관리 작업으로 바꿀 수 없다",
+        });
+      if (status === "deleted")
         throw new ApiError({
           status: 422,
           code: "validation.invalid_choice",

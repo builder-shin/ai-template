@@ -147,8 +147,37 @@ it("삭제된 사용자는 관리 API로 재활성화할 수 없다", async () =
   if (f.state.users[1]) f.state.users[1].status = "deleted";
   await expect(
     service.update(admin, otherId, { attributes: { status: "active" } }),
-  ).rejects.toMatchObject({ init: { status: 422 } });
+  ).rejects.toMatchObject({ init: { status: 409, code: "resource.conflict" } });
   expect(f.state.users[1]?.status).toBe("deleted");
+});
+it("탈퇴한 사용자의 역할만 바꾸는 요청은 409다", async () => {
+  const { f, service } = setup();
+  const user = f.state.users.find((u) => u.id === otherId);
+  if (!user) throw new Error("대상 사용자가 없다");
+  user.status = "deleted";
+  const error = await service
+    .update(admin, otherId, {
+      relationships: { roles: { data: [{ type: "roles", id: customId }] } },
+    })
+    .catch((error: unknown) => error);
+  expect(error).toMatchObject({ init: { status: 409, code: "resource.conflict" } });
+  expect(error).toHaveProperty("init");
+  expect((error as { init: object }).init).not.toHaveProperty("source");
+  expect(f.state.assignments).toContainEqual({ userId: otherId, roleId: memberId });
+  expect(f.state.audits).toEqual([]);
+  expect(f.events).toEqual([]);
+});
+it("관리 요청의 탈퇴 상태는 422와 status 포인터로 거절한다", async () => {
+  const { service } = setup();
+  await expect(
+    service.update(admin, otherId, { attributes: { status: "deleted" } }),
+  ).rejects.toMatchObject({
+    init: {
+      status: 422,
+      code: "validation.invalid_choice",
+      source: { pointer: "/data/attributes/status" },
+    },
+  });
 });
 it("목록은 검색과 역할과 상태 필터와 정렬과 페이지와 roles include를 적용한다", async () => {
   const { service } = setup();
