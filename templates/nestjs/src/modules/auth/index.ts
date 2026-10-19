@@ -11,7 +11,7 @@ export {
 } from "./session-events.js";
 export { registerAuthJobs } from "./jobs.js";
 export { AuthRepository, type AuthUser, type NewUser } from "./repository.js";
-export { RegistrationService } from "./registration.service.js";
+export { RegistrationService, registrationLocale } from "./registration.service.js";
 export { VerificationService } from "./verification.service.js";
 export { AuthMails } from "./mails.js";
 export { PasswordsService } from "./passwords.service.js";

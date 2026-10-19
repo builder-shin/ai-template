@@ -1,24 +1,19 @@
-import { z } from "zod";
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { z } from "zod";
 import { UnitOfWork } from "../../../core/db/unit-of-work.js";
 import { isUniqueViolation } from "../../../core/db/errors.js";
 import { SETTINGS, type Settings } from "../../../core/config/settings.js";
 import type { Locale } from "../../../core/config/locale.js";
-import { ApiError } from "../../../core/jsonapi/errors.js";
+import { invalidQuery } from "../../../core/jsonapi/errors.js";
 import { newOpaqueToken } from "../../../core/security/tokens.js";
-import { providerSettings, type OAuthProvider } from "./providers.js";
+import { providerSettings, CODE_CHALLENGE_PATTERN, type OAuthProvider } from "./providers.js";
 import { OAuthState } from "./state.js";
 import { OAuthClient, OAuthHttpError } from "./client.js";
 import { identityFrom } from "./identity.js";
 import { linkAccount } from "./link.js";
 import { challengeFor } from "./pkce.js";
 function invalid(parameter: string): never {
-  throw new ApiError({
-    status: 400,
-    code: "jsonapi.invalid_query",
-    title: "소셜 로그인 쿼리가 올바르지 않다",
-    source: { parameter },
-  });
+  throw invalidQuery(parameter);
 }
 function redirect(target: string, name: "code" | "error", value: string): string {
   const url = new URL(target);
@@ -41,7 +36,7 @@ export class OAuthService {
     query: { redirectUri: string; codeChallenge: string },
   ): Promise<string> {
     if (!this.settings.OAUTH_REDIRECT_URIS.includes(query.redirectUri)) invalid("redirectUri");
-    if (!/^[A-Za-z0-9_-]{43}$/.test(query.codeChallenge)) invalid("codeChallenge");
+    if (!CODE_CHALLENGE_PATTERN.test(query.codeChallenge)) invalid("codeChallenge");
     const { token: verifier } = newOpaqueToken();
     const state = await this.state.issueState({ provider, verifier, ...query });
     return this.client.authorizeUrl(provider, {
@@ -101,27 +96,23 @@ function safeFailure(error: unknown): {
   httpStatus?: number;
 } {
   try {
+    const types = [
+      [OAuthHttpError, "OAuthHttpError"],
+      [z.ZodError, "ZodError"],
+      [TypeError, "TypeError"],
+      [SyntaxError, "SyntaxError"],
+      [RangeError, "RangeError"],
+      [Error, "Error"],
+    ] as const;
     const errorType =
-      error instanceof OAuthHttpError
-        ? "OAuthHttpError"
-        : error instanceof z.ZodError
-          ? "ZodError"
-          : error instanceof TypeError
-            ? "TypeError"
-            : error instanceof SyntaxError
-              ? "SyntaxError"
-              : error instanceof RangeError
-                ? "RangeError"
-                : error instanceof DOMException &&
-                    (error.name === "TimeoutError" || error.name === "AbortError")
-                  ? error.name
-                  : error instanceof Error
-                    ? "Error"
-                    : "unknown";
-    // 임의 오류의 getter·메시지·스택·cause·페이로드는 읽거나 직렬화하지 않는다.
-    const code: unknown =
-      typeof error === "object" && error !== null
-        ? Object.getOwnPropertyDescriptor(error, "code")?.value
+      error instanceof DOMException &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+        ? error.name
+        : (types.find(([type]) => error instanceof type)?.[1] ?? "unknown");
+    // 직접 소유한 데이터 속성만 읽고 getter·메시지·스택·원인 페이로드는 직렬화하지 않는다.
+    const ownValue = (value: unknown, key: string): unknown =>
+      typeof value === "object" && value !== null
+        ? Object.getOwnPropertyDescriptor(value, key)?.value
         : undefined;
     const allowedCodes = [
       "P2002",
@@ -135,7 +126,9 @@ function safeFailure(error: unknown): {
       "ECONNREFUSED",
       "ETIMEDOUT",
     ];
-    const errorCode = typeof code === "string" && allowedCodes.includes(code) ? code : undefined;
+    const errorCode = [ownValue(error, "code"), ownValue(ownValue(error, "cause"), "code")].find(
+      (code): code is string => typeof code === "string" && allowedCodes.includes(code),
+    );
     const httpStatus =
       error instanceof OAuthHttpError &&
       Number.isInteger(error.status) &&

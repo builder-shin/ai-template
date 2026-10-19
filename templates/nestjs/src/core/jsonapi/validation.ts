@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { Principal } from "../security/principal.js";
-import { ApiError, ApiErrors } from "./errors.js";
+import { ApiError, ApiErrors, invalidQuery } from "./errors.js";
 import type { ErrorCode } from "./error-codes.js";
 import type { OperationDeclaration, OperationSpec } from "./operation.js";
 import { parseQuery, type ParsedQuery } from "./query.js";
@@ -150,12 +150,7 @@ function ordinaryQuery(search: string, schema: z.ZodObject): unknown {
   const raw = new URLSearchParams(search);
   const seen = new Set<string>();
   const invalid = (parameter: string): never => {
-    throw new ApiError({
-      status: 400,
-      code: "jsonapi.invalid_query",
-      title: "쿼리가 올바르지 않다",
-      source: { parameter },
-    });
+    throw invalidQuery(parameter);
   };
   for (const key of raw.keys()) {
     if (seen.has(key) && Object.hasOwn(schema.shape, key)) invalid(key);

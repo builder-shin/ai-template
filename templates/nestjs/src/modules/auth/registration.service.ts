@@ -9,6 +9,7 @@ import { normalizeEmail } from "../../core/security/identifier.js";
 import { isUniqueViolation } from "../../core/db/errors.js";
 import { ApiError } from "../../core/jsonapi/errors.js";
 import { resourceObject } from "../../core/jsonapi/document.js";
+import { qualityOf } from "../../core/http/negotiation.js";
 export interface RegistrationInput {
   email: string;
   password: string;
@@ -62,10 +63,20 @@ export function registrationLocale(language = ""): "ko" | "en" {
   const choices = language
     .split(",")
     .map((part) => {
-      const [tag = "", weight] = part.trim().split(";");
+      const [tag = "", ...parameters] = part
+        .trim()
+        .toLowerCase()
+        .split(";")
+        .map((value) => value.trim());
+      const quality =
+        parameters.length === 0
+          ? 1
+          : parameters.length === 1
+            ? qualityOf(parameters[0] ?? "")
+            : undefined;
       return {
-        tag: tag.toLowerCase().split("-")[0],
-        quality: weight === undefined ? 1 : Number(weight.trim().replace(/^q=/, "")),
+        tag: tag.split("-")[0],
+        quality: quality ?? 0,
       };
     })
     .filter(({ quality }) => quality > 0 && quality <= 1)

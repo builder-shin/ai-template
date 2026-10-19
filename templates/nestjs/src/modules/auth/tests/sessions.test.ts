@@ -200,7 +200,26 @@ it("refresh는 세션 잠금 뒤 회전하고 authenticatedAt은 바꾸지 않�
   });
   expect(f.state.refresh).toHaveLength(2);
   expect(f.state.refresh[0]?.usedAt).toEqual(new Date("2026-10-14T02:00:00Z"));
-  expect(f.events).toContain("lock");
+  expect(f.events.slice(-6)).toEqual([
+    "begin",
+    "findRefresh",
+    "lock",
+    "findRefresh",
+    "find:user",
+    "commit",
+  ]);
+});
+it("첫 조회 뒤 잠금을 기다리는 동안 소비된 refresh는 재조회해 재사용 401로 거절한다", async () => {
+  const f = fixture();
+  const login = await f.service.createWithPassword(input, { ip: "ip" });
+  f.events.length = 0;
+  f.consumeRefreshOnLock = true;
+  await expect(f.service.refresh(login.data.attributes.refreshToken)).rejects.toMatchObject(
+    error("auth.refresh_token_reused"),
+  );
+  expect(f.events).toEqual(["begin", "findRefresh", "lock", "findRefresh", "commit"]);
+  expect(f.state.sessions[0]?.revokedReason).toBe("refresh_token_reused");
+  expect(f.state.refresh).toHaveLength(1);
 });
 it("사용한 refresh는 폐기를 commit한 뒤 재사용 401이고 회전된 두 토큰도 즉시 401이다", async () => {
   const f = fixture();
@@ -249,11 +268,12 @@ it("목록은 활성 내 세션만 정렬·페이지하며 토큰을 노출하�
   f.addSession({ revokedAt: now });
   f.addSession({ expiresAt: now });
   f.addSession({ userId: "other" });
-  const query = parseQuery("sort=-createdAt&page[size]=1&page[number]=2", {
+  const search = "sort=-createdAt&page[size]=1&page[number]=2";
+  const query = parseQuery(search, {
     sort: ["createdAt", "lastUsedAt"],
     page: { defaultSize: 20, maxSize: 100 },
   });
-  const result = await f.service.list(principal(next.id), query);
+  const result = await f.service.list(principal(next.id), query, search);
   expect(result.data).toHaveLength(1);
   expect(result.data[0]).toMatchObject({ id: first.id, attributes: { current: false } });
   expect(result.meta.page).toEqual({ number: 2, size: 1, total: 2, totalPages: 2 });
@@ -264,6 +284,40 @@ it("목록은 활성 내 세션만 정렬·페이지하며 토큰을 노출하�
     last: "/api/v1/sessions?sort=-createdAt&page%5Bsize%5D=1&page%5Bnumber%5D=2",
   });
   expect(JSON.stringify(result)).not.toMatch(/accessToken|refreshToken|tokenHash/);
+});
+it("세션 목록 링크는 원문의 희소 필드를 모든 페이지에 유지한다", async () => {
+  const f = fixture();
+  const session = f.addSession();
+  f.addSession();
+  const search = "fields[sessions]=current&page[size]=1";
+  const query = parseQuery(search, {
+    fields: { sessions: ["current"] },
+    page: { defaultSize: 20, maxSize: 100 },
+  });
+  const result = await f.service.list(principal(session.id), query, search);
+  for (const link of Object.values(result.links))
+    if (typeof link === "string")
+      expect(new URL(link, "https://api.example.test").searchParams.get("fields[sessions]")).toBe(
+        "current",
+      );
+});
+it("계정 삭제는 만료된 미폐기 세션도 id 순서로 잠그고 폐기한다", async () => {
+  const f = fixture();
+  const high = f.addSession({ id: "z-session", expiresAt: now });
+  const low = f.addSession({ id: "a-session" });
+  f.addSession({ id: "revoked", revokedAt: now });
+  const lock = vi.spyOn(f.repository, "lock");
+  await f.unit.run((tx, after) => f.service.revokeForAccountDeletion(tx, after, userId, now));
+  expect(lock.mock.calls.map(([, id]) => id)).toEqual([low.id, high.id]);
+  expect(
+    f.state.sessions
+      .filter((s) => s.revokedReason === "account_deleted")
+      .map((s) => s.id)
+      .sort(),
+  ).toEqual([low.id, high.id]);
+  expect(revocations).toEqual([
+    { userId, sessionIds: [low.id, high.id], reason: "account_deleted" },
+  ]);
 });
 it("현재 로그아웃은 commit 뒤 이벤트를 보내고 기존 access를 거절한다", async () => {
   const f = fixture();

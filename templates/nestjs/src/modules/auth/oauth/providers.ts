@@ -1,5 +1,7 @@
 import type { Settings } from "../../../core/config/settings.js";
-export type OAuthProvider = "google" | "kakao" | "naver";
+export const OAUTH_PROVIDERS = ["google", "kakao", "naver"] as const;
+export const CODE_CHALLENGE_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 export interface ProviderIdentity {
   subject: string;
   email: string | null;

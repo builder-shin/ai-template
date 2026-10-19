@@ -8,6 +8,9 @@ import {
   VerificationService,
   AuthMails,
   AuthRepository,
+  SessionsService,
+  SessionsRepository,
+  JwtPrincipalResolver,
 } from "../index.js";
 import { JsonLogger } from "../../../core/logging/json-logger.js";
 import { RedisClients } from "../../../core/redis/clients.js";
@@ -21,9 +24,6 @@ import { registeredRoutes } from "../../../core/http/routes.js";
 import { settings } from "../../../core/http/tests/fixtures.js";
 import { fixture } from "./fixtures.js";
 import { RolesRepository } from "../../roles/index.js";
-import { SessionsService } from "../index.js";
-import { SessionsRepository } from "../index.js";
-import { JwtPrincipalResolver } from "../index.js";
 import { PasswordBootstrap } from "../../../core/security/passwords.js";
 import { parseQuery } from "../../../core/jsonapi/query.js";
 it("오프라인 모드는 인증 경로를 등록하고 실제 인프라 서비스 없이 호출을 거절한다", async () => {
@@ -63,7 +63,7 @@ it("오프라인 모드는 인증 경로를 등록하고 실제 인프라 서비
     for (const call of [
       () => sessions.createWithPassword({ email: "x@example.com", password: "p" }, { ip: "ip" }),
       () => sessions.refresh("token"),
-      () => sessions.list(principal, parseQuery("", {})),
+      () => sessions.list(principal, parseQuery("", {}), ""),
       () => sessions.revokeCurrent(principal),
       () => sessions.revoke(principal, "s"),
       () => sessions.revokeOthers(principal),

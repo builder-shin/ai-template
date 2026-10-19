@@ -1,9 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { Principal } from "../security/principal.js";
 import { PERMISSION_CODES } from "../security/permissions.js";
-import { newOpaqueToken } from "../security/tokens.js";
+import { newOpaqueToken, hashOpaqueToken } from "../security/tokens.js";
 import { RedisClients } from "../redis/clients.js";
 const storedPrincipal = z.object({
   userId: z.string(),
@@ -24,9 +23,7 @@ export class TicketStore {
     return token;
   }
   async consume(ticket: string): Promise<Principal | undefined> {
-    const value = await this.redis.command.getdel(
-      this.key(createHash("sha256").update(ticket).digest("hex")),
-    );
+    const value = await this.redis.command.getdel(this.key(hashOpaqueToken(ticket)));
     if (value === null) return undefined;
     let decoded: unknown;
     try {

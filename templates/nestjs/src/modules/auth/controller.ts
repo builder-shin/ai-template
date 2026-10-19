@@ -1,5 +1,3 @@
-import { OAuthService } from "./oauth/oauth.service.js";
-import { registrationLocale } from "./registration.service.js";
 import { Controller, HttpCode, Inject, Req, Res } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { randomUUID } from "node:crypto";
@@ -21,7 +19,8 @@ import {
   createPasswordReset,
   createPasswordChange,
 } from "./operations.js";
-import { RegistrationService } from "./registration.service.js";
+import { OAuthService } from "./oauth/oauth.service.js";
+import { RegistrationService, registrationLocale } from "./registration.service.js";
 import { VerificationService } from "./verification.service.js";
 import { SessionsService } from "./sessions.service.js";
 import { PasswordsService } from "./passwords.service.js";

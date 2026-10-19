@@ -1,9 +1,10 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { SETTINGS, type Settings } from "../../core/config/settings.js";
 import { UnitOfWork } from "../../core/db/unit-of-work.js";
 import { JobQueue } from "../../core/jobs/queue.js";
 import { StrictLimiter } from "../../core/ratelimit/strict.js";
+import { hashOpaqueToken } from "../../core/security/tokens.js";
 import { normalizeEmail, hashIdentifier } from "../../core/security/identifier.js";
 import { hashPassword, verifyPassword, dummyVerify } from "../../core/security/passwords.js";
 import type { Principal } from "../../core/security/principal.js";
@@ -36,7 +37,7 @@ export class PasswordsService {
     });
   }
   async reset(input: { token: string; password: string }) {
-    const hash = createHash("sha256").update(input.token).digest("hex");
+    const hash = hashOpaqueToken(input.token);
     return this.unit.run(async (tx, afterCommit) => {
       const at = new Date();
       const consumed = await this.repository.consumeReset(tx, hash, at);

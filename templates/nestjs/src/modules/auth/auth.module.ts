@@ -1,10 +1,10 @@
-import { OAuthClient } from "./oauth/client.js";
-import { OAuthState } from "./oauth/state.js";
-import { OAuthService } from "./oauth/oauth.service.js";
 import { Module, type DynamicModule } from "@nestjs/common";
 import { JobsModule } from "../../core/jobs/jobs.module.js";
 import { MailModule } from "../../core/mail/mail.module.js";
 import { RolesModule } from "../roles/index.js";
+import { OAuthClient } from "./oauth/client.js";
+import { OAuthState } from "./oauth/state.js";
+import { OAuthService } from "./oauth/oauth.service.js";
 import { AuthController } from "./controller.js";
 import { AuthRepository } from "./repository.js";
 import { RegistrationService } from "./registration.service.js";

@@ -36,6 +36,14 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
+export function invalidQuery(parameter: string): ApiError {
+  return new ApiError({
+    status: 400,
+    code: "jsonapi.invalid_query",
+    title: "Invalid query",
+    source: { parameter },
+  });
+}
 export class ApiErrors extends Error {
   constructor(
     readonly status: number,

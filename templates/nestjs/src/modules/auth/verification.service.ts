@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { hashOpaqueToken } from "../../core/security/tokens.js";
 import { Inject, Injectable } from "@nestjs/common";
 import { SETTINGS, type Settings } from "../../core/config/settings.js";
 import { UnitOfWork } from "../../core/db/unit-of-work.js";
@@ -31,7 +31,7 @@ export class VerificationService {
     });
   }
   verify(token: string) {
-    const hash = createHash("sha256").update(token).digest("hex");
+    const hash = hashOpaqueToken(token);
     return this.unit.run(async (tx, afterCommit) => {
       const at = new Date();
       const consumed = await this.repository.consumeVerification(tx, hash, at);

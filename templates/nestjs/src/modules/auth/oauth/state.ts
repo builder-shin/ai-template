@@ -1,10 +1,10 @@
-import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { z } from "zod";
 import { RedisClients } from "../../../core/redis/clients.js";
-import { newOpaqueToken } from "../../../core/security/tokens.js";
-const provider = z.enum(["google", "kakao", "naver"]);
-const challenge = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+import { newOpaqueToken, hashOpaqueToken } from "../../../core/security/tokens.js";
+import { OAUTH_PROVIDERS, CODE_CHALLENGE_PATTERN } from "./providers.js";
+const provider = z.enum(OAUTH_PROVIDERS);
+const challenge = z.string().regex(CODE_CHALLENGE_PATTERN);
 const stateSchema = z.object({
   provider,
   redirectUri: z.url(),
@@ -48,7 +48,7 @@ export class OAuthState {
     token: string,
     schema: z.ZodType<T>,
   ): Promise<T | undefined> {
-    const hash = createHash("sha256").update(token).digest("hex");
+    const hash = hashOpaqueToken(token);
     const raw = await this.redis.command.getdel(this.redis.key("oauth", kind, hash));
     if (raw === null) return undefined;
     try {

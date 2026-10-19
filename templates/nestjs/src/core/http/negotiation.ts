@@ -2,6 +2,11 @@ import type { Request } from "express";
 import { ApiError } from "../jsonapi/errors.js";
 import { JSONAPI_MEDIA_TYPE } from "../jsonapi/render.js";
 
+export function qualityOf(parameter: string): number | undefined {
+  const match = /^q=(0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/.exec(parameter);
+  return match ? Number(match[1]) : undefined;
+}
+
 export function hasBody(req: Request): boolean {
   return (
     req.headers["transfer-encoding"] !== undefined || Number(req.headers["content-length"] ?? 0) > 0
@@ -26,12 +31,12 @@ function acceptsJsonApi(header: string | undefined): boolean {
     let q = 1;
     let valid = true;
     for (const parameter of parameters) {
-      const match = /^q=(0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/.exec(parameter);
-      if (!match) {
+      const value = qualityOf(parameter);
+      if (value === undefined) {
         valid = false;
         break;
       }
-      q = Number(match[1]);
+      q = value;
     }
     if (!valid) continue;
     if (rank > specificity) {

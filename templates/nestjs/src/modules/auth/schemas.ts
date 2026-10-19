@@ -11,6 +11,8 @@ import {
   collectionMetaSchema,
 } from "../../core/jsonapi/collection-schemas.js";
 import { localeSchema } from "../../core/config/locale.js";
+import { OAUTH_PROVIDERS, CODE_CHALLENGE_PATTERN } from "./oauth/providers.js";
+const componentRef = (name: string) => `#/components/schemas/${name}`;
 const passwordGrant = registerComponent(
   "SessionPasswordGrant",
   z.object({ grantType: z.enum(["password"]), email: emailString(), password: z.string() }),
@@ -32,9 +34,9 @@ const sessionGrant = registerComponent(
     discriminator: {
       propertyName: "grantType",
       mapping: {
-        password: "#/components/schemas/SessionPasswordGrant", // betterleaks:allow 사유: 비밀번호 값이 아닌 discriminator 스키마 경로다
-        refreshToken: "#/components/schemas/SessionRefreshTokenGrant",
-        oauthCode: "#/components/schemas/SessionOAuthCodeGrant",
+        password: componentRef("SessionPasswordGrant"),
+        refreshToken: componentRef("SessionRefreshTokenGrant"),
+        oauthCode: componentRef("SessionOAuthCodeGrant"),
       },
     },
   },
@@ -291,14 +293,11 @@ const passwordChangeResource = registerComponent(
 registerComponent("PasswordResetDocument", z.object({ data: passwordResetResource }));
 registerComponent("PasswordChangeDocument", z.object({ data: passwordChangeResource }));
 
-export const oauthProviderSchema = registerComponent(
-  "OAuthProvider",
-  z.enum(["google", "kakao", "naver"]),
-);
+export const oauthProviderSchema = registerComponent("OAuthProvider", z.enum(OAUTH_PROVIDERS));
 export const oauthParamsSchema = z.object({ provider: oauthProviderSchema });
 export const oauthAuthorizeQuerySchema = z.strictObject({
   redirectUri: z.url(),
-  codeChallenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  codeChallenge: z.string().regex(CODE_CHALLENGE_PATTERN),
 });
 export const oauthCallbackQuerySchema = z
   .object({ state: z.string(), code: z.string().optional(), error: z.string().optional() })

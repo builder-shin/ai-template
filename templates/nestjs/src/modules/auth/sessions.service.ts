@@ -1,13 +1,10 @@
-import { OAuthState } from "./oauth/state.js";
-import { verifiesCodeChallenge } from "./oauth/pkce.js";
-import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { SETTINGS, type Settings } from "../../core/config/settings.js";
 import { UnitOfWork, type Tx, type AfterCommit } from "../../core/db/unit-of-work.js";
 import { StrictLimiter } from "../../core/ratelimit/strict.js";
 import { verifyPassword, dummyVerify } from "../../core/security/passwords.js";
 import { normalizeEmail, hashIdentifier } from "../../core/security/identifier.js";
-import { newOpaqueToken } from "../../core/security/tokens.js";
+import { newOpaqueToken, hashOpaqueToken } from "../../core/security/tokens.js";
 import {
   signAccessToken,
   tokenError,
@@ -19,10 +16,11 @@ import { recordAudit } from "../../core/audit/record.js";
 import { ApiError } from "../../core/jsonapi/errors.js";
 import { collectionDocument } from "../../core/jsonapi/document.js";
 import type { ParsedQuery } from "../../core/jsonapi/query.js";
+import { OAuthState } from "./oauth/state.js";
+import { verifiesCodeChallenge } from "./oauth/pkce.js";
 import { AuthRepository } from "./repository.js";
 import { SessionsRepository, type SessionRow } from "./sessions.repository.js";
 import { sessionsRevoked, type SessionRevokedReason } from "./session-events.js";
-const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 const expiresAt = (at: Date) => new Date(at.getTime() + REFRESH_TOKEN_DAYS * 86400000);
 @Injectable()
 export class SessionsService {
@@ -135,7 +133,7 @@ export class SessionsService {
     return result.document;
   }
   async refresh(refreshToken: string) {
-    const hash = hashToken(refreshToken);
+    const hash = hashOpaqueToken(refreshToken);
     const result = await this.unit.run(async (tx, afterCommit) => {
       const candidate = await this.repository.findRefresh(tx, hash);
       if (!candidate) return { error: tokenError() };
@@ -164,14 +162,10 @@ export class SessionsService {
     if (result.error) throw result.error;
     return result.document;
   }
-  list(principal: Principal, query: ParsedQuery, search?: string) {
+  list(principal: Principal, query: ParsedQuery, search: string) {
     return this.unit.run(async (tx) => {
       const rows = await this.repository.active(tx, principal.userId, new Date(), query);
       const offset = (query.page.number - 1) * query.page.size;
-      const raw = new URLSearchParams();
-      if (query.sort.length)
-        raw.set("sort", query.sort.map((s) => (s.descending ? "-" : "") + s.field).join(","));
-      raw.set("page[size]", String(query.page.size));
       const data = rows.slice(offset, offset + query.page.size).map((s) => {
         const resource = sessionResource(s, principal.sessionId);
         const fields = query.fields.sessions;
@@ -190,7 +184,7 @@ export class SessionsService {
         total: rows.length,
         page: query.page,
         path: "/api/v1/sessions",
-        search: search ?? raw.toString(),
+        search,
       });
     });
   }
@@ -230,14 +224,7 @@ export class SessionsService {
     userId: string,
     at: Date,
   ): Promise<void> {
-    const ids: string[] = [];
-    for (const candidate of await this.repository.unrevoked(tx, userId)) {
-      const session = await this.repository.lock(tx, candidate.id);
-      if (session && !session.revokedAt) ids.push(session.id);
-    }
-    await this.repository.revoke(tx, ids, at, "account_deleted");
-    if (ids.length)
-      sessionsRevoked(afterCommit, { userId, sessionIds: ids, reason: "account_deleted" });
+    await this.revokeActive(tx, afterCommit, userId, at, "account_deleted", undefined, true);
   }
   async revokeForDeactivation(
     tx: Tx,
@@ -273,14 +260,20 @@ export class SessionsService {
     at: Date,
     reason: SessionRevokedReason,
     keepSessionId?: string,
+    includeExpired = false,
   ): Promise<string[]> {
-    const candidates = (await this.repository.active(tx, userId, at))
+    const candidates = (
+      await (includeExpired
+        ? this.repository.unrevoked(tx, userId)
+        : this.repository.active(tx, userId, at))
+    )
       .filter((s) => s.id !== keepSessionId)
       .sort((a, b) => a.id.localeCompare(b.id));
     const sessionIds: string[] = [];
     for (const candidate of candidates) {
       const session = await this.repository.lock(tx, candidate.id);
-      if (session && !session.revokedAt && session.expiresAt > at) sessionIds.push(session.id);
+      if (session && !session.revokedAt && (includeExpired || session.expiresAt > at))
+        sessionIds.push(session.id);
     }
     await this.repository.revoke(tx, sessionIds, at, reason);
     if (sessionIds.length) sessionsRevoked(afterCommit, { userId, sessionIds, reason });
