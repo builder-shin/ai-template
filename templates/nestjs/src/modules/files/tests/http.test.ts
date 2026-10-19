@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { testApp, mediaType, errorDocument } from "../../../core/http/tests/fixtures.js";
 import { PRINCIPAL_RESOLVER } from "../../../core/security/principal.js";
@@ -22,8 +22,10 @@ async function appFixture() {
     ],
   });
   const target = app.get(FilesService);
-  for (const method of ["create", "get", "complete", "delete"] as const)
-    target[method] = f.service[method].bind(f.service) as never;
+  vi.spyOn(target, "create").mockImplementation(f.service.create.bind(f.service));
+  vi.spyOn(target, "get").mockImplementation(f.service.get.bind(f.service));
+  vi.spyOn(target, "complete").mockImplementation(f.service.complete.bind(f.service));
+  vi.spyOn(target, "delete").mockImplementation(f.service.delete.bind(f.service));
   return { app, http, f };
 }
 it("파일 생성 라우트는 201과 리소스 meta의 PUT 정보를 돌려준다", async () => {

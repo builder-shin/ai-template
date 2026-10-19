@@ -207,6 +207,22 @@ it("유효한 요청은 파싱한 본문과 경로 및 빈 주체를 돌려준�
     principal: undefined,
   });
 });
+it("검증한 검색 문자열은 인코딩과 매개변수 순서를 그대로 돌려준다", () => {
+  const declaration = defineOperation({
+    ...base,
+    operationId: "ValidatedSearch",
+    method: "GET",
+    path: "/api/v1/validation-search",
+    query: { sort: ["name"], defaultSort: "name", page: { defaultSize: 20, maxSize: 100 } },
+  });
+  const search = "page%5Bnumber%5D=2&sort=-name&page%5Bsize%5D=3";
+  const result = validateRequest(declaration, { search, params: {}, body: undefined });
+  expect(result.query).toMatchObject({
+    page: { number: 2, size: 3 },
+    sort: [{ field: "name", descending: true }],
+  });
+  expect(result).toHaveProperty("search", search);
+});
 it("data.type의 짝 없는 서로게이트는 충돌이 아니라 문서 오류다", () => {
   const error = errorsOf(() =>
     validateRequest(post, raw({ data: { ...valid.data, type: "\ud800" } })),

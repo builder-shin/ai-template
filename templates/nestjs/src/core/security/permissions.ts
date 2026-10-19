@@ -11,4 +11,7 @@ export const PERMISSION_CODES = [
   "posts:manage",
 ] as const;
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
+export function isPermissionCode(code: string): code is PermissionCode {
+  return PERMISSION_CODES.some((known) => known === code);
+}
 export const permissionCodeSchema = registerComponent("PermissionCode", z.enum(PERMISSION_CODES));

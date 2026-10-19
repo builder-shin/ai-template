@@ -7,6 +7,7 @@ import {
 } from "../../core/jsonapi/document.js";
 import type { ParsedQuery } from "../../core/jsonapi/query.js";
 import { permissionAttributes } from "./permissions.js";
+import { listPermissions } from "./operations.js";
 @Injectable()
 export class RolesService {
   permissions(query: ParsedQuery, search: string): CollectionDocument {
@@ -27,7 +28,7 @@ export class RolesService {
     return collectionDocument(data, {
       total: codes.length,
       page: query.page,
-      path: "/api/v1/permissions",
+      path: listPermissions.path,
       search,
     });
   }

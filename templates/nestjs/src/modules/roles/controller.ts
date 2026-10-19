@@ -14,9 +14,8 @@ export class RolesController {
     @Inject(RolesAdminService) private readonly admin: RolesAdminService,
   ) {}
   @Operation(listPermissions)
-  permissions(@JsonApiRequest() input: ValidatedRequest, @Req() req: Request) {
-    const index = req.originalUrl.indexOf("?");
-    return this.service.permissions(input.query, index < 0 ? "" : req.originalUrl.slice(index + 1));
+  permissions(@JsonApiRequest() input: ValidatedRequest<typeof listPermissions>) {
+    return this.service.permissions(input.query, input.search);
   }
   @Operation(listRoles)
   list(@JsonApiRequest() input: ValidatedRequest<typeof listRoles>, @Req() req: Request) {

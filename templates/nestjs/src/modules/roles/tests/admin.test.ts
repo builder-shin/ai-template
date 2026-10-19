@@ -92,9 +92,23 @@ it("역할 삭제는 구성원 부여도 제거하고 각 구성원의 권한을
   expect(f.state.assignments.some((a) => a.roleId === customId)).toBe(false);
   expect(f.events).toContainEqual({ name: "recheck", userId: otherId });
 });
-it("권한 순서만 바뀐 수정은 감사와 재검사를 만들지 않는다", async () => {
+it("중복만 다른 권한 수정은 감사와 재검사를 만들지 않는다", async () => {
   const { f, service } = setup();
   await service.update(admin, customId, { permissions: ["posts:create", "posts:create"] });
+  expect(f.events).toEqual([]);
+  expect(f.state.audits).toEqual([]);
+});
+it("권한 순서만 바뀐 수정은 감사와 재검사를 만들지 않는다", async () => {
+  const { f, service } = setup();
+  const role = f.state.roles.find((r) => r.id === customId);
+  if (!role) throw new Error("역할이 없다");
+  role.permissions = ["posts:create", "users:read"];
+  f.state.assignments.push({ userId: otherId, roleId: customId });
+  await service.update(admin, customId, { permissions: ["users:read", "posts:create"] });
+  expect(f.state.roles.find((r) => r.id === customId)?.permissions).toEqual([
+    "posts:create",
+    "users:read",
+  ]);
   expect(f.events).toEqual([]);
   expect(f.state.audits).toEqual([]);
 });

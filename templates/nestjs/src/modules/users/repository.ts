@@ -40,9 +40,6 @@ export class UsersRepository {
   async updateStatus(tx: Tx, id: string, status: "active" | "deactivated"): Promise<void> {
     await tx.user.update({ where: { id }, data: { status } });
   }
-  findByEmail(tx: Tx, email: string) {
-    return tx.user.findUnique({ where: { email } });
-  }
   find(tx: Tx, id: string): Promise<UserRecord | null> {
     return tx.user.findUnique({ where: { id }, include: { roles: true } });
   }

@@ -174,10 +174,27 @@ it.each([{ names: ["missing"] }, { names: ["member", "missing", "member"] }])(
       create: { email: "new@example.com", passwordHash: null },
     });
     const before = structuredClone(db.assignments);
-    await expect(new RolesRepository().assign(db.tx, user.id, names)).rejects.toThrow();
+    await expect(new RolesRepository().assign(db.tx, user.id, names)).rejects.toThrow(
+      "요청한 역할이 없다: missing",
+    );
     expect(db.assignments).toEqual(before);
   },
 );
+it("기본 member 역할이 없으면 이름을 포함하여 부여를 거절한다", async () => {
+  const db = databaseFixture();
+  await expect(new RolesRepository().assign(db.tx, "u1", ["member"])).rejects.toThrow(
+    "요청한 역할이 없다: member",
+  );
+});
+it("없는 교체 역할들의 이름을 중복 없이 알리고 기존 부여를 보존한다", async () => {
+  const db = databaseFixture();
+  await seedSystem(db.tx, settings);
+  const before = structuredClone(db.assignments);
+  await expect(
+    new RolesRepository().replaceRoles(db.tx, "u1", ["member", "missing", "other", "missing"]),
+  ).rejects.toThrow("교체할 역할이 없다: missing, other");
+  expect(db.assignments).toEqual(before);
+});
 it("유효한 역할을 추가하면 기존 역할을 유지하고 중복 요청은 한 번만 부여한다", async () => {
   const db = databaseFixture();
   await seedSystem(db.tx, settings);

@@ -88,13 +88,19 @@ it("1페이지와 20페이지는 author와 coverImage를 SELECT 네 번과 COMMI
         f.principal,
         parseQuery(`include=author,coverImage&page[number]=${String(page)}`, listPosts.query),
       );
-    expect(doc.data).toHaveLength(20);
-    expect(doc.included).toHaveLength(2);
+    const statements = JSON.stringify({ page, statements: sql });
+    expect(doc.data, statements).toHaveLength(20);
+    expect(doc.included, statements).toHaveLength(2);
     const counted = sql.filter((query) => /^(SELECT|COMMIT)\b/iu.test(query));
-    expect(counted.filter((query) => /^SELECT\b/iu.test(query))).toHaveLength(4);
-    expect(counted).toHaveLength(5);
-    expect(sql.some((query) => /REPEATABLE READ/iu.test(query))).toBe(true);
-    process.stdout.write(JSON.stringify({ page, statements: sql }) + "\n");
+    expect(
+      counted.filter((query) => /^SELECT\b/iu.test(query)),
+      statements,
+    ).toHaveLength(4);
+    expect(counted, statements).toHaveLength(5);
+    expect(
+      sql.some((query) => /REPEATABLE READ/iu.test(query)),
+      statements,
+    ).toBe(true);
   }
 });
 it("다른 연결이 count와 rows 사이에 commit해도 한 목록의 총수와 행은 일관된다", async () => {

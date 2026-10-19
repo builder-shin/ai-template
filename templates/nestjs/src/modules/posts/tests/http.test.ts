@@ -94,7 +94,7 @@ it("생성 권한이 없으면 403이고 익명 생성은 401이다", async () =
   ).toBe(401);
 });
 it("공개 글의 표지만 익명 files GET에서 읽을 수 있다", async () => {
-  const { http, f } = await setup(undefined, [post("published", { coverImageId: fileId })]);
+  const { http, f } = await setup(author, [post("published", { coverImageId: fileId })]);
   // setup의 기본 저자 대신 명시적으로 익명 해석을 쓰는 별도 앱을 만든다.
   const { app, http: anonymous } = await testApp([]);
   app.get(FilesService).get = f.files.get.bind(f.files);

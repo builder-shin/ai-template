@@ -6,6 +6,7 @@ import type { OperationDeclaration, OperationSpec } from "./operation.js";
 import { parseQuery, type ParsedQuery } from "./query.js";
 import { hasLoneSurrogate } from "./schemas.js";
 export interface ValidatedRequest<S extends OperationSpec = OperationSpec> {
+  search: string;
   query: S extends { querySchema: infer Q extends z.ZodType } ? z.infer<Q> : ParsedQuery;
   params: S extends { params: infer P extends z.ZodType } ? z.infer<P> : Record<string, string>;
   body: S extends { body: infer B extends z.ZodType } ? z.infer<B> : unknown;
@@ -139,6 +140,7 @@ export function validateRequest<S extends OperationSpec>(
     throw new ApiErrors(statuses.size === 1 ? (errors[0]?.init.status ?? 400) : 400, errors);
   }
   return {
+    search: raw.search,
     query,
     params: params?.success ? params.data : raw.params,
     body: body?.success ? body.data : raw.body,

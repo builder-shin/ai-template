@@ -1,7 +1,8 @@
 import type { PostStatus } from "./policies.js";
 import { ApiError } from "../../core/jsonapi/errors.js";
+import { POST_STATUSES } from "./schemas.js";
 export function nextStatus(from: PostStatus, requested: PostStatus): PostStatus {
-  if (!["draft", "published"].includes(from) || !["draft", "published"].includes(requested))
+  if (!POST_STATUSES.includes(from) || !POST_STATUSES.includes(requested))
     throw new ApiError({
       status: 422,
       code: "post.invalid_transition",

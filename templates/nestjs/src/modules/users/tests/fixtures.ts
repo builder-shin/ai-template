@@ -65,7 +65,7 @@ export function fixture() {
       authenticatedAt: now,
       createdAt: now,
       lastUsedAt: now,
-      expiresAt: new Date("2030-01-01"),
+      expiresAt: new Date("2099-01-01"),
       revokedAt: null as Date | null,
       revokedReason: null as string | null,
       userAgent: null,

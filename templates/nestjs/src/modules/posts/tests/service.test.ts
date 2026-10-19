@@ -157,8 +157,12 @@ it("공개 캐시는 반복 조회를 줄이고 발행·취소·삭제 직후 �
   expect((await f.service.list(undefined, query())).data.map((p) => p.id)).toEqual([postId]);
   await f.service.update(author, postId, { attributes: { status: "draft" } });
   expect((await f.service.list(undefined, query())).data).toEqual([]);
+  await f.service.update(author, postId, { attributes: { status: "published" } });
+  expect((await f.service.list(undefined, query())).data.map((p) => p.id)).toEqual([postId]);
+  await f.service.delete(author, postId);
+  expect((await f.service.list(undefined, query())).data).toEqual([]);
   f.failRedis = true;
-  expect((await f.service.list(manager, query())).data).toHaveLength(1);
+  expect((await f.service.list(manager, query())).data).toHaveLength(0);
   expect((await f.service.list(undefined, query())).data).toEqual([]);
 });
 it("발행된 글 생성은 생성 룸과 공개 발행 룸에 따로 알린다", async () => {

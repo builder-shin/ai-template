@@ -98,6 +98,9 @@ it("아바타를 교체하면 이전 파일을 분리하고 새 파일의 분리
   expect(f.state.users[0]?.avatarFileId).toBe(fileId);
   expect(f.state.files.find((x) => x.id === "old")?.detachedAt).toEqual(now);
   expect(f.state.files[0]?.detachedAt).toBeNull();
+  expect(f.events).toEqual([
+    { name: "me.updated", rooms: ["user:" + userId], payload: { meta: { changed: ["profile"] } } },
+  ]);
 });
 it("아바타를 null로 바꾸면 기존 파일을 분리한다", async () => {
   const f = setup();
@@ -105,6 +108,9 @@ it("아바타를 null로 바꾸면 기존 파일을 분리한다", async () => {
   await f.service.update(principal, { id: userId, relationships: { avatar: { data: null } } });
   expect(f.state.users[0]?.avatarFileId).toBeNull();
   expect(f.state.files[0]?.detachedAt).toEqual(now);
+  expect(f.events).toEqual([
+    { name: "me.updated", rooms: ["user:" + userId], payload: { meta: { changed: ["profile"] } } },
+  ]);
 });
 it("commit이 실패하면 수정과 실시간 알림이 모두 남지 않는다", async () => {
   const f = setup();

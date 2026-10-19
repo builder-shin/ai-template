@@ -6,7 +6,7 @@ import { tokenError } from "../../core/security/jwt.js";
 import { ApiError } from "../../core/jsonapi/errors.js";
 import type { ParsedQuery } from "../../core/jsonapi/query.js";
 import { IncludeRegistry } from "../../core/jsonapi/include.js";
-import type { ResourceObject } from "../../core/jsonapi/document.js";
+import { sparseResource } from "../../core/jsonapi/document.js";
 import { recordAudit } from "../../core/audit/record.js";
 import { UsersRepository, type UserRecord } from "./repository.js";
 import { RolesRepository } from "../roles/index.js";
@@ -19,23 +19,6 @@ export interface MeUpdate {
   attributes?: { name?: string | undefined; locale?: "ko" | "en" | undefined } | undefined;
   relationships?:
     { avatar?: { data: { type: "files"; id: string } | null } | undefined } | undefined;
-}
-function sparse(resource: ResourceObject, fields: readonly string[] | undefined): ResourceObject {
-  if (fields === undefined) return resource;
-  const { relationships, ...rest } = resource;
-  return {
-    ...rest,
-    attributes: Object.fromEntries(
-      Object.entries(resource.attributes).filter(([key]) => fields.includes(key)),
-    ),
-    ...(relationships
-      ? {
-          relationships: Object.fromEntries(
-            Object.entries(relationships).filter(([key]) => fields.includes(key)),
-          ),
-        }
-      : {}),
-  };
 }
 @Injectable()
 export class MeService {
@@ -136,10 +119,10 @@ export class MeService {
       ? await this.includes.load(tx, query.include, [data], principal)
       : undefined;
     return {
-      data: sparse(data, query?.fields.users),
+      data: sparseResource(data, query?.fields.users),
       ...(included === undefined
         ? {}
-        : { included: included.map((item) => sparse(item, query?.fields[item.type])) }),
+        : { included: included.map((item) => sparseResource(item, query?.fields[item.type])) }),
       meta: { permissions: [...(await this.roles.permissionsOf(tx, user.id))].sort() },
     };
   }

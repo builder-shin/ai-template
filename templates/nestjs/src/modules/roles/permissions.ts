@@ -1,4 +1,8 @@
-import { PERMISSION_CODES, type PermissionCode } from "../../core/security/permissions.js";
+import {
+  PERMISSION_CODES,
+  isPermissionCode,
+  type PermissionCode,
+} from "../../core/security/permissions.js";
 export const SYSTEM_ROLES = [
   {
     name: "admin",
@@ -14,9 +18,7 @@ export function rolePermissions(role: {
 }): PermissionCode[] {
   return role.system && role.name === "admin"
     ? [...PERMISSION_CODES]
-    : role.permissions.filter((code): code is PermissionCode =>
-        PERMISSION_CODES.some((known) => known === code),
-      );
+    : role.permissions.filter(isPermissionCode);
 }
 const descriptions: Record<PermissionCode, string> = {
   "admin:access": "Sign in to the admin app.",

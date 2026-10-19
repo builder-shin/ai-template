@@ -25,8 +25,7 @@ type UserData = Pick<UserRow, "email" | "passwordHash"> & Partial<UserRow>;
 export function databaseFixture() {
   const roles: RoleRow[] = [],
     users: UserRow[] = [],
-    assignments: { userId: string; roleId: string }[] = [],
-    audits: Record<string, unknown>[] = [];
+    assignments: { userId: string; roleId: string }[] = [];
   const role = {
     findMany: ({
       where,
@@ -59,8 +58,6 @@ export function databaseFixture() {
     },
   };
   const user = {
-    findUnique: ({ where }: { where: { email: string } }) =>
-      Promise.resolve(users.find((u) => u.email === where.email) ?? null),
     upsert: ({
       where,
       create,
@@ -118,18 +115,11 @@ export function databaseFixture() {
       return Promise.resolve({ count });
     },
   };
-  const auditLog = {
-    create: ({ data }: { data: Record<string, unknown> }) => {
-      audits.push(data);
-      return Promise.resolve(data);
-    },
-  };
   return {
-    tx: { role, user, userRole, auditLog } as unknown as Tx,
+    tx: { role, user, userRole } as unknown as Tx,
     roles,
     users,
     assignments,
-    audits,
   };
 }
 export function required<T>(value: T | null | undefined): T {

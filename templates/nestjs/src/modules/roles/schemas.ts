@@ -5,6 +5,7 @@ import {
   paginationLinksSchema,
   collectionMetaSchema,
 } from "../../core/jsonapi/collection-schemas.js";
+const DESCRIPTION_MAX = 200;
 export const permissionAttributesSchema = registerComponent(
   "PermissionAttributes",
   z.object({ description: z.string(), group: z.string() }),
@@ -51,11 +52,11 @@ registerComponent(
   }),
 );
 // TypeSpec의 nullable 속성처럼 길이 제한을 union 바깥에 선언한다.
-const descriptionSchema = codePointString({ max: 200 })
+const descriptionSchema = codePointString({ max: DESCRIPTION_MAX })
   .nullable()
   .meta({
     anyOf: [{ type: "string", description: "역할 설명이다" }, { type: "null" }],
-    maxLength: 200,
+    maxLength: DESCRIPTION_MAX,
   });
 export const roleCreateAttributesSchema = registerComponent(
   "RoleCreateAttributes",

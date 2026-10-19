@@ -1,5 +1,5 @@
 import type { Tx } from "../../core/db/unit-of-work.js";
-import { PERMISSION_CODES, type PermissionCode } from "../../core/security/permissions.js";
+import type { PermissionCode } from "../../core/security/permissions.js";
 import { Injectable } from "@nestjs/common";
 import { resourceObject, type ResourceObject } from "../../core/jsonapi/document.js";
 import { SYSTEM_ROLES } from "./permissions.js";
@@ -10,13 +10,7 @@ import type { Prisma, Role } from "../../generated/prisma/client.js";
 export class RolesRepository {
   async permissionsOf(tx: Tx, userId: string): Promise<Set<PermissionCode>> {
     const assignments = await tx.userRole.findMany({ where: { userId }, include: { role: true } });
-    if (assignments.some(({ role }) => role.name === "admin" && role.system))
-      return new Set(PERMISSION_CODES);
-    return new Set(
-      assignments
-        .flatMap(({ role }) => role.permissions)
-        .filter((code): code is PermissionCode => PERMISSION_CODES.some((known) => known === code)),
-    );
+    return new Set(assignments.flatMap(({ role }) => rolePermissions(role)));
   }
   permissions(role: Role): Set<PermissionCode> {
     return new Set(rolePermissions(role));
@@ -78,7 +72,8 @@ export class RolesRepository {
   }
   async replaceRoles(tx: Tx, userId: string, names: readonly string[]): Promise<void> {
     const roles = await tx.role.findMany({ where: { name: { in: [...new Set(names)] } } });
-    if (roles.length !== new Set(names).size) throw new Error("교체할 역할이 없다");
+    const missing = [...new Set(names)].filter((name) => !roles.some((role) => role.name === name));
+    if (missing.length) throw new Error("교체할 역할이 없다: " + missing.join(", "));
     await tx.userRole.deleteMany({ where: { userId } });
     if (roles.length)
       await tx.userRole.createMany({
@@ -100,7 +95,8 @@ export class RolesRepository {
     const names = [...new Set(roleNames)];
     if (!names.length) return;
     const roles = await tx.role.findMany({ where: { name: { in: names } } });
-    if (roles.length !== names.length) throw new Error("요청한 역할이 없다");
+    const missing = names.filter((name) => !roles.some((role) => role.name === name));
+    if (missing.length) throw new Error("요청한 역할이 없다: " + missing.join(", "));
     await tx.userRole.createMany({
       data: roles.map((role) => ({ userId, roleId: role.id })),
       skipDuplicates: true,

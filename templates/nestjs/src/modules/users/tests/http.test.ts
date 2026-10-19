@@ -49,6 +49,11 @@ it("내 정보는 역할 include와 희소 필드를 적용하고 권한 meta를
   };
   expect(Object.keys(doc.data.attributes)).toEqual(["name"]);
   expect(Object.keys(required(doc.included[0]).attributes)).toEqual(["name"]);
+  const names = await http
+    .get("/api/v1/me?fields[users]=name")
+    .set("Authorization", "Bearer fixture");
+  expect(names.status).toBe(200);
+  expect(JSON.parse(names.text) as unknown).toHaveProperty("data.relationships", {});
 });
 it("내 아바타 include는 다운로드 URL을 돌려주고 공개 조회도 허용한다", async () => {
   const { http, f } = await setup();
