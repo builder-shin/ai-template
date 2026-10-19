@@ -17,7 +17,7 @@ export interface AppOverrides {
 }
 export async function createApp(
   overrides: AppOverrides = {},
-  infrastructure = true,
+  infrastructure = false,
 ): Promise<NestExpressApplication> {
   const settings = overrides.settings ?? loadSettings();
   const logger = new JsonLogger(logLevels(settings.LOG_LEVEL));
@@ -32,7 +32,7 @@ export async function createApp(
     {
       bodyParser: false,
       routeResolutionStrategy: "specificity",
-      routeConflictPolicy: { duplicate: "error", shadow: "warn" },
+      routeConflictPolicy: { duplicate: "error", shadow: "off" },
       abortOnError: false,
       logger,
     },

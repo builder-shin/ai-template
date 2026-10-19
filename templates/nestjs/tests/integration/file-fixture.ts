@@ -62,7 +62,7 @@ export const fileDocument = (text: string) =>
     .parse(JSON.parse(text) as unknown);
 export async function fileFixture(overrides: Partial<Settings> = {}) {
   const settings = { ...getState().settings, RATE_LIMIT_GLOBAL: 600, ...overrides };
-  const app = await createApp({ settings });
+  const app = await createApp({ settings }, true);
   const clients = storageClients(settings);
   const keys = new Set<string>();
   owned.push({ app, clients, keys, bucket: settings.S3_BUCKET });

@@ -21,7 +21,7 @@ export async function runProbe() {
     const { createApp } = (await import(
       pathToFileURL(resolve("dist/core/http/create-app.js")).href
     )) as typeof ApiModule;
-    app = await createApp({ settings: { ...settings, LOG_LEVEL: "error" } });
+    app = await createApp({ settings: { ...settings, LOG_LEVEL: "error" } }, true);
     await app.listen(0, "127.0.0.1");
     const origin = await app.getUrl();
     const login = await fetch(origin + "/api/v1/sessions", {

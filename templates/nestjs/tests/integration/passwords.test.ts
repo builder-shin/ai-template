@@ -24,17 +24,20 @@ afterEach(async () => {
 const initialPassword = "password-123"; // betterleaks:allow 사유: CI 비밀번호 시험의 가짜 값
 const replacementPassword = "replacement-123"; // betterleaks:allow 사유: CI 비밀번호 시험의 가짜 새 값
 async function fixture(password = initialPassword) {
-  const app = await createApp({
-    settings: {
-      ...getState().settings,
-      RATE_LIMIT_GLOBAL: 600,
-      RATE_LIMIT_LOGIN_IP: 50,
-      RATE_LIMIT_LOGIN_IDENTIFIER: 50,
-      RATE_LIMIT_MAIL_IP: 20,
-      RATE_LIMIT_MAIL_EMAIL: 20,
-      RATE_LIMIT_PASSWORD_CHANGE_USER: 5,
+  const app = await createApp(
+    {
+      settings: {
+        ...getState().settings,
+        RATE_LIMIT_GLOBAL: 600,
+        RATE_LIMIT_LOGIN_IP: 50,
+        RATE_LIMIT_LOGIN_IDENTIFIER: 50,
+        RATE_LIMIT_MAIL_IP: 20,
+        RATE_LIMIT_MAIL_EMAIL: 20,
+        RATE_LIMIT_PASSWORD_CHANGE_USER: 5,
+      },
     },
-  });
+    true,
+  );
   const host = new WorkerHost(app.get(JobQueue));
   owned.push({ app, host });
   const unit = app.get(UnitOfWork);

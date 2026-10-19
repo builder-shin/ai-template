@@ -43,18 +43,21 @@ async function execute(input: z.infer<typeof command>): Promise<unknown> {
     )
       throw new Error("시험 DB 범위를 벗어났다");
     if (input.role === "api") {
-      app = await createApp({
-        settings: { ...input.settings, LOG_LEVEL: "error" },
-        configure: (app) => {
-          app.useWebSocketAdapter(
-            new RealtimeIoAdapter(
-              app,
-              input.settings.REALTIME_ALLOWED_ORIGINS,
-              app.get<RedisClients>(RedisClients),
-            ),
-          );
+      app = await createApp(
+        {
+          settings: { ...input.settings, LOG_LEVEL: "error" },
+          configure: (app) => {
+            app.useWebSocketAdapter(
+              new RealtimeIoAdapter(
+                app,
+                input.settings.REALTIME_ALLOWED_ORIGINS,
+                app.get<RedisClients>(RedisClients),
+              ),
+            );
+          },
         },
-      });
+        true,
+      );
       const resolver = app.get(JwtPrincipalResolver);
       const read = resolver.resolveSession.bind(resolver);
       resolver.resolveSession = (p) =>

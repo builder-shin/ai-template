@@ -20,7 +20,7 @@ export async function meFixture(role: "member" | "admin" = "member") {
     RATE_LIMIT_LOGIN_IP: 50,
     RATE_LIMIT_LOGIN_IDENTIFIER: 50,
   };
-  const app = await createApp({ settings });
+  const app = await createApp({ settings }, true);
   apps.push(app);
   const unit = app.get(UnitOfWork);
   const password = "me-fixture-password"; // betterleaks:allow 사유: CI의 가짜 비밀번호다

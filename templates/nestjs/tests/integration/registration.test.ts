@@ -19,15 +19,18 @@ afterEach(async () => {
 });
 async function fixture() {
   const { settings } = getState();
-  const app = await createApp({
-    settings: {
-      ...settings,
-      RATE_LIMIT_GLOBAL: 600,
-      RATE_LIMIT_REGISTRATION_IP: 20,
-      RATE_LIMIT_MAIL_IP: 20,
-      RATE_LIMIT_MAIL_EMAIL: 20,
+  const app = await createApp(
+    {
+      settings: {
+        ...settings,
+        RATE_LIMIT_GLOBAL: 600,
+        RATE_LIMIT_REGISTRATION_IP: 20,
+        RATE_LIMIT_MAIL_IP: 20,
+        RATE_LIMIT_MAIL_EMAIL: 20,
+      },
     },
-  });
+    true,
+  );
   const host = new WorkerHost(app.get(JobQueue));
   owned.push({ app, host });
   await app.get(UnitOfWork).run((tx) => new RolesRepository().seedRoles(tx));

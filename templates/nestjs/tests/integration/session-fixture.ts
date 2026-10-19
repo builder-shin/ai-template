@@ -33,14 +33,17 @@ export const errorCode = (text: string) =>
 export async function sessionFixture(
   password = "password-123", // betterleaks:allow 사유: CI 세션 시험의 가짜 비밀번호
 ) {
-  const app = await createApp({
-    settings: {
-      ...getState().settings,
-      RATE_LIMIT_GLOBAL: 600,
-      RATE_LIMIT_LOGIN_IP: 50,
-      RATE_LIMIT_LOGIN_IDENTIFIER: 50,
+  const app = await createApp(
+    {
+      settings: {
+        ...getState().settings,
+        RATE_LIMIT_GLOBAL: 600,
+        RATE_LIMIT_LOGIN_IP: 50,
+        RATE_LIMIT_LOGIN_IDENTIFIER: 50,
+      },
     },
-  });
+    true,
+  );
   apps.push(app);
   const unit = app.get(UnitOfWork);
   const passwordHash = await hashPassword(password);
