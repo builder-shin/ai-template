@@ -28,7 +28,7 @@ describe.each([
     expect(probe).not.toContain("--retry");
   });
 
-  it.each([
+  it.skipIf(process.platform === "win32").each([
     ["즉시 200", ["0:200"]],
     ["연결 reset 뒤 200", ["56:000", "0:200"]],
     ["빈 응답 뒤 200", ["52:000", "0:200"]],
@@ -47,7 +47,9 @@ describe.each([
     expect(result.stdout).not.toContain("diagnostic-");
   });
 
-  it.each(["56:000", "52:000", "7:000", "28:000", "0:204", "0:302", "22:401", "22:503"])(
+  it
+    .skipIf(process.platform === "win32")
+    .each(["56:000", "52:000", "7:000", "28:000", "0:204", "0:302", "22:401", "22:503"])(
     "%s가 지속되면 60초 경계에서 실패하고 소유 컨테이너의 state와 logs를 남긴다",
     (response) => {
       const result = runImageHealthShell(probe, Array<string>(80).fill(response), owner);
@@ -66,11 +68,14 @@ describe.each([
     },
   );
 
-  it("진단 명령도 실패해도 state와 logs를 모두 시도하고 실패를 보존한다", () => {
-    const result = runImageHealthShell(probe, Array<string>(80).fill("56:000"), owner, true);
-    expect(result.code).not.toBe(0);
-    expect(result.stdout).toContain("diagnostic-state:" + owner);
-    expect(result.stdout).toContain("diagnostic-logs:" + owner);
-    expect(result.stdout).not.toContain("probe-complete");
-  });
+  it.skipIf(process.platform === "win32")(
+    "진단 명령도 실패해도 state와 logs를 모두 시도하고 실패를 보존한다",
+    () => {
+      const result = runImageHealthShell(probe, Array<string>(80).fill("56:000"), owner, true);
+      expect(result.code).not.toBe(0);
+      expect(result.stdout).toContain("diagnostic-state:" + owner);
+      expect(result.stdout).toContain("diagnostic-logs:" + owner);
+      expect(result.stdout).not.toContain("probe-complete");
+    },
+  );
 });

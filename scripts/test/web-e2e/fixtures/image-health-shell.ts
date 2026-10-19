@@ -1,5 +1,4 @@
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 
 // PATH가 빈 셸과 공유 입력 FD로 응답·논리 시간을 모델링한다. 외부 서비스와 파일을 쓰지 않는다.
 export function runImageHealthShell(
@@ -68,30 +67,11 @@ docker() {
 ${script}
 printf 'probe-complete\n'
 `;
-  const utcStart = new Date().toISOString();
-  const start = performance.now();
   const result = spawnSync("bash", ["--noprofile", "--norc", "-e", "-c", sandbox], {
     encoding: "buffer",
     input: Buffer.from(responses.join("\n") + "\n"),
     timeout: 5000,
   });
-  console.info(
-    "이미지 health 격리 셸 영수증",
-    JSON.stringify({
-      scriptSHA256: createHash("sha256").update(sandbox).digest("hex"),
-      nativeChildPID: result.pid,
-      utcStart,
-      utcEnd: new Date().toISOString(),
-      elapsedSeconds: (performance.now() - start) / 1000,
-      nativeExit: result.status,
-      signal: result.signal,
-      stdoutBase64: result.stdout.toString("base64"),
-      stderrBase64: result.stderr.toString("base64"),
-      CPUSeconds: null,
-      providerTokens: null,
-      providerCurrency: null,
-    }),
-  );
   if (result.error) throw result.error;
   return {
     code: result.status,

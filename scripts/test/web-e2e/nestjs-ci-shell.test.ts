@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { runImageHealthShell } from "./fixtures/image-health-shell.ts";
 import { runNestCiShell } from "./fixtures/nestjs-ci-shell.ts";
 
 const { spawnError } = vi.hoisted(() => ({
@@ -20,10 +21,13 @@ vi.mock("node:child_process", () => ({
   }),
 }));
 
-it("셸을 기동하지 못하면 출력 접근 전에 원래 오류를 전달한다", () => {
+it.each([
+  ["CI", () => runNestCiShell("")],
+  ["이미지 health", () => runImageHealthShell("", [], "owned-probe")],
+] as const)("%s 셸을 기동하지 못하면 출력 접근 전에 원래 오류를 전달한다", (_name, run) => {
   let thrown: unknown;
   try {
-    runNestCiShell("");
+    run();
   } catch (error) {
     thrown = error;
   }
