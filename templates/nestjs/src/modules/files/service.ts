@@ -140,6 +140,7 @@ export class FilesService {
   delete(principal: Principal, id: string): Promise<void> {
     return this.unit.run(async (tx, afterCommit) => {
       const file = await this.visible(tx, principal, id, true);
+      await this.repository.clearAvatarReferences(tx, id);
       await this.repository.delete(tx, id);
       this.removeObject(afterCommit, file.key);
     });

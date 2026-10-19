@@ -19,6 +19,8 @@ export const file: FileRecord = {
 export function fixture(overrides: Partial<Settings> = {}) {
   let committed: FileRecord[] = [];
   let active: FileRecord[] | undefined;
+  let avatars = new Map<string, string | null>();
+  let activeAvatars: Map<string, string | null> | undefined;
   const events: string[] = [];
   let fail = false;
   let headFailure: unknown;
@@ -29,14 +31,36 @@ export function fixture(overrides: Partial<Settings> = {}) {
   const unit = new UnitOfWork({
     $transaction: async (fn: (tx: Tx) => Promise<unknown>) => {
       active = structuredClone(committed);
+      activeAvatars = new Map(avatars);
       events.push("begin");
       try {
         const result = await fn({
-          user: { findMany: () => Promise.resolve([]), count: () => Promise.resolve(0) },
+          user: {
+            findMany: () => Promise.resolve([]),
+            count: () => Promise.resolve(0),
+            updateMany: ({
+              where,
+              data,
+            }: {
+              where: { avatarFileId: string };
+              data: { avatarFileId: null };
+            }) => {
+              if (!activeAvatars) throw new Error("트랜잭션 밖이다");
+              let count = 0;
+              for (const [id, fileId] of activeAvatars)
+                if (fileId === where.avatarFileId) {
+                  activeAvatars.set(id, data.avatarFileId);
+                  count++;
+                }
+              events.push("clear-avatar");
+              return Promise.resolve({ count });
+            },
+          },
           post: { findMany: () => Promise.resolve([]), count: () => Promise.resolve(0) },
         } as unknown as Tx);
         if (fail) throw new Error("commit 실패");
         committed = active;
+        avatars = activeAvatars;
         events.push("commit");
         return result;
       } catch (error) {
@@ -44,6 +68,7 @@ export function fixture(overrides: Partial<Settings> = {}) {
         throw error;
       } finally {
         active = undefined;
+        activeAvatars = undefined;
       }
     },
   } as unknown as PrismaService);
@@ -172,6 +197,9 @@ export function fixture(overrides: Partial<Settings> = {}) {
     repository,
     events,
     objects,
+    get avatars() {
+      return avatars;
+    },
     close: () => {
       publicClient.destroy();
     },

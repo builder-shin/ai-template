@@ -45,6 +45,9 @@ export class FilesRepository {
   async delete(tx: Tx, id: string): Promise<void> {
     await tx.file.delete({ where: { id } });
   }
+  async clearAvatarReferences(tx: Tx, id: string): Promise<void> {
+    await tx.user.updateMany({ where: { avatarFileId: id }, data: { avatarFileId: null } });
+  }
   async detach(tx: Tx, ids: readonly string[]): Promise<void> {
     await tx.file.updateMany({ where: { id: { in: [...ids] } }, data: { detachedAt: new Date() } });
   }

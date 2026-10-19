@@ -142,16 +142,31 @@ it("삭제는 행 commit 뒤 객체를 제거한다", async () => {
   await f.service.delete(principal, "f1");
   expect(f.files).toEqual([]);
   expect(f.objects.size).toBe(0);
-  expect(f.events).toEqual(["begin", "delete-row", "commit", "delete-object"]);
+  expect(f.events).toEqual(["begin", "clear-avatar", "delete-row", "commit", "delete-object"]);
+});
+it("현재 아바타 파일을 지우면 사용자 참조도 같은 트랜잭션에서 비운다", async () => {
+  const f = make();
+  f.add({ status: "ready" });
+  f.avatars.set("u1", "f1");
+  f.avatars.set("u2", "other");
+  await f.service.delete(principal, "f1");
+  expect([...f.avatars]).toEqual([
+    ["u1", null],
+    ["u2", "other"],
+  ]);
+  expect(f.files).toEqual([]);
+  expect(f.events).toEqual(["begin", "clear-avatar", "delete-row", "commit", "delete-object"]);
 });
 it("commit 실패 때 객체를 지우지 않는다", async () => {
   const f = make();
   f.add();
   f.objects.set(file.key, { ContentLength: 23, ContentType: "image/png" });
   f.failCommit = true;
+  f.avatars.set("u1", "f1");
   await expect(f.service.delete(principal, "f1")).rejects.toThrow("commit 실패");
   expect(f.objects.size).toBe(1);
   expect(f.files).toHaveLength(1);
+  expect(f.avatars.get("u1")).toBe("f1");
 });
 it("안전 정수 밖의 저장 크기는 응답으로 보내지 않는다", async () => {
   const f = make();

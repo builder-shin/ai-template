@@ -170,6 +170,41 @@ it("탈퇴 뒤 로그인은 401이고 공개 사용자와 남은 세션과 토�
   ]);
   expect(state.audit).toHaveLength(1);
 });
+it("현재 아바타 파일을 삭제하면 내 정보의 아바타 관계가 비워진다", async () => {
+  const f = await meFixture();
+  const file = await f.unit.run((tx) =>
+    tx.file.create({
+      data: {
+        ownerId: f.user.id,
+        key: "deleted-avatar-" + f.user.id,
+        filename: "아바타.png",
+        contentType: "image/png",
+        size: 23n,
+        status: "ready",
+      },
+    }),
+  );
+  const authorization = `Bearer ${f.session.attributes.accessToken}`;
+  const changed = await f.http
+    .patch("/api/v1/me")
+    .set("Authorization", authorization)
+    .set("Content-Type", mediaType)
+    .send({
+      data: {
+        type: "users",
+        id: f.user.id,
+        relationships: { avatar: { data: { type: "files", id: file.id } } },
+      },
+    });
+  expect(changed.status).toBe(200);
+  expect(document(changed.text).data.relationships.avatar.data?.id).toBe(file.id);
+  expect(
+    (await f.http.delete("/api/v1/files/" + file.id).set("Authorization", authorization)).status,
+  ).toBe(204);
+  const mine = await f.http.get("/api/v1/me").set("Authorization", authorization);
+  expect(mine.status).toBe(200);
+  expect(document(mine.text).data.relationships.avatar.data).toBeNull();
+});
 it("마지막 활성 관리자의 탈퇴는 422다", async () => {
   const f = await meFixture("admin");
   const r = await f.http
