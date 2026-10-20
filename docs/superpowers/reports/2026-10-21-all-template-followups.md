@@ -56,9 +56,10 @@
 - Q1 실제 HTTP: 공통 클라이언트/주소/요청/refresh 집중 38개, web 업무 호출부 9개·admin 4개 통과. 기존 토큰별 갱신 만료 검사도 포함한다.
 - 루트 `pnpm check`: 수정 후 11단계 통과(246.8초). 최초 통합 실행에서 cleanup 콜백 린트 5건과 공유 회귀의 앱 소유 proxy 허용 목록 누락을 발견해 고쳤고 관련 29개 검사가 통과했다.
 - web: 전체 정상 suite 111개 파일·988개 통과·native 1개 건너뛰기, stderr/React act/Base UI 진단 0개. 9단계 check·운영 build·목 Chromium E2E 20개(36.5초) 통과. 반복 가입 실패의 이름·메일 유지·비밀번호 초기화도 실제 브라우저에서 통과했다.
-- admin: 전체 정상 suite 98개 파일·892개 통과·native 1개 건너뛰기, stderr/React act/Base UI 진단 0개. 10단계 check(캐시 0개) 통과. 운영 build·목 E2E는 진행 중이다.
-- 이번 web 전체 suite와 E2E에서는 destination-stream-closed 진단을 관측하지 않았다. 과거 진단의 원인이나 해소를 증명한 것은 아니다.
-- 커밋 입력의 실제 생성 smoke와 새 PR의 15개 CI는 진행 중이다. 완료 결과는 이 절에 갱신한다.
+- admin: 전체 정상 suite 98개 파일·892개 통과·native 1개 건너뛰기, stderr/React act/Base UI 진단 0개. 10단계 check(캐시 0개)·운영 build·목 E2E 18개(26.0초) 통과.
+- 이번 두 프론트의 전체 suite와 E2E에서는 destination-stream-closed 진단을 관측하지 않았다. 과거 진단의 원인이나 해소를 증명한 것은 아니다.
+- 구현 커밋 `4beab1b473f799837ea40c5174760355717dfe82`의 추적 입력으로 실제 FastAPI+web+admin 및 NestJS+web+admin 조합 생성이 통과했다. 생성 단계의 실제 registry 해석·frozen 설치·web→admin gen을 사용했다. FastAPI 조합의 web 9단계·admin 10단계 전체 check(각 캐시 0개), NestJS 조합의 이동 후 root/API 독립 frozen 설치와 두 프론트의 route typegen·tsc가 통과했다. 네 종류 단독 생성도 통과했고 대표 변경 파일의 원본 바이트 일치와 .env·.git·template.json 부재를 확인했다. setup·Docker·API 인프라는 실행하지 않았다.
+- 이 절은 PR 작성 전 로컬 검증 스냅샷이다. 새 PR의 정확한 HEAD에서 실행하는 15개 CI와 실제 백엔드·생성 이미지 결과는 PR 본문에 기록한다. 기존 main CI 결과로 새 변경을 검증했다고 주장하지 않는다.
 
 ## 독립 최종 검토와 보완
 

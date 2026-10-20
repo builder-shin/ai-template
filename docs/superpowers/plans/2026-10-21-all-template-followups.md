@@ -35,47 +35,47 @@
 
 Owner paths: admin resource components, declarations, resource generator and tests; admin auth locale normalization. Read descendant rules before edits.
 
-- [ ] Reproduce and fix T3-M1/M3/M4/M5/M6/M8, T3-RR1-M1/M2, T3-RR2-M1 and pending search supersession.
-- [ ] Complete T5-M1/M2, T6-M2/M3/RR1, T7-M3/M5/M6/M7, FW-M2/M3/M4.
-- [ ] Test real controls/Actions, deferred responses, relation 403, enum negative types and generator no-write failures.
-- [ ] Verify focused suites and admin types; return evidence for every ID.
+- [x] Reproduce and fix T3-M1/M3/M4/M5/M6/M8, T3-RR1-M1/M2, T3-RR2-M1 and pending search supersession.
+- [x] Complete T5-M1/M2, T6-M2/M3/RR1, T7-M3/M5/M6/M7, FW-M2/M3/M4.
+- [x] Test real controls/Actions, deferred responses, relation 403, enum negative types and generator no-write failures.
+- [x] Verify focused suites and admin types; return evidence for every ID.
 
 ### 2. Generation CLI, combo assets and backend E2E harness
 
 Owner paths: `create/`, `scripts/src/web-e2e/`, `scripts/test/web-e2e/`.
 
-- [ ] Complete T2-I1, T8-M1/M2, T9-M1/M2/M3, T10-M1/M3/M4/M5, T11-M1/M2/M3/M4/M5.
-- [ ] Verify every frontend subset, stop-on-failure, malformed inputs, formatter ownership and app-specific diagnostics.
-- [ ] Complete relevant T12-M3 title fixes; preserve existing CLI behavior and committed-input boundary.
-- [ ] Run create and harness suites; document precise evidence and remaining CI-only checks.
+- [x] Complete T2-I1, T8-M1/M2, T9-M1/M2/M3, T10-M1/M3/M4/M5, T11-M1/M2/M3/M4/M5.
+- [x] Verify every frontend subset, stop-on-failure, malformed inputs, formatter ownership and app-specific diagnostics.
+- [x] Complete relevant T12-M3 title fixes; preserve existing CLI behavior and committed-input boundary.
+- [x] Run create and harness suites; document precise evidence and remaining CI-only checks.
 
 ### 3. NestJS contract and process/test hygiene
 
 Owner paths: NestJS, root fixture cleanup tests, shared Next.js scripts and shared hook comment.
 
-- [ ] O1: failing real serialized global/strict HTTP assertions, nested retry metadata, integration expectations and current contract docs.
-- [ ] Q4/T1-M1/M2: deterministic Darwin release handshake and assertion diagnostics.
-- [ ] Register cleanup immediately for known fixture owners; use aitpl prefixes; preserve unknown temporary data.
-- [ ] T8-M3/RR1-M1 and T9-RR1-M1: process diagnostics tests, type-test separation and accurate comment.
-- [ ] Run NestJS unit/fast checks and focused process/root tests; explicitly retain native Darwin limitation.
+- [x] O1: failing real serialized global/strict HTTP assertions, nested retry metadata, integration expectations and current contract docs.
+- [x] Q4/T1-M1/M2: deterministic Darwin release handshake and assertion diagnostics.
+- [x] Register cleanup immediately for known fixture owners; use aitpl prefixes; preserve unknown temporary data.
+- [x] T8-M3/RR1-M1 and T9-RR1-M1: process diagnostics tests, type-test separation and accurate comment.
+- [x] Run NestJS unit/fast checks and focused process/root tests; explicitly retain native Darwin limitation.
 
 ### 4. Web diagnostics, safe return path and trusted BFF client address
 
 Owner paths: web, shared session/API/environment/proxy infrastructure, shared documentation.
 
-- [ ] Q4: call-through diagnostic regression tests for auth input lifecycle and header logout, RTL act imports and JS-free flow coverage.
-- [ ] T4-RR1: strip repeated supported locale prefixes; preserve query/hash and existing redirect guards.
-- [ ] Q1: inspect installed Next request APIs and backend proxy trust boundaries; write concrete design and obtain independent security review.
-- [ ] Implement default-off ingress-header validation, request-scoped client factory, protected outbound headers and explicit proxy refresh context without breaking token single-flight.
-- [ ] Cover spoof/malformed/list/IPv4/IPv6/missing context/request isolation/auth/anonymous/refresh and both backend trust chains.
-- [ ] Reconcile T12-M3/M5 and current status docs without altering dated historical evidence.
+- [x] Q4: call-through diagnostic regression tests for auth input lifecycle and header logout, RTL act imports and JS-free flow coverage.
+- [x] T4-RR1: strip repeated supported locale prefixes; preserve query/hash and existing redirect guards.
+- [x] Q1: inspect installed Next request APIs and backend proxy trust boundaries; write concrete design and obtain independent security review.
+- [x] Implement default-off ingress-header validation, request-scoped client factory, protected outbound headers and explicit proxy refresh context without breaking token single-flight.
+- [x] Cover spoof/malformed/list/IPv4/IPv6/missing context/request isolation/auth/anonymous/refresh and both backend trust chains.
+- [x] Reconcile T12-M3/M5 and current status docs without altering dated historical evidence.
 
 ### 5. Integration, review and PR
 
-- [ ] Synchronize shared originals and verify no generated drift or dependency changes.
-- [ ] Run root `pnpm check`, full normal frontend suites/check/build/mock E2E sequentially, NestJS local unit/fast gates and affected mock conformance.
-- [ ] Record every live backlog disposition with source/test evidence and explicit boundaries.
-- [ ] Commit reviewable groups through normal hooks; run real committed-input generation smoke outside the repository.
-- [ ] Request independent whole-branch review; address material findings with regressions.
+- [x] Synchronize shared originals and verify no generated drift or dependency changes.
+- [x] Run root `pnpm check`, full normal frontend suites/check/build/mock E2E sequentially, NestJS local unit/fast gates and affected mock conformance.
+- [x] Record every live backlog disposition with source/test evidence and explicit boundaries.
+- [x] Commit reviewable groups through normal hooks; run real committed-input generation smoke outside the repository.
+- [x] Request independent whole-branch review; address material findings with regressions.
 - [ ] Push, create assigned PR and obtain all 15 exact-head CI jobs; resolve failures and refresh evidence.
 - [ ] Report verified results and limitations in Korean; notify if a user-notification tool is available.
