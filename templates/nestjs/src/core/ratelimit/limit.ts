@@ -8,7 +8,7 @@ export function rateLimited(retryAfter: number): ApiError {
     code: "rate_limit.exceeded",
     title: "Too many requests",
     headers: { "Retry-After": String(retryAfter) },
-    meta: { retryAfter },
+    meta: { params: { retryAfter } },
   });
 }
 

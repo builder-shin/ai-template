@@ -51,13 +51,14 @@ it("폼은 실제 제출 뒤 필드 오류·배너를 표시하고 입력을 보
 });
 it("입력 override는 같은 필드 오류 상태와 폼 이름을 쓴다", async () => {
   function Custom() {
-    const { invalid, describedBy } = useResourceField("title");
+    const { invalid, describedBy, labelledBy } = useResourceField("title");
     return (
       <input
         id="title"
         name="title"
         aria-invalid={invalid}
         aria-describedby={describedBy}
+        aria-labelledby={labelledBy}
         defaultValue="바꾼 입력"
       />
     );
@@ -72,7 +73,7 @@ it("입력 override는 같은 필드 오류 상태와 폼 이름을 쓴다", asy
       permalink="/posts/new"
       cancelHref="/posts"
     >
-      <ResourceInput name="title" label="제목" kind="text">
+      <ResourceInput name="title" label="제목" kind="text" error="옵션 안내">
         <Custom />
       </ResourceInput>
     </ResourceForm>,
@@ -80,6 +81,10 @@ it("입력 override는 같은 필드 오류 상태와 폼 이름을 쓴다", asy
   await userEvent.setup().click(screen.getByRole("button", { name: "저장" }));
   expect(await screen.findByText("오류")).toBeDefined();
   expect(screen.getByRole("textbox").getAttribute("aria-invalid")).toBe("true");
+  expect(screen.getByRole("textbox").getAttribute("aria-describedby")).toBe(
+    "title-errors title-notice",
+  );
+  expect(screen.getByRole("textbox", { name: "제목" })).toBeDefined();
 });
 it("체크박스·여러 줄·열거값·다중 관계 입력이 폼으로 제출된다", async () => {
   const user = userEvent.setup();
@@ -201,7 +206,7 @@ it("다중 관계의 검색 선택은 팝업을 닫아도 값과 라벨을 유�
   const trigger = screen.getByRole("combobox", { name: "역할" });
   const form = trigger.closest("form")!;
   await user.click(trigger);
-  await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "역할 이름");
+  await user.type(await screen.findByRole("combobox", { name: "대상 검색" }), "역할 이름");
   await user.click(screen.getByRole("button", { name: "검색" }));
   await user.click(await screen.findByRole("option", { name: "검색 역할" }));
   expect(new FormData(form).getAll("roles")).toEqual(["s"]);
@@ -219,7 +224,10 @@ it.each([false, true])(
     const trigger = screen.getByRole("combobox", { name: "역할" });
     const form = trigger.closest("form")!;
     await user.click(trigger);
-    await user.type(await screen.findByRole("textbox", { name: "대상 검색" }), "다른 역할");
+    await user.type(
+      await screen.findByRole(multiple ? "combobox" : "textbox", { name: "대상 검색" }),
+      "다른 역할",
+    );
     await user.click(screen.getByRole("button", { name: "검색" }));
     expect(await screen.findByRole("option", { name: "검색 역할" })).toBeDefined();
     expect.soft(new FormData(form).getAll("roles")).toEqual(["a"]);

@@ -12,8 +12,8 @@ export function mergeApiLock(
   apiLock: string,
   { typescriptPin }: { typescriptPin: string },
 ): string {
-  const frontDocs = documents(resolvedFrontendLock),
-    apiDocs = documents(apiLock);
+  const frontDocs = documents(resolvedFrontendLock, "조합"),
+    apiDocs = documents(apiLock, "api");
   if (
     !isDeepStrictEqual(
       frontDocs.slice(0, -1).map((doc) => doc.toJS() as unknown),
@@ -21,8 +21,8 @@ export function mergeApiLock(
     )
   )
     resolutionFailure("api", "도구 설치 문서");
-  const front = dependencyDocument(frontDocs).doc.toJS() as LockDocument;
-  const api = dependencyDocument(apiDocs).doc.toJS() as LockDocument;
+  const front = dependencyDocument(frontDocs, "조합").doc.toJS() as LockDocument;
+  const api = dependencyDocument(apiDocs, "api").doc.toJS() as LockDocument;
   verifyMetadata(api, front, typescriptPin, "api");
   if (!Object.hasOwn(api.importers, ".")) resolutionFailure("api", "원본 importer . 누락");
   optionalReachability(front, Object.keys(front.importers));
@@ -60,31 +60,31 @@ export function mergeApiLock(
     if (!Object.hasOwn(front.snapshots, key))
       merged.snapshots[key] = optionalRecord(recordAt(merged.snapshots, key), reachable.get(key));
   }
-  const doc = dependencyDocument(frontDocs).doc;
+  const doc = dependencyDocument(frontDocs, "조합").doc;
   for (const section of ["importers", "packages", "snapshots"]) doc.set(section, merged[section]);
-  const prefix = toolPrefix(apiLock, apiDocs);
+  const prefix = toolPrefix(apiLock, apiDocs, "api");
   return prefix + doc.toString({ lineWidth: 0 });
 }
 export function alignDerivedTypeScriptPeers(apiLock: string, typescriptPin: string): string {
-  const docs = documents(apiLock),
-    doc = dependencyDocument(docs).doc;
+  const docs = documents(apiLock, "api"),
+    doc = dependencyDocument(docs, "api").doc;
   const lock = doc.toJS() as LockDocument;
   for (const [key, value] of Object.entries(lock.packages))
     doc.setIn(["packages", key], alignedPackage(value, typescriptPin));
-  return toolPrefix(apiLock, docs) + doc.toString({ lineWidth: 0 });
+  return toolPrefix(apiLock, docs, "api") + doc.toString({ lineWidth: 0 });
 }
 export function verifyAppResolutions(
   sources: readonly AppLockSource[],
   lock: string,
   { typescriptPin }: { typescriptPin: string },
 ): void {
-  const docs = documents(lock),
-    after = dependencyDocument(docs).doc.toJS() as LockDocument;
+  const docs = documents(lock, "조합"),
+    after = dependencyDocument(docs, "조합").doc.toJS() as LockDocument;
   const originals = sources.map(({ app, source }) => ({
     app,
     source,
-    docs: documents(source),
-    before: dependencyDocument(documents(source)).doc.toJS() as LockDocument,
+    docs: documents(source, app),
+    before: dependencyDocument(documents(source, app), app).doc.toJS() as LockDocument,
   }));
   for (const { app, before } of originals)
     if (app === "api" && !Object.hasOwn(before.importers, "."))
@@ -107,7 +107,7 @@ export function verifyAppResolutions(
       )
     )
       resolutionFailure(app, "도구 설치 문서");
-    if (app === "api" && toolPrefix(source, beforeDocs) !== toolPrefix(lock, docs))
+    if (app === "api" && toolPrefix(source, beforeDocs, app) !== toolPrefix(lock, docs, "조합"))
       resolutionFailure(app, "도구 문서 원문");
     verifyMetadata(before, after, typescriptPin, app);
     for (const [key, value] of Object.entries(before.importers)) {
@@ -163,8 +163,8 @@ function recordAt(
   if (value === undefined) resolutionFailure("api", `snapshots.${key}`);
   return value;
 }
-function toolPrefix(source: string, docs: ReturnType<typeof documents>): string {
-  const start = dependencyDocument(docs).doc.range[0];
+function toolPrefix(source: string, docs: ReturnType<typeof documents>, app: string): string {
+  const start = dependencyDocument(docs, app).doc.range[0];
   return source.slice(0, start);
 }
 function resolutionFailure(app: string, key: string): never {
@@ -212,34 +212,46 @@ function verifyMetadata(before: LockDocument, after: LockDocument, pin: string, 
   }
 }
 
-function documents(source: string) {
+function documents(source: string, app: string) {
   const docs = parseAllDocuments(source);
   if (docs.some((doc) => doc.errors.length > 0))
-    throw new CreateError("잠금 파일이 올바르지 않다", "프론트 잠금 파일을 pnpm으로 다시 만든다.");
+    throw new CreateError(
+      `${app}: 잠금 파일이 올바르지 않다`,
+      `${app}에서 pnpm install로 잠금 파일을 다시 만든다.`,
+    );
   return docs;
 }
 
-function dependencyDocument(docs: ReturnType<typeof documents>) {
+function dependencyDocument(docs: ReturnType<typeof documents>, app: string) {
   // pnpm 12는 도구 설치 잠금과 프로젝트 의존성을 별도 YAML 문서로 저장한다.
   const doc = docs.at(-1);
   const importers = doc?.get("importers", true);
   if (!doc || !isMap(importers))
     throw new CreateError(
-      "잠금 파일에 importer가 없다",
-      "프론트에서 pnpm install로 잠금 파일을 만든다.",
+      `${app}: 잠금 파일에 importer가 없다`,
+      `${app}에서 pnpm install로 잠금 파일을 만든다.`,
     );
   return { doc, importers };
 }
 
 export function rewriteImporters(source: string, app = "web"): string {
-  const docs = documents(source);
-  const { doc, importers } = dependencyDocument(docs);
+  const docs = documents(source, app);
+  const { doc, importers } = dependencyDocument(docs, app);
+  if (!importers.has("."))
+    throw new CreateError(
+      `${app}: 잠금 파일에 원본 importer .이 없다`,
+      `${app}에서 pnpm install로 잠금 파일을 다시 만든다.`,
+    );
   for (const pair of importers.items) {
     const path = String(pair.key);
-    if (path !== "." && !path.startsWith("contract/"))
+    const contractPath =
+      path.startsWith("contract/") &&
+      !path.includes("\\") &&
+      path.split("/").every((part) => part !== "" && part !== "." && part !== "..");
+    if (path !== "." && !contractPath)
       throw new CreateError(
-        "프론트 importer 경로가 올바르지 않다",
-        "프론트 workspace의 contract 패키지를 확인한다.",
+        `${app}: 프론트 importer 경로가 올바르지 않다: ${path}`,
+        `${app} workspace의 contract 패키지를 확인하고 pnpm install로 잠금 파일을 다시 만든다.`,
       );
     pair.key = doc.createNode(path === "." ? `apps/${app}` : path);
   }
@@ -260,14 +272,14 @@ export interface FrontendLock {
 export function mergeFrontendLocks(sources: readonly FrontendLock[]): string {
   const first = sources[0];
   if (!first) throw new CreateError("프론트 잠금 파일이 없다", "프론트 앱을 하나 이상 지정한다.");
-  const merged = documents(rewriteImporters(first.source, first.app));
-  const target = dependencyDocument(merged).doc;
+  const merged = documents(rewriteImporters(first.source, first.app), first.app);
+  const target = dependencyDocument(merged, first.app).doc;
   const initial = target.toJS() as Record<string, unknown>;
   const contracts = Object.keys(initial.importers as Record<string, unknown>)
     .filter((key) => key.startsWith("contract/"))
     .sort();
   for (const source of sources.slice(1)) {
-    const next = documents(rewriteImporters(source.source, source.app));
+    const next = documents(rewriteImporters(source.source, source.app), source.app);
     const fail = (key: string): never => {
       throw new CreateError(
         `프론트 잠금 파일의 해석이 다르다(${first.app}, ${source.app}): ${key}`,
@@ -282,7 +294,7 @@ export function mergeFrontendLocks(sources: readonly FrontendLock[]): string {
       )
     )
       fail("도구 설치 문서");
-    const incoming = dependencyDocument(next).doc.toJS() as Record<string, unknown>;
+    const incoming = dependencyDocument(next, source.app).doc.toJS() as Record<string, unknown>;
     const nextContracts = Object.keys(incoming.importers as Record<string, unknown>)
       .filter((key) => key.startsWith("contract/"))
       .sort();
@@ -309,11 +321,11 @@ export function mergeFrontendLocks(sources: readonly FrontendLock[]): string {
 }
 
 export function verifyFrontendResolutions(original: string, combined: string, app = "web"): void {
-  const before = dependencyDocument(documents(original)).doc.toJS() as Record<
+  const before = dependencyDocument(documents(original, app), app).doc.toJS() as Record<
     string,
     Record<string, unknown>
   >;
-  const after = dependencyDocument(documents(combined)).doc.toJS() as Record<
+  const after = dependencyDocument(documents(combined, "조합"), "조합").doc.toJS() as Record<
     string,
     Record<string, unknown>
   >;

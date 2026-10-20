@@ -71,7 +71,7 @@ it("실제 presigned PUT의 헤더·CORS를 사용하고 ready 확인 후 파일
 it.each([
   ["image/png", 10485761, "The file must be no larger than 10485760 bytes.", "size"],
   ["text/html", 4, "This file type is not allowed.", "contentType"],
-] as const)("%s %i의 업로드 검증 오류를 번역한다", async (type, size, message, field) => {
+] as const)("(%s) (%i)의 업로드 검증 오류를 번역한다", async (type, size, message, field) => {
   expect(await createFileAction(fields(type, size), "/my-posts/new")).toMatchObject({
     ok: false,
     fieldErrors: { [field]: [message] },

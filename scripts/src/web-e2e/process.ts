@@ -53,9 +53,11 @@ async function stopOwnedGroup(pid: number, graceMs: number): Promise<void> {
   }
   if (!signal("SIGINT") || (await wait(graceMs))) return;
   if (!signal("SIGKILL")) return;
-  console.error(`종료 한도를 넘어 프로세스 그룹 ${String(pid)}을 SIGKILL로 강제 종료했다.`);
+  console.error(`종료 한도를 넘어 프로세스 그룹(PID: ${String(pid)})에 SIGKILL을 보냈다.`);
   if (!(await wait(FORCE_KILL_WAIT_MS)))
-    throw new Error(`시작한 프로세스 그룹 ${String(pid)}이 강제 종료 한도를 넘겼다.`);
+    throw new Error(
+      `프로세스 그룹(PID: ${String(pid)}) 강제 종료 한도를 넘겼다 — ps -axo pid,ppid,pgid,stat 명령으로 해당 PGID 항목을 확인하고 정리한 뒤 다시 실행한다.`,
+    );
 }
 /** compose의 자동 .env 로드와 셸의 COMPOSE_* 덮어쓰기를 막는다. */
 export function commandEnv(env: Record<string, string>): NodeJS.ProcessEnv {

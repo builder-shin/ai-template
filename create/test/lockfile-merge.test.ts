@@ -1,6 +1,10 @@
 import { expect, it } from "vitest";
 import { parseAllDocuments } from "yaml";
-import { mergeFrontendLocks, verifyFrontendResolutions } from "../src/lockfile.ts";
+import {
+  mergeFrontendLocks,
+  rewriteImporters,
+  verifyFrontendResolutions,
+} from "../src/lockfile.ts";
 import { lock } from "./combo-fixture.ts";
 
 const merge = (admin = lock) =>
@@ -8,6 +12,41 @@ const merge = (admin = lock) =>
     { app: "web", source: lock },
     { app: "admin", source: admin },
   ]);
+
+it.each([
+  {
+    label: "missing root",
+    source: lock.replace("\n  .:\n    dependencies:", "\n  contract/no-app:\n    dependencies:"),
+  },
+  ...[
+    "contract/../../outside",
+    "contract/./mock",
+    "contract//mock",
+    "contract/mock/",
+    "contract/a\\..\\outside",
+  ].map((path) => ({ label: path, source: lock.replace("contract/mock:", `${path}:`) })),
+])("앱 importer 누락과 비정규 계약 경로를 앱별로 거절한다 ($label)", ({ source }) => {
+  for (const app of ["web", "admin"]) {
+    expect(() => rewriteImporters(source, app)).toThrow(new RegExp(`${app}.*importer`));
+    expect(() => mergeFrontendLocks([{ app, source }])).toThrow(new RegExp(`${app}.*importer`));
+  }
+});
+
+it.each([
+  { label: "malformed", source: "importers: [", reason: "잠금 파일" },
+  { label: "missing importer", source: "lockfileVersion: '9.0'\n", reason: "importer" },
+  {
+    label: "invalid path",
+    source: lock.replace("contract/mock:", "other/app:"),
+    reason: "other/app",
+  },
+])("잘못된 잠금 입력은 앱과 복구 경로를 알린다 ($label)", ({ source, reason }) => {
+  for (const app of ["web", "admin"]) {
+    const expected = new RegExp(`${app}.*${reason}.*—.*${app}.*pnpm`);
+    expect(() => rewriteImporters(source, app)).toThrow(expected);
+    expect(() => mergeFrontendLocks([{ app, source }])).toThrow(expected);
+  }
+});
 
 it("앱 importer와 고유 패키지는 합치고 같은 계약·패키지·도구는 한 번 보존한다", () => {
   const admin = lock

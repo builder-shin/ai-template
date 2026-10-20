@@ -110,7 +110,6 @@ export function SearchMultiSelect({
           >
             <div className="flex items-center gap-2 p-2">
               <Combobox.Input
-                role="textbox"
                 aria-label={t("searchRelation")}
                 render={<Input />}
                 onKeyDown={(event) => {
@@ -118,13 +117,16 @@ export function SearchMultiSelect({
                     event.preventBaseUIHandler();
                     return;
                   }
-                  if (event.key === "Enter") {
+                  if (event.key === "Enter" && keyboardOption.current === undefined) {
                     event.preventDefault();
                     event.preventBaseUIHandler();
                     event.stopPropagation();
                     onSearch();
-                  } else if (event.key === " " && keyboardOption.current !== undefined) {
-                    // 방향키로 가리킨 항목은 입력의 가상 포커스를 유지하며 Space로 토글한다.
+                  } else if (
+                    [" ", "Enter"].includes(event.key) &&
+                    keyboardOption.current !== undefined
+                  ) {
+                    // 방향키로 가리킨 항목은 입력의 가상 포커스를 유지하며 선택을 토글한다.
                     event.preventDefault();
                     event.preventBaseUIHandler();
                     const id = keyboardOption.current;
@@ -135,7 +137,7 @@ export function SearchMultiSelect({
                   }
                 }}
               />
-              <Button type="button" variant="outline" disabled={pending} onClick={onSearch}>
+              <Button type="button" variant="outline" aria-label={t("search")} onClick={onSearch}>
                 {pending ? <Spinner /> : t("search")}
               </Button>
             </div>

@@ -66,7 +66,7 @@ it.each([
   ["SIGINT", 130],
   ["SIGTERM", 143],
   ["SIGKILL", 137],
-] as const)("API proxy는 하위 %s 종료를 %s로 전달한다", async (signal, code) => {
+] as const)("API proxy는 하위 종료 신호에 맞는 코드를 전달한다 (%s, %s)", async (signal, code) => {
   const { root, module } = await proxy();
   expect(module.apiCommand(root, "dev", [], () => ({ status: null, signal }))).toBe(code);
 });

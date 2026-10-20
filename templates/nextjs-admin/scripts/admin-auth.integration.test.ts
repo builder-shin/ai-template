@@ -254,6 +254,25 @@ it("언어 전환은 계정·쿠키·같은 화면을 함께 바꾼다", async (
   expect(context.jar.get("NEXT_LOCALE")?.value).toBe("en");
 });
 
+it.each(["ko", "en"] as const)(
+  "비문자열 언어 전환 복귀값은 계정과 쿠키를 바꾸고 %s 홈으로 이동한다",
+  async (locale) => {
+    const { owner } = await partialAdminFixture(inject("mockBaseUrl"));
+    context.jar.set(cookie, {
+      value: await sealSession(sessionFromTokens(owner.session, owner.id)),
+    });
+    for (const returnTo of [null, undefined, 123, ["/posts"], {}]) {
+      await expect(changeLocaleAction(locale, returnTo as unknown as string)).rejects.toMatchObject(
+        {
+          digest: `NEXT_REDIRECT;replace;${locale === "ko" ? "/" : "/en"};307;`,
+        },
+      );
+      expect((await owner.client.GET("/me")).data!.data.attributes.locale).toBe(locale);
+      expect(context.jar.get("NEXT_LOCALE")?.value).toBe(locale);
+    }
+  },
+);
+
 it("언어 전환의 429는 Retry-After를 폼 상태로 돌려주고 계정 쿠키를 유지한다", async () => {
   const mock = await startMock({ env: () => ({ RATE_LIMIT_GLOBAL: "1" }) });
   try {

@@ -9,6 +9,7 @@ import { StrictLimiter } from "../../src/core/ratelimit/strict.js";
 import { hitWindow } from "../../src/core/ratelimit/window.js";
 import { JsonLogger } from "../../src/core/logging/json-logger.js";
 import { rateLimitFixtureApp } from "../fixtures/ratelimit.js";
+import type { ErrorDocument } from "../../src/core/http/tests/fixtures.js";
 const apps: NestExpressApplication[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
@@ -64,12 +65,7 @@ it("초과한 전역 요청은 잘못된 Content-Type보다 먼저 429를 받는
     .set("Content-Type", "application/json")
     .send("{}");
   expect(res.status).toBe(429);
-  expect(Number(res.headers["retry-after"])).toBeGreaterThan(0);
-  expect(JSON.parse(res.text) as unknown).toMatchObject({
-    errors: [
-      { code: "rate_limit.exceeded", meta: { retryAfter: Number(res.headers["retry-after"]) } },
-    ],
-  });
+  expectRetryAfter(res);
 });
 it("엄격 한도는 인증 401과 본문 422 뒤에 세며 거절한 요청은 세지 않는다", async () => {
   const { http, redis } = await fixture();
@@ -89,9 +85,21 @@ it("엄격 한도는 인증 401과 본문 422 뒤에 세며 거절한 요청은 
   expect((await write().set("Authorization", "Bearer fixture").send(valid)).status).toBe(200);
   const limited = await write().set("Authorization", "Bearer fixture").send(valid);
   expect(limited.status).toBe(429);
-  expect(Number(limited.headers["retry-after"])).toBeGreaterThan(0);
+  expectRetryAfter(limited);
   expect(await redis.command.get(key)).toBe("2");
 });
+function expectRetryAfter(res: request.Response) {
+  const retryAfter = Number(res.headers["retry-after"]);
+  expect(Number.isInteger(retryAfter)).toBe(true);
+  expect(retryAfter).toBeGreaterThan(0);
+  const error = (JSON.parse(res.text) as ErrorDocument).errors[0];
+  expect(error).toMatchObject({
+    status: "429",
+    code: "rate_limit.exceeded",
+    meta: { params: { retryAfter } },
+  });
+  expect(error?.meta).not.toHaveProperty("retryAfter");
+}
 it("신뢰하지 않는 전달 헤더를 바꿔도 같은 직접 연결 IP 한도를 쓴다", async () => {
   const { http } = await fixture(1);
   expect((await http.get("/api/v1/unknown").set("X-Forwarded-For", "198.51.100.1")).status).toBe(

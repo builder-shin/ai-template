@@ -1,10 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { expect, expectTypeOf, inject, it } from "vitest";
-import {
-  registerTestAccount,
-  loginTestAccount,
-  loginSeedAccount,
-} from "../src/lib/testing/account";
+import { expect, inject, it } from "vitest";
+import { registerTestAccount } from "../src/lib/testing/account";
 
 function account(locale: "ko" | "en") {
   return {
@@ -69,8 +65,6 @@ it.each(["ko", "en"] as const)(
         attributes: expect.objectContaining({ current: true, userAgent }),
       }),
     ]);
-    expectTypeOf<Parameters<typeof loginTestAccount>[0]>().not.toHaveProperty("mailLink");
-    expectTypeOf<Parameters<typeof loginSeedAccount>[0]>().not.toHaveProperty("mailLink");
   },
 );
 

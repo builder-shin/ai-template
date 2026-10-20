@@ -89,6 +89,17 @@ describe("Task 8 가입·메일 인증·재발송의 JS 없는 실제 폼", () =
     for (const name of ["name", "email", "password"])
       expect(html).toContain(`aria-describedby="${name}-errors"`);
     expect(html).not.toContain('value="x"');
+    expect(html).toContain('value="invalid"');
+    const repeated = serverForm(html, "signup");
+    repeated.body.set("name", "Returned name");
+    repeated.body.set("email", "still-invalid");
+    repeated.body.set("password", "x"); // betterleaks:allow 사유: 검증 실패용 비밀번호
+    const repeatedResponse = await postForm(path, repeated);
+    expect(repeatedResponse.status).toBe(200);
+    const repeatedHtml = await repeatedResponse.text();
+    expect(repeatedHtml).toContain('value="Returned name"');
+    expect(repeatedHtml).toContain('value="still-invalid"');
+    expect(repeatedHtml).not.toContain('value="x"');
     const form = serverForm(html, "signup");
     form.body.set("name", "Rate limit user");
     form.body.set("email", `signup-limit-${randomUUID()}@example.com`);

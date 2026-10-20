@@ -8,9 +8,14 @@ export function selectFrontendSteps(source: string, frontends: readonly string[]
   if (isSeq(steps)) {
     steps.items = steps.items.filter((step) => {
       const run = isMap(step) ? step.get("run") : undefined;
-      const app =
-        typeof run === "string" ? /--filter (\w+)|-f apps\/(\w+)\/Dockerfile/.exec(run) : undefined;
-      return !app || frontends.includes(app[1] ?? app[2] ?? "");
+      if (typeof run !== "string") return true;
+      const references = run.matchAll(
+        /--filter(?:=|\s+)([\w-]+)|(?:-f|--file)(?:=|\s+)apps\/([\w-]+)\/Dockerfile/g,
+      );
+      return [...references].every((match) => {
+        const app = match[1] ?? match[2];
+        return (app !== "web" && app !== "admin") || frontends.includes(app);
+      });
     });
   }
   return workflow.toString({ lineWidth: 0 });

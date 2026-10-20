@@ -1,7 +1,7 @@
 # 버전과 공식 문서
 
 먼저 설치된 버전의 문서를 읽는다. Next.js는 `node_modules/next/dist/docs`가 기준이다.
-의존성은 `package.json`에 정확히 고정하고, lockfile을 커밋한다. pnpm의 `minimumReleaseAge: 1440`으로 공개 후 하루가 지난 버전만 설치한다. 아래는 W3 pin에 W4의 Next 보안 패치와 Playwright CLI를 반영한 버전이다.
+의존성은 `package.json`에 정확히 고정하고, lockfile을 커밋한다. pnpm의 `minimumReleaseAge: 1440`으로 공개 후 하루가 지난 버전만 설치한다. 아래 표는 현재 템플릿의 고정 버전이며, 당시 호환성·실행 결과는 아래 날짜별 기록에 보존한다.
 
 | 도구                                                                         | 버전                     | 문서                                                                                                                                                                                           |
 | ---------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -45,7 +45,7 @@ Next 설정이 가져오는 React 플러그인은 아직 ESLint 10의 context AP
 
 계약과 목의 의존성은 사본 package.json의 정확한 pin을 유지한다. 목의 `@ai-template/contract: workspace:*`는 이 프로젝트 안의 TypeSpec 사본만 가리킨다. Socket.IO 클라이언트 4.8.4는 web의 실시간 런타임 의존성이다. 2026-09-25 08:35 UTC에 공개되어 `minimumReleaseAge: 1440`을 만족한다.
 
-W3에서 react-markdown은 공개 상세·편집기 미리보기의 HTML 제외 렌더링과 기본 URL 검사를, remark-gfm은 표 등 GFM을 맡는다. raw HTML 플러그인은 넣지 않는다. @types/jsdom은 기존 jsdom 30.1.1로 실제 SSR HTML을 읽는 통합 검사에 쓴다. 선택 당시 최신 안정판이며 공개 시각은 각각 2025-03-07 10:32 UTC, 2025-02-10 12:43 UTC, 2026-08-07 17:47 UTC여서 하루 규칙을 만족했다. Socket.IO는 실제 목과 FastAPI 브라우저 연결·티켓·ack·세션 폐기·목록 반영을 같은 E2E에서 확인했다(2026-10-02).
+react-markdown은 공개 상세·편집기 미리보기의 HTML 제외 렌더링과 기본 URL 검사를, remark-gfm은 표 등 GFM을 맡는다. raw HTML 플러그인은 넣지 않는다. @types/jsdom은 jsdom 30.1.1로 실제 SSR HTML을 읽는 통합 검사에 쓴다. 선택 당시 최신 안정판이며 공개 시각은 각각 2025-03-07 10:32 UTC, 2025-02-10 12:43 UTC, 2026-08-07 17:47 UTC여서 하루 규칙을 만족했다. Socket.IO는 실제 목과 FastAPI 브라우저 연결·티켓·ack·세션 폐기·목록 반영을 같은 E2E에서 확인했다(2026-10-02).
 
 lockfile은 openapi-fetch의 `openapi-typescript-helpers` 0.1.0, Next 린트의 `eslint-plugin-import` 2.32.0·`eslint-plugin-jsx-a11y` 6.10.2·`eslint-plugin-react` 7.37.5도 고정한다. next-intl의 네이티브 전이 의존성 `@parcel/watcher` 2.6.0·`@swc/core` 1.16.12는 빌드 허용 목록에 추가했다. 공개 후 1440분 규칙은 유지한다.
 

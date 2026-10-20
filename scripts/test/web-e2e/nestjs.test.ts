@@ -175,7 +175,7 @@ describe.each(["web", "admin"] as const)("NestJS 실행의 안전 경계 (%s)", 
     expect(fixture.events.slice(-5)).toEqual(["ps", "logs", "down", "image", "removeImage"]);
   });
   it.each(["containers", "volumes"] as const)(
-    "기존 %s가 있으면 기동·정리를 거절한다",
+    "기존 자원이 있으면 기동·정리를 거절한다 (%s)",
     async (existing) => {
       const fixture = harness(plan, existing);
       expect(await runStack(plan, {}, fixture.deps)).toEqual({ code: 1, cleanupCode: 0 });
@@ -267,7 +267,7 @@ describe.each(["web", "admin"] as const)("NestJS 실행의 안전 경계 (%s)", 
     ["PORT", "3000"],
     ["FORWARDED_ALLOW_IPS", "*"],
     ["RECENT_LOGIN_SECONDS", "600"],
-  ])("잘못된 NestJS 설정 %s를 Docker 전에 거절한다", (key, value) => {
+  ])("잘못된 NestJS 설정을 Docker 전에 거절한다 (%s)", (key, value) => {
     const text = readFileSync(
       resolve(root, `scripts/compose/nextjs${app === "admin" ? "-admin" : ""}-e2e-nestjs.yaml`),
       "utf8",

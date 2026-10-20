@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout } from "node:timers/promises";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { startProcessTree, stopProcessTree } from "./process-tree.mjs";
 
 describe("주입한 프로세스 종료 의존성", () => {
@@ -277,22 +277,34 @@ describe("그룹 종료 확인의 플랫폼별 오류", () => {
 it.skipIf(process.platform === "win32")(
   "부모의 회수가 늦어져도 소유한 PID와 그룹이 사라진 뒤 끝난다",
   async () => {
+    const dir = mkdtempSync(join(tmpdir(), "aitpl-tree-reap-"));
+    onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+    const release = join(dir, "release");
     const helper = startProcessTree(
       [
         "-e",
         `
     const { spawn } = require("node:child_process");
-    const { writeSync } = require("node:fs");
+    const { existsSync, writeSync } = require("node:fs");
     const child = spawn(process.execPath, ["-e", "process.on('SIGTERM', () => {}); process.stdout.write('ready'); setInterval(() => {}, 1000);"], { detached: true, stdio: ["ignore", "pipe", "ignore"] });
-    child.stdout.once("data", () => writeSync(1, String(child.pid) + "\\n"));
+    writeSync(1, String(child.pid) + "\\n");
+    child.stdout.once("data", () => writeSync(1, "ready\\n"));
     process.stdin.once("data", () => {
       writeSync(1, "held\\n");
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 800);
+      const deadline = Date.now() + 10000;
+      const wait = new Int32Array(new SharedArrayBuffer(4));
+      while (!existsSync(process.argv[1])) {
+        if (Date.now() > deadline) process.exit(1);
+        Atomics.wait(wait, 0, 0, 10);
+      }
+      writeSync(1, "released\\n");
     });
   `,
+        release,
       ],
       { stdio: ["pipe", "pipe", "ignore"] },
     );
+    const closed = once(helper, "close");
     let output = "";
     helper.stdout!.on("data", (data) => {
       output += String(data);
@@ -300,9 +312,12 @@ it.skipIf(process.platform === "win32")(
     let pid: number | undefined;
     const nativeKill = process.kill.bind(process);
     const observed: string[] = [];
+    let killed = false;
     const kill = vi.spyOn(process, "kill").mockImplementation((target, signal) => {
       try {
-        return nativeKill(target, signal);
+        const result = nativeKill(target, signal);
+        if (target === -pid! && signal === "SIGKILL") killed = true;
+        return result;
       } catch (error) {
         if (target === -pid! && signal === 0) observed.push((error as NodeJS.ErrnoException).code!);
         throw error;
@@ -314,33 +329,64 @@ it.skipIf(process.platform === "win32")(
         return false;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ESRCH") return true;
+        if ((error as NodeJS.ErrnoException).code === "EPERM") return false;
         throw error;
       }
     };
     try {
       await expect.poll(() => /^\d+\n/.test(output), { timeout: 10000 }).toBe(true);
       pid = Number(output.split("\n")[0]);
+      await expect.poll(() => output.includes("ready\n"), { timeout: 10000 }).toBe(true);
       helper.stdin!.write("hold\n");
       await expect.poll(() => output.includes("held\n"), { timeout: 10000 }).toBe(true);
-      await stopProcessTree(Object.assign(new ChildProcess(), { pid }), 100);
-      expect(gone(pid)).toBe(true);
-      expect(gone(-pid)).toBe(true);
-      if (process.platform === "darwin") expect(observed).toContain("EPERM");
-      expect(observed.at(-1)).toBe("ESRCH");
+      const stopped = stopProcessTree(Object.assign(new ChildProcess(), { pid }), 0);
+      // 결과를 보관해 handshake 검증 중의 종료 오류도 처리되지 않은 거절이 되지 않게 한다.
+      const result = stopped.then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      try {
+        await expect
+          .poll(() => (process.platform === "darwin" ? observed.includes("EPERM") : killed), {
+            timeout: 1500,
+          })
+          .toBe(true);
+        expect(output).not.toContain("released\n");
+      } finally {
+        writeFileSync(release, "release");
+        await result;
+      }
+      expect(await result, `owned group zero probes: ${observed.join(", ")}`).toBeUndefined();
+      await expect.poll(() => output.includes("released\n"), { timeout: 2000 }).toBe(true);
+      expect(gone(pid), `owned PID ${pid}`).toBe(true);
+      expect(gone(-pid), `owned group ${pid}: ${observed.join(", ")}`).toBe(true);
+      if (process.platform === "darwin")
+        expect(observed, "held Darwin group must report EPERM before release").toContain("EPERM");
+      expect(observed.at(-1), `owned group zero probes: ${observed.join(", ")}`).toBe("ESRCH");
     } finally {
       kill.mockRestore();
-      console.info("owned group native zero probes:", observed);
-      if (pid !== undefined) {
-        try {
-          nativeKill(pid, "SIGKILL");
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+      writeFileSync(release, "release");
+      try {
+        if (pid !== undefined) {
+          try {
+            nativeKill(-pid, "SIGKILL");
+          } catch (error) {
+            if (!["ESRCH", "EPERM"].includes((error as NodeJS.ErrnoException).code ?? ""))
+              throw error;
+          }
+          await expect
+            .poll(() => [gone(pid!), gone(-pid!)], { timeout: 2000 })
+            .toEqual([true, true]);
         }
+      } finally {
+        helper.kill("SIGKILL");
+        await Promise.race([
+          closed,
+          setTimeout(2000).then(() => {
+            throw new Error("소유한 회수 helper가 종료 한도를 넘겼다");
+          }),
+        ]);
       }
-      helper.kill("SIGKILL");
-      await once(helper, "close");
-      if (pid !== undefined)
-        await expect.poll(() => [gone(pid!), gone(-pid!)], { timeout: 2000 }).toEqual([true, true]);
     }
   },
 );
@@ -366,7 +412,8 @@ it("종료 한도까지 남은 POSIX 그룹은 SIGKILL로 끝낸다", async () =
 });
 
 it.each([true, false])("런처 종료 여부와 관계없이 트리를 정리한다: %s", async (earlyExit) => {
-  const dir = mkdtempSync(join(tmpdir(), "next-tree-"));
+  const dir = mkdtempSync(join(tmpdir(), "aitpl-next-tree-"));
+  onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
   const pids = join(dir, "pids.json");
   const script = join(dir, "parent.mjs");
   writeFileSync(
@@ -397,7 +444,16 @@ it.each([true, false])("런처 종료 여부와 관계없이 트리를 정리한
     await stopProcessTree(child, 200);
     await expect.poll(() => owned.map(alive), { timeout: 2000 }).toEqual([false, false]);
   } finally {
-    for (const pid of [...owned, child.pid].filter((pid): pid is number => pid !== undefined)) {
+    // 준비 중 실패해 아직 자식 PID를 읽지 못했거나 리더가 끝나도 소유한 그룹을 정리한다.
+    if (process.platform !== "win32" && child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch (error) {
+        if (!["ESRCH", "EPERM"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+      }
+    }
+    const tracked = [...owned, child.pid].filter((pid): pid is number => pid !== undefined);
+    for (const pid of tracked) {
       if (!alive(pid)) continue;
       if (process.platform === "win32")
         spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
@@ -406,7 +462,9 @@ it.each([true, false])("런처 종료 여부와 관계없이 트리를 정리한
         });
       else process.kill(pid, "SIGKILL");
     }
-    await setTimeout(50);
+    await expect
+      .poll(() => tracked.map(alive), { timeout: 2000 })
+      .toEqual(tracked.map(() => false));
     rmSync(dir, { recursive: true, force: true });
   }
 });

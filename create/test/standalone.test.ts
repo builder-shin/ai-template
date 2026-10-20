@@ -36,7 +36,7 @@ describe("단독 프로젝트", () => {
   });
 
   it.each(["nextjs", "fastapi", "nextjs-admin"] as const)(
-    "%s의 파일만 만들고 main 첫 커밋을 남긴다",
+    "선택한 템플릿 파일만 만들고 main 첫 커밋을 남긴다 (%s)",
     (template) => {
       const root = fixtureRepository();
       expect(git(root, "status", "--porcelain", "--untracked-files=no")).toBe("");

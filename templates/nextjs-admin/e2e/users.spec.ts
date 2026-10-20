@@ -76,7 +76,7 @@ test("사용자 수정 폼으로 역할을 부여하고 비활성화하면 상�
   await expect(page.getByRole("option", { name: "탈퇴", exact: true })).toHaveCount(0);
   await page.getByRole("option", { name: "비활성", exact: true }).click();
   await page.getByRole("combobox", { name: "역할", exact: true }).click();
-  await page.getByRole("textbox", { name: "대상 검색", exact: true }).fill(name);
+  await page.getByRole("combobox", { name: "대상 검색", exact: true }).fill(name);
   await page.getByRole("button", { name: "검색", exact: true }).click();
   await page.getByRole("option", { name, exact: true }).click();
   await page.keyboard.press("Escape");

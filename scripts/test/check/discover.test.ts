@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { discoverSteps, workspacePackageDirs } from "../../src/check/discover.ts";
 
 function writeJson(path: string, value: unknown): void {
@@ -9,7 +9,10 @@ function writeJson(path: string, value: unknown): void {
 }
 
 function makeWorkspace(): string {
-  const root = mkdtempSync(join(tmpdir(), "check-"));
+  const root = mkdtempSync(join(tmpdir(), "aitpl-check-"));
+  onTestFinished(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   writeJson(join(root, "package.json"), {
     scripts: { check: "x", "check:format": "f", build: "b", "check:lint": "l" },
   });

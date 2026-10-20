@@ -3,15 +3,17 @@
 먼저 `src/lib/resources/definition.ts`와 `src/components/resource/types.ts`를 읽는다. 기존 text·textarea·date·enum·enum-many·boolean·relation·relation-many·file로 표현되는지 확인한다. 필터는 text·enum·relation·date, 입력은 text·textarea·enum·enum-many·boolean·relation·relation-many다.
 
 1. 리소스 하나만 필요한 표시는 그 폴더의 컴포넌트를 최상위 `fields.<name>.display`에 둔다. 입력은 `input`에 둔다. 표시 override는 서버 컴포넌트로 두고 상호작용은 직렬화 가능한 props를 받는 client 자식에 둔다. `DisplayProps`는 name·value·record·included·locale·timeZone·linkable, `InputProps`는 name·label·kind·defaultValue·options·search·disabled·error를 받는다. linkable(type)은 등록한 상세와 현재 보기 권한을 함께 확인한다. options는 관계·열거값 입력에만 있고 search는 관계 입력에만 있다.
-2. 입력은 같은 name으로 제출하고 `useResourceField(name)`으로 오류·접근성 속성을 읽는다. 비운 관계·체크박스는 `__present_<name>`을 제출한다. 비활성 입력은 둘 다 제출하지 않는다. 범용 fieldset이 입력 override도 비활성화하며 사용자 정의 선택 부품에도 disabled를 전달한다. Server Action과 `useActionState`를 유지한다. 일반 컴포넌트 함수를 클라이언트 props로 넘기지 않는다.
+2. 입력은 같은 name으로 제출하고 `useResourceField(name)`으로 오류·접근성 속성을 읽는다. override는 `labelledBy`를 `aria-labelledby`에, `describedBy`를 `aria-describedby`에 연결한다. `describedBy`에는 필드 검증 오류와 옵션 안내의 ID가 함께 들어가며 `errorId`·`noticeId`로 각각 읽을 수도 있다. 여러 체크박스는 같은 이름의 group과 개별 체크박스에 설명을 연결한다. 비운 관계·체크박스는 `__present_<name>`을 제출한다. 비활성 입력은 둘 다 제출하지 않는다. 범용 fieldset이 입력 override도 비활성화하며 사용자 정의 선택 부품에도 disabled를 전달한다. Server Action과 `useActionState`를 유지한다. 일반 컴포넌트 함수를 클라이언트 props로 넘기지 않는다.
 3. 공통 종류가 필요하면 definition의 DisplayKind·InputKind·FilterKind와 화면 types를 함께 늘린다. display.tsx·form.tsx·filters.tsx·screen.tsx의 실제 소비자를 맞춘다. 모든 종류를 세 위치에 무조건 추가하지 않는다.
 4. 쓰기 종류는 `src/lib/resources/values.ts`의 FormData 해석과 data.ts의 JSON:API attributes·relationships 분류도 맞춘다. 이름만 추가하면 문서가 달라지므로 실제 목의 요청·응답과 source.pointer를 검사한다.
 5. `scripts/gen-resource/draft.ts`의 스키마 추론을 검토하고 계약 조각 테스트를 더한다. 자동 추론이 불가능한 종류는 레시피에 수동 선언 절차를 적는다. 문구·enum values는 ko/en 양쪽에 둔다.
 6. 날짜는 TIME_ZONE, enum은 번역한 배지, 관계는 included의 이름·id 대체를 유지한다. 관계 키의 relation.type은 계약의 대상, 그 밖의 필드는 목록이 있는 ResourceType이며 label은 대상의 속성 키다. 파일은 목록 없이 단건 응답의 속성(예: filename)으로 검사하며 id는 라벨 선언으로 쓰지 않는다. 쓰기 계약의 단일 관계는 relation, 다중 관계는 relation-many만 받는다.
-7. 관계 현재값은 단건 included로 보충하고 추가 조회하지 않는다. 옵션 목록의 403은 해당 입력만 비활성화하고 번역 안내를 옆에 보인다. 다른 오류는 기존 오류 경계로 던진다. 폼의 빈 단일 관계는 resource.none(선택 안 함/None), 필터는 resource.all(전체/All)이다. 관계 검색의 Enter 뒤에도 입력 포커스를 유지한다. DOM에서 값·오류·비운 값·접근성과 다른 필드의 저장을 확인한다. UI 부품은 고정 `pnpm exec shadcn add <부품>`을 쓴다.
+7. 관계 현재값은 단건 included로 보충하고 추가 조회하지 않는다. 옵션 목록의 403은 해당 입력만 비활성화하고 번역 안내를 옆에 보인다. 다른 오류는 기존 오류 경계로 던진다. 폼의 빈 단일 관계는 resource.none(선택 안 함/None), 필터는 resource.all(전체/All)이다. 검색형 다중 선택의 입력은 combobox이며 방향키로 강조한 항목은 Enter·Space로 선택하거나 해제한다. 강조한 항목이 없을 때 Enter 또는 검색 버튼으로 검색하고 입력 포커스를 유지한다. 새 검색은 진행 중인 이전 검색을 대체하며 늦은 결과·실패를 버린다. DOM에서 값·오류·비운 값·접근성과 다른 필드의 저장을 확인한다. UI 부품은 고정 `pnpm exec shadcn add <부품>`을 쓴다.
 8. `pnpm check`, `pnpm build`, `pnpm test:e2e`를 차례로 통과시키고 시작한 서버를 종료한다. 로딩은 스피너·스켈레톤만 쓴다.
 
-열거값 입력을 좁힐 때 새 종류를 만들지 않는다. 최상위 fields의 values는 표시·필터, inputValues는 폼 옵션이다. inputValues는 values의 일부이며 생략하면 같은 목록을 쓴다. resource-messages는 두 목록의 번역과 포함 관계를 확인한다. 이름이 필드와 다른 관계 필터는 `{ kind: "relation", relation: { type, label, search? } }`로 대상 표시를 직접 선언한다. fields에는 계약의 필드만 남긴다.
+열거값 입력을 좁힐 때 새 종류를 만들지 않는다. 최상위 fields의 values는 표시·필터, inputValues는 폼 옵션이다. `defineResource`는 values를 계약의 속성·배열 원소 열거값으로 제한하고 빠진 표시 값을 타입 오류로 거절한다. inputValues는 values의 일부이며 생략하면 같은 목록을 쓴다. resource-messages는 두 목록의 번역과 포함 관계를 확인한다. 이름이 필드와 다른 관계 필터는 `{ kind: "relation", relation: { type, label, search? } }`로 대상 표시를 직접 선언한다. fields에는 계약의 필드만 남긴다.
+
+nullable 텍스트를 비웠을 때 null로 저장하려면 해당 필드에만 `emptyToNull: true`를 선언한다. 역할의 description이 이 규칙을 쓰며 수정하지 않은 null과 기존 설명을 지운 값 모두 API에는 null로 보낸다. 다른 텍스트의 빈 문자열은 유지한다. 실패한 저장에서는 입력용 빈 문자열을 보존한다.
 
 이름 없는 사용자는 layout.unnamedUser(사용자/User)를 직접 표시와 관계 기본 옵션·현재 선택·검색 결과에 쓴다. included가 없는 관계의 id 대체와 다른 리소스의 빈 값 표시는 유지한다.
 

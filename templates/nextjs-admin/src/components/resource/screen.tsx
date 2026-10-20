@@ -4,7 +4,12 @@ import { ApiError, translateApiError } from "../../lib/api/errors";
 import type { AnyResource } from "../../lib/resources/definition";
 import type { ScreenRecord, Control, InputProps, FilterProps } from "./types";
 import type { ResourceSearchParams } from "../../lib/resources/query";
-import { presentation, filterPresentation, fieldValue } from "../../lib/resources/values";
+import {
+  presentation,
+  filterPresentation,
+  screenPresentation,
+  fieldValue,
+} from "../../lib/resources/values";
 import { controlsFor } from "../../lib/resources/access";
 import { relationOptions } from "../../lib/resources/options";
 import {
@@ -86,6 +91,33 @@ function optionValues(
       label: context.translate(`resources.${context.resource.type}.enums.${name}.${value}`),
     }));
 }
+async function loadRelationOptions(
+  context: ScreenContext,
+  name: string,
+  value: unknown,
+  included: readonly ScreenRecord[] = [],
+  mode: "list" | "create" | "edit" = "list",
+) {
+  const unnamed = context.translate("layout.unnamedUser");
+  let options: NonNullable<InputProps["options"]> = [];
+  let error: string | undefined;
+  try {
+    options = await relationOptions(context.client, context.resource, name, "", unnamed, mode);
+  } catch (problem) {
+    if (!(problem instanceof ApiError) || problem.status !== 403) throw problem;
+    error = translateApiError(problem, context.locale);
+  }
+  return {
+    options: withCurrentOptions(
+      options,
+      value,
+      screenPresentation(context.resource, name, mode).relation,
+      included,
+      unnamed,
+    ),
+    error,
+  };
+}
 export async function ListScreen({
   context,
   document,
@@ -108,25 +140,12 @@ export async function ListScreen({
       let options = optionValues(context, name);
       let error: string | undefined;
       if (kind === "relation") {
-        try {
-          options = await relationOptions(
-            context.client,
-            resource,
-            name,
-            "",
-            t("layout.unnamedUser"),
-          );
-        } catch (problem) {
-          if (!(problem instanceof ApiError) || problem.status !== 403) throw problem;
-          error = translateApiError(problem, context.locale);
-        }
-        options = withCurrentOptions(
-          options,
+        ({ options, error } = await loadRelationOptions(
+          context,
+          name,
           query[key],
-          field.relation,
           document.included,
-          t("layout.unnamedUser"),
-        );
+        ));
       }
       return {
         name: key,
@@ -244,26 +263,7 @@ export async function FormScreen({
       let options: InputProps["options"];
       let error: string | undefined;
       if (relation) {
-        try {
-          options = await relationOptions(
-            context.client,
-            resource,
-            name,
-            "",
-            t("layout.unnamedUser"),
-            mode,
-          );
-        } catch (problem) {
-          if (!(problem instanceof ApiError) || problem.status !== 403) throw problem;
-          error = translateApiError(problem, context.locale);
-        }
-        options = withCurrentOptions(
-          options ?? [],
-          value,
-          field.relation,
-          included,
-          t("layout.unnamedUser"),
-        );
+        ({ options, error } = await loadRelationOptions(context, name, value, included, mode));
       } else if (kind === "enum" || kind === "enum-many") {
         options = optionValues(context, name, true, await field.loadValues?.(context.client));
       }

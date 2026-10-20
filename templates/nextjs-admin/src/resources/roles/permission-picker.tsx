@@ -7,12 +7,11 @@ import type { InputProps } from "../../components/resource/types";
 
 export default function PermissionPicker({
   name,
-  label,
   defaultValue,
   options = [],
   disabled,
 }: InputProps) {
-  const { invalid, describedBy } = useResourceField(name);
+  const { invalid, describedBy, labelledBy } = useResourceField(name);
   const [selected, setSelected] = useState<string[]>(
     Array.isArray(defaultValue)
       ? defaultValue.filter((value): value is string => typeof value === "string")
@@ -29,7 +28,7 @@ export default function PermissionPicker({
     <div
       id={name}
       role="group"
-      aria-label={label}
+      aria-labelledby={labelledBy}
       aria-describedby={describedBy}
       className="flex flex-col gap-4"
     >

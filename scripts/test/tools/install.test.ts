@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import {
   currentPlatform,
   downloadUrl,
@@ -41,6 +41,14 @@ function fakeDeps() {
   return { downloads, deps };
 }
 
+function cacheFixture() {
+  const root = mkdtempSync(join(tmpdir(), "aitpl-tools-"));
+  onTestFinished(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+  return root;
+}
+
 describe("currentPlatform", () => {
   it("플랫폼과 아키텍처를 합쳐 키를 만든다", () => {
     expect(currentPlatform("win32", "x64")).toBe("win32-x64");
@@ -54,7 +62,7 @@ describe("currentPlatform", () => {
 
 describe("ensureTool", () => {
   it("GitHub 릴리스 주소에서 받아 설치하고, 두 번째에는 캐시를 쓴다", async () => {
-    const cacheDir = mkdtempSync(join(tmpdir(), "tools-"));
+    const cacheDir = cacheFixture();
     const { downloads, deps } = fakeDeps();
 
     const first = await ensureTool(fakeTool, cacheDir, deps, "linux-x64");
@@ -68,13 +76,13 @@ describe("ensureTool", () => {
   });
 
   it("Windows에서는 .exe 실행 파일을 찾는다", async () => {
-    const cacheDir = mkdtempSync(join(tmpdir(), "tools-"));
+    const cacheDir = cacheFixture();
     const installed = await ensureTool(fakeTool, cacheDir, fakeDeps().deps, "win32-x64");
     expect(installed.endsWith("fake.exe")).toBe(true);
   });
 
   it("체크섬이 다르면 압축을 풀지 않고 멈춘다", async () => {
-    const cacheDir = mkdtempSync(join(tmpdir(), "tools-"));
+    const cacheDir = cacheFixture();
     const tampered: ToolSpec = {
       ...fakeTool,
       assets: { "linux-x64": { file: "fake_linux.tar.gz", sha256: "0".repeat(64) } },
@@ -85,7 +93,7 @@ describe("ensureTool", () => {
   });
 
   it("해당 플랫폼 바이너리가 없으면 알린다", async () => {
-    const cacheDir = mkdtempSync(join(tmpdir(), "tools-"));
+    const cacheDir = cacheFixture();
     await expect(ensureTool(fakeTool, cacheDir, fakeDeps().deps, "darwin-arm64")).rejects.toThrow(
       /darwin-arm64용 바이너리를 제공하지 않는다/,
     );
@@ -100,7 +108,7 @@ describe("manifest", () => {
     );
     expect(tool).toBeDefined();
     if (tool === undefined) return;
-    const cacheDir = mkdtempSync(join(tmpdir(), "actionlint-test-"));
+    const cacheDir = cacheFixture();
     try {
       for (const platform of PLATFORMS) {
         const asset = tool.assets[platform];

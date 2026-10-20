@@ -12,7 +12,7 @@ function workspace(packages = ["apps/web", "contract/*"]): WorkspaceDocument {
 }
 
 it.each(["첫 프론트", "다음 프론트", "API", "제외한 API"])(
-  "%s의 알 수 없는 workspace 키를 이름과 함께 거절한다",
+  "알 수 없는 workspace 키를 이름과 함께 거절한다 (%s)",
   (location) => {
     const frontends = [workspace(), workspace(["apps/admin", "contract/*"])] as const;
     const api = workspace();
@@ -29,7 +29,7 @@ it.each(["첫 프론트", "다음 프론트", "API", "제외한 API"])(
   },
 );
 
-it.each([0, 1] as const)("문자열 workspace 입력 %s의 알 수 없는 키도 거절한다", (index) => {
+it.each([0, 1] as const)("문자열 workspace 입력의 알 수 없는 키도 거절한다 (%s)", (index) => {
   const documents = [workspace(), workspace()] as const;
   Object.assign(documents[index], { catalog: { zod: "4.6.5" } });
   expect(() =>

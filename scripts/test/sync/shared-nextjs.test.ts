@@ -25,6 +25,8 @@ const appFiles = [
   "scripts/test/e2e-app.ts",
   "src/lib/env.ts",
   "src/lib/session/routes.ts",
+  // 공유 갱신 회귀가 앱 소유 proxy의 요청 헤더 문맥을 검사한다.
+  "src/proxy.ts",
 ];
 
 const fixtures: string[] = [];

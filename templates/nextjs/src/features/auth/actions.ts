@@ -4,10 +4,9 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
-import { createApiClient } from "../../lib/api/client";
+import { createRequestApiClient } from "../../lib/api/request-client";
 import { createSessionApiClient } from "../../lib/api/session-client";
 import { ApiError, toFormResult } from "../../lib/api/errors";
-import { getEnv } from "../../lib/env";
 import { expiredSessionCookie, sessionFromTokens } from "../../lib/session/cookie";
 import { loginDestination } from "../../lib/session/redirect";
 import { readSession, writeSession } from "../../lib/session/request";
@@ -25,7 +24,7 @@ export async function loginAction(
 ): Promise<AuthResult> {
   const locale = await getLocale();
   const email = text(data, "email");
-  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  const client = await createRequestApiClient({ locale });
   let target: string;
   try {
     const { data: document } = await client.POST("/sessions", {
@@ -42,8 +41,7 @@ export async function loginAction(
     });
     const session = sessionFromTokens(document!.data.attributes, document!.data.id);
     // 세션 응답에는 계정 로케일이 없으므로 발급된 토큰으로 본인을 읽는다.
-    const authenticated = createApiClient({
-      baseUrl: getEnv().API_BASE_URL,
+    const authenticated = await createRequestApiClient({
       locale,
       accessToken: session.accessToken,
     });
@@ -74,7 +72,7 @@ export async function resendVerificationAction(
   data: FormData,
 ): Promise<AuthResult> {
   const locale = await getLocale();
-  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  const client = await createRequestApiClient({ locale });
   const email = text(data, "email");
   try {
     await client.POST("/email-verification-requests", {
@@ -93,7 +91,7 @@ export async function resendVerificationAction(
 
 export async function signupAction(_state: AuthResult, data: FormData): Promise<AuthResult> {
   const locale = await getLocale();
-  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  const client = await createRequestApiClient({ locale });
   const name = text(data, "name");
   const email = text(data, "email");
   try {
@@ -119,7 +117,7 @@ export async function signupAction(_state: AuthResult, data: FormData): Promise<
 
 export async function verifyEmailAction(_state: AuthResult, data: FormData): Promise<AuthResult> {
   const locale = await getLocale();
-  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  const client = await createRequestApiClient({ locale });
   try {
     await client.POST("/email-verifications", {
       body: { data: { type: "email-verifications", attributes: { token: text(data, "token") } } },
@@ -140,7 +138,7 @@ export async function requestPasswordResetAction(
   data: FormData,
 ): Promise<AuthResult> {
   const locale = await getLocale();
-  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  const client = await createRequestApiClient({ locale });
   const email = text(data, "email");
   try {
     await client.POST("/password-reset-requests", {
@@ -160,7 +158,7 @@ export async function requestPasswordResetAction(
 
 export async function resetPasswordAction(_state: AuthResult, data: FormData): Promise<AuthResult> {
   const locale = await getLocale();
-  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  const client = await createRequestApiClient({ locale });
   try {
     await client.POST("/password-resets", {
       body: {

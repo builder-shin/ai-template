@@ -1,10 +1,10 @@
 import { ko, en } from "../lib/i18n/catalogs";
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
-import { act, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Header } from "./header";
 import { NotFound } from "./not-found";
 
@@ -17,6 +17,7 @@ vi.mock("next/navigation", async (importOriginal) => ({
 }));
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   navigation.pathname = "/";
   navigation.query = "";
 });
@@ -43,6 +44,8 @@ describe("헤더", () => {
   it.each(["마우스", "키보드"])(
     "세션이 있으면 (%s)로 이름과 로그아웃 메뉴를 연다",
     async (input) => {
+      const errors = vi.spyOn(console, "error");
+      const warnings = vi.spyOn(console, "warn");
       const user = userEvent.setup();
       let logouts = 0;
       show(
@@ -68,6 +71,8 @@ describe("헤더", () => {
         await user.keyboard("{Enter}");
       }
       expect(logouts).toBe(1);
+      expect(errors.mock.calls).toEqual([]);
+      expect(warnings.mock.calls).toEqual([]);
     },
   );
   it.each([

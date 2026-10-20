@@ -56,53 +56,52 @@ beforeEach(() => {
   );
 });
 
-it.each([["web"], ["admin"], ["web", "admin"]] as const)(
-  "실제 조합의 프론트 환경·계약·잠금·gen 커밋을 확인한다: %j",
-  (...frontends) => {
-    const target = join(temporaryFolder(), "aitpl-real-combo");
-    createProject(
-      { target, name: "aitpl-real-combo", template: "combo", frontends, git: true },
-      source,
-      {
-        pnpm: (cwd, args) => {
-          if (args.includes("gen"))
-            write(cwd, `apps/${args[1] ?? "missing"}/generated.txt`, "gen 대역\n");
-        },
+it.each([
+  { label: "web", frontends: ["web"] },
+  { label: "admin", frontends: ["admin"] },
+  { label: "web, admin", frontends: ["web", "admin"] },
+] as const)("실제 조합의 프론트 환경·계약·잠금·gen 커밋을 확인한다 ($label)", ({ frontends }) => {
+  const target = join(temporaryFolder(), "aitpl-real-combo");
+  createProject(
+    { target, name: "aitpl-real-combo", template: "combo", frontends, git: true },
+    source,
+    {
+      pnpm: (cwd, args) => {
+        if (args.includes("gen"))
+          write(cwd, `apps/${args[1] ?? "missing"}/generated.txt`, "gen 대역\n");
       },
-    );
-    for (const app of frontends) {
-      const example = readFileSync(join(target, `apps/${app}/.env.example`), "utf8");
-      expect(example).toMatch(/^API_BASE_URL=http:\/\/127\.0\.0\.1:8000\/api\/v1$/m);
-      expect(example).toMatch(/^NEXT_PUBLIC_REALTIME_URL=http:\/\/127\.0\.0\.1:8000$/m);
-      expect(JSON.parse(readFileSync(join(target, `apps/${app}/gen.config.json`), "utf8"))).toEqual(
-        {
-          openapi: "../api/openapi.json",
-          contract: "../../contract",
-        },
-      );
-      expect(existsSync(join(target, `apps/${app}/contract`))).toBe(false);
-      expect(git(target, "show", `HEAD:apps/${app}/generated.txt`)).toBe("gen 대역\n");
-    }
-    const template = frontends[0] === "web" ? "nextjs" : "nextjs-admin";
-    const contractFiles = git(source, "ls-files", "-z", "--", `templates/${template}/contract`)
-      .split("\0")
-      .filter(Boolean);
-    for (const file of contractFiles) {
-      const moved = file.slice(`templates/${template}/`.length);
-      expect(readFileSync(join(target, moved))).toEqual(readFileSync(join(source, file)));
-      expect(git(target, "ls-files", "--", moved).trim()).toBe(moved);
-    }
-    const settings = JSON.parse(readFileSync(join(target, ".claude/settings.json"), "utf8")) as {
-      permissions: { deny: string[] };
-    };
-    for (const app of frontends) {
-      expect(settings.permissions.deny).toContain(`Read(./apps/${app}/.env)`);
-      expect(readFileSync(join(target, "lefthook.yml"), "utf8")).toContain(`root: apps/${app}/`);
-    }
-    expect(settings.permissions.deny).toContain("Edit(./contract/openapi.yaml)");
-    expect(git(target, "status", "--porcelain")).toBe("");
-  },
-);
+    },
+  );
+  for (const app of frontends) {
+    const example = readFileSync(join(target, `apps/${app}/.env.example`), "utf8");
+    expect(example).toMatch(/^API_BASE_URL=http:\/\/127\.0\.0\.1:8000\/api\/v1$/m);
+    expect(example).toMatch(/^NEXT_PUBLIC_REALTIME_URL=http:\/\/127\.0\.0\.1:8000$/m);
+    expect(JSON.parse(readFileSync(join(target, `apps/${app}/gen.config.json`), "utf8"))).toEqual({
+      openapi: "../api/openapi.json",
+      contract: "../../contract",
+    });
+    expect(existsSync(join(target, `apps/${app}/contract`))).toBe(false);
+    expect(git(target, "show", `HEAD:apps/${app}/generated.txt`)).toBe("gen 대역\n");
+  }
+  const template = frontends[0] === "web" ? "nextjs" : "nextjs-admin";
+  const contractFiles = git(source, "ls-files", "-z", "--", `templates/${template}/contract`)
+    .split("\0")
+    .filter(Boolean);
+  for (const file of contractFiles) {
+    const moved = file.slice(`templates/${template}/`.length);
+    expect(readFileSync(join(target, moved))).toEqual(readFileSync(join(source, file)));
+    expect(git(target, "ls-files", "--", moved).trim()).toBe(moved);
+  }
+  const settings = JSON.parse(readFileSync(join(target, ".claude/settings.json"), "utf8")) as {
+    permissions: { deny: string[] };
+  };
+  for (const app of frontends) {
+    expect(settings.permissions.deny).toContain(`Read(./apps/${app}/.env)`);
+    expect(readFileSync(join(target, "lefthook.yml"), "utf8")).toContain(`root: apps/${app}/`);
+  }
+  expect(settings.permissions.deny).toContain("Edit(./contract/openapi.yaml)");
+  expect(git(target, "status", "--porcelain")).toBe("");
+});
 
 it("세 실제 템플릿의 파일 목록·이름·나머지 바이트와 git 상태를 확인한다", () => {
   const parent = temporaryFolder();
@@ -146,6 +145,9 @@ it.each(["nextjs", "nextjs-admin"])(
     const help = run(["--help"], { ...process.env, PATH: "" });
     expect(help.status, help.stderr).toBe(0);
     expect(help.stdout).toContain("사용법");
+    expect(help.stdout).toContain("--template <fastapi|nestjs|nextjs|nextjs-admin>");
+    expect(help.stdout).toContain("--api <fastapi|nestjs> [--web] [--admin]");
+    expect(help.stdout).toContain("조합은 --web, --admin 가운데 하나 이상이 필요하다");
     const usage = run(["--template", "bad"]);
     expect(usage.status).toBe(2);
     expect(usage.stderr).toMatch(/pnpm new: .+ — .+/);

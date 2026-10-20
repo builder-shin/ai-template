@@ -37,7 +37,7 @@ describe.each([
     ["503 뒤 200", ["22:503", "0:200"]],
     ["404 뒤 200", ["22:404", "0:200"]],
     ["불완전한 200 응답 뒤 완전한 200", ["18:200", "0:200"]],
-  ])("%s이면 성공하고 실패 진단을 출력하지 않는다", (_name, responses) => {
+  ])("정상 응답이면 성공하고 실패 진단을 출력하지 않는다 (%s)", (_name, responses) => {
     const result = runImageHealthShell(probe, responses, owner);
     expect(result.code).toBe(0);
     expect(result.stdout).toBe("probe-complete\n");
@@ -50,7 +50,7 @@ describe.each([
   it
     .skipIf(process.platform === "win32")
     .each(["56:000", "52:000", "7:000", "28:000", "0:204", "0:302", "22:401", "22:503"])(
-    "%s가 지속되면 60초 경계에서 실패하고 소유 컨테이너의 state와 logs를 남긴다",
+    "실패 응답이 지속되면 60초 경계에서 실패하고 소유 컨테이너의 state와 logs를 남긴다 (%s)",
     (response) => {
       const result = runImageHealthShell(probe, Array<string>(80).fill(response), owner);
       expect(result.code).not.toBe(0);

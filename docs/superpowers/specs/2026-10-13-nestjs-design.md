@@ -3,7 +3,7 @@
 - 작성: 2026-10-13
 - 조사 기준: MAIN `dc1c77c8f72c8638b0b0f5923ada303e4f84da0f`. 구현은 이 설계와 계획을 MAIN에 게시하고 새 승인을 받은 시점의 최신 MAIN HEAD에서 시작한다.
 - 증거: 프로토타입 `7727356cbd7b9432042f604be7e53f06f1d9974b`(Draft PR, 병합하지 않는다)와 그 [최종 CI 38311942323](https://github.com/builder-shin/ai-template/actions/runs/38311942323)
-- 상태: 제안. 새 사용자 승인 전에는 구현(SDD)을 시작하지 않는다.
+- 현재 상태(2026-10-21 확인): 정식 구현 [PR #13](https://github.com/builder-shin/ai-template/pull/13)과 후속 수정 [PR #14](https://github.com/builder-shin/ai-template/pull/14)가 병합되었다. 기준 main은 `fd59ec6c4063eb80ff8aa9277f115490e584bfaf`다. 이 문서의 제안·승인 전제는 작성 당시 기록이며 새 후속 개선은 [통합 계획](../plans/2026-10-21-all-template-followups.md)에서 추적한다.
 - 구현 계획: [2026-10-13 NestJS 구현 계획](../plans/2026-10-13-nestjs.md)
 - 함께 읽는 문서: [기반 설계](2026-09-26-ai-template-foundation-design.md), [FastAPI 설계](2026-09-26-fastapi-template-design.md), [FastAPI 하드닝](2026-09-29-fastapi-hardening-design.md), [생성 CLI 설계](2026-10-03-create-cli-design.md), [web 설계](2026-09-30-nextjs-web-design.md), [admin 설계](2026-10-08-nextjs-admin-design.md), [하네스 표준](../../harness/standard.md), [JSON:API 규약](../../conventions/jsonapi.md), [에러 코드](../../conventions/error-codes.md), [web 계약 동기화](../../conventions/web-contract.md)
 
@@ -330,7 +330,7 @@ templates/nestjs/
 
 - 고정 윈도 카운터다. 엄격 리밋은 Lua 하나로 `INCR`·`EXPIRE NX`·`TTL`을 원자적으로 한다.
 - 전역: `/api/` 아래 모든 요청, IP별 분당 `RATE_LIMIT_GLOBAL`(기본 600), 우선순위 1(협상보다 먼저). 엄격: 로그인 IP별 분당 10·식별자별 분당 5, 가입 IP별 시간당 10, 재설정 요청·재발송 IP별 시간당 5·이메일별 시간당 3, 비밀번호 변경 사용자별 시간당 5. 엄격 리밋은 인증·본문 검증 뒤(우선순위 8)에 센다.
-- 초과하면 429 `rate_limit.exceeded`, `Retry-After`(초), `meta.retryAfter`.
+- 초과하면 429 `rate_limit.exceeded`, `Retry-After`(초), `errors[].meta.params.retryAfter`에 같은 양의 정수 초를 보낸다. 2026-10-21 후속 정정으로, 초안의 `meta.retryAfter` 표기를 기존 TypeSpec 계약에 맞췄다.
 - 클라이언트 IP는 직접 연결 주소가 `FORWARDED_ALLOW_IPS`에 있을 때만 `X-Forwarded-For`를 따른다. `*`는 거절한다(설정 오류). 신뢰하지 않는 전달 헤더는 무시한다.
 - Valkey에 닿지 못하면 전역·엄격 모두 통과시킨다(fail-open)고 로그를 남긴다.
 - 실측: 한도 10에 동시 20개 → 10개 허용·10개 거절, TTL 60초.

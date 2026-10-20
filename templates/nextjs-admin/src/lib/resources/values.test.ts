@@ -29,3 +29,20 @@ it("미제출·미선언 필드는 보내지 않으며 관계 type은 필수다"
   form.set("coverImage", "x");
   expect(() => parseResourceForm(postsFixture, "edit", form)).toThrow("관계 대상 선언 없음");
 });
+
+it("명시한 nullable 텍스트만 null로 바꾸고 실패 입력과 다른 빈 문자열은 보존한다", () => {
+  const resource = defineResource({
+    type: "roles",
+    permission: "roles:manage",
+    list: { columns: ["name"] },
+    fields: { description: { kind: "textarea", emptyToNull: true } },
+    edit: { permission: "roles:manage", fields: { name: "text", description: "textarea" } },
+  });
+  const form = new FormData();
+  form.set("name", "");
+  form.set("description", "");
+  expect(parseResourceForm(resource, "edit", form)).toEqual({
+    values: { name: "", description: null },
+    inputs: { name: "", description: "" },
+  });
+});

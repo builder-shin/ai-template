@@ -4,10 +4,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getLocale } from "next-intl/server";
-import { createApiClient } from "../api/client";
+import { createRequestApiClient } from "../api/request-client";
 import { createSessionApiClient } from "../api/session-client";
 import { ApiError, toFormResult } from "../api/errors";
-import { getEnv } from "../env";
 import { expiredSessionCookie, sessionFromTokens } from "../session/cookie";
 import { readSession, writeSession, redirectOnUnauthorized } from "../session/request";
 import { loginDestination } from "../session/redirect";
@@ -29,9 +28,9 @@ export async function loginAction(
   returnTo = typeof returnTo === "string" ? returnTo : "/";
   const locale = await getLocale();
   const email = text(data, "email");
-  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  const client = await createRequestApiClient({ locale });
   let target: string;
-  let issued: ReturnType<typeof createApiClient> | undefined;
+  let issued: Awaited<ReturnType<typeof createRequestApiClient>> | undefined;
   try {
     const { data: document } = await client.POST("/sessions", {
       body: {
@@ -42,8 +41,7 @@ export async function loginAction(
       },
     });
     const session = sessionFromTokens(document!.data.attributes, document!.data.id);
-    issued = createApiClient({
-      baseUrl: getEnv().API_BASE_URL,
+    issued = await createRequestApiClient({
       locale,
       accessToken: session.accessToken,
     });
@@ -100,6 +98,7 @@ export async function changeLocaleAction(
   returnTo: string,
   _state: LocaleState = { ok: true },
 ): Promise<LocaleState> {
+  returnTo = typeof returnTo === "string" ? returnTo : "/";
   if (locale !== "ko" && locale !== "en")
     throw new Error("locale: 지원하지 않는 언어다 — ko 또는 en을 고른다.");
   const client = await createSessionApiClient({ locale });

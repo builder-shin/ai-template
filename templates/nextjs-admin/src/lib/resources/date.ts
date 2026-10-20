@@ -1,4 +1,7 @@
 import "server-only";
+export function isPeriodEnd(key: string) {
+  return key.endsWith("To]");
+}
 function midnight(timestamp: number, timeZone: string) {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone,

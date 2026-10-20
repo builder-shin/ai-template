@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, onTestFinished } from "vitest";
 import {
   cpSync,
   mkdirSync,
@@ -15,7 +15,8 @@ import { assembleSteps } from "./steps";
 import { linkDependencies } from "../test/dependency-links";
 
 it("이전 타입 생성 뒤 route를 옮겨도 현재 route를 검증하며 dev 산출물을 보존한다", () => {
-  const root = mkdtempSync(join(tmpdir(), "nextjs-route-types-"));
+  const root = mkdtempSync(join(tmpdir(), "aitpl-nextjs-route-types-"));
+  onTestFinished(() => rmSync(root, { recursive: true, force: true }));
   try {
     linkDependencies(resolve("."), root);
     mkdirSync(join(root, "src/app/old"), { recursive: true });

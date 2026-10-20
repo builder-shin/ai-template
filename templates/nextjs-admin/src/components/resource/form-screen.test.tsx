@@ -6,6 +6,7 @@ import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { FormScreen, type ScreenContext } from "./screen";
 import type { InputProps } from "./types";
 import { defineResource } from "../../lib/resources/definition";
+import { useResourceField } from "./form";
 import { createApiClient } from "../../lib/api/client";
 import { postsFixture } from "../../../scripts/test/resource-fixture";
 import { seedFixture, partialAdminFixture } from "../../../scripts/test/admin-fixture";
@@ -159,6 +160,30 @@ it("관계 옵션의 401은 입력 오류로 숨기지 않고 다시 던진다",
     FormScreen({ context: context(users, client), mode: "edit", record }),
   ).rejects.toMatchObject({ status: 401 });
 });
+it("관계 옵션 403의 입력 override는 안내를 실제 입력의 설명으로 연결한다", async () => {
+  function Relation({ name, disabled, label }: InputProps) {
+    const { describedBy, invalid } = useResourceField(name);
+    return (
+      <input
+        aria-label={label}
+        name={name}
+        disabled={disabled}
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+      />
+    );
+  }
+  const actor = await partialAdminFixture(inject("mockBaseUrl"));
+  const resource = defineResource({
+    ...users,
+    fields: { ...users.fields, roles: { ...users.fields!.roles!, input: Relation } },
+  });
+  show(await FormScreen({ context: context(resource, actor.owner.client), mode: "edit", record }));
+  const input = screen.getByRole("textbox", { name: "역할" });
+  expect((input as HTMLInputElement).disabled).toBe(true);
+  expect(input.getAttribute("aria-describedby")).toBe(screen.getByRole("alert").id);
+  expect(input.getAttribute("aria-invalid")).toBe("false");
+});
 it("상세 없는 수정 폼의 취소는 목록으로 돌아간다", async () => {
   const seed = await seedFixture(inject("mockBaseUrl"));
   show(await FormScreen({ context: context(users, seed.client), mode: "edit", record }));
@@ -177,10 +202,21 @@ it("다중 열거값의 서버 옵션은 실제 API에서 읽고 카탈로그 �
     fields: {
       permissions: {
         kind: "enum-many",
-        values: ["roles:read", "outside:permission"],
+        values: [
+          "admin:access",
+          "users:read",
+          "users:manage",
+          "roles:read",
+          "roles:manage",
+          "audit-logs:read",
+          "posts:create",
+          "posts:manage",
+        ],
         input: Options,
         loadValues: async (client) =>
-          (await client.GET("/permissions")).data!.data.map((item) => item.id),
+          (await client.GET("/permissions"))
+            .data!.data.filter((item) => item.id === "roles:read")
+            .map((item) => item.id),
       },
     },
     create: { permission: "roles:manage", fields: { permissions: "enum-many" } },

@@ -58,6 +58,15 @@ export type RelationshipKey<T extends ResourceType> = Extract<
   string
 >;
 export type FieldKey<T extends ResourceType> = "id" | AttributeKey<T> | RelationshipKey<T>;
+type EnumMember<Value> = Value extends readonly (infer Item)[]
+  ? Extract<Item, string>
+  : Extract<Value, string>;
+export type FieldEnumValue<
+  T extends ResourceType,
+  K extends FieldKey<T>,
+> = K extends keyof Attributes<ResourceRecord<T>>
+  ? EnumMember<NonNullable<Attributes<ResourceRecord<T>>[K]>>
+  : string;
 type RelationshipData<R, K extends keyof Relationships<R>> = NonNullable<
   NonNullable<Relationships<R>[K]> extends { data: infer D } ? D : never
 >;

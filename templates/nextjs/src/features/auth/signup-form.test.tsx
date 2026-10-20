@@ -1,15 +1,17 @@
 import { ko, en } from "../../lib/i18n/catalogs";
 // @vitest-environment jsdom
-import { act } from "react";
-import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { SignupForm } from "./signup-form";
 import { VerificationForm } from "./verification-form";
 import type { AuthAction, AuthResult } from "./state";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 function show(children: React.ReactNode, locale: "ko" | "en" = "ko") {
   return render(
     <NextIntlClientProvider
@@ -73,6 +75,8 @@ it("가입 중 버튼을 막고 스피너만 더한 뒤 메일 안내·재발송
   expect(screen.getByRole("button", { name: "인증 메일 재발송" })).toBeTruthy();
 });
 it("가입 오류를 세 입력칸에 연결하고 비밀번호를 복원하지 않는다", async () => {
+  const errors = vi.spyOn(console, "error");
+  const warnings = vi.spyOn(console, "warn");
   show(
     signup(async () => ({
       ok: false,
@@ -90,6 +94,46 @@ it("가입 오류를 세 입력칸에 연결하고 비밀번호를 복원하지 
     expect(document.getElementById(input.getAttribute("aria-describedby")!)).toBeTruthy();
   }
   expect(screen.getByLabelText("비밀번호")).toHaveProperty("value", "");
+  expect(errors.mock.calls).toEqual([]);
+  expect(warnings.mock.calls).toEqual([]);
+});
+it("반복 실패 응답의 이름·이메일을 복원하고 수정값을 다시 보내며 비밀번호는 비운다", async () => {
+  const errors = vi.spyOn(console, "error");
+  const warnings = vi.spyOn(console, "warn");
+  const submissions: (FormDataEntryValue | null)[][] = [];
+  show(
+    signup(async (_state, data) => {
+      submissions.push([data.get("name"), data.get("email"), data.get("password")]);
+      return {
+        ok: false,
+        formError: "가입 실패",
+        fieldErrors: {},
+        name: `Returned ${submissions.length}`,
+        email: `returned${submissions.length}@example.com`,
+      };
+    }),
+  );
+  await submit();
+  const user = userEvent.setup();
+  expect(screen.getByLabelText("이름")).toHaveProperty("value", "Returned 1");
+  expect(screen.getByLabelText("이메일")).toHaveProperty("value", "returned1@example.com");
+  expect(screen.getByLabelText("비밀번호")).toHaveProperty("value", "");
+  await user.clear(screen.getByLabelText("이름"));
+  await user.type(screen.getByLabelText("이름"), "Edited");
+  await user.clear(screen.getByLabelText("이메일"));
+  await user.type(screen.getByLabelText("이메일"), "edited@example.com");
+  await user.clear(screen.getByLabelText("비밀번호"));
+  await user.type(screen.getByLabelText("비밀번호"), "another-password");
+  await user.click(screen.getByRole("button", { name: "가입" }));
+  expect(submissions).toEqual([
+    ["User", "user@example.com", "sample-password"],
+    ["Edited", "edited@example.com", "another-password"],
+  ]);
+  expect(screen.getByLabelText("이름")).toHaveProperty("value", "Returned 2");
+  expect(screen.getByLabelText("이메일")).toHaveProperty("value", "returned2@example.com");
+  expect(screen.getByLabelText("비밀번호")).toHaveProperty("value", "");
+  expect(errors.mock.calls).toEqual([]);
+  expect(warnings.mock.calls).toEqual([]);
 });
 it("재발송은 가입 이메일을 보내고 pending·429 안내 후에도 메일 화면을 유지한다", async () => {
   let finish!: (state: AuthResult) => void;

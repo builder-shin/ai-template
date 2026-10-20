@@ -10,6 +10,24 @@ import {
 
 // 실행하지 않는다. types 단계의 tsc가 오류 주석과 실제 진단을 함께 검사한다.
 export function resourceTypeChecks(client: ReturnType<typeof createApiClient>) {
+  defineResource({
+    type: "users",
+    permission: "users:read",
+    list: { columns: ["status"] },
+    fields: {
+      // @ts-expect-error 사유: 표시 열거값은 계약의 모든 상태를 포함해야 한다.
+      status: { kind: "enum", values: ["active", "deactivated"] },
+    },
+  });
+  defineResource({
+    type: "posts",
+    permission: "posts:manage",
+    list: { columns: ["status"] },
+    fields: {
+      // @ts-expect-error 사유: 표시 열거값은 계약 밖의 값을 거절한다.
+      status: { kind: "enum", values: ["draft", "published", "bogus"] },
+    },
+  });
   const permission: Permission = "posts:manage";
   const missingPermission = [
     "admin:access",

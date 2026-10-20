@@ -33,7 +33,7 @@ FastAPI와 Next.js BFF를 함께 개발하는 프로젝트다. Node 24, pnpm 12.
 setup·E2E·DB 명령은 캐시하지 않는다. gen도 생성물 누락을 피하도록 캐시하지 않는다.
 turbo는 loose 환경 모드로 Docker·uv·프록시·Playwright 등 개발 환경 변수를 앱에 전달한다. 캐시는 선언한 입력만 해시한다.
 dev 이외 앱 명령은 동시 실행 수 1로 돌린다. check 성공은 한 줄, 실패는 실패한 단계 출력만 보여 준다.
-루트 실행기는 pnpm 명령으로 실행한다. setup·check·E2E·hook은 apps 아래 package.json이 있는 앱을 읽고, package·turbo·CI는 생성 때 있는 프론트만 포함한다. web check는 gen-feature 테스트의 설치 때문에 패키지 레지스트리 접속이 필요하다.
+루트 실행기는 pnpm 명령으로 실행한다. setup·check·E2E·hook은 apps 아래 package.json이 있는 앱을 읽고, package·turbo·CI는 생성 때 있는 프론트만 포함한다.{{FRONTEND_CHECK_NOTES}}
 
 ## 앱 사이 흐름
 
@@ -43,7 +43,7 @@ dev 이외 앱 명령은 동시 실행 수 1로 돌린다. check 성공은 한 �
 - 루트 계약의 타입 설정·규약은 첫 프론트의 같은 파일에서 시작한다. 이를 바꾸면 루트와 프론트 사본을 함께 맞춘다. 계약의 검사 도구인 Node 타입·Vitest·YAML은 루트에도 첫 프론트와 같은 버전으로 둔다. TypeScript는 workspace override로 유지한다.
 - 프론트는 Server Component가 읽고 Server Action이 쓰는 BFF다. 브라우저 직접 연결은 실시간과 presigned PUT이다.
 - 프론트 잠금 파일의 앱 importer는 `apps/<앱>`으로 옮기고 contract importer는 루트에서 하나로 합친다. 같은 계약·패키지·snapshot·도구 키의 다른 해석은 거절한다. 프론트의 minimumReleaseAge·allowBuilds·overrides는 같아야 하고 TypeScript override는 템플릿 버전이다.
-- gen은 api 뒤에 각 프론트를 차례로 실행한다. 두 프론트는 같은 루트 계약 생성물을 같은 바이트로 만든다. E2E는 api 뒤에 있는 프론트를 이름순(admin, web)으로 실행하며 첫 실패에서 멈춘다. admin은 E2E_SEED_ADMIN_EMAIL·E2E_SEED_ADMIN_PASSWORD를 받고 web만 E2E_OAUTH_URL을 요구한다.
+- {{FRONTEND_E2E_FLOW}}
 - 각 앱의 setup은 `.env.example`로 환경 키를 준비한다. `.env`는 읽거나 출력하지 않는다.
 - api e2e:serve는 E2E DB `app_e2e`와 Valkey DB 14를 사용하고 받은 명령의 종료 코드로 끝난다. 개발 DB·Valkey DB 0을 사용하지 않는다.
 - Mailpit과 스토리지 버킷은 개발 인프라를 함께 쓰며 Mailpit 전체를 비우지 않는다. 각 프론트의 app.config.json에 있는 E2E 포트로 Origin을 정하고 해당 e2e:serve 실행의 CORS에 더한다. 서버 옵션 앞에는 --를 더하지 않고 자식 명령 앞에만 --를 둔다.
@@ -68,7 +68,7 @@ BuildKit이 필요하며 프로젝트 루트를 빌드 문맥으로 쓴다. 있�
 
 {{FRONTEND_IMAGES}}
 
-호출 환경에 `API_BASE_URL`(컨테이너에서 닿는 api의 `/api/v1`), `APP_URL`(브라우저 앱 Origin), `NEXT_PUBLIC_REALTIME_URL`(브라우저에서 닿는 api Origin), `TIME_ZONE`(예: `Asia/Seoul`), `SESSION_SECRET`(32바이트 이상의 난수 비밀)을 설정한다. 비밀은 이미지에 넣지 않는다. admin healthcheck는 200 또는 303을 받아들이고 로그인 이동을 따라간다.
+호출 환경에 `API_BASE_URL`(컨테이너에서 닿는 api의 `/api/v1`), `APP_URL`(브라우저 앱 Origin), `NEXT_PUBLIC_REALTIME_URL`(브라우저에서 닿는 api Origin), `TIME_ZONE`(예: `Asia/Seoul`), `SESSION_SECRET`(32바이트 이상의 난수 비밀)을 설정한다. 비밀은 이미지에 넣지 않는다. {{FRONTEND_HEALTHCHECK}}
 
 ## 하네스
 

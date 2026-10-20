@@ -1,14 +1,16 @@
 import { ko, en } from "../../lib/i18n/catalogs";
 // @vitest-environment jsdom
-import { act } from "react";
-import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { PasswordResetRequestForm, PasswordResetForm } from "./password-reset-form";
 import type { AuthAction, AuthResult } from "./state";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 function show(children: React.ReactNode, locale: "ko" | "en" = "ko") {
   return render(
     <NextIntlClientProvider
@@ -21,6 +23,32 @@ function show(children: React.ReactNode, locale: "ko" | "en" = "ko") {
   );
 }
 const complete: AuthAction = async () => ({ ok: true });
+it("반복 요청 실패의 이메일을 복원하고 수정한 이메일을 다시 제출하며 진단을 남기지 않는다", async () => {
+  const errors = vi.spyOn(console, "error");
+  const warnings = vi.spyOn(console, "warn");
+  const submitted: (FormDataEntryValue | null)[] = [];
+  show(
+    request(async (_state, data) => {
+      submitted.push(data.get("email"));
+      return {
+        ok: false,
+        formError: "요청 실패",
+        fieldErrors: {},
+        email: `returned${submitted.length}@example.com`,
+      };
+    }),
+  );
+  await submitRequest();
+  expect(screen.getByLabelText("이메일")).toHaveProperty("value", "returned1@example.com");
+  const user = userEvent.setup();
+  await user.clear(screen.getByLabelText("이메일"));
+  await user.type(screen.getByLabelText("이메일"), "edited@example.com");
+  await user.click(screen.getByRole("button", { name: "재설정 메일 보내기" }));
+  expect(submitted).toEqual(["user@example.com", "edited@example.com"]);
+  expect(screen.getByLabelText("이메일")).toHaveProperty("value", "returned2@example.com");
+  expect(errors.mock.calls).toEqual([]);
+  expect(warnings.mock.calls).toEqual([]);
+});
 function request(action: AuthAction = complete) {
   return <PasswordResetRequestForm requestAction={action} permalink="/forgot-password" />;
 }

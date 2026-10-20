@@ -7,9 +7,13 @@ import { createProject } from "../src/create.ts";
 import { nestjsFixture, sourceText } from "./nestjs-fixture.ts";
 import { git, temporaryFolder } from "./helpers.ts";
 
-it.each([["web"], ["admin"], ["web", "admin"]] as const)(
-  "NestJS 조합은 API 패키지와 공유 계약 하나를 유지하고 루트 문맥 이미지를 배치한다: %j",
-  (...frontends) => {
+it.each([
+  { label: "web", frontends: ["web"] },
+  { label: "admin", frontends: ["admin"] },
+  { label: "web, admin", frontends: ["web", "admin"] },
+] as const)(
+  "NestJS 조합은 API 패키지와 공유 계약 하나를 유지하고 루트 문맥 이미지를 배치한다 ($label)",
+  ({ frontends }) => {
     const root = nestjsFixture(),
       target = join(temporaryFolder(), "aitpl-nest-combo");
     createProject(

@@ -49,7 +49,7 @@ it.each([
   ["Stop", 1800],
   ["PreToolUse", 90],
   ["SessionStart", 180],
-] as const)("루트 %s hook의 시간 제한은 %i초다", (event, timeout) => {
+] as const)("루트 hook 시간 제한 (%s, %i초)", (event, timeout) => {
   const settings = mergeSettings({
     api: { permissions: { allow: [], deny: [] } },
     web: { permissions: { allow: [], deny: [] } },

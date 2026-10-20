@@ -60,11 +60,21 @@ function register(source: string, type: string) {
     type.replace(/-([a-z0-9])/g, (_, letter: string) => letter.toUpperCase()) + "Resource";
   let alias = name;
   for (let suffix = 2; used.has(alias); suffix++) alias = `${name}${suffix}`;
+  const imports = file.statements.filter(ts.isImportDeclaration);
+  let importAt = imports.at(-1)?.end ?? 0;
+  if (!imports.length)
+    for (const statement of file.statements) {
+      if (!ts.isExpressionStatement(statement) || !ts.isStringLiteral(statement.expression)) break;
+      importAt = statement.end;
+    }
   const last = array.elements.at(-1);
   const edits = [
     { at: array.end - 1, value: ` ${alias}` },
     ...(last && !array.elements.hasTrailingComma ? [{ at: last.end, value: "," }] : []),
-    { at: 0, value: `import ${alias} from ${JSON.stringify(modulePath)};\n` },
+    {
+      at: importAt,
+      value: `${importAt ? "\n" : ""}import ${alias} from ${JSON.stringify(modulePath)};\n`,
+    },
   ].sort((a, b) => b.at - a.at);
   for (const edit of edits) source = source.slice(0, edit.at) + edit.value + source.slice(edit.at);
   return source;

@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import { binary, pnpm } from "./process.mjs";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -15,7 +15,8 @@ it("native 진입점은 node로 다시 감싸지 않고 실행한다", () => {
 });
 
 it("작업 사본에 설치된 도구의 자체 진입점을 실행한다", () => {
-  const project = mkdtempSync(join(tmpdir(), "copy-tool-"));
+  const project = mkdtempSync(join(tmpdir(), "aitpl-copy-tool-"));
+  onTestFinished(() => rmSync(project, { recursive: true, force: true }));
   const tool = join(project, "node_modules/tsx");
   mkdirSync(tool, { recursive: true });
   writeFileSync(join(project, "package.json"), '{"type":"module"}');

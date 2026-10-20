@@ -9,7 +9,7 @@ vi.mock("node:child_process", async (original) => ({
 }));
 
 const childPid = 999999;
-const forced = `종료 한도를 넘어 프로세스 그룹 ${String(childPid)}을 SIGKILL로 강제 종료했다.`;
+const forced = `종료 한도를 넘어 프로세스 그룹(PID: ${String(childPid)})에 SIGKILL을 보냈다.`;
 const missing = Object.assign(new Error("없음"), { code: "ESRCH" });
 
 async function boundary(
@@ -136,7 +136,9 @@ it("Darwin의 성공한 0 신호는 이전 권한 오류를 지운다", async ()
     return true;
   });
   await boundary("darwin", 60, kill, async (result, log) => {
-    await expect(result).rejects.toThrow("강제 종료 한도");
+    await expect(result).rejects.toThrow(
+      `프로세스 그룹(PID: ${String(childPid)}) 강제 종료 한도를 넘겼다 — ps -axo pid,ppid,pgid,stat 명령으로 해당 PGID 항목을 확인하고 정리한 뒤 다시 실행한다.`,
+    );
     expect(log).toHaveBeenCalledExactlyOnceWith(forced);
   });
 });

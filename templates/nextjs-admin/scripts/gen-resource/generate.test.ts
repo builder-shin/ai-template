@@ -126,6 +126,14 @@ function contract() {
     },
   };
 }
+function userProperties(spec: ReturnType<typeof contract>) {
+  const schema = spec.paths["/api/v1/users"].get.responses["200"].content[
+    "application/vnd.api+json"
+  ].schema as {
+    properties: { data: { items: { properties: Record<string, unknown> } } };
+  };
+  return schema.properties.data.items.properties;
+}
 
 it("계약 조각의 속성·관계·쿼리·쓰기 권한을 선언과 문구로 만든다", async () => {
   const draft = await draftResource(contract(), "articles");
@@ -243,6 +251,51 @@ it("기존 등록 순서와 문구를 보존하며 새 초안을 함께 등록�
     'type: "articles"',
   );
 });
+
+it("등록 import는 지시문·server-only·타입 import 뒤에 두고 이름 충돌을 피한다", async () => {
+  put(
+    "src/resources/index.ts",
+    '"use strict";\nimport "server-only";\nimport type { AnyResource } from "../lib/resources/definition";\nimport posts from "./posts/resource";\nconst articlesResource = "occupied";\nexport const resources = ([posts] as const) satisfies readonly AnyResource[];\n',
+  );
+  await generateResource(root, "articles");
+  const registry = readFileSync(join(root, "src/resources/index.ts"), "utf8");
+  const parsed = ts.createSourceFile("index.ts", registry, ts.ScriptTarget.Latest, true);
+  expect((parsed as ts.SourceFile & { parseDiagnostics: unknown[] }).parseDiagnostics).toEqual([]);
+  expect(registry.startsWith('"use strict";')).toBe(true);
+  const imports = parsed.statements.filter(ts.isImportDeclaration);
+  expect(imports.map((item) => (item.moduleSpecifier as ts.StringLiteral).text)).toEqual([
+    "server-only",
+    "../lib/resources/definition",
+    "./posts/resource",
+    "./articles/resource",
+  ]);
+  expect(registry).toContain('import articlesResource2 from "./articles/resource"');
+  expect(registry).toMatch(/\[posts, articlesResource2\]/);
+});
+
+it("선호 속성 없는 관계는 대상의 첫 속성을 라벨로 고른다", async () => {
+  const spec = contract();
+  userProperties(spec).attributes = {
+    properties: { displayText: { type: "string" }, other: { type: "string" } },
+  };
+  expect((await draftResource(spec, "articles")).definition.fields.author?.relation?.label).toBe(
+    "displayText",
+  );
+});
+
+it.each(["empty", "missing"])(
+  "라벨 속성 없는 관계는 파일을 쓰기 전에 거절한다: %s",
+  async (mode) => {
+    const spec = contract();
+    const target = userProperties(spec);
+    if (mode === "empty") target.attributes = { properties: {} };
+    else delete target.attributes;
+    put("contract/openapi.yaml", JSON.stringify(spec));
+    const before = files();
+    await expect(generateResource(root, "articles")).rejects.toThrow("관계 대상의 라벨 속성 없음");
+    expect(files()).toEqual(before);
+  },
+);
 
 it("설정으로 고른 백엔드 스펙을 읽는다", async () => {
   put("gen.config.json", JSON.stringify({ openapi: "api.json" }));

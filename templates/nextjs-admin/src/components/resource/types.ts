@@ -3,6 +3,14 @@ import type { ReactNode } from "react";
 import type { FormResult } from "../../lib/api/errors";
 export type Option = { value: string; label: string };
 export type SearchOptions = (query: string) => Promise<Option[]>;
+export type ResourceFieldState = {
+  errors: readonly string[];
+  invalid: boolean;
+  labelledBy: string;
+  errorId: string | undefined;
+  noticeId: string | undefined;
+  describedBy: string | undefined;
+};
 export type InputProps = {
   name: string;
   label: string;

@@ -7,6 +7,7 @@ import type { components } from "../api/schema";
 import type {
   ContractOperation,
   FieldKey,
+  FieldEnumValue,
   FilterKey,
   ListQuery,
   RelationshipKey,
@@ -37,6 +38,7 @@ export type FieldPresentation = {
   kind?: DisplayKind;
   values?: readonly string[];
   inputValues?: readonly string[];
+  emptyToNull?: boolean;
   loadValues?: (client: ReturnType<typeof createApiClient>) => Promise<readonly string[]>;
   relation?: { type: string; label: string; search?: boolean };
   display?: ComponentType<DisplayProps>;
@@ -48,8 +50,10 @@ type Relation<T extends string> = {
 export type FilterDeclaration = FilterKind | { kind: "relation"; relation: Relation<ResourceType> };
 type ContractField<T extends ResourceType, K extends FieldKey<T>> = Omit<
   FieldPresentation,
-  "relation"
+  "relation" | "values" | "inputValues"
 > & {
+  values?: readonly FieldEnumValue<T, K>[];
+  inputValues?: readonly FieldEnumValue<T, K>[];
   relation?: K extends RelationshipKey<T>
     ? Relation<RelationshipTarget<T, K>>
     : Relation<ResourceType>;
@@ -102,9 +106,24 @@ export type ResourceDefinition<T extends ResourceType> = {
 };
 export type AnyResource = { [T in ResourceType]: ResourceDefinition<T> }[ResourceType];
 
+type CompleteFields<T extends ResourceType, Fields> = {
+  readonly [K in keyof Fields]: K extends FieldKey<T>
+    ? Fields[K] extends { values: readonly (infer Value)[] }
+      ? Exclude<FieldEnumValue<T, K>, Value> extends never
+        ? Fields[K]
+        : never
+      : Fields[K]
+    : never;
+};
+
 /** type만으로 계약을 고르고, 다른 선언에서 별도 type으로 추론을 넓히지 않는다. */
-export function defineResource<const T extends ResourceType>(
-  resource: { type: T } & ResourceDefinition<NoInfer<T>>,
+export function defineResource<
+  const T extends ResourceType,
+  const Fields extends NonNullable<ResourceDefinition<NoInfer<T>>["fields"]>,
+>(
+  resource: { type: T } & Omit<ResourceDefinition<NoInfer<T>>, "fields"> & {
+      fields?: Fields & CompleteFields<NoInfer<T>, Fields>;
+    },
 ): ResourceDefinition<T> {
   return resource;
 }

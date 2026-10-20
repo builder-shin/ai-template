@@ -17,7 +17,6 @@ export function FieldDisplay({
 }: Omit<DisplayProps, "value"> & {
   field: FieldPresentation;
   translate: (key: string) => string;
-  linkable: (type: string) => boolean;
 }) {
   const value = fieldValue(record, name);
   const Override = field.display;
@@ -34,11 +33,7 @@ export function FieldDisplay({
       />
     );
   if (value === null || value === undefined)
-    return (
-      <span>
-        {record.type === "users" && name === "name" ? translate("layout.unnamedUser") : "—"}
-      </span>
-    );
+    return <span>{recordLabel(record, name, "—", translate("layout.unnamedUser"))}</span>;
   const kind =
     field.kind ??
     (record.relationships?.[name]

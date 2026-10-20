@@ -6,6 +6,7 @@ import { ApiError } from "./errors";
 import { serializeQuery } from "./jsonapi";
 import type { ApiPaths } from "./paths";
 import { isTraceId } from "./trace";
+import { isClientIp } from "./client-ip";
 
 export type ApiLog = {
   method: string;
@@ -20,11 +21,15 @@ export type ApiClientOptions = {
   locale: (typeof routing.locales)[number];
   accessToken?: string;
   traceId?: string;
+  clientIp?: string | undefined;
   log?: (entry: ApiLog) => void;
 };
 
 /** 요청 문맥과 토큰을 공유 상태에 보관하지 않는다. */
 export function createApiClient(options: ApiClientOptions) {
+  const clientIp = options.clientIp;
+  if (clientIp !== undefined && !isClientIp(clientIp))
+    throw new Error("clientIp: 단일 IPv4 또는 IPv6 주소를 넘긴다.");
   const traceId = options.traceId ?? randomBytes(16).toString("hex");
   if (!isTraceId(traceId)) {
     throw new Error("trace id는 0이 아닌 32자리 소문자 16진수로 넘긴다.");
@@ -49,6 +54,9 @@ export function createApiClient(options: ApiClientOptions) {
       request.headers.set("Accept", "application/vnd.api+json");
       request.headers.set("Content-Type", "application/vnd.api+json");
       request.headers.set("Accept-Language", options.locale);
+      for (const header of ["Forwarded", "X-Forwarded-For", "X-Real-IP"])
+        request.headers.delete(header);
+      if (clientIp) request.headers.set("X-Forwarded-For", clientIp);
       request.headers.set("traceparent", `00-${traceId}-${randomBytes(8).toString("hex")}-01`);
       if (options.accessToken)
         request.headers.set("Authorization", `Bearer ${options.accessToken}`);

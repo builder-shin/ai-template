@@ -1,8 +1,8 @@
 import { ko, en } from "../../lib/i18n/catalogs";
 // @vitest-environment jsdom
-import { act, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { ProfileForm, PasswordChangeForm } from "./forms";
