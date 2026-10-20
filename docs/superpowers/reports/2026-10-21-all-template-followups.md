@@ -61,6 +61,8 @@
 - 구현 커밋 `4beab1b473f799837ea40c5174760355717dfe82`의 추적 입력으로 실제 FastAPI+web+admin 및 NestJS+web+admin 조합 생성이 통과했다. 생성 단계의 실제 registry 해석·frozen 설치·web→admin gen을 사용했다. FastAPI 조합의 web 9단계·admin 10단계 전체 check(각 캐시 0개), NestJS 조합의 이동 후 root/API 독립 frozen 설치와 두 프론트의 route typegen·tsc가 통과했다. 네 종류 단독 생성도 통과했고 대표 변경 파일의 원본 바이트 일치와 .env·.git·template.json 부재를 확인했다. setup·Docker·API 인프라는 실행하지 않았다.
 - 이 절은 PR 작성 전 로컬 검증 스냅샷이다. 새 PR의 정확한 HEAD에서 실행하는 15개 CI와 실제 백엔드·생성 이미지 결과는 PR 본문에 기록한다. 기존 main CI 결과로 새 변경을 검증했다고 주장하지 않는다.
 
+PR #15의 첫 Linux CI에서 루트 검사 두 건이 실패했다. POSIX 강제 종료 회귀가 T2-I1의 변경 전 안내 문구를 기대했고, FastAPI 조합의 바이트 골든은 이번 공유 실행기·문서 변경을 반영하지 않았다. 종료 문구는 실제 PID를 포함한 단일 호출로 검사하고, 골든은 실제 생성 결과로 갱신했다. 세 조합 모두 변경한 5개 자산의 바이트만 달라졌으며 경로 목록과 Git 실행 권한은 같았다. 골든 비교는 Windows에서도 실행하고, 파일 시스템의 POSIX 실행 비트 검사는 해당 OS에서 유지한다. 제품 코드를 완화하거나 검사를 삭제하지 않았다. 이후 정확한 HEAD의 전체 CI 결과는 PR 본문에 갱신한다.
+
 ## 독립 최종 검토와 보완
 
 독립 검토는 전체 원본 diff·백로그와 298개 공유 사본의 바이트 일치를 확인했다. Important 1건: 프론트 잠금 파일의 의존성 문서에 `.` importer가 없거나 `contract/../../outside` 같은 경로가 있으면 설치 단계에 도달할 수 있었다. 다른 material finding은 확인하지 않았다.
