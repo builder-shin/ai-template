@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:net";
 import { devPlan, assertPortFree, devEnvironment } from "./dev.mjs";
+import identity from "../app-identity.json" with { type: "json" };
 
 test("backend plan does not start a mock and never uses a shell", () => {
   assert.deepEqual(
@@ -21,7 +22,7 @@ test("the mock advertises reachable native API/storage/OAuth URLs for each platf
   const ios = devEnvironment("mock", "ios", {});
   assert.equal(android.API_URL, "http://10.0.2.2:4012");
   assert.equal(ios.API_URL, "http://localhost:4012");
-  assert.equal(android.OAUTH_REDIRECT_URIS, "aitpl-expo-template://oauth/callback");
+  assert.equal(android.OAUTH_REDIRECT_URIS, `${identity.scheme}://oauth/callback`);
   assert.equal(android.EXPO_PUBLIC_API_BASE_URL, `${android.API_URL}/api/v1`);
   assert.equal(ios.EXPO_PUBLIC_API_BASE_URL, `${ios.API_URL}/api/v1`);
   assert.throws(

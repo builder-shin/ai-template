@@ -42,6 +42,21 @@ describe("native public configuration", () => {
   test("requires explicit release endpoints", () => {
     expect(() => readPublicEnv({}, "android", true)).toThrow();
   });
+  test("explicit mock mode overrides composed backend defaults without starting against the API", () => {
+    const original = { ...defaults };
+    Object.assign(defaults, {
+      mode: "backend",
+      android: { apiBaseUrl: "http://10.0.2.2:8000/api/v1", realtimeUrl: "http://10.0.2.2:8000" },
+    });
+    try {
+      expect(readPublicEnv({}, "android", false).apiBaseUrl).toBe("http://10.0.2.2:8000/api/v1");
+      expect(readPublicEnv({ EXPO_PUBLIC_API_MODE: "mock" }, "android", false).apiBaseUrl).toBe(
+        "http://10.0.2.2:4012/api/v1",
+      );
+    } finally {
+      Object.assign(defaults, original);
+    }
+  });
 
   test("rejects secret-like and unknown public settings without echoing values", () => {
     expect(() =>
