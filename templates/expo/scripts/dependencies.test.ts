@@ -11,6 +11,10 @@ test("app and copied contract tools resolve inside the independent native worksp
     existsSync(resolve(root, "tsconfig.base.json")),
     "Copied contract packages need a local shared TypeScript configuration.",
   );
+  assert.ok(
+    existsSync(resolve(root, ".prettierrc.json")),
+    "Standalone formatting must not inherit a parent repository configuration.",
+  );
   for (const tool of ["typescript", "tsx", "openapi-typescript", "jest", "vitest"]) {
     const local = relative(resolve(root, "node_modules"), require.resolve(`${tool}/package.json`));
     assert.ok(

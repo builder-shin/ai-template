@@ -3,6 +3,26 @@ import { ApiError } from "../api/errors";
 import { deferred, memoryStore, passwordGrant, record, tokens } from "./test-fixtures";
 
 describe("secure session generation and persistence", () => {
+  test("login suspends optional-auth queries until credentials commit and failed login settles anonymous", async () => {
+    const entered = deferred<void>(),
+      held = deferred<ReturnType<typeof tokens>>();
+    const manager = new SessionManager({
+      store: memoryStore(),
+      transport: {
+        grant: async () => {
+          entered.resolve();
+          return held.promise;
+        },
+        revoke: async () => {},
+      },
+    });
+    const signingIn = manager.signIn(passwordGrant);
+    await entered.promise;
+    expect(manager.snapshot().status).toBe("restoring");
+    held.reject(new ApiError(401));
+    await expect(signingIn).rejects.toMatchObject({ status: 401 });
+    expect(manager.snapshot().status).toBe("anonymous");
+  });
   test("overlapping app restorations rotate a stored token once", async () => {
     const entered = deferred<void>();
     const held = deferred<ReturnType<typeof tokens>>();

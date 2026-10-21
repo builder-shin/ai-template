@@ -1,6 +1,10 @@
 {
   "assets": [
     {
+      "source": ".prettierrc.json",
+      "targets": [{ "template": "expo", "path": ".prettierrc.json" }]
+    },
+    {
       "source": "contract/mock/src/core/oauth-callback.ts",
       "targets": [
         {

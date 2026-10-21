@@ -7,6 +7,7 @@ import { Screen } from "../../components/screen";
 import { Button } from "../../components/button";
 import { Text } from "../../components/text";
 import { useColorScheme } from "react-native";
+import { protectedScreens } from "../navigation/features";
 export function ProtectedLayout() {
   const { state, manager } = useSession(),
     path = usePathname(),
@@ -40,7 +41,9 @@ export function ProtectedLayout() {
       }}
     >
       <Stack.Protected guard={state.status === "authenticated"}>
-        <Stack.Screen name="me/sessions" options={{ title: t("sessions") }} />
+        {protectedScreens.map((item) => (
+          <Stack.Screen key={item.name} name={item.name} options={{ title: t(item.titleKey) }} />
+        ))}
       </Stack.Protected>
     </Stack>
   );

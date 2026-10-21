@@ -113,14 +113,20 @@ export class SessionManager implements SessionPort {
   }
 
   async signIn(grant: SessionGrant): Promise<void> {
-    const generation = this.#boundary("anonymous");
+    // Do not populate this generation's optional-auth queries with anonymous responses mid-login.
+    const generation = this.#boundary("restoring");
     try {
       if (!(await this.#persist(generation, () => this.options.store.clear()))) return;
     } catch {
       return this.#storageFailure(generation);
     }
-    const tokens = await this.options.transport.grant(grant, this.signal());
-    await this.#commit(generation, tokens);
+    try {
+      const tokens = await this.options.transport.grant(grant, this.signal());
+      await this.#commit(generation, tokens);
+    } catch (error) {
+      if (generation === this.generation()) this.#publish({ status: "anonymous" });
+      throw error;
+    }
   }
   async signOut(): Promise<void> {
     const sessionId = this.#snapshot.sessionId,

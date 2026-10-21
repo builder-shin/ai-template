@@ -17,6 +17,7 @@ import { OAuthController } from "../../lib/links/oauth";
 import { ProtectedLayout } from "../../lib/session/protected-layout";
 import { SessionsScreen } from "./sessions-screen";
 import { Text } from "react-native";
+import { protectedRouteStubs } from "../../lib/testing/routes";
 
 jest.mock("expo-localization", () => ({ getLocales: () => [{ languageCode: "en" }] }));
 const host = globalThis as typeof globalThis & {
@@ -61,6 +62,7 @@ test("native Router login and all-session confirmation clear both native credent
   const value = { manager, config, oauth, api: createApiClient(config, manager, () => "en") };
   await renderRouter(
     {
+      ...protectedRouteStubs(),
       _layout: () => (
         <QueryClientProvider client={queryClient}>
           <SessionProvider value={value}>

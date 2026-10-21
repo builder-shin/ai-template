@@ -14,6 +14,7 @@ import { validatedLocale } from "./locale";
 import ko from "../i18n/messages/ko.json";
 import en from "../i18n/messages/en.json";
 import i18n from "../i18n";
+import { protectedRouteStubs } from "../testing/routes";
 jest.mock("expo-localization", () => ({ getLocales: () => [{ languageCode: "en" }] }));
 
 function context() {
@@ -48,6 +49,7 @@ test.each([true, false])(
     const scope = context();
     const result = await renderRouter(
       {
+        ...protectedRouteStubs(),
         _layout: () => (
           <SessionProvider value={scope.value}>
             <Stack />

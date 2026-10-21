@@ -1,11 +1,22 @@
 import type { MobileEnv } from "../config/env";
 import { parseAppLink } from "./parse";
+import registry from "../navigation/features.json";
 
-const product =
-  /^(?:\/|\/login|\/signup|\/forgot-password|\/me(?:\/sessions)?|\/posts\/(?:new|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/edit)?))$/;
+function product(value: string): boolean {
+  if (["/", "/login", "/signup", "/forgot-password", "/me", "/me/sessions"].includes(value))
+    return true;
+  return registry.features.some(
+    (item) =>
+      value === item.path ||
+      (/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(item.name) &&
+        new RegExp(
+          `^/${item.name}/(?:new|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:/edit)?)$`,
+        ).test(value)),
+  );
+}
 export function safeReturnPath(value: unknown): string {
   return typeof value === "string" &&
-    product.test(value) &&
+    product(value) &&
     !["/login", "/signup", "/forgot-password"].includes(value)
     ? value
     : "/me/sessions";
@@ -29,11 +40,11 @@ export function routeIncomingPath(path: string, env: MobileEnv): string {
         link.kind === "oauth" ? (link.value.startsWith("auth.") ? "error" : "code") : "token";
       return `/${link.kind === "oauth" ? "oauth/callback" : link.kind}?${new URLSearchParams({ [key]: link.value })}`;
     }
-    if (internal && product.test(path)) return path;
+    if (internal && product(path)) return path;
     if (path.startsWith(`${env.scheme}://`)) {
       const url = new URL(path);
       const route = `/${url.hostname}${url.pathname}`;
-      if (!url.search && !url.hash && path === `${env.scheme}:/${route}` && product.test(route))
+      if (!url.search && !url.hash && path === `${env.scheme}:/${route}` && product(route))
         return route;
     }
     return "/login";
