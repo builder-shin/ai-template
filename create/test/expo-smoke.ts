@@ -40,8 +40,9 @@ for (const scenario of ["standalone", "fastapi-mobile", "nestjs-all"] as const) 
           ]),
       "--name",
       name,
-      "--no-git",
     ]);
+    if (!existsSync(join(owned.project, ".git")))
+      throw new Error("Generated smoke must exercise the default Git-initialized project.");
     const mobile = scenario === "standalone" ? owned.project : join(owned.project, "apps/mobile");
     runPnpm(owned.project, ["install", "--frozen-lockfile"]);
     if (scenario !== "standalone") {
