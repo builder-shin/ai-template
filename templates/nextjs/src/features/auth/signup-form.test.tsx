@@ -154,7 +154,9 @@ it("재발송은 가입 이메일을 보내고 pending·429 안내 후에도 메
     ),
   );
   await submit();
-  const button = screen.getByRole("button", { name: "인증 메일 재발송" }) as HTMLButtonElement;
+  const button = (await screen.findByRole("button", {
+    name: "인증 메일 재발송",
+  })) as HTMLButtonElement;
   await userEvent.setup().click(button);
   expect(email).toBe("user@example.com");
   expect(button.disabled).toBe(true);
