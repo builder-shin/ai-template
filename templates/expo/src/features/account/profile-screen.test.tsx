@@ -2,7 +2,7 @@
 import { renderRouter, screen, cleanup, act } from "expo-router/testing-library";
 import { Stack, router } from "expo-router";
 import { Linking, Text } from "react-native";
-import { userEvent } from "@testing-library/react-native";
+import { userEvent, waitFor } from "@testing-library/react-native";
 import * as ImagePicker from "expo-image-picker";
 import { fetch as nativeFetch } from "expo/fetch";
 import { ProfileScreen } from "./profile-screen";
@@ -99,6 +99,87 @@ test("native profile saves name and locale through the actual account contract",
   expect(me.data.attributes).toMatchObject({ name: "Mobile Profile", locale: "ko" });
   expect(i18n.language).toBe("ko");
 });
+test.each(["profile", "post", "post edit"])(
+  "a transient refresh failure and retry preserve dirty %s input and session generation",
+  async (feature) => {
+    const user = userEvent.setup();
+    let editingId: string | undefined;
+    if (feature === "post edit") {
+      const created = await new PostsApi(scope.value.api).create({
+        attributes: { title: "Existing edit", body: "Existing body", status: "draft" },
+      });
+      editingId = created.data.id;
+      await act(async () => router.push(`/posts/${editingId}/edit`));
+    }
+    if (feature === "post") await act(async () => router.push("/posts/new"));
+    const label = feature === "profile" ? "Name" : "Title";
+    const input = await screen.findByLabelText(label);
+    await user.clear(input);
+    await user.type(input, "Unsaved native input");
+    const manager = scope.value.manager,
+      credentials = manager.credentials()!,
+      generation = manager.generation(),
+      original = globalThis.fetch;
+    let failed = false,
+      expired = false;
+    jest.spyOn(globalThis, "fetch").mockImplementation((request, options) => {
+      if (
+        editingId &&
+        !expired &&
+        request instanceof Request &&
+        request.method === "GET" &&
+        new URL(request.url).pathname === `/api/v1/posts/${editingId}`
+      ) {
+        expired = true;
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              errors: [{ status: "401", code: "auth.access_token_expired", title: "Expired" }],
+            }),
+            { status: 401, headers: { "Content-Type": "application/vnd.api+json" } },
+          ),
+        );
+      }
+      if (
+        !failed &&
+        request instanceof Request &&
+        request.method === "POST" &&
+        new URL(request.url).pathname === "/api/v1/sessions"
+      ) {
+        failed = true;
+        return Promise.reject(new TypeError("Owned offline refresh"));
+      }
+      return original(request, options);
+    });
+    await act(async () => {
+      if (editingId) await scope.queryClient.invalidateQueries();
+      else await manager.refresh(credentials);
+    });
+    expect(failed).toBe(true);
+    expect(manager.generation()).toBe(generation);
+    expect(manager.snapshot().status).toBe("authenticated");
+    expect(screen.getByDisplayValue("Unsaved native input")).toBeTruthy();
+    expect(screen.getByText(i18n.t("offline"))).toBeTruthy();
+    await user.press(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(manager.snapshot().networkError).toBe(false));
+    expect(screen.getByDisplayValue("Unsaved native input")).toBeTruthy();
+    expect(manager.generation()).toBe(generation);
+    expect(manager.credentials()?.accessToken).not.toBe(credentials.accessToken);
+    expect(screen.queryByText(i18n.t("offline"))).toBeNull();
+    if (editingId) {
+      await user.press(screen.getByRole("button", { name: "Retry" }));
+      await waitFor(() => {
+        const query = scope.queryClient
+          .getQueryCache()
+          .findAll({ predicate: (item) => item.queryKey.includes(editingId) })[0];
+        expect(query?.state.status).toBe("success");
+        expect(query?.state.fetchStatus).toBe("idle");
+      });
+      expect(screen.getByDisplayValue("Unsaved native input")).toBeTruthy();
+      expect(manager.generation()).toBe(generation);
+    }
+  },
+);
 test("picker cancellation has no transfer; an image is uploaded, attached, downloaded and removed", async () => {
   const user = userEvent.setup();
   await user.press(await screen.findByRole("button", { name: "Choose image: Avatar" }));

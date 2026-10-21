@@ -229,11 +229,22 @@ export function PostEditorScreen() {
   return (
     <Screen>
       <Text accessibilityRole="header">{t(editing ? "postEdit" : "postNew")}</Text>
+      {editing && query.isError && query.data && !scope.state.networkError && (
+        <>
+          <RequestError error={query.error} />
+          <Button
+            title={t("retry")}
+            onPress={() => {
+              void query.refetch();
+            }}
+          />
+        </>
+      )}
       {editing && !id ? (
         <Text accessibilityRole="alert">{t("notFound")}</Text>
       ) : editing && query.isPending ? (
         <Spinner />
-      ) : editing && query.isError ? (
+      ) : editing && query.isError && !query.data ? (
         <>
           <RequestError error={query.error} />
           <Button

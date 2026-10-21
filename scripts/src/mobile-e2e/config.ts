@@ -56,7 +56,7 @@ export function validateMobileCompose(text: string, plan: MobilePlan): void {
       );
       const env = record(service.environment);
       equal(env.API_URL, "http://127.0.0.1:4112", "API public URL");
-      equal(env.S3_PUBLIC_ENDPOINT_URL, plan.urls.s3, "original signed storage URL");
+      equal(env.S3_PUBLIC_ENDPOINT_URL, plan.urls.storage, "original signed storage URL");
       equal(
         env.OAUTH_REDIRECT_URIS,
         "${MOBILE_E2E_CALLBACK:?native callback required}",

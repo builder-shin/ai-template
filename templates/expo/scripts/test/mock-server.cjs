@@ -44,6 +44,7 @@ exports.startMock = async function startMock(options = {}) {
         API_URL: options.usePublicLocalhost ? base.replace("127.0.0.1", "localhost") : base,
         FRONTEND_URL: base,
         MOCK_TEST_ENDPOINTS: "true",
+        ...(options.storageUrl ? { MOCK_STORAGE_URL: options.storageUrl } : {}),
         ...(options.nativeScheme
           ? { OAUTH_REDIRECT_URIS: `${options.nativeScheme}://oauth/callback` }
           : {}),

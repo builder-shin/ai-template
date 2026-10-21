@@ -18,6 +18,7 @@ import { redactNative } from "./redact.mjs";
 import { maestroFailureLog } from "./logs.mjs";
 import { prepareWindowsMaestro } from "./windows.mjs";
 import { verifyArtifactIdentity } from "./artifact.mjs";
+import { startStorageProxy } from "./storage-proxy.mjs";
 
 export async function runNative(options, ports = {}) {
   const input = ports.env ?? process.env,
@@ -32,7 +33,12 @@ export async function runNative(options, ports = {}) {
   }
   const backend = options.target !== "mock";
   if (backend)
-    for (const key of ["E2E_UPSTREAM_API_URL", "E2E_MAILPIT_URL", "E2E_OAUTH_URL"])
+    for (const key of [
+      "E2E_UPSTREAM_API_URL",
+      "E2E_MAILPIT_URL",
+      "E2E_OAUTH_URL",
+      "E2E_STORAGE_UPSTREAM_URL",
+    ])
       fixtureOrigin(input[key]);
   if (
     backend &&
@@ -114,6 +120,7 @@ export async function runNative(options, ports = {}) {
             PORT: "4114",
             HOST: "127.0.0.1",
             API_URL: "http://127.0.0.1:4112",
+            MOCK_STORAGE_URL: "http://127.0.0.1:4116",
             REALTIME_ALLOWED_ORIGINS: "http://127.0.0.1:4112",
             FRONTEND_URL: env.EXPO_PUBLIC_FRONTEND_URL,
             MOCK_TEST_ENDPOINTS: "true",
@@ -130,6 +137,11 @@ export async function runNative(options, ports = {}) {
       cleanup.push((failed) => mock.stop(failed));
       await mock.ready(upstream + "/health/ready");
     }
+    const storage = await startStorageProxy({
+      upstream: backend ? input.E2E_STORAGE_UPSTREAM_URL : upstream,
+      port: 4116,
+    });
+    cleanup.push(() => storage.stop());
     proxy = await startNativeProxy({
       upstream,
       port: 4112,
@@ -146,6 +158,7 @@ export async function runNative(options, ports = {}) {
       api: upstream + "/api/v1",
       target: plan.target,
       proxy,
+      storage,
       config: readPublicEnv(env, plan.platform, false),
       mailpit: input.E2E_MAILPIT_URL,
       providerOrigin: input.E2E_OAUTH_URL,

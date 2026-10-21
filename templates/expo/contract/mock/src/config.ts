@@ -57,6 +57,8 @@ export interface MockConfig {
    * 가짜 스토리지의 presigned URL(<API_URL>/_storage/...)이 이 주소를 쓴다.
    */
   readonly apiUrl: string;
+  /** 별도 스토리지 공개 주소(MOCK_STORAGE_URL). 생략하면 API_URL을 사용한다. */
+  readonly storageUrl?: string;
   /**
    * 테스트 통로(/_test, /_mock)를 여는가(MOCK_TEST_ENDPOINTS). 가짜 OAuth 서버(/_mock/oauth)도 테스트
    * 통로라, 끄면 소셜 로그인은 제공자 화면이 없어 끝나지 않는다(FastAPI에서 모의 OAuth 서버를 띄우지
@@ -248,6 +250,9 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
     port: listenPort,
     host: read("HOST", defaults.host, text),
     apiUrl: read("API_URL", `http://localhost:${String(listenPort)}`, httpUrl),
+    ...(env.MOCK_STORAGE_URL?.trim()
+      ? { storageUrl: read("MOCK_STORAGE_URL", defaults.apiUrl, httpUrl) }
+      : {}),
     testEndpoints: read("MOCK_TEST_ENDPOINTS", defaults.testEndpoints, flag),
     seedAdmin: {
       email: read("SEED_ADMIN_EMAIL", defaults.seedAdmin.email, email),

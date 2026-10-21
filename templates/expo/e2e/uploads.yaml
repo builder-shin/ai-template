@@ -15,18 +15,18 @@ appId: __BUNDLE_ID__
     commands: [{ tapOn: "Cancel" }]
 - assertVisible: "No image selected."
 - addMedia: [native.png]
+- runScript: { file: bridge.js, env: { ACTION: storage-unavailable } }
+- assertTrue: ${output.result.apiReachable}
 - tapOn: { id: "button-Choose image: Avatar" }
-- runFlow:
-    when: { platform: Android }
-    commands:
-      - tapOn: { text: "Photo taken on .*", index: 0 }
-- runFlow:
-    when: { platform: iOS }
-    commands:
-      - tapOn: { text: "Photo.*|Image.*", index: 0 }
-      - runFlow:
-          when: { visible: "Add|Done|Choose" }
-          commands: [{ tapOn: "Add|Done|Choose" }]
+- runFlow: support/select-photo.yaml
+- extendedWaitUntil:
+    visible: "Storage is unreachable from this device. Check the storage address and connection."
+    timeout: 30000
+- runScript: { file: bridge.js, env: { ACTION: inspect-storage-failure } }
+- assertTrue: ${output.result.ok && output.result.apiReachable}
+- runScript: { file: bridge.js, env: { ACTION: storage-available } }
+- tapOn: { id: "button-Choose image: Avatar" }
+- runFlow: support/select-photo.yaml
 - scrollUntilVisible:
     element: { id: "button-Remove image: Avatar", enabled: true }
     timeout: 30000

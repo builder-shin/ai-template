@@ -30,7 +30,8 @@ test("native plan fixes public development endpoints and owns only its reverse p
   const plan = nativePlan(options, {});
   assert.equal(plan.deviceId, options.deviceId);
   assert.equal(plan.commands[1].argv.includes("-r"), false);
-  assert.deepEqual(plan.reversePorts, [8082, 4112, 4113]);
+  assert.deepEqual(plan.reversePorts, [8082, 4112, 4113, 4116]);
+  assert.ok(plan.listenPorts.includes(4116));
   for (const command of plan.commands) {
     assert.ok(Array.isArray(command.argv));
     assert.ok(command.argv.every((value) => typeof value === "string"));

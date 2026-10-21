@@ -8,6 +8,19 @@ interface Dependencies {
 function interrupted(code: number, signal?: AbortSignal) {
   return signal?.aborted ? (typeof signal.reason === "number" ? signal.reason : 130) : code;
 }
+export async function checkMobileInventory(
+  plan: MobilePlan,
+  deps: Pick<Dependencies, "execute">,
+  signal?: AbortSignal,
+): Promise<number> {
+  for (const argv of [plan.commands.containers, plan.commands.volumes, plan.commands.image]) {
+    const result = await deps.execute(argv, { ...(signal ? { signal } : {}), capture: true });
+    if (result.code !== 0) return result.code;
+    if (result.stdout.trim())
+      throw new Error("An existing native resource is not owned by this run.");
+  }
+  return 0;
+}
 export async function downMobileStack(plan: MobilePlan, deps: Dependencies): Promise<number> {
   if (plan.project !== createMobilePlan(plan.backend, plan.runId).project)
     throw new Error("Dedicated mobile project required.");
@@ -48,16 +61,7 @@ export async function runMobileStack(
     await deps.probe();
     options.signal?.throwIfAborted();
     code = (await deps.execute(plan.commands.config, commandOptions)).code;
-    if (code === 0)
-      for (const argv of [plan.commands.containers, plan.commands.volumes]) {
-        const result = await deps.execute(argv, { ...commandOptions, capture: true });
-        if (result.code !== 0) {
-          code = result.code;
-          break;
-        }
-        if (result.stdout.trim())
-          throw new Error("An existing native stack is not owned by this run.");
-      }
+    if (code === 0) code = await checkMobileInventory(plan, deps, options.signal);
     if (code === 0) {
       options.signal?.throwIfAborted();
       attempted = true;

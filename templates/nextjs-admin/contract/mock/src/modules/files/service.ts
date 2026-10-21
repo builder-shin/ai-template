@@ -125,7 +125,12 @@ export function createFile(
   };
   state.store.files.set(file.id, file);
   const key = objectKey(file.id);
-  const upload = state.storage.presignUpload(config.apiUrl, key, file, UPLOAD_EXPIRES);
+  const upload = state.storage.presignUpload(
+    config.storageUrl ?? config.apiUrl,
+    key,
+    file,
+    UPLOAD_EXPIRES,
+  );
   return { file, upload };
 }
 

@@ -3,6 +3,7 @@ import { once } from "node:events";
 import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { nativeLinkFromMail, readMockMailLink } from "../mail-link.ts";
+import { storageActions } from "./storage-actions.mjs";
 
 export const fixtureImage = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=",
@@ -18,6 +19,7 @@ export async function startFixture({
   providerOrigin,
   metroOrigin,
   signal,
+  storage,
 }) {
   const nonce = randomUUID(),
     suffix = randomUUID().slice(0, 8);
@@ -157,6 +159,7 @@ export async function startFixture({
     throw new Error("Native fixture mail did not arrive.");
   }
   const actions = {
+    ...(storage ? storageActions({ storage, proxy, jsonRequest, token }) : {}),
     data: async () => data,
     "mail-verify": () => mail("verify-email"),
     "mail-reset": () => mail("reset-password"),

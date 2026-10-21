@@ -4,6 +4,7 @@ export const ROOT = resolve(import.meta.dirname, "../../..");
 export const MOBILE_URLS = {
   api: "http://127.0.0.1:18102",
   s3: "http://127.0.0.1:28435",
+  storage: "http://127.0.0.1:4116",
   mail: "http://127.0.0.1:28127",
   oauth: "http://127.0.0.1:28182",
 };

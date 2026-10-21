@@ -1,5 +1,7 @@
 # Native builds and UI tests
 
+Storage has a separate owned proxy on 4116. The API signs that exact public address; the proxy preserves the signed Host, path, query and body. Backend fixtures additionally require `E2E_STORAGE_UPSTREAM_URL` for their actual S3 listener. The upload flow closes only the storage listener, verifies API success and the native unreachable-storage message, rejects avatar attachment or a PUT fallback through the API, then reopens the same listener and verifies the selected bytes. No client or proxy rewrites the presigned URL.
+
 Use Java 21. Android needs platform 37, Build Tools 37.0.0, NDK 27.1.12297006 and CMake 3.22.1; the development emulator uses API 36 x86_64. iOS requires macOS, Xcode 26.4 or newer, CocoaPods and an available simulator runtime. EAS and store credentials are unnecessary.
 
 ```sh

@@ -90,15 +90,49 @@ describe("native backend stack ownership", () => {
     expect(calls).not.toContainEqual(p.commands.up);
     expect(calls).not.toContainEqual(p.commands.down);
   });
+  it.each(["occupied", "query-failed"])(
+    "rejects an %s image before claiming any resources",
+    async (image) => {
+      const plan = createMobilePlan("nestjs", "image-test"),
+        calls: string[][] = [];
+      const code = await runMobileStack(
+        plan,
+        {},
+        {
+          probe: () => Promise.resolve(),
+          ready: () => Promise.resolve(),
+          log: () => undefined,
+          command: () => Promise.reject(new Error("Must not run")),
+          execute: (argv) => {
+            calls.push([...argv]);
+            return Promise.resolve({
+              code: argv === plan.commands.image && image === "query-failed" ? 7 : 0,
+              stdout: argv === plan.commands.image && image === "occupied" ? "existing-image" : "",
+            });
+          },
+        },
+      );
+      expect(code).not.toBe(0);
+      expect(calls).toContainEqual(plan.commands.image);
+      for (const command of [plan.commands.up, plan.commands.down, plan.commands.removeImage])
+        expect(calls).not.toContainEqual(command);
+    },
+  );
   it("failed and interrupted native runs clean only their stack and exact image", async () => {
     const p = createMobilePlan("nestjs", "cleanup-test"),
       calls: string[][] = [];
+    let started = false;
     const execute = (argv: readonly string[]) => {
       calls.push([...argv]);
+      if (argv === p.commands.up) started = true;
       return Promise.resolve({
         code: 0,
         stdout:
-          argv === p.commands.image ? "owned-image" : argv === p.commands.worker ? "worker" : "",
+          argv === p.commands.image && started
+            ? "owned-image"
+            : argv === p.commands.worker
+              ? "worker"
+              : "",
       });
     };
     const controller = new AbortController();

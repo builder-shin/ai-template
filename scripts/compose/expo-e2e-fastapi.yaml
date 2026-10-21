@@ -10,7 +10,7 @@ x-app: &app
     DATABASE_URL: postgresql+psycopg://app:app@postgres:5432/app
     REDIS_URL: redis://valkey:6379/0
     S3_ENDPOINT_URL: http://seaweedfs:8333
-    S3_PUBLIC_ENDPOINT_URL: http://127.0.0.1:28435
+    S3_PUBLIC_ENDPOINT_URL: http://127.0.0.1:4116
     S3_REGION: us-east-1
     S3_ACCESS_KEY_ID: app
     S3_SECRET_ACCESS_KEY: app-secret # betterleaks:allow 전용 스택의 가짜 키

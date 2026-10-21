@@ -26,12 +26,14 @@ export async function startNativeProxy({ upstream, port, intercept, observe }) {
   const target = fixtureOrigin(upstream);
   let armed = false,
     count = 0,
+    storageFallbacks = 0,
     held,
     reached;
   const sockets = new Set(),
     pending = new Set();
   const server = createServer(async (req, res) => {
     try {
+      if (req.method === "PUT") storageFallbacks++;
       if (await intercept?.(req, res)) return;
       const chunks = [];
       let size = 0;
@@ -128,6 +130,7 @@ export async function startNativeProxy({ upstream, port, intercept, observe }) {
   await once(server, "listening");
   return {
     origin: `http://127.0.0.1:${server.address().port}`,
+    storageFallbackCount: () => storageFallbacks,
     armRefresh() {
       if (held) throw new Error("A refresh fixture is already active.");
       count = 0;

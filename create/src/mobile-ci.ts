@@ -44,7 +44,7 @@ export function configureMobileCi(root: string): void {
     runner,
     readFileSync(runner, "utf8").replace(
       "...frontendNames(root).map((app) => [",
-      '...frontendNames(root).filter((app) => app !== "mobile" || process.env.E2E_SKIP_MOBILE !== "1").map((app) => [',
+      '...frontendNames(root).filter((app) => app !== "mobile" || process.env.E2E_SKIP_MOBILE !== "1").map((app) => app === "mobile" ? ["exec", "node", join(root, "scripts/frontend-e2e.mjs"), app] : [',
     ),
   );
 }

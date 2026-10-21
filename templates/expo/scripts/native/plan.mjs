@@ -104,7 +104,7 @@ export function nativePlan(options, input = process.env) {
     extras = input.E2E_REVERSE_PORTS ? input.E2E_REVERSE_PORTS.split(",").map(port) : [];
   const apiPorts =
     ["127.0.0.1", "localhost", "[::1]"].includes(api.hostname) && api.port ? [port(api.port)] : [];
-  const listenPorts = [metro, ...(mock ? [4112] : []), bridge];
+  const listenPorts = [metro, ...(mock ? [4112] : []), bridge, 4116];
   if (new Set(listenPorts).size !== listenPorts.length)
     throw new Error("Native service ports collide.");
   const artifact = join(
@@ -148,7 +148,9 @@ export function nativePlan(options, input = process.env) {
     bundleId:
       options.platform === "android" ? identity.androidApplicationId : identity.iosBundleIdentifier,
     reversePorts:
-      options.platform === "android" ? [...new Set([metro, ...apiPorts, bridge, ...extras])] : [],
+      options.platform === "android"
+        ? [...new Set([metro, ...apiPorts, bridge, 4116, ...extras])]
+        : [],
     commands: [argv, install].map((command) => ({ argv: command, cwd: root, env: { ...env } })),
   };
 }

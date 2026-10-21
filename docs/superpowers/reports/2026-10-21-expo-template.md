@@ -40,7 +40,24 @@ Windows에서 Java 21·Android SDK 37.0/Build Tools 37.0.0·NDK 27.1.12297006·C
 
 Android 실제 UI 결과는 `auth`, `oauth`, `posts`, `account`, `uploads`, `realtime`, `locale`의 개별 성공과 최종 전체 성공으로 판정한다. 선택한 PNG는 실제 저장소에서 내려받아 fixture 바이트와 비교한다. 전체 사진 접근 권한을 미리 요청하지 않는 이미지 전용 picker를 쓰므로 시스템 picker 취소와 앱의 권한 오류 처리를 구분한다. 권한 오류는 네이티브 어댑터 시험으로 확인하며 불필요한 전체 라이브러리 권한을 추가하지 않는다.
 
+스토리지에는 별도 공개 주소 4116을 사용한다. 목은 선택적인 `MOCK_STORAGE_URL`이 없으면 기존 `API_URL` 기본값을 유지한다. 전용 backend는 S3 공개 주소 4116과 실제 upstream 28435를 구분한다. 소유한 proxy는 서명된 Host·경로·쿼리·본문을 그대로 전달한다. 실제 기기 시험은 이 스토리지 listener만 닫아 API 200과 네이티브 실패 안내·아바타 미연결·API PUT 우회 없음·동일 주소 복구 뒤 정확한 PNG 바이트를 검증한다.
+
 iOS 실제 UI·unsigned release와 실제 FastAPI/NestJS 저장소·메일·제공자 시험은 PR CI에서 실행한다. Windows의 목 시험을 이 증거로 대신하지 않는다. 외부 제공자의 실제 계정 로그인, 운영 App Links/Universal Links 도메인 소유 검증, 스토어 서명·배포는 제품 배포 단계의 별도 설정이다.
+
+## 독립 검토와 회귀
+
+리뷰 수정 뒤 Windows의 루트 전체 검사 **11단계(263.8초)**와 Expo 전체 검사 **7단계**가 통과했다. Android `win-ui-a25`는 기본 7개 흐름을 모두 연속 성공했으며, 중간의 스토리지 중단·실패·복구도 포함한다. 별도 `win-focus-storage-a1`도 같은 실패·복구를 실제 기기에서 성공했다. 개발 APK `win-native-debug-a7`은 네이티브 바이너리를 재사용하고 Metro에서 검증 대상 소스를 제공했다. `win-release-a3`은 실제 release 컴파일과 cleartext 금지를 확인한 이전 체크포인트이므로 최종 소스의 release 빌드는 해당 PR CI에서 다시 판정한다.
+
+기준 main부터 `a5511cbcc138e3c672958d72e6854cf0526143c8`까지 새 리뷰어 한 명이 전체 브랜치를 읽기 전용으로 검토했다. Critical 0개·Important 4개·Minor 0개이며, 기존 17개 설계 판단을 수용했다. 다음 네 항목을 구현자가 실패 재현 뒤 수정했으며 재리뷰를 성공 증거로 대신하지 않는다.
+
+| 지적 | 수정·검증 |
+| --- | --- |
+| 갱신 실패가 dirty 화면을 unmount | 인증된 Stack을 유지하는 오류 배너와 같은 세대의 refresh 재시도. 실제 HTTP Router에서 프로필·새 글·기존 글의 입력을 실패·재인증·데이터 재조회 뒤 보존하는 RED→GREEN, 관련 12개 시험 |
+| 생성 조합의 mobile E2E 연결 누락 | 명시한 플랫폼·기기·backend 인자와 proxy/upstream/provider 설정 전달. 웹 전용 서버 대신 준비된 native backend로 실행하며 생성 문서에 전제 명시. 실제 생성 호출 체인과 네이티브 옵션·환경 검증기의 RED→GREEN |
+| 기존 이미지 태그 소유권 누락 | 생성 전과 기동 전 같은 자원 inventory 사용. 기존 태그와 조회 실패의 RED→GREEN에서 up/down/image removal을 모두 금지 |
+| 기기의 스토리지 주소 실패 시험 누락 | 실제 API가 별도 서명 주소를 발급하고 API 연결을 유지한 채 스토리지 listener만 중단. Node HTTP와 Android 기기에서 실패·미연결·우회 없음·복구 후 실제 바이트 검증 |
+
+생성 aggregate의 모바일 단계는 준비된 전용 native backend와 기기를 요구한다. 기기 없는 CI aggregate의 명시적인 모바일 제외는 성공으로 계산하지 않으며 별도 native 작업과 실제 backend 조합 작업을 유지한다.
 
 ## PR CI 판정
 

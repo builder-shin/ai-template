@@ -6,7 +6,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { createMobilePlan, ROOT, type Backend } from "./plan.ts";
 import { validateMobileCompose } from "./config.ts";
 import { execute, probePorts, type CommandOptions } from "../web-e2e/process.ts";
-import { downMobileStack, runMobileStack } from "./run.ts";
+import { downMobileStack, runMobileStack, checkMobileInventory } from "./run.ts";
 import { preflightMobileDevice } from "./device.ts";
 import {
   createOwnedMobileProject,
@@ -98,11 +98,8 @@ async function main(): Promise<number> {
       throw new Error("This native run already owns a generated project; use --down first.");
     await preflightMobileDevice(values.platform as "android" | "ios", values.device ?? "", run);
     await probePorts(plan.ports);
-    for (const argv of [plan.commands.containers, plan.commands.volumes]) {
-      const result = await run(argv, { capture: true, signal: controller.signal });
-      if (result.code !== 0 || result.stdout.trim())
-        throw new Error("Native stack inventory is unavailable or already occupied.");
-    }
+    if ((await checkMobileInventory(plan, { execute: run }, controller.signal)) !== 0)
+      throw new Error("Native stack inventory is unavailable.");
     const entry = process.env.npm_execpath;
     if (!entry) throw new Error("Use pnpm mobile-e2e.");
     const pnpm = /\.[cm]?js$/.test(entry) ? [process.execPath, entry] : [entry];
@@ -182,6 +179,7 @@ async function main(): Promise<number> {
                 EXPO_PUBLIC_REALTIME_URL: "http://127.0.0.1:4112",
                 EXPO_PUBLIC_FRONTEND_URL: "http://127.0.0.1:3112",
                 E2E_UPSTREAM_API_URL: plan.urls.api,
+                E2E_STORAGE_UPSTREAM_URL: plan.urls.s3,
                 E2E_MAILPIT_URL: plan.urls.mail,
                 E2E_OAUTH_URL: plan.urls.oauth,
                 E2E_REVERSE_PORTS: "28435,28182",
