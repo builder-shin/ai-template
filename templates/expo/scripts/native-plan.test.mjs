@@ -8,9 +8,28 @@ const options = {
   deviceId: "emulator-5554",
   runId: "native-test",
 };
+test("explicit focused native diagnostics select one flow while the default retains all seven", () => {
+  const selected = nativeOptions([
+    "--platform",
+    "android",
+    "--device",
+    "emulator-5554",
+    "--flow",
+    "posts",
+  ]);
+  assert.equal(selected.flow, "posts");
+  assert.deepEqual(nativePlan(selected, {}).flows, ["setup", "posts"]);
+  assert.equal(nativePlan(options, {}).flows.length, 7);
+  assert.throws(() => nativePlan({ ...options, flow: "setup" }, {}), /flow/);
+  assert.throws(
+    () => nativeOptions(["--platform", "android", "--device", "emulator-5554", "--flow", ""]),
+    /flow/,
+  );
+});
 test("native plan fixes public development endpoints and owns only its reverse ports", () => {
   const plan = nativePlan(options, {});
   assert.equal(plan.deviceId, options.deviceId);
+  assert.equal(plan.commands[1].argv.includes("-r"), false);
   assert.deepEqual(plan.reversePorts, [8082, 4112, 4113]);
   for (const command of plan.commands) {
     assert.ok(Array.isArray(command.argv));

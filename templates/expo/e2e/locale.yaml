@@ -8,8 +8,7 @@ appId: __BUNDLE_ID__
 - runScript: { file: bridge.js, env: { ACTION: inspect-account } }
 - assertTrue: ${output.result.locale === 'ko'}
 - stopApp
-- launchApp
-- openLink: ${output.data.scheme + '://me'}
+- openLink: ${output.data.profileLink}
 - assertVisible: 내 정보
 - tapOn: { id: "button-English" }
 - tapOn: { id: "button-저장" }

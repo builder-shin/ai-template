@@ -13,8 +13,7 @@ appId: __BUNDLE_ID__
 - openLink: ${output.data.scheme + '://'}
 - assertVisible: { id: "button-Account" }
 - stopApp
-- launchApp
-- openLink: ${output.data.scheme + '://me/sessions'}
+- openLink: ${output.data.sessionsLink}
 - assertVisible: "Current session"
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
 - tapOn: { id: "button-Sign out" }

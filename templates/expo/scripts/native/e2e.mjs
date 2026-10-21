@@ -10,7 +10,7 @@ import { buildNative } from "./build.mjs";
 import { startNativeProxy, fixtureOrigin } from "./proxy.mjs";
 import { startFixture } from "./fixture.mjs";
 import { startService, metroCommand } from "./service.mjs";
-import { nativeFlows, prepareFlows } from "./flows.mjs";
+import { prepareFlows } from "./flows.mjs";
 import { cleanNativeProject } from "./owned.mjs";
 import { contractRoot } from "../contract-root.mjs";
 import { readPublicEnv } from "../../src/lib/config/env.ts";
@@ -150,9 +150,11 @@ export async function runNative(options, ports = {}) {
       mailpit: input.E2E_MAILPIT_URL,
       providerOrigin: input.E2E_OAUTH_URL,
       metroOrigin: `http://127.0.0.1:${plan.metroPort}`,
+      signal,
     });
     secrets.push(...fixture.secrets);
     cleanup.push(() => fixture.stop());
+    if (plan.flows.includes("setup")) await fixture.seed();
     const metro = startService(metroCommand(plan.metroPort), {
       cwd: plan.root,
       env,
@@ -195,7 +197,7 @@ export async function runNative(options, ports = {}) {
           ]
         : ["xcrun", "simctl", "openurl", plan.deviceId, launch];
     await run(launchCommand, { capture: true });
-    for (const flow of nativeFlows) {
+    for (const flow of plan.flows) {
       try {
         const result = await run(
           maestroCommand(
@@ -219,6 +221,8 @@ export async function runNative(options, ports = {}) {
         appendFileSync(log, `Native ${flow}: passed (${result.code}).\n`);
       } catch (error) {
         appendFileSync(log, maestroFailureLog(flows, flow, fixture.secrets));
+        for (const event of fixture.diagnostics)
+          appendFileSync(log, `Fixture ${JSON.stringify(event)}\n`);
         throw error;
       }
     }
@@ -238,7 +242,11 @@ export async function runNative(options, ports = {}) {
       "Native E2E owned cleanup failed.",
     );
   if (failure) throw failure;
-  return { flows: nativeFlows.length, log };
+  return {
+    flows: plan.flows.filter((flow) => flow !== "setup").length,
+    focused: !!options.flow,
+    log,
+  };
 }
 async function main() {
   const controller = new AbortController(),
@@ -250,7 +258,10 @@ async function main() {
     const result = await runNative(nativeOptions(process.argv.slice(2)), {
       signal: controller.signal,
     });
-    if (result) console.log(`Native UI flows passed: ${result.flows}.`);
+    if (result)
+      console.log(
+        `${result.focused ? "Focused native" : "Native"} UI flows passed: ${result.flows}.`,
+      );
   } catch (error) {
     console.error(redactNative(error.message));
     process.exitCode = controller.signal.aborted ? controller.signal.reason : (error.exitCode ?? 1);

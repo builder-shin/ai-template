@@ -5,6 +5,47 @@ import { startFixture, fixtureImage } from "./native/fixture.mjs";
 import { createHash } from "node:crypto";
 import { readPublicEnv } from "../src/lib/config/env.ts";
 const { startMock } = createRequire(import.meta.url)("./test/mock-server.cjs");
+test("focused fixture setup creates and resets only its actual owned account through the API and mail", async () => {
+  const mock = await startMock();
+  let bridge;
+  try {
+    const config = readPublicEnv(
+      { EXPO_PUBLIC_API_BASE_URL: mock.base + "/api/v1", EXPO_PUBLIC_FRONTEND_URL: mock.base },
+      "ios",
+      false,
+    );
+    bridge = await startFixture({ port: 0, api: mock.base + "/api/v1", config, target: "mock" });
+    await bridge.seed();
+    const response = await fetch(mock.base + "/api/v1/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/vnd.api+json" },
+      body: JSON.stringify({
+        data: {
+          type: "sessions",
+          attributes: {
+            grantType: "password",
+            email: bridge.data.email,
+            password: bridge.data.newPassword,
+          },
+        },
+      }),
+    });
+    assert.equal(response.status, 201);
+    assert.ok(
+      bridge.diagnostics.some(
+        (event) => event.path === "/api/v1/email-verifications" && event.status === 201,
+      ),
+    );
+    assert.ok(
+      bridge.diagnostics.some(
+        (event) => event.path === "/api/v1/password-resets" && event.status === 201,
+      ),
+    );
+  } finally {
+    await bridge?.stop();
+    await mock.stop();
+  }
+});
 test("owned bridge verifies mail, owner drafts and the exact selected image bytes", async () => {
   const mock = await startMock();
   let bridge;
@@ -29,6 +70,8 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
     assert.equal((await fetch(bridge.origin + "/data")).status, 404);
     const data = await call("data");
     assert.ok(data.email.endsWith("@example.com"));
+    assert.equal(new URL(data.profileLink).host, "me");
+    assert.equal(new URL(data.profileLink).searchParams.get("__expo_url"), "http://127.0.0.1:8082");
     const post = async (path, type, attributes) =>
       fetch(mock.base + "/api/v1" + path, {
         method: "POST",
@@ -58,10 +101,26 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
       201,
     );
     assert.equal((await call("inspect-account")).name, data.name);
+    assert.equal(
+      (await post("/password-reset-requests", "password-reset-requests", { email: data.email }))
+        .status,
+      202,
+    );
+    const reset = await call("mail-reset");
+    assert.equal(
+      (
+        await post("/password-resets", "password-resets", {
+          token: new URL(reset.link).searchParams.get("token"),
+          password: data.newPassword,
+        })
+      ).status,
+      201,
+    );
+    await call("password-reset");
     const grant = await post("/sessions", "sessions", {
       grantType: "password",
       email: data.email,
-      password: data.password,
+      password: data.newPassword,
     });
     assert.equal(grant.status, 201);
     const access = (await grant.json()).data.attributes.accessToken;
@@ -119,6 +178,15 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
     changed[0] ^= 1;
     await attach(changed);
     assert.equal((await fetch(bridge.url + "/inspect-upload")).status, 500);
+    assert.ok(
+      bridge.diagnostics.some(
+        (event) =>
+          event.method === "POST" && event.path === "/api/v1/sessions" && event.status === 201,
+      ),
+    );
+    const recorded = JSON.stringify(bridge.diagnostics);
+    for (const secret of [data.password, data.newPassword, access, "?token=", "Authorization"])
+      assert.equal(recorded.includes(secret), false);
     assert.equal(
       (await post("/password-reset-requests", "password-reset-requests", { email: data.email }))
         .status,

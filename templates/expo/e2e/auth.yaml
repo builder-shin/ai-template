@@ -32,8 +32,7 @@ appId: __BUNDLE_ID__
 - assertVisible: "Your email is verified. You can sign in."
 - runFlow: support/login.yaml
 - stopApp
-- launchApp
-- openLink: ${output.data.scheme + '://me/sessions'}
+- openLink: ${output.data.sessionsLink}
 - assertVisible: "Current session"
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
 - tapOn: { id: "button-Sign out" }

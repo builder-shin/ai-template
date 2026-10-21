@@ -17,6 +17,7 @@ export async function startFixture({
   proxy,
   providerOrigin,
   metroOrigin,
+  signal,
 }) {
   const nonce = randomUUID(),
     suffix = randomUUID().slice(0, 8);
@@ -28,6 +29,9 @@ export async function startFixture({
     title: `Native post ${suffix}`,
     remoteTitle: `Remote post ${suffix}`,
     scheme: config.scheme,
+    profileLink: developmentLink(`${config.scheme}://me`),
+    sessionsLink: developmentLink(`${config.scheme}://me/sessions`),
+    homeLink: developmentLink(`${config.scheme}://`),
   };
   let password = data.password,
     session,
@@ -35,6 +39,11 @@ export async function startFixture({
     holdProvider = false,
     pendingProvider;
   const secrets = [data.password, data.newPassword];
+  const diagnostics = [];
+  function record(event) {
+    if (diagnostics.length === 100) diagnostics.shift();
+    diagnostics.push(event);
+  }
   function developmentLink(link) {
     if (!metroOrigin) return link;
     const launch = new URL(link);
@@ -69,10 +78,11 @@ export async function startFixture({
     return location;
   }
   async function jsonRequest(path, method = "GET", body, token) {
+    signal?.throwIfAborted();
     const response = await fetch(api + path, {
       method,
       redirect: "error",
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.any([AbortSignal.timeout(15000), ...(signal ? [signal] : [])]),
       headers: {
         Accept: "application/vnd.api+json",
         "Content-Type": "application/vnd.api+json",
@@ -82,8 +92,10 @@ export async function startFixture({
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
+    record({ method, path: new URL(api + path).pathname, status: response.status });
     if (!response.ok) throw new Error(`Native fixture API assertion failed (${response.status}).`);
-    return response.status === 204 ? undefined : response.json();
+    const text = await response.text();
+    return text ? JSON.parse(text) : undefined;
   }
   async function token() {
     if (!session) {
@@ -102,6 +114,7 @@ export async function startFixture({
   async function mail(kind) {
     const deadline = Date.now() + 30000;
     while (Date.now() < deadline) {
+      signal?.throwIfAborted();
       try {
         let link;
         if (target === "mock")
@@ -184,6 +197,17 @@ export async function startFixture({
         access,
       );
       const post = posts.data.find((item) => item.attributes.title === data.title);
+      record({
+        check: "post-title",
+        rows: posts.data.length,
+        matched: !!post,
+        expectedLength: data.title.length,
+        lengths: posts.data.map((item) => item.attributes.title.length),
+        caseMatch: posts.data.some(
+          (item) => item.attributes.title.toLowerCase() === data.title.toLowerCase(),
+        ),
+        trimMatch: posts.data.some((item) => item.attributes.title.trim() === data.title),
+      });
       if (!post) throw new Error("Native post was not stored.");
       return { status: post.attributes.status, body: post.attributes.body };
     },
@@ -285,6 +309,7 @@ export async function startFixture({
         res.end(JSON.stringify(result));
       })
       .catch(() => {
+        record({ action, failed: true });
         res
           .writeHead(500, { "Content-Type": "application/json" })
           .end('{"error":"Native fixture assertion failed"}');
@@ -298,6 +323,36 @@ export async function startFixture({
     url: `${origin}/${nonce}`,
     data,
     secrets,
+    diagnostics,
+    async seed() {
+      await jsonRequest("/registrations", "POST", {
+        data: {
+          type: "registrations",
+          attributes: { email: data.email, password: data.password, name: data.name, locale: "en" },
+        },
+      });
+      const verify = await mail("verify-email");
+      await jsonRequest("/email-verifications", "POST", {
+        data: {
+          type: "email-verifications",
+          attributes: { token: new URL(verify.link).searchParams.get("token") },
+        },
+      });
+      await jsonRequest("/password-reset-requests", "POST", {
+        data: { type: "password-reset-requests", attributes: { email: data.email } },
+      });
+      const reset = await mail("reset-password");
+      await jsonRequest("/password-resets", "POST", {
+        data: {
+          type: "password-resets",
+          attributes: {
+            token: new URL(reset.link).searchParams.get("token"),
+            password: data.newPassword,
+          },
+        },
+      });
+      await actions["password-reset"]();
+    },
     async provider(req, res) {
       const url = new URL(req.url, "http://localhost");
       const match = /^\/(?:_mock|_native)\/oauth\/(google|kakao|naver)\/authorize$/.exec(

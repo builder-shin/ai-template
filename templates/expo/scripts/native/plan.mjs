@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { root } from "../process.mjs";
 import { readPublicEnv } from "../../src/lib/config/env.ts";
 import identity from "../../app-identity.json" with { type: "json" };
+import { nativeFlows } from "./flow-names.mjs";
 
 export function nativeOptions(argv) {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
@@ -15,6 +16,7 @@ export function nativeOptions(argv) {
       device: { type: "string" },
       "run-id": { type: "string" },
       target: { type: "string" },
+      flow: { type: "string" },
       print: { type: "boolean" },
       keep: { type: "boolean" },
       down: { type: "boolean" },
@@ -31,6 +33,7 @@ export function nativeOptions(argv) {
     deviceId: values.device,
     runId: values["run-id"] ?? randomUUID().slice(0, 12),
     target: values.target ?? "mock",
+    ...(values.flow !== undefined ? { flow: values.flow } : {}),
     ...(values.print ? { print: true } : {}),
     ...(values.keep ? { keep: true } : {}),
     ...(values.down ? { down: true } : {}),
@@ -39,6 +42,8 @@ export function nativeOptions(argv) {
   return options;
 }
 function validateOptions(options) {
+  if (options.flow !== undefined && !nativeFlows.includes(options.flow))
+    throw new Error("Invalid focused native flow.");
   if (!["android", "ios"].includes(options.platform))
     throw new Error("Use --platform android|ios.");
   if (!["mock", "fastapi", "nestjs"].includes(options.target))
@@ -124,10 +129,15 @@ export function nativePlan(options, input = process.env) {
   ];
   const install =
     options.platform === "android"
-      ? ["adb", "-s", options.deviceId, "install", "-r", artifact]
+      ? ["adb", "-s", options.deviceId, "install", artifact]
       : ["xcrun", "simctl", "install", options.deviceId, artifact];
   return {
     ...options,
+    flows: options.flow
+      ? options.flow === "auth"
+        ? ["auth"]
+        : ["setup", options.flow]
+      : [...nativeFlows],
     root,
     env,
     metroPort: metro,

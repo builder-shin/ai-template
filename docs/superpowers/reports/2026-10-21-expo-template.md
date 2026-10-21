@@ -24,6 +24,9 @@ Task 1–8은 각각 전체 검사와 커밋 뒤의 실제 생성 검증을 기�
 - React Native 0.88의 실제 `whatwg-fetch` Request는 `cache: no-store`를 GET의 `_=` 쿼리로 바꾼다. 엄격한 JSON:API가 이를 400으로 거절하는 실제 HTTP 회귀를 먼저 확인하고, Cache-Control 헤더로 바꿨다. 같은 네이티브 Request의 redirect 설정 손실은 `expo/fetch`에 정책을 별도 인자로 전달해 막는다. 실제 307 서버를 사용한 세션 본문 유출 방지 시험을 둔다.
 - 인증된 콜드 시작이 `/login`에 도착하면 안전한 보호 경로로 이동한다. 실제 SessionManager 복원과 Router로 재현한 회귀 시험을 둔다.
 - SDK의 개발 manifest host가 private OAuth callback에 들어가지 않도록 `makeRedirectUri`에 네이티브 URI를 명시한다. 실제 SDK helper를 쓰는 회귀 시험에서 실패를 재현한 뒤 수정했다.
+- OAuth의 난수 생성·verifier 저장·브라우저 응답·일회 소비 도중 취소나 세션 복원이 발생하면 이전 로그인을 중단한다. 각 await 경계를 제어하는 실패 회귀를 확인한 뒤 수정했으며, 로그인 세션 복원 중에는 스피너만 표시한다.
+- Android IME의 자동 대문자·자동 수정이 글 입력을 바꾸지 않도록 글 필드에서 두 옵션을 끈다. 실제 기기에서 입력한 제목·본문을 API 응답과 정확히 비교한다. 편집 시험은 커서 위치에 의존하는 Backspace 대신 전체 선택 후 지운다.
+- 개발 클라이언트의 콜드 시작은 Metro 정보를 포함한 최초 URI 하나로 연다. MAIN 시작 직후 별도 VIEW intent를 보내는 경합을 제거했으며, SDK가 개발 전용 메타데이터를 제거한 뒤 원래 앱 경로를 전달한다. 복원 중인 백그라운드 로그인 화면이 경로를 바꾼다는 초기 가설은 Router 시험에서 재현되지 않아 별도 라우팅 구현을 추가하지 않았다.
 - Windows 네이티브 C++ 경로를 위해 소유한 짧은 드라이브 루트 사본과 그 사본만의 hoisted 설치·CMake object 경로 설정을 쓴다. 원본 SDK·의존성·workspace 정책을 바꾸지 않는다.
 - Maestro 2.11.0의 Windows 파일 잠금 실패는 실제 Java 호출로 재현했다. 공개 ABI를 유지하는 실행별 Java 어댑터와 UTF-8 read/write/delete 자체 시험을 둔다. 원래 배포 ZIP과 사용자 상태·자격 증명 저장소를 건드리지 않는다.
 - 새 Android 이미지의 Chrome 최초 실행은 계정 없이 진행한다. OAuth는 실제 제공자와 API state/PKCE를 사용하며, 별도 콜드 시험은 제공자 응답을 대기시킨 뒤 앱을 종료하고 실제 결과 링크로 다시 시작한다.

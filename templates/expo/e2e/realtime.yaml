@@ -24,6 +24,7 @@ appId: __BUNDLE_ID__
 - runScript: { file: bridge.js, env: { ACTION: release-refresh } }
 - assertVisible: { id: "button-Sign in" }
 - stopApp
-- launchApp
+- openLink: ${output.data.homeLink}
+- extendedWaitUntil: { visible: { id: "button-Sign in" }, timeout: 30000 }
 - assertNotVisible: { id: "button-Account" }
 - runFlow: support/login.yaml

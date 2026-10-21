@@ -6,7 +6,10 @@ Use Java 21. Android needs platform 37, Build Tools 37.0.0, NDK 27.1.12297006 an
 pnpm build --platform android --configuration debug --run-id local-debug
 pnpm test:e2e --platform android --device emulator-5554 --run-id local-ui
 pnpm test:e2e --platform ios --device <booted-simulator-UUID> --run-id local-ios
+pnpm test:e2e --platform android --device emulator-5554 --run-id debug-posts --flow posts
 ```
+
+`--flow <name>` is an explicit diagnostic mode. Except for `auth`, it prepares only the owned account through actual registration/mail verification/password reset, logs in through native UI and runs the selected flow. It reports a focused result and does not prove all seven flows. Default execution and every CI job keep all seven; no environment variable skips them. Failed fixture diagnostics contain only operation paths/statuses and static check results, never request bodies, query strings or credentials.
 
 Native builds copy source into a new owned directory, install the exact frozen lock and run CNG there. Source `android/`, `ios/`, environment files, installs and artifacts are excluded. Windows uses a short `C:\aitpl-n-*` directory on the temporary drive; that drive must permit creating a directory. Only the private Windows copy uses hoisted linking and shorter virtual-store paths, with a scoped Gradle init script that hashes long C++ object paths. Source workspace policies and lock bytes remain unchanged. Each successful build copies its APK/app into `artifacts/native/<run-id>/<platform>/<configuration>` and removes its owned CNG copy. A repeated run ID never overwrites an artifact or log.
 

@@ -22,11 +22,16 @@ appId: __BUNDLE_ID__
 - assertVisible: Draft
 - tapOn: { id: "button-Edit" }
 - tapOn: { id: "field-Body" }
+- longPressOn: { id: "field-Body" }
+- tapOn: "Select all|Select All"
 - eraseText: 100
 - inputText: Edited on device
 - hideKeyboard
 - scrollUntilVisible: { element: { id: "button-Save" } }
 - tapOn: { id: "button-Save" }
+- runScript: { file: bridge.js, env: { ACTION: inspect-post } }
+- assertTrue: ${output.result.body === 'Edited on device'}
+- scrollUntilVisible: { element: { text: "Edited on device" }, direction: UP }
 - assertVisible: Edited on device
 - scrollUntilVisible: { element: { id: "button-Delete" } }
 - tapOn: { id: "button-Delete" }

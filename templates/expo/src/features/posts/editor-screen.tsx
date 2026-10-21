@@ -72,6 +72,8 @@ export function PostForm({
                       : undefined
                 }
                 editable={!submit.pending && !disabled}
+                autoCapitalize="none"
+                autoCorrect={false}
                 multiline={name === "body"}
                 style={name === "body" ? { minHeight: 180, textAlignVertical: "top" } : {}}
                 returnKeyType={name === "title" ? "next" : "default"}

@@ -1,0 +1,18 @@
+appId: __BUNDLE_ID__
+---
+- launchApp
+- openLink: __DEV_CLIENT_URL__
+- extendedWaitUntil: { visible: "Continue|English", timeout: 120000 }
+- runFlow:
+    when: { visible: "Continue" }
+    commands: [{ tapOn: "Continue" }]
+- runFlow:
+    when: { visible: "Reload", platform: Android }
+    commands: [back]
+- runFlow:
+    when: { visible: "Reload", platform: iOS }
+    commands: [{ tapOn: { point: "50%,20%" } }]
+- extendedWaitUntil: { visible: { id: "button-English" }, timeout: 120000 }
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- evalScript: ${output.data.password = output.data.newPassword} # betterleaks:allow runtime fixture reference
+- runFlow: support/login.yaml

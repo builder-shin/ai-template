@@ -5,7 +5,8 @@ import { redactNative } from "./redact.mjs";
 import { nativeFlows } from "./flows.mjs";
 export function maestroFailureLog(owned, flow, secrets) {
   nativeProjectPath(owned);
-  if (!nativeFlows.includes(flow)) throw new Error("Unknown native diagnostic flow.");
+  if (flow !== "setup" && !nativeFlows.includes(flow))
+    throw new Error("Unknown native diagnostic flow.");
   const root = join(owned.parent, "raw-maestro", flow);
   if (!existsSync(root)) return "";
   let output = "";

@@ -14,12 +14,12 @@ appId: __BUNDLE_ID__
     when: { platform: iOS }
     commands: [{ tapOn: "Cancel" }]
 - assertVisible: "No image selected."
-- addMedia: native.png
+- addMedia: [native.png]
 - tapOn: { id: "button-Choose image: Avatar" }
 - runFlow:
     when: { platform: Android }
     commands:
-      - tapOn: { id: ".*:id/icon_thumbnail", index: 0 }
+      - tapOn: { text: "Photo taken on .*", index: 0 }
 - runFlow:
     when: { platform: iOS }
     commands:

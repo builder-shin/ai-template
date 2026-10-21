@@ -2,7 +2,7 @@ import { writeFileSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { prepareNativeProject, nativeProjectPath } from "./owned.mjs";
 import { fixtureImage } from "./fixture.mjs";
-export const nativeFlows = ["auth", "oauth", "posts", "account", "uploads", "realtime", "locale"];
+export { nativeFlows } from "./flow-names.mjs";
 export function prepareFlows(plan, fixture) {
   const owned = prepareNativeProject(join(plan.root, "e2e"));
   const path = nativeProjectPath(owned);
