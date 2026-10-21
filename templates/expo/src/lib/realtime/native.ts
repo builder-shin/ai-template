@@ -1,4 +1,4 @@
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { io, type Socket } from "socket.io-client";
 import type { createApiClient } from "../api/client";
 import type { RealtimeEventPayloads } from "../api/generated/realtime";
@@ -30,15 +30,18 @@ export function nativeAppState(): AppStatePort {
           focused = true;
           listener(current());
         }),
-        AppState.addEventListener("blur", () => {
-          focused = false;
-          listener(current());
-        }),
-        AppState.addEventListener("focus", () => {
-          focused = true;
-          listener(current());
-        }),
       ];
+      if (Platform.OS === "android")
+        subscriptions.push(
+          AppState.addEventListener("blur", () => {
+            focused = false;
+            listener(current());
+          }),
+          AppState.addEventListener("focus", () => {
+            focused = true;
+            listener(current());
+          }),
+        );
       return () => {
         for (const subscription of subscriptions) subscription.remove();
       };
