@@ -5,4 +5,6 @@ export interface SessionCredentials {
 export interface SessionPort {
   credentials(): SessionCredentials | null;
   refresh(failed: SessionCredentials): Promise<SessionCredentials | null>;
+  generation?(): number;
+  signal?(): AbortSignal;
 }

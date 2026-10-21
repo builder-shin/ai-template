@@ -1,3 +1,6 @@
+import identity from "../../../app-identity.json";
+import keys from "../../../public-env-keys.json";
+
 export interface MobileEnv {
   apiBaseUrl: string;
   realtimeUrl: string;
@@ -5,10 +8,6 @@ export interface MobileEnv {
   scheme: string;
   mode: "mock" | "backend";
 }
-
-const keys = ["API_BASE_URL", "REALTIME_URL", "FRONTEND_URL", "APP_SCHEME", "API_MODE"].map(
-  (key) => `EXPO_PUBLIC_${key}`,
-);
 
 function endpoint(value: string, key: string, release: boolean): string {
   let url: URL;
@@ -53,7 +52,7 @@ export function readPublicEnv(
   );
   if (!new URL(apiBaseUrl).pathname.endsWith("/api/v1"))
     throw new Error("API_BASE_URL: end the path with /api/v1.");
-  const scheme = input.EXPO_PUBLIC_APP_SCHEME ?? "aitpl-expo-template";
+  const scheme = input.EXPO_PUBLIC_APP_SCHEME ?? identity.scheme;
   if (
     !/^[a-z][a-z0-9-]{2,63}$/.test(scheme) ||
     ["http", "https", "exp", "exps", "file", "javascript", "data"].includes(scheme)

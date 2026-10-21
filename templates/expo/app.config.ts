@@ -1,5 +1,13 @@
 import type { ExpoConfig } from "expo/config";
 import identity from "./app-identity.json";
+import publicKeys from "./public-env-keys.json";
+
+if (
+  Object.keys(process.env).some(
+    (key) => key.startsWith("EXPO_PUBLIC_") && !publicKeys.includes(key),
+  )
+)
+  throw new Error("Unsupported public configuration key. Never expose secrets.");
 
 const config: ExpoConfig = {
   name: "Expo Template",

@@ -14,5 +14,6 @@
   "error": "The request could not be completed. Please retry.",
   "offline": "Check your connection and retry.",
   "activity": "Activity in progress",
-  "language": "Language"
+  "language": "Language",
+  "secureStorageError": "Secure session storage is unavailable. Retry before signing in again."
 }

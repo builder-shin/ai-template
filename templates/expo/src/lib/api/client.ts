@@ -3,10 +3,15 @@ import type { paths } from "./generated/schema";
 import type { MobileEnv } from "../config/env";
 import type { SessionPort } from "./session-port";
 import { ApiError } from "./errors";
+import { bindSession } from "./session-client";
 
-export function createApiClient(config: MobileEnv, session?: SessionPort) {
+export function createApiClient(
+  config: MobileEnv,
+  session?: SessionPort,
+  locale: () => "ko" | "en" = () => "ko",
+) {
   const base = new URL(config.apiBaseUrl);
-  return createClient<paths, "application/vnd.api+json">({
+  const client = createClient<paths, "application/vnd.api+json">({
     baseUrl: config.apiBaseUrl,
     querySerializer: {
       array: { style: "form", explode: false },
@@ -14,15 +19,19 @@ export function createApiClient(config: MobileEnv, session?: SessionPort) {
     },
     bodySerializer: JSON.stringify,
     fetch: async (input) => {
-      const request = input as Request;
+      const request = new Request(input as Request, {
+        credentials: "omit",
+        redirect: "error",
+        cache: "no-store",
+      });
       const url = new URL(request.url);
       if (url.origin !== base.origin || !url.pathname.startsWith(`${base.pathname}/`))
         throw new Error("API base origin/path override refused.");
       request.headers.set("Accept", "application/vnd.api+json");
       request.headers.set("Content-Type", "application/vnd.api+json");
       if (!["ko", "en"].includes(request.headers.get("Accept-Language") ?? ""))
-        request.headers.set("Accept-Language", "ko");
-      for (const name of ["Forwarded", "X-Forwarded-For", "X-Real-IP", "Authorization"])
+        request.headers.set("Accept-Language", locale());
+      for (const name of ["Forwarded", "X-Forwarded-For", "X-Real-IP", "Authorization", "Cookie"])
         request.headers.delete(name);
       const credentials = session?.credentials();
       if (credentials) request.headers.set("Authorization", `Bearer ${credentials.accessToken}`);
@@ -41,4 +50,5 @@ export function createApiClient(config: MobileEnv, session?: SessionPort) {
       return response;
     },
   });
+  return session ? bindSession(client, session) : client;
 }
