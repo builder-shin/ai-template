@@ -17,6 +17,7 @@ import {
 import { Button } from "../components/button";
 import { createNativeOAuth } from "./links";
 import { SessionLocale } from "./session/locale";
+import { RealtimeProvider } from "./realtime";
 
 function StorageNotice() {
   const { state, manager } = useSession();
@@ -40,6 +41,7 @@ export function Providers({ children }: PropsWithChildren) {
   const [scope] = useState(() => {
     const queryClient = createQueryClient();
     const config = runtimeConfig();
+    let cancelPending = async () => {};
     const manager = new SessionManager({
       store: createSessionStore(),
       transport: createSessionTransport(config, () => locale(i18n.language)),
@@ -47,14 +49,19 @@ export function Providers({ children }: PropsWithChildren) {
         void queryClient.cancelQueries();
         queryClient.clear();
       },
+      onRevoked: (generation) => {
+        if (manager.generation() === generation) void cancelPending().catch(() => undefined);
+      },
     });
+    const oauth = createNativeOAuth(config, manager);
+    cancelPending = () => oauth.cancel();
     return {
       queryClient,
       value: {
         manager,
         config,
         api: createApiClient(config, manager, () => locale(i18n.language)),
-        oauth: createNativeOAuth(config, manager),
+        oauth,
       },
     };
   });
@@ -65,6 +72,7 @@ export function Providers({ children }: PropsWithChildren) {
     <QueryClientProvider client={scope.queryClient}>
       <SessionProvider value={scope.value}>
         <SessionLocale />
+        <RealtimeProvider />
         <StorageNotice />
         {children}
       </SessionProvider>

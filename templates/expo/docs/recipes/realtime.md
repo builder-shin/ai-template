@@ -1,0 +1,11 @@
+# Foreground realtime
+
+`RealtimeProvider` owns one Socket.IO connection for the active authenticated session. Background, inactive and Android blur states close the socket, abort a pending ticket and cancel retry timers. Foreground obtains a fresh one-use `/realtime-tickets` grant, connects with `auth: {ticket}`, subscribes to `posts` and revalidates the current session's queries after acknowledgement. Access tokens never appear in socket URLs or transport options. A reverse-proxy path prefix becomes the Socket.IO path, rather than a namespace.
+
+Socket.IO's automatic reconnection is disabled because a consumed ticket cannot be reused. The owner retries with new tickets after 500 ms, then exponential delays capped at 30 seconds. Ordinary network failures preserve the refresh record. Connection leases and session generations reject callbacks from retired sockets, pending requests and timers. Stopping the provider removes all subscriptions and owned resources.
+
+Generated event names and payload types define the supported events. Runtime validation rejects malformed data. Events trigger authoritative reads; they never append remote objects to cached lists. Deleted/unpublished details are cleared before refetch. Role/status changes reset private post lists and details; profile-only changes preserve an open editor while refreshing its data. Session revocation cancels pending OAuth, clears queries and signs out. If revocation happens while the app is inactive, the next authoritative API request's definitive refresh rejection performs the same cleanup. A temporary offline error keeps the session recoverable.
+
+Tests control AppState and time and also connect the pinned client to the actual mock Socket.IO server. They cover background recovery, consumed/expired tickets, retry, late events after account changes, duplicate notifications, permission changes, revocation in foreground and missed revocation in background. Android/iOS device CI additionally verifies real AppState transitions; JavaScript tests and Metro exports do not establish native behavior.
+
+References: [React Native AppState](https://reactnative.dev/docs/appstate), [Socket.IO client options](https://socket.io/docs/v4/client-options/).

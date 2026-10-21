@@ -38,12 +38,16 @@ export function createHttpScope(base: string) {
     queries: { ...queryClient.getDefaultOptions().queries, gcTime: Infinity },
   });
   const language = () => locale(i18n.language);
+  let cancelPending = async () => {};
   const manager = new SessionManager({
     store,
     transport: createSessionTransport(config, language),
     onBoundary: () => {
       void queryClient.cancelQueries();
       queryClient.clear();
+    },
+    onRevoked: (generation) => {
+      if (manager.generation() === generation) void cancelPending().catch(() => undefined);
     },
   });
   const oauth = new OAuthController({
@@ -59,6 +63,7 @@ export function createHttpScope(base: string) {
     browser: async () => ({ type: "cancel" }),
   });
   const value = { config, manager, oauth, api: createApiClient(config, manager, language) };
+  cancelPending = () => oauth.cancel();
   return {
     value,
     store,

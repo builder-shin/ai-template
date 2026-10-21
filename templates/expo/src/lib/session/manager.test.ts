@@ -3,6 +3,25 @@ import { ApiError } from "../api/errors";
 import { deferred, memoryStore, passwordGrant, record, tokens } from "./test-fixtures";
 
 describe("secure session generation and persistence", () => {
+  test("definitive refresh revocation notifies pending-auth cleanup, while network loss preserves it", async () => {
+    for (const definitive of [true, false]) {
+      const store = memoryStore(),
+        onRevoked = jest.fn();
+      const grant = jest
+        .fn()
+        .mockResolvedValueOnce(tokens("a"))
+        .mockRejectedValueOnce(definitive ? new ApiError(401) : new TypeError("offline"));
+      const manager = new SessionManager({
+        store,
+        onRevoked,
+        transport: { grant, revoke: async () => {} },
+      });
+      await manager.signIn(passwordGrant);
+      await manager.refresh(manager.credentials()!);
+      expect(onRevoked).toHaveBeenCalledTimes(definitive ? 1 : 0);
+      expect(store.value === null).toBe(definitive);
+    }
+  });
   test("login suspends optional-auth queries until credentials commit and failed login settles anonymous", async () => {
     const entered = deferred<void>(),
       held = deferred<ReturnType<typeof tokens>>();

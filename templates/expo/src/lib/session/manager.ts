@@ -14,6 +14,7 @@ interface Options {
   store: SessionStore;
   transport: SessionTransport;
   onBoundary?: (generation: number) => void;
+  onRevoked?: (generation: number) => void;
 }
 export class SessionManager implements SessionPort {
   #snapshot: SessionSnapshot = Object.freeze({
@@ -197,6 +198,11 @@ export class SessionManager implements SessionPort {
       if (generation !== this.generation()) return null;
       if (error instanceof ApiError && [400, 401, 403].includes(error.status)) {
         const next = this.#boundary("anonymous");
+        try {
+          this.options.onRevoked?.(next);
+        } catch {
+          /* An observer must not prevent persisted credential removal. */
+        }
         try {
           await this.#persist(next, () => this.options.store.clear());
         } catch {
