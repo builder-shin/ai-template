@@ -283,12 +283,12 @@ export function writeCombo(
     verifyAppResolutions(locks, readFileSync(join(root, "pnpm-lock.yaml"), "utf8"), {
       typescriptPin: typescript,
     });
-    if (mobileSource) verifyMobileContract(root, mobileSource.lock);
+    if (!rootApps.length && mobileSource) verifyMobileContract(root, mobileSource.lock);
   };
   if (apiLock) verify();
   if (apiLock && apiWorkspaceSource) verifyApiBoundary(root, apiLock, apiWorkspaceSource);
   pnpm(root, ["install", "--frozen-lockfile"]);
-  if (mobileSource) verifyMobileContract(root, mobileSource.lock);
+  if (!rootApps.length && mobileSource) verifyMobileContract(root, mobileSource.lock);
   if (apiLock && apiWorkspaceSource) {
     verify();
     installApiBoundary(root, apiLock, apiWorkspaceSource, pnpm);

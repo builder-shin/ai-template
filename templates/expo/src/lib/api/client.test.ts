@@ -22,7 +22,7 @@ describe("confined JSON:API transport", () => {
       },
     });
     const request = fetcher.mock.calls[0]![0] as Request;
-    expect(request.url).toBe("http://localhost:4012/api/v1/posts");
+    expect(request.url).toBe(`${config.apiBaseUrl}/posts`);
     expect(request.headers.get("Accept")).toBe("application/vnd.api+json");
     expect(request.headers.get("Accept-Language")).toBe("en");
     for (const name of ["forwarded", "x-forwarded-for", "x-real-ip"])

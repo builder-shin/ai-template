@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { expect, it } from "vitest";
 import { parse, parseAllDocuments } from "yaml";
 import type { WorkspaceDocument } from "../src/workspace.ts";
+import type { LockDocument } from "../src/lock-graph.ts";
 import { createProject } from "../src/create.ts";
 import { parseArguments } from "../src/arguments.ts";
 import { comboFixture } from "./combo-fixture.ts";
@@ -157,3 +158,63 @@ it.each(["install --lockfile-only", "install --frozen-lockfile", "--filter mobil
     expect(readdirSync(parent)).toEqual([]);
   },
 );
+it("retains each installation boundary's optional peer context when only the root owns contract tools", () => {
+  const root = repository();
+  for (const [template, color] of [
+    ["nextjs", "7.2.0"],
+    ["expo", "10.2.2"],
+  ] as const) {
+    const file = `templates/${template}/pnpm-lock.yaml`,
+      source = readFileSync(join(root, file), "utf8");
+    const docs = parseAllDocuments(source),
+      doc = docs.at(-1);
+    if (!doc) throw new Error("Missing fixture lock");
+    const data = doc.toJS() as LockDocument;
+    const importer = data.importers["contract/mock"];
+    if (!importer) throw new Error("Missing fixture importer");
+    importer.dependencies = {
+      ...(importer.dependencies as Record<string, unknown>),
+      "socket.io": { specifier: "4.8.4", version: `4.8.4(supports-color@${color})` },
+    };
+    data.packages["socket.io@4.8.4"] = { resolution: { integrity: "socket-fixture" } };
+    data.packages[`supports-color@${color}`] = { resolution: { integrity: `color-${color}` } };
+    data.snapshots[`supports-color@${color}`] = {};
+    data.snapshots[`socket.io@4.8.4(supports-color@${color})`] = {
+      optionalDependencies: { "supports-color": color },
+    };
+    if (template === "expo") {
+      const app = data.importers["."];
+      if (!app) throw new Error("Missing app importer");
+      app.dependencies = {
+        ...(app.dependencies as Record<string, unknown>),
+        "socket.io": { specifier: "4.8.4", version: `4.8.4(supports-color@${color})` },
+      };
+    }
+    for (const section of ["importers", "packages", "snapshots"]) doc.set(section, data[section]);
+    write(root, file, source.slice(0, doc.range[0]) + doc.toString({ lineWidth: 0 }));
+  }
+  git(root, "add", "templates/nextjs/pnpm-lock.yaml", "templates/expo/pnpm-lock.yaml");
+  git(root, "commit", "-m", "chore: distinct native optional peers");
+  const target = join(temporaryFolder(), "native-peers");
+  createProject(
+    { target, name: "native-peers", template: "combo", frontends: ["web", "mobile"], git: false },
+    root,
+    { pnpm: () => undefined },
+  );
+  const rootDoc = parseAllDocuments(readFileSync(join(target, "pnpm-lock.yaml"), "utf8")).at(-1);
+  const mobileDoc = parseAllDocuments(
+    readFileSync(join(target, "apps/mobile/pnpm-lock.yaml"), "utf8"),
+  ).at(-1);
+  if (!rootDoc || !mobileDoc) throw new Error("Missing generated lock");
+  const outer = rootDoc.toJS() as LockDocument,
+    inner = mobileDoc.toJS() as LockDocument;
+  expect(outer.importers["contract/mock"]?.dependencies).toMatchObject({
+    "socket.io": { version: "4.8.4(supports-color@7.2.0)" },
+  });
+  expect(inner.importers["."]?.dependencies).toMatchObject({
+    "socket.io": { version: "4.8.4(supports-color@10.2.2)" },
+  });
+  expect(inner.snapshots["socket.io@4.8.4(supports-color@10.2.2)"]).toEqual({
+    optionalDependencies: { "supports-color": "10.2.2" },
+  });
+});
