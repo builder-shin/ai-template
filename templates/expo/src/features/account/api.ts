@@ -1,9 +1,26 @@
 import type { createApiClient } from "../../lib/api/client";
+import type { components } from "../../lib/api/generated/schema";
 export class AccountApi {
   constructor(private readonly client: ReturnType<typeof createApiClient>) {}
   async me(signal?: AbortSignal) {
-    const { data } = await this.client.GET("/me", { ...(signal ? { signal } : {}) });
+    const { data } = await this.client.GET("/me", {
+      params: { query: { include: "avatar" } },
+      ...(signal ? { signal } : {}),
+    });
     if (!data) throw new Error("Missing account response.");
+    return data;
+  }
+  async update(
+    id: string,
+    input: Pick<
+      components["schemas"]["UserMeUpdateDocument"]["data"],
+      "attributes" | "relationships"
+    >,
+  ) {
+    const { data } = await this.client.PATCH("/me", {
+      body: { data: { type: "users", id, ...input } },
+    });
+    if (!data) throw new Error("Missing updated account.");
     return data;
   }
   async sessions(page = 1, signal?: AbortSignal) {

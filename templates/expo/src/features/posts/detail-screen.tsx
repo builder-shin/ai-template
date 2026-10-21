@@ -10,6 +10,8 @@ import { Text } from "../../components/text";
 import { Button } from "../../components/button";
 import { Spinner } from "../../components/spinner";
 import { RequestError } from "../../components/request-state";
+import { FilePreview } from "../../components/file-preview";
+import { relatedFile } from "../../lib/upload";
 export function PostDetailScreen() {
   const params = useLocalSearchParams(),
     id = postId(params.id),
@@ -69,6 +71,15 @@ export function PostDetailScreen() {
           <Text accessibilityRole="header">{post.attributes.title}</Text>
           <Text>{authorLabel(post, query.data?.included, t("postUnknownAuthor"))}</Text>
           <Text>{t(post.attributes.status === "draft" ? "postDraft" : "postPublished")}</Text>
+          {post.relationships.coverImage.data && (
+            <FilePreview
+              file={relatedFile(query.data?.included, post.relationships.coverImage.data.id)}
+              label={t("postCover")}
+              retry={() => {
+                void query.refetch();
+              }}
+            />
+          )}
           <Text selectable>{post.attributes.body}</Text>
           {canEdit && (
             <>

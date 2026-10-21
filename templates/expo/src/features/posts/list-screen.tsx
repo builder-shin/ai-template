@@ -30,6 +30,7 @@ export function PostsListScreen() {
       ) : state.status === "authenticated" ? (
         <>
           <Button title={t("sessions")} onPress={() => router.push("/me/sessions")} />
+          <Button title={t("account")} onPress={() => router.push("/me")} />
           {me.data?.meta.permissions.includes("posts:create") && (
             <Button title={t("postNew")} onPress={() => router.push("/posts/new")} />
           )}

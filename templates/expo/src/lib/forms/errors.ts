@@ -3,6 +3,13 @@ import type { ErrorCode } from "../api/generated/error-codes";
 import type ko from "../i18n/messages/ko.json";
 
 export type MessageKey = keyof typeof ko;
+/** Only locally constructed errors can select a UI key; remote errors use generated codes below. */
+export class DisplayError extends Error {
+  constructor(readonly key: MessageKey) {
+    super("The operation could not be completed.");
+    this.name = "DisplayError";
+  }
+}
 const statusMessages: Partial<Record<number, MessageKey>> = {
   401: "signInRequired",
   403: "permissionDenied",
@@ -31,11 +38,16 @@ const messages = {
   "auth.oauth_code_invalid": "invalidLink",
   "auth.oauth_denied": "oauthDenied",
   "auth.oauth_failed": "error",
+  "file.too_large": "fileTooLarge",
+  "file.type_not_allowed": "fileTypeNotAllowed",
+  "file.quota_exceeded": "fileQuotaExceeded",
+  "file.upload_incomplete": "invalidUpload",
 } satisfies Partial<Record<ErrorCode, MessageKey>>;
 function codeKey(code: ErrorCode): MessageKey | undefined {
   return Object.hasOwn(messages, code) ? messages[code as keyof typeof messages] : undefined;
 }
 export function errorKey(error: unknown): MessageKey {
+  if (error instanceof DisplayError) return error.key;
   if (error instanceof ApiError)
     return (
       (error.errors[0] && codeKey(error.errors[0].code)) ?? statusMessages[error.status] ?? "error"

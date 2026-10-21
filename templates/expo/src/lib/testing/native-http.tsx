@@ -13,13 +13,15 @@ const host = globalThis as typeof globalThis & {
     typeof globalThis,
     "fetch" | "Request" | "Response" | "Headers" | "AbortController" | "AbortSignal"
   >;
-  __startMock: () => Promise<{ base: string; stop(): Promise<void> }>;
+  __startMock: (options?: {
+    fileUserQuota?: number;
+  }) => Promise<{ base: string; stop(): Promise<void> }>;
 };
 export function installNodeHttp() {
   for (const [name, value] of Object.entries(host.__nodeHttp))
     Object.defineProperty(globalThis, name, { value, writable: true, configurable: true });
 }
-export const startMock = () => host.__startMock();
+export const startMock = (options?: { fileUserQuota?: number }) => host.__startMock(options);
 export function createHttpScope(base: string) {
   const config = readPublicEnv(
     {

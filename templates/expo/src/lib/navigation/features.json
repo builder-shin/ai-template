@@ -1,6 +1,7 @@
 {
   "features": [{ "name": "posts", "path": "/", "routePrefix": "/posts", "titleKey": "posts" }],
   "protectedScreens": [
+    { "name": "me/index", "titleKey": "account" },
     { "name": "me/sessions", "titleKey": "sessions" },
     { "name": "posts/new", "titleKey": "postNew" },
     { "name": "posts/[id]/edit", "titleKey": "postEdit" }

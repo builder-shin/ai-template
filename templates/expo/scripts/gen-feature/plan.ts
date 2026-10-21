@@ -41,6 +41,7 @@ const goldenFiles = [
   "list-screen.tsx",
   "detail-screen.tsx",
   "editor-screen.tsx",
+  "cover-field.tsx",
   "index.ts",
   "schemas.test.ts",
   "editor-screen.test.tsx",

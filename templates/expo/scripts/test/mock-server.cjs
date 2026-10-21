@@ -8,7 +8,10 @@ const { startProcessTree, stopProcessTree } = require("../process-tree.mjs");
 const realFetch = fetch;
 
 // The Jest host owns this child and networking; SDK module mocks never replace them.
-exports.startMock = async function startMock() {
+exports.startMock = async function startMock(options = {}) {
+  const quota = options.fileUserQuota ?? 1073741824;
+  if (!Number.isSafeInteger(quota) || quota < 1 || quota > 1073741824)
+    throw new Error("Invalid test storage quota.");
   const root = process.cwd();
   const listener = createServer().listen(0, "127.0.0.1");
   await once(listener, "listening");
@@ -46,6 +49,7 @@ exports.startMock = async function startMock() {
         RATE_LIMIT_GLOBAL: "10000",
         RATE_LIMIT_LOGIN_IP: "1000",
         RATE_LIMIT_LOGIN_IDENTIFIER: "1000",
+        FILE_USER_QUOTA: String(quota),
         RATE_LIMIT_REGISTRATION_IP: "1000",
         RATE_LIMIT_MAIL_IP: "1000",
         RATE_LIMIT_MAIL_EMAIL: "1000",

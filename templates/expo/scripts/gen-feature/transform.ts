@@ -23,6 +23,7 @@ export function featureNames(name: string) {
       PostDetailScreen: `${pascal}DetailScreen`,
       PostEditorScreen: `${pascal}EditorScreen`,
       PostForm: `${pascal}Form`,
+      PostCoverField: `${pascal}CoverField`,
       PostListItem: `${pascal}ListItem`,
       usePosts: `use${pascal}List`,
       usePost: `use${pascal}`,
