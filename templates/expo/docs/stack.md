@@ -2,6 +2,8 @@
 
 SDK 58.0.16 / React 19.3.0 / React Native 0.88.0 / TypeScript 6.0.3. All direct dependencies are exact pins and the independent workspace retains minimumReleaseAge 1440, explicit allowBuilds and the TypeScript override. Native modules follow Expo 58.0.16's bundledNativeModules.json. No existing template pins are changed.
 
+CI runs `expo install --check` with step-scoped `EXPO_OFFLINE=1` against the installed SDK's bundled compatibility matrix. A real CLI regression verifies that an incompatible React Native version fails. The separate online `expo-doctor` step runs its other 19 checks with `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1`; the version check is supplied by the preceding matrix validation. Review new SDK recommendations by running both commands without these environment flags, then deliberately update pins after their release age is satisfied. This keeps a newly published remote patch recommendation from changing the meaning of a frozen SDK build.
+
 - [Expo SDK 58](https://docs.expo.dev/versions/v58.0.0/) and [Router](https://docs.expo.dev/router/introduction/).
 - [SecureStore](https://docs.expo.dev/versions/v58.0.0/sdk/securestore/), [AuthSession](https://docs.expo.dev/versions/v58.0.0/sdk/auth-session/), [ImagePicker](https://docs.expo.dev/versions/v58.0.0/sdk/imagepicker/).
 - [Jest/React Native testing](https://docs.expo.dev/develop/unit-testing/): jest-expo 58.0.11, Jest 30.5.2, RNTL 14.1.0 and test-renderer 1.3.0.

@@ -31,7 +31,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm exec expo install --check
+        env:
+          EXPO_OFFLINE: "1"
       - run: pnpm exec expo-doctor
+        env:
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
       - run: pnpm export --platform android
       - run: pnpm export --platform ios
   android:

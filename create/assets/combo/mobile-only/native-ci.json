@@ -37,10 +37,12 @@
         "run": "pnpm check"
       },
       {
-        "run": "pnpm exec expo install --check"
+        "run": "pnpm exec expo install --check",
+        "env": { "EXPO_OFFLINE": "1" }
       },
       {
-        "run": "pnpm exec expo-doctor"
+        "run": "pnpm exec expo-doctor",
+        "env": { "EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK": "1" }
       },
       {
         "run": "pnpm export --platform android"
