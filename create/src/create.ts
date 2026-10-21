@@ -20,6 +20,7 @@ import { renameStandalone } from "./standalone.ts";
 import { readComboInputs, writeCombo, type ComboTools, type ComboFrontend } from "./combo.ts";
 import { runPnpm } from "./pnpm.ts";
 import { verifyContracts } from "./contract.ts";
+import { frontendTemplate } from "./frontends.ts";
 
 function canonicalPath(path: string): string {
   if (existsSync(path)) return realpathSync.native(path);
@@ -92,7 +93,7 @@ export function createProject(
   validateTarget(options.target, worktrees);
   const frontends: readonly ComboFrontend[] = (options.frontends ?? ["web"]).map((name) => ({
     name,
-    template: name === "web" ? "nextjs" : "nextjs-admin",
+    template: frontendTemplate(name),
   }));
   const apps =
     options.template === "combo"

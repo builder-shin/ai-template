@@ -3,6 +3,10 @@ import { pathToFileURL } from "node:url";
 import { command, child } from "./process.mjs";
 import { stopProcessTree } from "./process-tree.mjs";
 import { readPublicEnv } from "../src/lib/config/env.ts";
+import { contractRoot } from "./contract-root.mjs";
+import { root } from "./process.mjs";
+import { join, relative } from "node:path";
+import defaults from "../mobile-defaults.json" with { type: "json" };
 
 export function devEnvironment(mode, platform, input) {
   const config = readPublicEnv({ ...input, EXPO_PUBLIC_API_MODE: mode }, platform, false);
@@ -27,13 +31,18 @@ export function devEnvironment(mode, platform, input) {
   };
 }
 
-export function devPlan(mode, port) {
+export function devPlan(mode, port, contract = "contract") {
   if (!["mock", "backend"].includes(mode)) throw new Error("Invalid API mode.");
   if (!Number.isInteger(port) || port < 1024 || port > 65535)
     throw new Error("Invalid Metro port.");
   return [
     ...(mode === "mock"
-      ? [{ role: "mock", argv: command("tsx", ["contract/mock/src/main.ts"]) }]
+      ? [
+          {
+            role: "mock",
+            argv: command("tsx", [join(contract, "mock/src/main.ts").replaceAll("\\", "/")]),
+          },
+        ]
       : []),
     { role: "metro", argv: command("expo", ["start", "--dev-client", "--port", String(port)]) },
   ];
@@ -55,9 +64,9 @@ async function main() {
   )
     throw new Error("Use pnpm dev [--platform android|ios].");
   const platform = args[1] ?? "android";
-  const mode = process.env.EXPO_PUBLIC_API_MODE ?? "mock";
+  const mode = process.env.EXPO_PUBLIC_API_MODE ?? defaults.mode;
   const port = Number(process.env.METRO_PORT ?? 8081);
-  const plans = devPlan(mode, port);
+  const plans = devPlan(mode, port, relative(root, contractRoot(root)));
   const runtime = devEnvironment(mode, platform, process.env);
   await assertPortFree(port);
   if (mode === "mock") await assertPortFree(4012);

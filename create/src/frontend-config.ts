@@ -14,7 +14,9 @@ export function selectFrontendSteps(source: string, frontends: readonly string[]
       );
       return [...references].every((match) => {
         const app = match[1] ?? match[2];
-        return (app !== "web" && app !== "admin") || frontends.includes(app);
+        return (
+          app === undefined || !["web", "admin", "mobile"].includes(app) || frontends.includes(app)
+        );
       });
     });
   }

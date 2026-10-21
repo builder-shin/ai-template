@@ -103,9 +103,9 @@ it.each([
   expect(git(target, "status", "--porcelain")).toBe("");
 });
 
-it("세 실제 템플릿의 파일 목록·이름·나머지 바이트와 git 상태를 확인한다", () => {
+it("실제 단독 템플릿의 파일 목록·이름·나머지 바이트와 git 상태를 확인한다", () => {
   const parent = temporaryFolder();
-  for (const template of ["fastapi", "nextjs", "nextjs-admin"] as const) {
+  for (const template of ["fastapi", "nextjs", "nextjs-admin", "expo"] as const) {
     const name = `aitpl-real-${template}`;
     const target = join(parent, name);
     createProject({ target, name, template, git: true }, source);
@@ -125,6 +125,19 @@ it("세 실제 템플릿의 파일 목록·이름·나머지 바이트와 git �
         bytes = Buffer.from(
           bytes.toString("utf8").replace(`"name": "${template}-template"`, `"name": "${name}"`),
         );
+      } else if (template === "expo" && file === "app-identity.json") {
+        bytes = Buffer.from(
+          JSON.stringify(
+            {
+              scheme: `aitpl-${name}`,
+              iosBundleIdentifier: `com.example.${name}`,
+              androidApplicationId: `com.example.${name.replaceAll("-", "_")}`,
+              name,
+            },
+            null,
+            2,
+          ) + "\n",
+        );
       } else if (template === "fastapi" && file === "compose.yaml") {
         expect(bytes.toString("utf8")).not.toMatch(/^name:/m);
         bytes = Buffer.from(
@@ -137,7 +150,7 @@ it("세 실제 템플릿의 파일 목록·이름·나머지 바이트와 git �
   }
 });
 
-it.each(["nextjs", "nextjs-admin"])(
+it.each(["nextjs", "nextjs-admin", "expo"])(
   "실제 CLI의 도움말·오류·git 생략을 확인한다: %s",
   (template) => {
     const parent = temporaryFolder();
@@ -145,9 +158,9 @@ it.each(["nextjs", "nextjs-admin"])(
     const help = run(["--help"], { ...process.env, PATH: "" });
     expect(help.status, help.stderr).toBe(0);
     expect(help.stdout).toContain("사용법");
-    expect(help.stdout).toContain("--template <fastapi|nestjs|nextjs|nextjs-admin>");
+    expect(help.stdout).toContain("--template <fastapi|nestjs|nextjs|nextjs-admin|expo>");
     expect(help.stdout).toContain("--api <fastapi|nestjs> [--web] [--admin]");
-    expect(help.stdout).toContain("조합은 --web, --admin 가운데 하나 이상이 필요하다");
+    expect(help.stdout).toContain("조합은 --web, --admin, --mobile 가운데 하나 이상이 필요하다");
     const usage = run(["--template", "bad"]);
     expect(usage.status).toBe(2);
     expect(usage.stderr).toMatch(/pnpm new: .+ — .+/);

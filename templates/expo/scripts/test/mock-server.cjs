@@ -5,6 +5,7 @@ const { pathToFileURL } = require("node:url");
 const { createRequire } = require("node:module");
 const { setTimeout: sleep } = require("node:timers/promises");
 const { startProcessTree, stopProcessTree } = require("../process-tree.mjs");
+const { contractRoot } = require("../contract-root.mjs");
 const realFetch = fetch;
 
 // The Jest host owns this child and networking; SDK module mocks never replace them.
@@ -31,7 +32,7 @@ exports.startMock = async function startMock(options = {}) {
     [
       "--import",
       pathToFileURL(localRequire.resolve("tsx")).href,
-      join(root, "contract/mock/src/main.ts"),
+      join(contractRoot(root), "mock/src/main.ts"),
     ],
     {
       cwd: root,

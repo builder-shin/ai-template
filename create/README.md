@@ -2,11 +2,11 @@
 
 저장소 루트에서 `pnpm new --help`로 단독·조합 생성 명령을 확인한다.
 
-단독 템플릿은 fastapi, nextjs, nextjs-admin이다. `pnpm new <대상> --template nextjs-admin [--name <이름>] [--no-git]`은 관리 앱을 만든다. 두 프론트는 package.json의 name과 README 제목만 프로젝트 이름으로 바꾸며 다음 명령은 pnpm setup이다. 단독 admin은 이름 admin을 허용한다.
+단독 템플릿은 fastapi, nestjs, nextjs, nextjs-admin, expo다. `pnpm new <대상> --template expo [--name <이름>] [--no-git]`은 iOS·Android 앱을 만든다. Expo의 package 이름·README·app-identity.json을 프로젝트 이름으로 설정한다. scheme은 aitpl-<이름>, iOS는 com.example.<이름>, Android는 하이픈을 밑줄로 바꾸며 Java 예약어에는 app_을 붙인다. 배포 전에 조직의 실제 bundle/application ID를 선택하고 네이티브 앱을 다시 빌드한다. 다음 명령은 pnpm setup이다.
 
 FastAPI가 있는 프로젝트는 이름 `fastapi`를 예약한다. 템플릿의 개발 compose 이름과 겹치므로 대상 폴더 이름과 `--name` 모두 거절하며, 다른 `--name`을 지정한다. 단독 nextjs·nextjs-admin은 허용한다. 다른 로컬 compose 프로젝트와도 이름이 겹치지 않도록 사용자가 고른다. 같은 이름은 볼륨을 공유한다.
 
-조합은 앱의 workspace 패키지 이름인 `api`·`web`·`admin`도 예약한다. 대상 폴더 이름과 `--name` 모두 오류 2로 거절하며, 다른 `--name`을 지정한다. 단독 프로젝트는 세 이름을 허용한다.
+조합은 앱의 workspace 패키지 이름인 `api`·`web`·`admin`·`mobile`도 예약한다. 대상 폴더 이름과 `--name` 모두 오류 2로 거절하며, 다른 `--name`을 지정한다. 단독 프로젝트는 네 이름을 허용한다.
 
 FastAPI 템플릿은 compose 이름을 고정하지 않는다. CLI는 생성한 `compose.yaml` 맨 앞에 설명 주석과 `name: <이름>`을 삽입하고 앱 이미지 값만 바꾼다. 템플릿에 이미 최상위 `name`이 있으면 지우도록 안내하고 실패한다.
 
@@ -37,3 +37,13 @@ E2E는 프론트의 app.config.json에서 ports.e2e를 읽고 api e2e:serve에 -
 MCP는 서버 이름으로 합친다. 같은 이름·같은 설정은 하나이며, 설정이 다르면 앱의 서버 설정을 맞추도록 안내하고 실패한다. 비밀 스캔은 생성 목록의 첫 프론트 도구로 한 번만 실행한다.
 
 생성한 조합에서는 루트·각 프론트 사본의 공통 파일을 함께 맞춘다: `tsconfig.base.json`, `docs/conventions/`.
+
+## 모바일 조합
+
+`--api fastapi|nestjs`와 `--web`, `--admin`, `--mobile`의 비어 있지 않은 조합을 지원한다. 예: `pnpm new ../my-product --api nestjs --web --admin --mobile`. 기존 web/admin의 루트 잠금과 NestJS API 독립 잠금은 유지한다. 모바일은 `apps/mobile/pnpm-workspace.yaml`·`pnpm-lock.yaml`로 독립 설치하며 앱 importer·정확한 native peer closure·도구 문서를 보존한다. standalone contract importer만 제거하고 도달하지 않는 계약 전용 노드만 정리한다. 루트는 `contract/*`를 한 번 설치한다.
+
+의존성이 없는 `tools/mobile` proxy가 기존 filter/Turbo 명령을 전달한다. `pnpm --filter mobile run check`·`gen` 등을 쓰고, 의존성 변경과 exec는 `pnpm --dir apps/mobile`로 한다. 생성 시 루트 frozen 설치 뒤 모바일 frozen 설치를 확인하고 web→admin→mobile 순서로 gen을 실행한다. 모바일 gen의 `contractRoot`는 `../../contract`이며 실제 API의 `../api/openapi.json`에서 클라이언트를 만든다. gen/check/native 작업은 캐시하지 않는다.
+
+`apps/mobile/mobile-defaults.json`에 공개 backend 개발 기본값을 추적한다. Android emulator는 10.0.2.2:8000, iOS simulator는 localhost:8000이며 명시한 EXPO_PUBLIC_* 값이 우선한다. `.env.example`만 바꾸고 실제 앱을 mock 모드로 남기지 않는다. release는 명시한 HTTPS 주소를 요구한다. 생성된 private OAuth callback은 API `.env.example` allowlist에 추가된다. 실제 배포 설정에서도 기존 web callback과 함께 유지한다. 서명된 스토리지 URL은 기기에서 닿는 host로 발급하며 클라이언트가 바꾸지 않는다.
+
+모바일에는 웹 Dockerfile·healthcheck가 없다. 실제 native E2E는 플랫폼·기기를 지정하며 조합의 E2E에는 기기에서 닿는 `E2E_MOBILE_API_URL`을 준비한다. Metro export를 네이티브 컴파일·기기 UI 검증으로 대신하지 않는다.

@@ -32,14 +32,14 @@ try {
     ]),
   );
   const expected = await generateFiles(root, readFileSync(resolve(root, config.openapi), "utf8"));
-  // The composition owns contract generation; standalone also verifies/updates its own copies.
+  // The selected contract is owned once: locally or at the composition root.
+  expected[relative(root, join(contract, "openapi.yaml")).replaceAll("\\", "/")] = readFileSync(
+    join(temporary, "openapi.yaml"),
+    "utf8",
+  );
+  expected[relative(root, join(contract, "mock/src/generated/api.ts")).replaceAll("\\", "/")] =
+    readFileSync(join(temporary, "mock.ts"), "utf8");
   if (config.contractRoot === "contract") {
-    expected[relative(root, join(contract, "openapi.yaml")).replaceAll("\\", "/")] = readFileSync(
-      join(temporary, "openapi.yaml"),
-      "utf8",
-    );
-    expected[relative(root, join(contract, "mock/src/generated/api.ts")).replaceAll("\\", "/")] =
-      readFileSync(join(temporary, "mock.ts"), "utf8");
     Object.assign(expected, await generateFiles(root, expected["contract/openapi.yaml"]!));
   }
   writeGenerated(root, expected, process.argv.includes("--check"));

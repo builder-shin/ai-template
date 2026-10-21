@@ -51,6 +51,7 @@
 - `check`의 빠른 경로(포맷, 린트, 타입, 변경 관련 테스트, 생성물 최신 여부)는 Stop hook이 쓰고, 전체 `check`는 pre-push와 CI가 돌린다.
 - 인프라가 필요한 테스트 전에 인프라가 떠 있는지 확인하고, 꺼져 있으면 "`setup`을 실행하라"며 바로 실패한다.
 - 출력: 성공은 한 줄, 실패는 `파일:줄 규칙 — 고치는 방법`. 커스텀 규칙의 메시지는 "대신 이렇게 하라"로 쓴다.
+- Expo는 iOS·Android native frontend다. `export`는 Metro 번들이며 `build`는 소유한 임시 사본의 네이티브 컴파일, `test:e2e`는 실제 emulator/simulator/device UI다. 루트 검사는 Expo 설치 없이 구조를 확인하고 독립 Expo check가 전체 JS·타입·하네스를 확인한다. 조합의 모바일은 별도 pnpm 경계와 의존성 없는 root task proxy를 사용하며 루트 계약 하나를 참조한다.
 
 ## 기계적 강제
 

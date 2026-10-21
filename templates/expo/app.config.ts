@@ -10,8 +10,8 @@ if (
   throw new Error("Unsupported public configuration key. Never expose secrets.");
 
 const config: ExpoConfig = {
-  name: "Expo Template",
-  slug: "expo-template",
+  name: "name" in identity && typeof identity.name === "string" ? identity.name : "Expo Template",
+  slug: "name" in identity && typeof identity.name === "string" ? identity.name : "expo-template",
   version: "1.0.0",
   scheme: identity.scheme,
   platforms: ["ios", "android"],

@@ -676,6 +676,15 @@
           "path": "scripts/tools/betterleaks.ts"
         }
       ]
+    },
+    {
+      "source": "create/src/mobile-identity.ts",
+      "targets": [
+        {
+          "template": "expo",
+          "path": "src/lib/config/identity.ts"
+        }
+      ]
     }
   ]
 }

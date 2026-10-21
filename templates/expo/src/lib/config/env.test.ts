@@ -1,5 +1,6 @@
 import { readPublicEnv } from "./env";
 import { nativeIdentity } from "./identity";
+import defaults from "../../../mobile-defaults.json";
 
 describe("native public configuration", () => {
   const release = {
@@ -13,8 +14,9 @@ describe("native public configuration", () => {
   test.each([
     ["android", "http://10.0.2.2:4012/api/v1"],
     ["ios", "http://localhost:4012/api/v1"],
-  ] as const)("%s has a reachable mock default", (platform, url) => {
-    expect(readPublicEnv({}, platform, false).apiBaseUrl).toBe(url);
+  ] as const)("%s uses the tracked platform default", (platform, url) => {
+    const configured = defaults[platform] as { apiBaseUrl?: string };
+    expect(readPublicEnv({}, platform, false).apiBaseUrl).toBe(configured.apiBaseUrl ?? url);
   });
 
   test("preserves explicit device endpoints and removes trailing slash", () => {
