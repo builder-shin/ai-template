@@ -30,6 +30,20 @@ const config: ExpoConfig = {
       },
     ],
     "expo-localization",
+    [
+      "expo-dev-client",
+      {
+        ios:
+          process.env.NATIVE_E2E_BUILD === "1" && process.env.NATIVE_BUILD_CONFIGURATION === "debug"
+            ? {
+                launchMode: "launcher",
+                skipOnboarding: true,
+                showMenuAtLaunch: false,
+                toolsButton: false,
+              }
+            : {},
+      },
+    ],
     "./plugins/native-network.cjs",
   ],
 };

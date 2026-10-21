@@ -25,6 +25,35 @@ test("external-app confirmations expose their kind without exposing the target n
   }
 });
 
+test("SDK error diagnostics preserve public source frames and controls without private screen values", () => {
+  const result = pickerHierarchy(
+    JSON.stringify({
+      children: [
+        { attributes: { text: "Uncaught Error" } },
+        { attributes: { text: "Cannot read properties of undefined (reading 'private-value')" } },
+        {
+          attributes: {
+            accessibilityText:
+              "C:/Users/private-person/src/features/auth/verify-screen.tsx:12:8 private-value",
+          },
+        },
+        { attributes: { "resource-id": "button-Verify email" } },
+        {
+          attributes: {
+            "resource-id": "button-private@example.com",
+            text: "src/private-project.tsx:2 private-value",
+          },
+        },
+      ],
+    }),
+  );
+  assert.match(result, /Uncaught Error/);
+  assert.match(result, /Runtime value error/);
+  assert.match(result, /Source frame: src\/features\/auth\/verify-screen\.tsx:12/);
+  assert.match(result, /button-Verify email/);
+  assert.doesNotMatch(result, /private-value|private-person|private-project|private@example/);
+});
+
 test("failure diagnostics use the paired stored hierarchy without reopening an iOS driver or exposing raw values", () => {
   const source = mkdtempSync(join(tmpdir(), "aitpl-saved-hierarchy-"));
   const owned = prepareNativeProject(source);

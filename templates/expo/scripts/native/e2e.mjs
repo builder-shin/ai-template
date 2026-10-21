@@ -58,6 +58,9 @@ export async function runNative(options, ports = {}) {
     CI: "1",
     EXPO_NO_DOTENV: "1",
     EXPO_NO_TYPESCRIPT_SETUP: "1",
+    ...(plan.platform === "ios"
+      ? { NATIVE_E2E_BUILD: "1", NATIVE_BUILD_CONFIGURATION: "debug" }
+      : {}),
   };
   const java = javaExecutable(env),
     version = await execute([java, "-version"], { capture: true, signal });

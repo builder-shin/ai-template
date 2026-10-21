@@ -23,4 +23,19 @@ export async function verifyArtifactIdentity(plan, artifact, ports = {}) {
       : result.stdout.trim();
   if (result.code !== 0 || identity !== plan.bundleId)
     throw new Error("Native artifact identity differs from the app owned by this run.");
+  if (plan.platform === "ios") {
+    const mode = await execute(
+      [
+        "/usr/libexec/PlistBuddy",
+        "-c",
+        "Print :DEV_CLIENT_TRY_TO_LAUNCH_LAST_BUNDLE",
+        join(artifact, "Info.plist"),
+      ],
+      { capture: true, signal: ports.signal },
+    );
+    if (mode.code !== 0 || mode.stdout.trim() !== "false")
+      throw new Error(
+        "iOS E2E requires a launcher-only debug app; rebuild with NATIVE_E2E_BUILD=1.",
+      );
+  }
 }

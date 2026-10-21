@@ -39,13 +39,58 @@ export function pickerHierarchy(raw) {
       "No development servers found",
       "Something went wrong",
       "Developer menu",
+      "Uncaught Error",
+      "Console Error",
+      "Build Error",
+      "Resolution Error",
+      "Server Error",
+      "Call Stack",
+      "Component Stack",
+      "Source",
+      "Copy",
+      "Dismiss error",
+      "Dismiss all",
+      "Minimize errors",
+      "Reload JS",
+      "Sitemap",
+      "Unmatched Route",
+      "Source code explorer",
+      "Components",
     ]);
   for (const value of [...Object.values(en), ...Object.values(ko)])
     if (typeof value === "string") labels.add(value);
+  const publicFrames = [
+    "src/app/_layout.tsx",
+    "src/app/+native-intent.ts",
+    "src/app/verify-email.tsx",
+    "src/app/reset-password.tsx",
+    "src/app/login.tsx",
+    "src/app/oauth/callback.tsx",
+    "src/features/auth/verify-screen.tsx",
+    "src/features/auth/reset-screen.tsx",
+    "src/features/auth/login-screen.tsx",
+    "src/lib/providers.tsx",
+    "src/lib/links/intent.ts",
+    "src/lib/links/parse.ts",
+  ];
   function label(value) {
-    if (!value) return undefined;
+    if (typeof value !== "string" || !value) return undefined;
+    if (labels.has(value)) return value;
+    const frame = publicFrames.find((path) => value.includes(path));
+    if (frame) {
+      const line = Number(/^:(\d+)/.exec(value.slice(value.indexOf(frame) + frame.length))?.[1]);
+      return `Source frame: ${frame}${line > 0 && line <= 400 ? `:${line}` : ""}`;
+    }
     if (/^Photo taken on /.test(value)) return "Photo available";
     if (/^open(?: this (?:page|link))? in .+\?$/i.test(value)) return "External app confirmation";
+    if (/cannot read (?:properties|property)|undefined is not|is not a function/i.test(value))
+      return "Runtime value error";
+    if (/rendered (?:more|fewer) hooks|change in the order of hooks/i.test(value))
+      return "React hook order error";
+    if (/navigate before mounting|navigation context|no navigation object/i.test(value))
+      return "Navigation initialization error";
+    if (/cannot find native module|native module.*(?:null|not found)/i.test(value))
+      return "Native module unavailable";
     if (
       /could not connect|unable to connect|cannot connect|connection refused|network request failed|failed to load|unable to load|could not load/i.test(
         value,
@@ -53,10 +98,15 @@ export function pickerHierarchy(raw) {
     )
       return "Development server connection failure";
     if (/local network|find and connect to/i.test(value)) return "Local network permission";
-    if (/unmatched route|doesn't exist|application error/i.test(value)) return "Application error";
+    if (
+      /unmatched route|doesn't exist|application error|uncaught error|render error|exception in hostfunction/i.test(
+        value,
+      )
+    )
+      return "Application error";
     if (/development servers|development build|expo go|connect to.*server|enter.*url/i.test(value))
       return "Development launcher";
-    return labels.has(value) ? value : "<other text>";
+    return "<other text>";
   }
   function visit(node) {
     if (nodes.length >= 120 || !node || typeof node !== "object") return;
@@ -67,6 +117,11 @@ export function pickerHierarchy(raw) {
         bounds: /^\[\d+,\d+\]\[\d+,\d+\]$/.test(a.bounds ?? "") ? a.bounds : undefined,
         text: label(a.text),
         accessibility: label(a.accessibilityText),
+        resource:
+          /^(?:button|field)-/.test(a["resource-id"] ?? "") &&
+          labels.has(a["resource-id"].replace(/^(?:button|field)-/, ""))
+            ? a["resource-id"]
+            : undefined,
         clickable: a.clickable === "true",
         enabled: a.enabled === "true",
       });
