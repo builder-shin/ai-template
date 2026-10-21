@@ -19,7 +19,7 @@ Release builds require explicit `EXPO_PUBLIC_API_MODE=backend` and all three HTT
 
 E2E requires an explicit online device with the app absent. Inventory, occupied ports and existing ADB reverse mappings are checked before builds/services. The runner never rebinds another mapping. It installs the app, starts owned services, runs seven ordered Maestro flows, uninstalls its app and removes only its reverse mappings and owned directories. Interrupted commands stop their owned process trees with a bounded grace period and preserve signal exit codes. A mapping retargeted during a run is preserved and reported as an ownership error.
 
-On iOS, opening private links can display an Open/Cancel system confirmation before the app receives the link. Every explicit link step runs the shared iOS confirmation flow; it requires both buttons before accepting Open. Android and links without that confirmation continue directly.
+On iOS, the first Maestro flow owns the initial URL; the runner does not open it beforehand. Opening private links can display an Open/Cancel system confirmation before the app receives the link. Every explicit link step runs the shared iOS confirmation flow; it requires both buttons before accepting Open, handles at most two consecutive confirmations and fails if another remains. Android and links without that confirmation continue directly.
 
 The checked Maestro 2.11.0 archive runs through Java directly on Windows as well as macOS/Linux. A native debug artifact can be reused explicitly with an absolute `E2E_NATIVE_ARTIFACT` path. The runner verifies its actual package identity with pinned Android Build Tools or the iOS plist before installing it. It also verifies initial absence and owns only the subsequent installation.
 

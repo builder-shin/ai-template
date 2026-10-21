@@ -11,6 +11,20 @@ import {
   hierarchyDiagnostic,
 } from "./native/logs.mjs";
 
+test("external-app confirmations expose their kind without exposing the target name", () => {
+  for (const prompt of ["Open this page in “Private project”?", "Open in “Private project”?"]) {
+    const result = pickerHierarchy(
+      JSON.stringify({
+        attributes: { accessibilityText: "Expo Template" },
+        children: [{ attributes: { text: prompt } }],
+      }),
+    );
+    assert.match(result, /Expo Template/);
+    assert.match(result, /External app confirmation/);
+    assert.doesNotMatch(result, /Private project/);
+  }
+});
+
 test("failure diagnostics use the paired stored hierarchy without reopening an iOS driver or exposing raw values", () => {
   const source = mkdtempSync(join(tmpdir(), "aitpl-saved-hierarchy-"));
   const owned = prepareNativeProject(source);

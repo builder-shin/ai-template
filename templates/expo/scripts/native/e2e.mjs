@@ -210,22 +210,23 @@ export async function runNative(options, ports = {}) {
       );
     const windows = await prepareWindowsMaestro(java, flows, { execute, signal });
     const launch = `${env.EXPO_PUBLIC_APP_SCHEME}://expo-development-client/?url=${encodeURIComponent(`http://127.0.0.1:${plan.metroPort}`)}`;
-    const launchCommand =
-      plan.platform === "android"
-        ? [
-            ...device,
-            "shell",
-            "am",
-            "start",
-            "-W",
-            "-a",
-            "android.intent.action.VIEW",
-            "-d",
-            launch,
-            plan.bundleId,
-          ]
-        : ["xcrun", "simctl", "openurl", plan.deviceId, launch];
-    await run(launchCommand, { capture: true });
+    // iOS's first flow owns the initial URL; a second open can queue another OS confirmation.
+    if (plan.platform === "android")
+      await run(
+        [
+          ...device,
+          "shell",
+          "am",
+          "start",
+          "-W",
+          "-a",
+          "android.intent.action.VIEW",
+          "-d",
+          launch,
+          plan.bundleId,
+        ],
+        { capture: true },
+      );
     for (const [index, flow] of plan.flows.entries()) {
       try {
         const result = await run(

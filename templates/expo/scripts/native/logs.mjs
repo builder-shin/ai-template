@@ -27,6 +27,7 @@ export function pickerHierarchy(raw) {
       "Safari",
       "Settings",
       "Expo Mobile",
+      "Expo Template",
       "Get Started",
       "Get started",
       "Development servers",
@@ -44,6 +45,7 @@ export function pickerHierarchy(raw) {
   function label(value) {
     if (!value) return undefined;
     if (/^Photo taken on /.test(value)) return "Photo available";
+    if (/^open(?: this (?:page|link))? in .+\?$/i.test(value)) return "External app confirmation";
     if (
       /could not connect|unable to connect|cannot connect|connection refused|network request failed|failed to load|unable to load|could not load/i.test(
         value,
