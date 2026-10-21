@@ -1,0 +1,18 @@
+{
+  "appName": "AI Template",
+  "posts": "Posts",
+  "account": "Account",
+  "login": "Sign in",
+  "logout": "Sign out",
+  "email": "Email",
+  "password": "Password",
+  "name": "Name",
+  "save": "Save",
+  "cancel": "Cancel",
+  "retry": "Retry",
+  "empty": "No items yet.",
+  "error": "The request could not be completed. Please retry.",
+  "offline": "Check your connection and retry.",
+  "activity": "Activity in progress",
+  "language": "Language"
+}

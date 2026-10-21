@@ -1,0 +1,15 @@
+pnpm-lock.yaml
+contract/
+docs/conventions/
+.claude/hooks/pre-tool-use.mjs
+scripts/process-tree.mjs
+scripts/tools/
+**/generated/**
+node_modules/
+.expo/
+dist/
+android/
+ios/
+coverage/
+.cache/
+artifacts/

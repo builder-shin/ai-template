@@ -1,0 +1,1 @@
+{ "name": "expo", "kind": "frontend", "runner": "pnpm", "goldenModule": "src/features/posts" }

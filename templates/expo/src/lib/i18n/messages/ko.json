@@ -1,0 +1,18 @@
+{
+  "appName": "AI Template",
+  "posts": "글",
+  "account": "내 정보",
+  "login": "로그인",
+  "logout": "로그아웃",
+  "email": "이메일",
+  "password": "비밀번호",
+  "name": "이름",
+  "save": "저장",
+  "cancel": "취소",
+  "retry": "다시 시도",
+  "empty": "아직 항목이 없습니다.",
+  "error": "요청을 완료하지 못했습니다. 다시 시도해 주세요.",
+  "offline": "연결을 확인한 뒤 다시 시도해 주세요.",
+  "activity": "작업 진행 중",
+  "language": "언어"
+}

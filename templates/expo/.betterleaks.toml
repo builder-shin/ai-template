@@ -1,0 +1,14 @@
+[extend]
+useDefault = true
+
+# Only generated contract copies are excluded; handwritten code remains scanned.
+[[allowlists]]
+paths = ['''^contract/''', '''(^|/)generated/''']
+
+[[allowlists]]
+description = "Public UI label, not a credential"
+condition = "AND"
+targetRules = ["generic-password"]
+paths = ['''^src/lib/i18n/messages/en\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"password": "Password",?\s*$'''] # betterleaks:allow
