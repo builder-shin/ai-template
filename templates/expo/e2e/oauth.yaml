@@ -23,6 +23,9 @@ appId: __BUNDLE_ID__
 - tapOn: { id: "button-Continue with Google" }
 - runScript: { file: bridge.js, env: { ACTION: await-provider } }
 - stopApp
+- runFlow:
+    when: { platform: Android, visible: "Close tab" }
+    commands: [{ tapOn: "Close tab" }]
 - runScript: { file: bridge.js, env: { ACTION: complete-provider } }
 - openLink: ${output.result.link}
 - extendedWaitUntil: { visible: { id: "button-Account" }, timeout: 60000 }

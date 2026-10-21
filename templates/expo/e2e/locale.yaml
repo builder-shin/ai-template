@@ -17,5 +17,6 @@ appId: __BUNDLE_ID__
 - tapOn: { id: "button-Sessions" }
 - scrollUntilVisible: { element: { id: "button-Sign out all sessions" } }
 - tapOn: { id: "button-Sign out all sessions" }
+- scrollUntilVisible: { element: { id: "button-Confirm" } }
 - tapOn: { id: "button-Confirm" }
 - assertVisible: { id: "button-Sign in" }

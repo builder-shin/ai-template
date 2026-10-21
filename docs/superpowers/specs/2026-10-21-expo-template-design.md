@@ -1,7 +1,7 @@
 # Expo 모바일 템플릿 설계 제안
 
 - 작성일: 2026-10-21
-- 상태: B안 승인됨. 사용자가 2026-10-21 이 설계 문서를 검토한 뒤 “승인한다”고 답했다. iOS·Android 업무 예제와 단독/모바일 조합 생성 범위를 확정한다. 구현 계획은 별도 검토한다.
+- 상태: B안 승인됨. 사용자가 2026-10-21 이 설계 문서를 검토한 뒤 “승인한다”고 답했다. iOS·Android 업무 예제와 단독/모바일 조합 생성 범위를 확정했고, 이후 구현 계획을 검토한 뒤 Native 인라인 실행을 지시했다. 현재 증거는 [구현·검증 기록](../reports/2026-10-21-expo-template.md)을 따른다.
 - 기준: main `a6f1c9918b559b3ff12abdb0b3911e1dffec97eb`, 작업 브랜치 `feature/expo-template`.
 - 목적: 기존 네 템플릿처럼 AI 코딩 규칙·골든·생성기·검사가 갖춰진 독립 Expo 프로젝트를 제공한다.
 - 승인 시점에는 제품 코드·의존성 설치·네이티브 프로젝트 생성을 수행하지 않았다.
@@ -84,7 +84,7 @@ templates/expo/
 
 - OAuth는 기존 API authorize → 시스템 브라우저 → 앱 콜백 → 기존 oauthCode+codeVerifier 교환을 사용한다.
 - 앱 복귀 주소·PKCE verifier·만료한 진행 상태를 검증한다. 취소·오류·중복 콜백·cold start를 처리한다.
-- NestJS의 `OAUTH_REDIRECT_URIS`는 현재 HTTP(S)만 받는다. 두 API와 목에 동일한 콜백 정책을 적용하고, 명시적으로 설정한 앱 scheme의 정확한 주소만 추가로 허용한다. 기존 웹 주소와 정확한 문자열 allowlist를 유지하며 wildcard·임의 returnTo를 허용하지 않는다.
+- 설계 기준 main의 NestJS `OAUTH_REDIRECT_URIS`는 HTTP(S)만 받았다. 구현에서는 두 API와 목에 동일한 콜백 정책을 적용하고, 명시적으로 설정한 앱 scheme의 정확한 주소만 추가로 허용한다. 기존 웹 주소와 정확한 문자열 allowlist를 유지하며 wildcard·임의 returnTo를 허용하지 않는다.
 - 앱 scheme·bundle identifier·Android applicationId는 생성 이름에서 유효한 값으로 만들고 레시피에서 변경 지점을 설명한다. OAuth 콜백 설정도 함께 맞춘다.
 - 운영 메일은 기존 HTTPS 링크와 iOS Universal Links·Android App Links를 연결한다. 도메인 연동 파일·설정 예시를 제공한다. 개발·CI는 실제 목 메일의 토큰을 검증한 뒤 앱 링크로 여는 전용 하네스를 사용한다.
 - 앱 링크는 허용한 경로와 매개변수만 해석한다. URL에 있는 사용자·권한 값을 인증 사실로 사용하지 않는다.

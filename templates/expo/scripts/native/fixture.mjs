@@ -175,11 +175,13 @@ export async function startFixture({
       return { ok: true, size: fixtureImage.length };
     },
     "inspect-post": async () => {
+      const access = await token();
+      const account = await jsonRequest("/me", "GET", undefined, access);
       const posts = await jsonRequest(
-        `/posts?filter[q]=${encodeURIComponent(data.title)}`,
+        `/posts?filter[q]=${encodeURIComponent(data.title)}&filter[author]=${encodeURIComponent(account.data.id)}`,
         "GET",
         undefined,
-        await token(),
+        access,
       );
       const post = posts.data.find((item) => item.attributes.title === data.title);
       if (!post) throw new Error("Native post was not stored.");

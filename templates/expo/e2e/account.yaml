@@ -18,5 +18,7 @@ appId: __BUNDLE_ID__
 - assertVisible: Current session
 - scrollUntilVisible: { element: { id: "button-Sign out other sessions" } }
 - tapOn: { id: "button-Sign out other sessions" }
+- scrollUntilVisible: { element: { id: "button-Cancel" } }
 - tapOn: { id: "button-Cancel" }
+- scrollUntilVisible: { element: { text: "Current session" }, direction: UP }
 - assertVisible: Current session

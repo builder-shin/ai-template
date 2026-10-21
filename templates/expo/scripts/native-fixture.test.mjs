@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { startFixture } from "./native/fixture.mjs";
+import { startFixture, fixtureImage } from "./native/fixture.mjs";
 import { createHash } from "node:crypto";
 import { readPublicEnv } from "../src/lib/config/env.ts";
 const { startMock } = createRequire(import.meta.url)("./test/mock-server.cjs");
-test("owned bridge adapts actual verification/reset mail and asserts backend profile", async () => {
+test("owned bridge verifies mail, owner drafts and the exact selected image bytes", async () => {
   const mock = await startMock();
   let bridge;
   try {
@@ -58,6 +58,67 @@ test("owned bridge adapts actual verification/reset mail and asserts backend pro
       201,
     );
     assert.equal((await call("inspect-account")).name, data.name);
+    const grant = await post("/sessions", "sessions", {
+      grantType: "password",
+      email: data.email,
+      password: data.password,
+    });
+    assert.equal(grant.status, 201);
+    const access = (await grant.json()).data.attributes.accessToken;
+    const created = await fetch(mock.base + "/api/v1/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/vnd.api+json", Authorization: `Bearer ${access}` },
+      body: JSON.stringify({
+        data: {
+          type: "posts",
+          attributes: { title: data.title, body: "Native body from the device", status: "draft" },
+        },
+      }),
+    });
+    assert.equal(created.status, 201);
+    assert.deepEqual(await call("inspect-post"), {
+      status: "draft",
+      body: "Native body from the device",
+    });
+    const request = async (path, method, body) => {
+      const response = await fetch(mock.base + "/api/v1" + path, {
+        method,
+        headers: { "Content-Type": "application/vnd.api+json", Authorization: `Bearer ${access}` },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+      assert.ok(response.ok);
+      return response.json();
+    };
+    const account = await request("/me", "GET");
+    async function attach(bytes) {
+      const pending = await request("/files", "POST", {
+        data: {
+          type: "files",
+          attributes: { filename: "native.png", contentType: "image/png", size: bytes.length },
+        },
+      });
+      const upload = pending.data.meta.upload;
+      assert.ok(
+        (await fetch(upload.url, { method: "PUT", headers: upload.headers, body: bytes })).ok,
+      );
+      const id = pending.data.id;
+      await request("/files/" + id, "PATCH", {
+        data: { type: "files", id, attributes: { status: "ready" } },
+      });
+      await request("/me", "PATCH", {
+        data: {
+          type: "users",
+          id: account.data.id,
+          relationships: { avatar: { data: { type: "files", id } } },
+        },
+      });
+    }
+    await attach(fixtureImage);
+    assert.deepEqual(await call("inspect-upload"), { ok: true, size: fixtureImage.length });
+    const changed = Buffer.from(fixtureImage);
+    changed[0] ^= 1;
+    await attach(changed);
+    assert.equal((await fetch(bridge.url + "/inspect-upload")).status, 500);
     assert.equal(
       (await post("/password-reset-requests", "password-reset-requests", { email: data.email }))
         .status,
