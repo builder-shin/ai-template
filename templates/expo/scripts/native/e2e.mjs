@@ -15,7 +15,7 @@ import { cleanNativeProject } from "./owned.mjs";
 import { contractRoot } from "../contract-root.mjs";
 import { readPublicEnv } from "../../src/lib/config/env.ts";
 import { redactNative } from "./redact.mjs";
-import { maestroFailureLog, pickerHierarchy } from "./logs.mjs";
+import { maestroFailureLog, maestroFailureHierarchy, hierarchyDiagnostic } from "./logs.mjs";
 import { prepareWindowsMaestro } from "./windows.mjs";
 import { verifyArtifactIdentity } from "./artifact.mjs";
 import { startStorageProxy } from "./storage-proxy.mjs";
@@ -101,7 +101,12 @@ export async function runNative(options, ports = {}) {
     } else
       artifact = (
         await buildNative(
-          { platform: plan.platform, configuration: "debug", runId: plan.runId },
+          {
+            platform: plan.platform,
+            configuration: "debug",
+            runId: plan.runId,
+            ...(plan.platform === "ios" ? { deviceId: plan.deviceId } : {}),
+          },
           { env, signal, execute },
         )
       ).artifact;
@@ -221,7 +226,7 @@ export async function runNative(options, ports = {}) {
           ]
         : ["xcrun", "simctl", "openurl", plan.deviceId, launch];
     await run(launchCommand, { capture: true });
-    for (const flow of plan.flows) {
+    for (const [index, flow] of plan.flows.entries()) {
       try {
         const result = await run(
           maestroCommand(
@@ -232,6 +237,7 @@ export async function runNative(options, ports = {}) {
               plan.deviceId,
               "--no-ansi",
               "test",
+              ...(index > 0 ? ["--no-reinstall-driver"] : []),
               "--test-output-dir",
               join(flows.parent, "raw-maestro", flow),
               "--debug-output",
@@ -246,23 +252,33 @@ export async function runNative(options, ports = {}) {
       } catch (error) {
         if (!signal?.aborted) {
           try {
-            const hierarchy = await run(
-              maestroCommand(
-                java,
-                installation,
-                ["--device", plan.deviceId, "--no-ansi", "hierarchy", "--no-reinstall-driver"],
-                windows,
-              ),
-              {
-                capture: true,
-                signal: AbortSignal.any([AbortSignal.timeout(15000), ...(signal ? [signal] : [])]),
-              },
-            );
-            const diagnostic = pickerHierarchy(hierarchy.stdout) + "\n";
-            appendFileSync(log, diagnostic);
-            process.stdout.write(diagnostic);
+            let diagnostic = maestroFailureHierarchy(flows, flow);
+            if (!diagnostic) {
+              const hierarchy = await execute(
+                maestroCommand(
+                  java,
+                  installation,
+                  ["--device", plan.deviceId, "--no-ansi", "hierarchy", "--no-reinstall-driver"],
+                  windows,
+                ),
+                {
+                  capture: true,
+                  cwd: plan.root,
+                  env,
+                  secrets: fixture.secrets,
+                  signal: AbortSignal.any([
+                    AbortSignal.timeout(plan.platform === "ios" ? 180000 : 15000),
+                    ...(signal ? [signal] : []),
+                  ]),
+                },
+              );
+              diagnostic = hierarchyDiagnostic(hierarchy);
+            }
+            appendFileSync(log, diagnostic + "\n");
+            process.stdout.write(diagnostic + "\n");
           } catch {
             appendFileSync(log, "Picker hierarchy unavailable.\n");
+            process.stdout.write("Picker hierarchy unavailable.\n");
           }
         }
         appendFileSync(log, maestroFailureLog(flows, flow, fixture.secrets));

@@ -13,7 +13,7 @@ import { pathToFileURL } from "node:url";
 import { root, pnpmCommand } from "../process.mjs";
 import { prepareNativeProject, cleanNativeProject } from "./owned.mjs";
 import { executeOwned } from "./command.mjs";
-import { buildOptions, buildEnvironment } from "./build-config.mjs";
+import { buildOptions, buildEnvironment, iosBuildTarget } from "./build-config.mjs";
 import {
   buildTools,
   gradleCommand,
@@ -41,6 +41,8 @@ export async function buildNative(input, ports = {}) {
     "--run-id",
     input.runId,
   ]);
+  const iosTarget =
+    options.platform === "ios" ? iosBuildTarget(options.configuration, input.deviceId) : [];
   const source = ports.source ?? root,
     environment = ports.env ?? process.env,
     execute = ports.execute ?? executeOwned,
@@ -137,10 +139,7 @@ export async function buildNative(input, ports = {}) {
           project.scheme,
           "-configuration",
           configuration,
-          "-sdk",
-          configuration === "Release" ? "iphoneos" : "iphonesimulator",
-          "-destination",
-          configuration === "Release" ? "generic/platform=iOS" : "generic/platform=iOS Simulator",
+          ...iosTarget,
           "-derivedDataPath",
           derived,
           "CODE_SIGNING_ALLOWED=NO",

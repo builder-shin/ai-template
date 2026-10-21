@@ -55,3 +55,20 @@ export function buildEnvironment(platform, configuration, input = process.env) {
     NATIVE_BUILD_CONFIGURATION: configuration,
   };
 }
+export function iosBuildTarget(configuration, deviceId) {
+  if (!["debug", "release"].includes(configuration))
+    throw new Error("Invalid iOS build configuration.");
+  if (deviceId !== undefined) {
+    if (configuration !== "debug")
+      throw new Error("An explicit simulator is only valid for debug compilation.");
+    if (!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(deviceId))
+      throw new Error("Invalid iOS simulator identity.");
+    return ["-sdk", "iphonesimulator", "-destination", `id=${deviceId}`, "ONLY_ACTIVE_ARCH=YES"];
+  }
+  return [
+    "-sdk",
+    configuration === "release" ? "iphoneos" : "iphonesimulator",
+    "-destination",
+    configuration === "release" ? "generic/platform=iOS" : "generic/platform=iOS Simulator",
+  ];
+}

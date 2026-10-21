@@ -1,10 +1,73 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { prepareNativeProject, cleanNativeProject } from "./native/owned.mjs";
-import { maestroFailureLog, pickerHierarchy } from "./native/logs.mjs";
+import {
+  maestroFailureLog,
+  pickerHierarchy,
+  maestroFailureHierarchy,
+  hierarchyDiagnostic,
+} from "./native/logs.mjs";
+
+test("failure diagnostics use the paired stored hierarchy without reopening an iOS driver or exposing raw values", () => {
+  const source = mkdtempSync(join(tmpdir(), "aitpl-saved-hierarchy-"));
+  const owned = prepareNativeProject(source);
+  try {
+    const root = join(owned.parent, "raw-maestro/auth/screen-hierarchy");
+    mkdirSync(root, { recursive: true });
+    writeFileSync(
+      join(root, "step-003-assert.json"),
+      JSON.stringify({
+        children: [
+          { attributes: { accessibilityText: "Continue" } },
+          { attributes: { text: "private@example.com" } },
+        ],
+      }),
+    );
+    const result = maestroFailureHierarchy(owned, "auth");
+    assert.match(result, /Continue/);
+    assert.doesNotMatch(result, /private@example/);
+    assert.throws(() => maestroFailureHierarchy({ parent: source }, "auth"), /ownership/);
+  } finally {
+    cleanNativeProject(owned);
+    rmSync(source, { recursive: true, force: true });
+  }
+});
+test("stored hierarchy traversal never follows a linked artifact directory", () => {
+  const source = mkdtempSync(join(tmpdir(), "aitpl-linked-hierarchy-"));
+  const owned = prepareNativeProject(source);
+  try {
+    const outside = join(source, "outside"),
+      root = join(owned.parent, "raw-maestro/auth");
+    mkdirSync(outside);
+    mkdirSync(root, { recursive: true });
+    writeFileSync(
+      join(outside, "screen.json"),
+      JSON.stringify({ attributes: { text: "Continue" } }),
+    );
+    symlinkSync(
+      outside,
+      join(root, "screen-hierarchy"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    assert.equal(maestroFailureHierarchy(owned, "auth"), "");
+  } finally {
+    cleanNativeProject(owned);
+    rmSync(source, { recursive: true, force: true });
+  }
+});
+test("failed hierarchy startup reports a bounded redacted cause instead of hiding it", () => {
+  const result = hierarchyDiagnostic({
+    code: 130,
+    stdout: "",
+    stderr: "driver timeout https://example.com/?code=private-code password=private-password",
+  });
+  assert.match(result, /130/);
+  assert.match(result, /driver timeout/);
+  assert.doesNotMatch(result, /private-code|private-password|example.com/);
+});
 
 test("initial iOS diagnostics identify system controls and connection failures without echoing URLs", () => {
   const result = pickerHierarchy(
@@ -12,6 +75,7 @@ test("initial iOS diagnostics identify system controls and connection failures w
       children: [
         { attributes: { accessibilityText: "Continue" } },
         { attributes: { accessibilityText: "Don't Allow" } },
+        { attributes: { text: "Retry" } },
         {
           attributes: {
             text: "Could not connect to development server https://private.example/?code=secret",
@@ -22,6 +86,7 @@ test("initial iOS diagnostics identify system controls and connection failures w
   );
   assert.match(result, /Continue/);
   assert.match(result, /Don't Allow/);
+  assert.match(result, /Retry/);
   assert.match(result, /Development server connection failure/);
   assert.doesNotMatch(result, /private|secret|https/);
 });

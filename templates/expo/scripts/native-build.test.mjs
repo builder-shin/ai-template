@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { buildOptions, buildEnvironment } from "./native/build-config.mjs";
+import { buildOptions, buildEnvironment, iosBuildTarget } from "./native/build-config.mjs";
+import { buildNative } from "./native/build.mjs";
 import { configureNativeInstall, nativeCmakeInit, gradleCommand } from "./native/build-tools.mjs";
 import { prepareNativeProject, cleanNativeProject } from "./native/owned.mjs";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
@@ -14,6 +15,50 @@ const release = {
   EXPO_PUBLIC_REALTIME_URL: "https://api.example.com",
   EXPO_PUBLIC_FRONTEND_URL: "https://app.example.com",
 };
+test("iOS device debug compilation targets the selected simulator while unsigned release remains a physical-device build", () => {
+  const device = "115E49DB-93C7-4031-BAB2-D4C9EFDCC892";
+  assert.deepEqual(iosBuildTarget("debug", device), [
+    "-sdk",
+    "iphonesimulator",
+    "-destination",
+    `id=${device}`,
+    "ONLY_ACTIVE_ARCH=YES",
+  ]);
+  assert.deepEqual(iosBuildTarget("release"), [
+    "-sdk",
+    "iphoneos",
+    "-destination",
+    "generic/platform=iOS",
+  ]);
+  assert.deepEqual(iosBuildTarget("debug"), [
+    "-sdk",
+    "iphonesimulator",
+    "-destination",
+    "generic/platform=iOS Simulator",
+  ]);
+  assert.throws(() => iosBuildTarget("release", device), /debug/);
+});
+test("invalid iOS simulator identities fail before SDK discovery or artifact writes", async () => {
+  let calls = 0;
+  await assert.rejects(
+    buildNative(
+      {
+        platform: "ios",
+        configuration: "debug",
+        runId: "invalid-ios-device",
+        deviceId: "bad,platform=iOS",
+      },
+      {
+        execute: async () => {
+          calls++;
+          throw new Error("must not execute");
+        },
+      },
+    ),
+    /simulator.*identity/i,
+  );
+  assert.equal(calls, 0);
+});
 test("Windows CNG short paths change only owned installation layout and preserve every original policy and lock", () => {
   const source = mkdtempSync(join(tmpdir(), "aitpl-native-layout-test-"));
   const policy =
