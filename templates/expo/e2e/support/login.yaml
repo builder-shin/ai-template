@@ -1,6 +1,7 @@
 appId: __BUNDLE_ID__
 ---
 - openLink: ${output.data.scheme + '://login'}
+- runFlow: open-link.yaml
 - tapOn: { id: "button-English" }
 - tapOn: { id: "field-Email" }
 - inputText: { text: "${output.data.email}", label: "fixture email" }
@@ -12,4 +13,5 @@ appId: __BUNDLE_ID__
     visible: "Current session"
     timeout: 30000
 - openLink: ${output.data.scheme + '://'}
+- runFlow: open-link.yaml
 - assertVisible: { id: "button-Account" }

@@ -2,6 +2,7 @@ appId: __BUNDLE_ID__
 ---
 - runScript: { file: bridge.js, env: { ACTION: data } }
 - openLink: ${output.data.scheme + '://me'}
+- runFlow: support/open-link.yaml
 - tapOn: { id: "button-한국어" }
 - tapOn: { id: "button-Save" }
 - assertVisible: 저장했습니다.
@@ -9,6 +10,7 @@ appId: __BUNDLE_ID__
 - assertTrue: ${output.result.locale === 'ko'}
 - stopApp
 - openLink: ${output.data.profileLink}
+- runFlow: support/open-link.yaml
 - assertVisible: 내 정보
 - tapOn: { id: "button-English" }
 - tapOn: { id: "button-저장" }

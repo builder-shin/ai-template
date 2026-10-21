@@ -2,6 +2,7 @@ appId: __BUNDLE_ID__
 ---
 - runScript: { file: bridge.js, env: { ACTION: data } }
 - openLink: ${output.data.scheme + '://posts/new'}
+- runFlow: support/open-link.yaml
 - tapOn: { id: "field-Title" }
 - inputText: ${output.data.title}
 - tapOn: { id: "field-Body" }

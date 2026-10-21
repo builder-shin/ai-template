@@ -2,6 +2,7 @@ appId: __BUNDLE_ID__
 ---
 - runScript: { file: bridge.js, env: { ACTION: data } }
 - openLink: ${output.data.scheme + '://me'}
+- runFlow: support/open-link.yaml
 - scrollUntilVisible: { element: { id: "button-Choose image: Avatar" } }
 - tapOn: { id: "button-Choose image: Avatar" }
 - runFlow:

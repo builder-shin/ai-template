@@ -2,6 +2,7 @@ appId: __BUNDLE_ID__
 ---
 - launchApp
 - openLink: __DEV_CLIENT_URL__
+- runFlow: support/open-link.yaml
 - extendedWaitUntil: { visible: "Continue|English", timeout: 120000 }
 - runFlow:
     when: { visible: "Continue" }
@@ -28,11 +29,13 @@ appId: __BUNDLE_ID__
 - runScript: { file: bridge.js, env: { ACTION: mail-verify } }
 - stopApp
 - openLink: ${output.result.link}
+- runFlow: support/open-link.yaml
 - tapOn: { id: "button-Verify email" }
 - assertVisible: "Your email is verified. You can sign in."
 - runFlow: support/login.yaml
 - stopApp
 - openLink: ${output.data.sessionsLink}
+- runFlow: support/open-link.yaml
 - assertVisible: "Current session"
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
 - tapOn: { id: "button-Sign out" }
@@ -45,6 +48,7 @@ appId: __BUNDLE_ID__
 - runScript: { file: bridge.js, env: { ACTION: mail-reset } }
 - stopApp
 - openLink: ${output.result.link}
+- runFlow: support/open-link.yaml
 - tapOn: { id: "field-Password" }
 - inputText: { text: "${output.data.newPassword}", label: "new fixture password" }
 - hideKeyboard

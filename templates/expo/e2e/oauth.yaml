@@ -3,6 +3,7 @@ appId: __BUNDLE_ID__
 - runScript: { file: bridge.js, env: { ACTION: data } }
 - evalScript: ${output.data.password = output.data.newPassword} # betterleaks:allow runtime fixture reference
 - openLink: ${output.data.scheme + '://me/sessions'}
+- runFlow: support/open-link.yaml
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
 - tapOn: { id: "button-Sign out" }
 - runScript: { file: bridge.js, env: { ACTION: oauth-approve } }
@@ -11,9 +12,11 @@ appId: __BUNDLE_ID__
 - runFlow: support/browser.yaml
 - extendedWaitUntil: { visible: "Current session", timeout: 60000 }
 - openLink: ${output.data.scheme + '://'}
+- runFlow: support/open-link.yaml
 - assertVisible: { id: "button-Account" }
 - stopApp
 - openLink: ${output.data.sessionsLink}
+- runFlow: support/open-link.yaml
 - assertVisible: "Current session"
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
 - tapOn: { id: "button-Sign out" }
@@ -27,8 +30,10 @@ appId: __BUNDLE_ID__
     commands: [{ tapOn: "Close tab" }]
 - runScript: { file: bridge.js, env: { ACTION: complete-provider } }
 - openLink: ${output.result.link}
+- runFlow: support/open-link.yaml
 - extendedWaitUntil: { visible: { id: "button-Account" }, timeout: 60000 }
 - openLink: ${output.data.scheme + '://me/sessions'}
+- runFlow: support/open-link.yaml
 - extendedWaitUntil: { visible: "Current session", timeout: 60000 }
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
 - tapOn: { id: "button-Sign out" }

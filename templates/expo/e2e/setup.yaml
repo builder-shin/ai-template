@@ -2,6 +2,7 @@ appId: __BUNDLE_ID__
 ---
 - launchApp
 - openLink: __DEV_CLIENT_URL__
+- runFlow: support/open-link.yaml
 - extendedWaitUntil: { visible: "Continue|English", timeout: 120000 }
 - runFlow:
     when: { visible: "Continue" }

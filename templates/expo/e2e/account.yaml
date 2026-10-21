@@ -2,6 +2,7 @@ appId: __BUNDLE_ID__
 ---
 - runScript: { file: bridge.js, env: { ACTION: data } }
 - openLink: ${output.data.scheme + '://me'}
+- runFlow: support/open-link.yaml
 - tapOn: { id: "field-Name" }
 - longPressOn: { id: "field-Name" }
 - tapOn: "Select all|Select All"
@@ -14,6 +15,7 @@ appId: __BUNDLE_ID__
 - assertTrue: ${output.result.name === 'Native Updated' && output.result.locale === 'en'}
 - stopApp
 - openLink: ${output.data.profileLink}
+- runFlow: support/open-link.yaml
 - assertVisible: Native Updated
 - tapOn: { id: "button-Sessions" }
 - assertVisible: Current session
