@@ -14,6 +14,13 @@ export function filterPresentation(resource: AnyResource, name: string): FieldPr
     ? (filter as FieldPresentation)
     : presentation(resource, name);
 }
+export function screenPresentation(
+  resource: AnyResource,
+  name: string,
+  screen: "list" | "create" | "edit" | "detail",
+) {
+  return screen === "list" ? filterPresentation(resource, name) : presentation(resource, name);
+}
 export function fieldValue(record: ScreenRecord, name: string) {
   return name === "id"
     ? record.id
@@ -51,6 +58,12 @@ export function parseResourceForm(resource: AnyResource, mode: "create" | "edit"
     } else {
       values[name] = kind === "boolean" ? raw === "true" : typeof raw === "string" ? raw : "";
       inputs[name] = values[name];
+      if (
+        (kind === "text" || kind === "textarea") &&
+        raw === "" &&
+        presentation(resource, name).emptyToNull
+      )
+        values[name] = null;
     }
   }
   return { values: values as WriteValues<AnyResource["type"], "create" | "edit">, inputs };

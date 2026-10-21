@@ -20,8 +20,8 @@
     },
     {
       "path": ".claude/hooks/dispatch-frontends.test.mjs",
-      "bytes": 1245,
-      "sha256": "d4b71db09845dec69bb731847caa8d1a61a374b1e7808859d75edd1912ea679a",
+      "bytes": 2312,
+      "sha256": "7b3dad7d15368433bc9756cd532cf91ba220af6c88273410667599f7a4d5461c",
       "mode": "100644"
     },
     {
@@ -110,8 +110,8 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 9818,
-      "sha256": "b102ec7438a0aecd8a197d0feeaf69260835a4e35ec622239c116e3567c4a952",
+      "bytes": 9549,
+      "sha256": "ae966ada512319b469c196433d9077f9db2d58f71b15312912cf242ade68af1a",
       "mode": "100644"
     },
     {
@@ -332,14 +332,14 @@
     },
     {
       "path": "README.md",
-      "bytes": 3052,
-      "sha256": "22140965e165847b382dd1e8feba3884f70424873adf9ee4812f081bbb359326",
+      "bytes": 2632,
+      "sha256": "d8c6b4477c1540d72dddb448952c58b21824bf77210d01e219239031bd1c0ec3",
       "mode": "100644"
     },
     {
       "path": "scripts/apps.mjs",
-      "bytes": 976,
-      "sha256": "fcd024688acae11e5bc27f8cc44e4ff8fa1556fa73b1dcb85e8b07242c784cf2",
+      "bytes": 1219,
+      "sha256": "ece0d897e5c74cc4e66c6c7686db6727226f16f95bb0c34c97dc142042cba1a5",
       "mode": "100644"
     },
     {
@@ -362,8 +362,8 @@
     },
     {
       "path": "scripts/frontend-runners.test.mjs",
-      "bytes": 2930,
-      "sha256": "f7a5dc071e106a57a26ac2bd77092bf8cebd2e66655b60822733f7dbedbb9d3b",
+      "bytes": 6282,
+      "sha256": "61e7f1cbc03ea5e48957a8414e4bcef227c9a315dcf1dad13ff89419151f38ea",
       "mode": "100644"
     },
     {
@@ -436,8 +436,8 @@
     },
     {
       "path": ".claude/hooks/dispatch-frontends.test.mjs",
-      "bytes": 1245,
-      "sha256": "d4b71db09845dec69bb731847caa8d1a61a374b1e7808859d75edd1912ea679a",
+      "bytes": 2312,
+      "sha256": "7b3dad7d15368433bc9756cd532cf91ba220af6c88273410667599f7a4d5461c",
       "mode": "100644"
     },
     {
@@ -526,8 +526,8 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 9834,
-      "sha256": "178e853eafb02d65a471e6272efb5cd06018b9336dbac1abc23143eb211fdbc0",
+      "bytes": 9614,
+      "sha256": "37e715a1e653fe97477423e1dd9a419b1303810811ad5972bdac980207babfc1",
       "mode": "100644"
     },
     {
@@ -742,14 +742,14 @@
     },
     {
       "path": "README.md",
-      "bytes": 3066,
-      "sha256": "b40dde1276378c49f39e5d7a7a2d378bd96bbf1c7bb9581da66fd7e5a09aba4e",
+      "bytes": 2768,
+      "sha256": "78033be78bc1ef2ef44a3dcb795984aef48e6cbea78db334bfb8dcc43d0ae786",
       "mode": "100644"
     },
     {
       "path": "scripts/apps.mjs",
-      "bytes": 976,
-      "sha256": "fcd024688acae11e5bc27f8cc44e4ff8fa1556fa73b1dcb85e8b07242c784cf2",
+      "bytes": 1219,
+      "sha256": "ece0d897e5c74cc4e66c6c7686db6727226f16f95bb0c34c97dc142042cba1a5",
       "mode": "100644"
     },
     {
@@ -772,8 +772,8 @@
     },
     {
       "path": "scripts/frontend-runners.test.mjs",
-      "bytes": 2930,
-      "sha256": "f7a5dc071e106a57a26ac2bd77092bf8cebd2e66655b60822733f7dbedbb9d3b",
+      "bytes": 6282,
+      "sha256": "61e7f1cbc03ea5e48957a8414e4bcef227c9a315dcf1dad13ff89419151f38ea",
       "mode": "100644"
     },
     {
@@ -846,8 +846,8 @@
     },
     {
       "path": ".claude/hooks/dispatch-frontends.test.mjs",
-      "bytes": 1245,
-      "sha256": "d4b71db09845dec69bb731847caa8d1a61a374b1e7808859d75edd1912ea679a",
+      "bytes": 2312,
+      "sha256": "7b3dad7d15368433bc9756cd532cf91ba220af6c88273410667599f7a4d5461c",
       "mode": "100644"
     },
     {
@@ -936,8 +936,8 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 10240,
-      "sha256": "f18aaf38b43c1a321fdcaef574a58d347d40b5c7c7ea51e8e7e917a0a9528a7c",
+      "bytes": 10250,
+      "sha256": "e63c07043bb20b53ff48c89afc121ef1b2694af55d48afb79067a0720077412d",
       "mode": "100644"
     },
     {
@@ -1254,14 +1254,14 @@
     },
     {
       "path": "README.md",
-      "bytes": 3402,
-      "sha256": "8efa99d5c0b1755f37057f0d7c52a4658d1ba14a6e0b87341fd78998b4d72d98",
+      "bytes": 3148,
+      "sha256": "3c4ffedd4671623e29ed067aa53f2c1ec22923f74b00785d0e89cb8ff2b28b59",
       "mode": "100644"
     },
     {
       "path": "scripts/apps.mjs",
-      "bytes": 976,
-      "sha256": "fcd024688acae11e5bc27f8cc44e4ff8fa1556fa73b1dcb85e8b07242c784cf2",
+      "bytes": 1219,
+      "sha256": "ece0d897e5c74cc4e66c6c7686db6727226f16f95bb0c34c97dc142042cba1a5",
       "mode": "100644"
     },
     {
@@ -1284,8 +1284,8 @@
     },
     {
       "path": "scripts/frontend-runners.test.mjs",
-      "bytes": 2930,
-      "sha256": "f7a5dc071e106a57a26ac2bd77092bf8cebd2e66655b60822733f7dbedbb9d3b",
+      "bytes": 6282,
+      "sha256": "61e7f1cbc03ea5e48957a8414e4bcef227c9a315dcf1dad13ff89419151f38ea",
       "mode": "100644"
     },
     {

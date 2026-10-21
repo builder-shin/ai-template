@@ -8,7 +8,7 @@ export default defineResource({
   type: "roles",
   permission: "roles:read",
   fields: {
-    description: { kind: "textarea" },
+    description: { kind: "textarea", emptyToNull: true },
     permissions: {
       kind: "enum-many",
       values: permissionCatalog,

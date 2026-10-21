@@ -77,6 +77,7 @@ export function SignupForm({
             <div key={field.name} className="space-y-2">
               <Label htmlFor={field.name}>{t(field.label)}</Label>
               <Input
+                key={field.value ?? ""}
                 id={field.name}
                 name={field.name}
                 type={field.type}

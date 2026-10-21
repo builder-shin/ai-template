@@ -51,6 +51,44 @@ it.each([
     ips.map((ip) => `aitpl:15:rl:global:${ip}:2`),
   );
 });
+it.each([
+  { trusted: ["127.0.0.1"], statuses: [404, 404] },
+  { trusted: [], statuses: [404, 429] },
+])(
+  "BFF 직접 연결의 신뢰 설정 $trusted에 따라 IPv4·IPv6 한도를 나눈다",
+  async ({ trusted, statuses }) => {
+    vi.spyOn(Date, "now").mockReturnValue(120000);
+    const { clients, evalCommand } = store();
+    const counts = new Map<string, number>();
+    evalCommand.mockImplementation((_script, _keys, key) => {
+      const name = String(key);
+      const count = (counts.get(name) ?? 0) + 1;
+      counts.set(name, count);
+      return Promise.resolve([count, 60]);
+    });
+    const configured = { ...settings, FORWARDED_ALLOW_IPS: trusted, RATE_LIMIT_GLOBAL: 1 };
+    const { http } = await testApp([], {
+      settings: configured,
+      providers: [{ provide: GLOBAL_LIMITER, useValue: createGlobalLimiter(clients, configured) }],
+    });
+    for (const [index, ip] of ["198.51.100.1", "2001:db8::1"].entries()) {
+      expect((await http.get("/api/v1/unknown").set("X-Forwarded-For", ip)).status).toBe(
+        statuses[index],
+      );
+      expect((await http.get("/api/v1/unknown").set("X-Forwarded-For", ip)).status).toBe(429);
+    }
+    // BFF가 구성한 단일 주소 앞에 임의 체인을 붙여도 첫 비신뢰 주소의 소진된 한도를 쓴다.
+    expect(
+      (await http.get("/api/v1/unknown").set("X-Forwarded-For", "203.0.113.66, 198.51.100.1"))
+        .status,
+    ).toBe(429);
+    expect([...counts.keys()]).toEqual(
+      trusted.length
+        ? ["aitpl:15:rl:global:198.51.100.1:2", "aitpl:15:rl:global:2001:db8::1:2"]
+        : ["aitpl:15:rl:global:127.0.0.1:2"],
+    );
+  },
+);
 it("다음 분까지 1초 미만이면 전역 Retry-After는 1초다", async () => {
   const now = vi.spyOn(Date, "now").mockReturnValue(179200);
   const { clients } = store([3, 42]);
@@ -65,7 +103,7 @@ it("다음 분까지 1초 미만이면 전역 Retry-After는 1초다", async () 
     code: "rate_limit.exceeded",
     title: "Too many requests",
     headers: { "Retry-After": "1" },
-    meta: { retryAfter: 1 },
+    meta: { params: { retryAfter: 1 } },
   });
 });
 it("전역 한도에서 429와 Retry-After를 협상 오류보다 먼저 전달한다", async () => {
@@ -82,11 +120,15 @@ it("전역 한도에서 429와 Retry-After를 협상 오류보다 먼저 전달�
   const res = await http.post("/api/v1/unknown").set("Content-Type", "application/json").send("{}");
   expect(res.status).toBe(429);
   expect(res.headers["retry-after"]).toBe("1");
-  expect(errorDocument(res.text).errors[0]).toMatchObject({
+  const error = errorDocument(res.text).errors[0];
+  expect(error).toMatchObject({
     code: "rate_limit.exceeded",
     title: "Too many requests",
-    meta: { retryAfter: 1 },
+    meta: { params: { retryAfter: 1 } },
   });
+  expect(error?.meta).not.toHaveProperty("retryAfter");
+  expect(error?.meta?.params).toEqual({ retryAfter: Number(res.headers["retry-after"]) });
+  expect(Number.isInteger(Number(res.headers["retry-after"]))).toBe(true);
 });
 it("전역 저장소 오류는 경고를 남기고 통과한다", async () => {
   const { clients, evalCommand } = store();

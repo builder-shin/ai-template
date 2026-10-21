@@ -37,6 +37,7 @@ export function PasswordResetRequestForm({
           <div className="space-y-2">
             <Label htmlFor="email">{t("email")}</Label>
             <Input
+              key={state.email ?? ""}
               id="email"
               name="email"
               type="email"

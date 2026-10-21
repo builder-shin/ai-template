@@ -13,7 +13,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import { gitEnvironment } from "./git-environment.mjs";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -23,6 +23,7 @@ it.each(["linked", "lowercase", "nested", "bare", "git"])(
   (kind) => {
     if (kind === "lowercase" && process.platform !== "win32") return;
     const fixture = mkdtempSync(join(tmpdir(), "aitpl-web-root-"));
+    onTestFinished(() => rmSync(fixture, { recursive: true, force: true }));
     const repo = join(fixture, "repo");
     const env = gitEnvironment();
     try {
@@ -69,7 +70,9 @@ it.each(["linked", "lowercase", "nested", "bare", "git"])(
 it.each([false, true, "main"])(
   "setup은 다른 worktree의 hook 환경을 격리한다: workTree=%s",
   (workTree) => {
-    const fixture = realpathSync.native(mkdtempSync(join(tmpdir(), "aitpl-next-setup-hook-")));
+    const allocated = mkdtempSync(join(tmpdir(), "aitpl-next-setup-hook-"));
+    onTestFinished(() => rmSync(allocated, { recursive: true, force: true }));
+    const fixture = realpathSync.native(allocated);
     const repo = join(fixture, "repo");
     const linked = join(fixture, "linked");
     const root = join(fixture, "target");
@@ -177,7 +180,8 @@ it("git 환경은 저장소 선택 변수만 빼고 설정과 원본을 보존�
 });
 
 it.each([0, 23])("setup은 환경과 hook을 준비한 뒤 Chromium을 설치한다: %s", (browserStatus) => {
-  const root = mkdtempSync(join(tmpdir(), "next-setup-"));
+  const root = mkdtempSync(join(tmpdir(), "aitpl-next-setup-"));
+  onTestFinished(() => rmSync(root, { recursive: true, force: true }));
   const scripts = join(root, "scripts");
   // 실제 파일 병합은 유지하고 네트워크 설치 경계만 대체한다. 환경 내용은 출력하지 않는다.
   spawnSync(process.execPath, ["-e", "require('node:fs').mkdirSync(process.argv[1])", scripts]);

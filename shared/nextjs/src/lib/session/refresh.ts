@@ -9,11 +9,15 @@ const flights = new Map<string, Flight>();
 const memoMs = 30000;
 
 /** proxy만 호출한다. 실패도 기억해 불확실한 토큰을 즉시 다시 보내지 않는다. */
-export function refreshSession(refreshToken: string, locale: (typeof routing.locales)[number]) {
+export function refreshSession(
+  refreshToken: string,
+  locale: (typeof routing.locales)[number],
+  clientIp?: string,
+) {
   const previous = flights.get(refreshToken);
   if (previous && Date.now() < previous.expiresAt) return previous.result;
 
-  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  const client = createApiClient({ baseUrl: getEnv().API_BASE_URL, locale, clientIp });
   const flight: Flight = {
     expiresAt: Infinity,
     result: client

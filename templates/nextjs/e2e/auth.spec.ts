@@ -2,6 +2,28 @@ import { randomUUID } from "node:crypto";
 import { test, expect, sessionCookieName, signupAndVerify, login, logout } from "./fixtures";
 
 test("한국어 가입과 실제 메일 링크 인증", async ({ page, target }) => {
+  const diagnostics: string[] = [];
+  page.on("console", (message) => {
+    if (/Base UI:|not configured to support act/.test(message.text()))
+      diagnostics.push(message.text());
+  });
+  await page.goto("/signup");
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const name = `Retry ${attempt}`;
+    const email = `signup-retry-${randomUUID()}@example.com`;
+    await page.getByLabel("이름", { exact: true }).fill(name);
+    await page.getByLabel("이메일", { exact: true }).fill(email);
+    await page.getByLabel("비밀번호", { exact: true }).fill("short"); // betterleaks:allow 사유: 검증 실패용 비밀번호
+    await page.getByRole("button", { name: "가입", exact: true }).click();
+    await expect(page.getByLabel("비밀번호", { exact: true })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(page.getByLabel("이름", { exact: true })).toHaveValue(name);
+    await expect(page.getByLabel("이메일", { exact: true })).toHaveValue(email);
+    await expect(page.getByLabel("비밀번호", { exact: true })).toHaveValue("");
+  }
+  expect(diagnostics).toEqual([]);
   await signupAndVerify(page, target, "ko");
   await expect(page.getByRole("status")).toHaveText(
     "이메일 인증을 마쳤습니다. 이제 로그인할 수 있습니다.",

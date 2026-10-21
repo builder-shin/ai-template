@@ -174,6 +174,56 @@ it("중복 이름의 실제 pointer는 이름 입력에 붙고 모든 입력값�
   );
   expect(screen.getByRole("textbox", { name: "이름" }).getAttribute("aria-invalid")).toBe("true");
 });
+it.each([
+  { initial: null, next: "", expected: null },
+  { initial: "기존 설명", next: "", expected: null },
+  { initial: null, next: "새 설명", expected: "새 설명" },
+])(
+  "실제 폼·Action·API 설명 왕복: initial=$initial, next=$next, expected=$expected",
+  async ({ initial, next, expected }) => {
+    const account = await actor();
+    const data = createResourceData(account.owner.client);
+    const role = await data.create(roles, {
+      name: `nullable-${randomUUID()}`,
+      description: initial,
+      permissions: [],
+    });
+    show(await page("roles", "edit", role.data.id));
+    const description = screen.getByRole("textbox", { name: "설명" });
+    expect((description as HTMLTextAreaElement).value).toBe(initial ?? "");
+    const user = userEvent.setup();
+    if (initial || next) {
+      await user.clear(description);
+      if (next) await user.type(description, next);
+    }
+    const submitted = new FormData(description.closest("form")!);
+    await expect(
+      saveResourceAction("roles", "edit", role.data.id, { ok: true }, submitted),
+    ).rejects.toMatchObject({ digest: `NEXT_REDIRECT;replace;/roles/${role.data.id};307;` });
+    expect((await data.detail(roles, role.data.id)).data.attributes.description).toBe(expected);
+  },
+);
+
+it("빈 설명은 실패한 저장에서도 빈 입력을 유지하고 API 값은 null로 남는다", async () => {
+  const account = await actor();
+  const data = createResourceData(account.owner.client);
+  const name = `dup-${randomUUID()}`;
+  await data.create(roles, { name, permissions: [] });
+  const role = await data.create(roles, {
+    name: `${name}-edit`,
+    description: null,
+    permissions: [],
+  });
+  show(await page("roles", "edit", role.data.id));
+  const user = userEvent.setup();
+  const input = screen.getByRole("textbox", { name: "이름" });
+  await user.clear(input);
+  await user.type(input, name);
+  await user.click(screen.getByRole("button", { name: "저장" }));
+  await screen.findByText("이미 사용 중인 값입니다.");
+  expect((screen.getByRole("textbox", { name: "설명" }) as HTMLTextAreaElement).value).toBe("");
+  expect((await data.detail(roles, role.data.id)).data.attributes.description).toBeNull();
+});
 it.each(["read-only", "system"] as const)(
   "삭제 Action의 %s 거절은 DELETE 없이 최신 조건을 지킨다",
   async (target) => {

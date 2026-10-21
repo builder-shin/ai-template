@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Select,
@@ -45,7 +45,7 @@ export function ResourceSelect({
   const t = useTranslations("resource");
   const [searchResult, setSearchResult] = useState<readonly Option[]>();
   const searchVersion = useRef(0);
-  const [pending, start] = useTransition();
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
   const [term, setTerm] = useState("");
   // 열린 검색은 새로고침과 무관하게 유지하고, 종료한 검색의 늦은 응답은 버린다.
@@ -53,21 +53,23 @@ export function ResourceSelect({
     searchVersion.current++;
     setSearchResult(undefined);
     setError(false);
+    setPending(false);
   }
-  function runSearch() {
-    if (!search || pending) return;
+  async function runSearch() {
+    if (!search) return;
     const version = ++searchVersion.current;
-    start(async () => {
-      try {
-        const result = await search(term);
-        if (version === searchVersion.current) {
-          setSearchResult(result);
-          setError(false);
-        }
-      } catch {
-        if (version === searchVersion.current) setError(true);
+    setPending(true);
+    try {
+      const result = await search(term);
+      if (version === searchVersion.current) {
+        setSearchResult(result);
+        setError(false);
       }
-    });
+    } catch {
+      if (version === searchVersion.current) setError(true);
+    } finally {
+      if (version === searchVersion.current) setPending(false);
+    }
   }
   const [value, setValue] = useState<string | string[] | null>(
     multiple
@@ -179,7 +181,7 @@ export function ResourceSelect({
                   event.stopPropagation();
               }}
             />
-            <Button type="button" variant="outline" disabled={pending} onClick={runSearch}>
+            <Button type="button" variant="outline" aria-label={t("search")} onClick={runSearch}>
               {pending ? <Spinner /> : t("search")}
             </Button>
           </div>

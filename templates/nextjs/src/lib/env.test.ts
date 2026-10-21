@@ -9,6 +9,17 @@ const valid = {
 };
 
 describe("설정 검증", () => {
+  it("신뢰 ingress 헤더는 기본 비활성이며 명시한 소문자 전용 이름만 허용한다", () => {
+    expect(parseEnv(valid).TRUSTED_CLIENT_IP_HEADER).toBe("");
+    expect(
+      parseEnv({ ...valid, TRUSTED_CLIENT_IP_HEADER: "x-ingress-client-ip" })
+        .TRUSTED_CLIENT_IP_HEADER,
+    ).toBe("x-ingress-client-ip");
+    for (const header of ["X-Client-IP", "cookie", "x-client-ip:bad", "x-ip\r\nX-Evil: bad"])
+      expect(() => parseEnv({ ...valid, TRUSTED_CLIENT_IP_HEADER: header })).toThrow(
+        /TRUSTED_CLIENT_IP_HEADER/,
+      );
+  });
   it("시간대 기본값과 UTF-8 바이트 길이를 쓴다", () => {
     expect(parseEnv(valid).TIME_ZONE).toBe("Asia/Seoul");
     expect(parseEnv({ ...valid, SESSION_SECRET: "가".repeat(11) }).SESSION_SECRET).toHaveLength(11);

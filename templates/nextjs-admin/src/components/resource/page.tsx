@@ -6,7 +6,7 @@ import { createResourceData } from "../../lib/resources/data";
 import type { AnyResource } from "../../lib/resources/definition";
 import type { ResourceSearchParams } from "../../lib/resources/query";
 import { resourceQuery } from "../../lib/resources/query";
-import { filterCalendarDate } from "../../lib/resources/date";
+import { filterCalendarDate, isPeriodEnd } from "../../lib/resources/date";
 import { requireAdmin } from "../../lib/admin/account";
 import { createSessionApiClient } from "../../lib/api/session-client";
 import { ApiError } from "../../lib/api/errors";
@@ -64,7 +64,7 @@ export async function ResourcePage({
       );
       for (const [key, kind] of Object.entries(resource.list.filters ?? {}))
         if (kind === "date" && typeof searchParams[key] === "string") {
-          query[key] = filterCalendarDate(searchParams[key], key.endsWith("To]"), context.timeZone);
+          query[key] = filterCalendarDate(searchParams[key], isPeriodEnd(key), context.timeZone);
         }
       return await ListScreen({ context, document, query });
     }

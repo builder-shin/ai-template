@@ -1,11 +1,122 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { setup } from "./setup.mjs";
 import { check } from "./check.mjs";
 import { testE2e } from "./test-e2e.mjs";
 import { frontendEnvironment, frontendE2e } from "./frontend-e2e.mjs";
 import { fixture } from "../.claude/hooks/dispatch-fixture.mjs";
+
+for (const [label, content] of [
+  ["missing", undefined],
+  ["malformed", "{"],
+  ["null", "null"],
+]) {
+  test(`E2E 설정 ${label} 오류는 앱·파일·복구 안내와 함께 자식 실행 전에 거절한다`, (t) => {
+    const f = fixture(t, ["api", "admin", "web"]);
+    const path = "apps/web/app.config.json";
+    if (content === undefined) rmSync(join(f.root, path));
+    else f.write(path, content);
+    const calls = [];
+    assert.throws(
+      () =>
+        testE2e(f.root, (_command, args) => {
+          calls.push(args);
+          return { status: 0 };
+        }),
+      /web.*apps\/web\/app.config.json.* — .*ports.e2e/,
+    );
+    assert.deepEqual(calls, []);
+  });
+}
+
+for (const port of [undefined, null, "3101", 0, -1, 65536, 3101.5]) {
+  test(`E2E 포트 ${JSON.stringify(port)}는 백엔드 실행 전에 거절한다`, (t) => {
+    const f = fixture(t, ["api", "admin", "web"]);
+    f.write("apps/admin/app.config.json", JSON.stringify({ ports: { e2e: port } }));
+    const calls = [];
+    assert.throws(
+      () =>
+        testE2e(f.root, (_command, args) => {
+          calls.push(args);
+          return { status: 0 };
+        }),
+      /admin.*app.config.json.*ports.e2e/,
+    );
+    assert.deepEqual(calls, []);
+  });
+}
+
+test("setup의 첫 프론트 실패 코드는 다음 프론트를 실행하지 않고 반환한다", (t) => {
+  const f = fixture(t, ["api", "admin", "web"]);
+  const calls = [];
+  const code = setup(f.root, {
+    nodeVersion: "24.19.0",
+    run: (_command, args) => {
+      calls.push(args);
+      return { status: args.includes("admin") ? 17 : 0, stdout: "true\n" };
+    },
+  });
+  assert.equal(code, 17);
+  assert.deepEqual(calls.at(-1), ["--filter", "admin", "run", "setup"]);
+  assert.equal(
+    calls.some((args) => args.includes("web")),
+    false,
+  );
+});
+
+test("check는 Turbo의 첫 프론트 실패를 그대로 반환하며 후속 실행을 하지 않는다", (t) => {
+  const f = fixture(t, ["api", "admin", "web"]);
+  const calls = [];
+  const messages = [];
+  const code = check(f.root, {
+    output: (message) => messages.push(message),
+    run: (_command, args) => {
+      calls.push(args);
+      return args.includes("turbo") ? { status: 19, stderr: "admin failed" } : { status: 0 };
+    },
+  });
+  assert.equal(code, 19);
+  assert.deepEqual(calls.at(-1), [
+    "exec",
+    "turbo",
+    "run",
+    "check",
+    "--filter=api",
+    "--filter=admin",
+    "--filter=web",
+    "--concurrency=1",
+  ]);
+  assert.deepEqual(messages, ["admin failed"]);
+});
+
+test("E2E의 첫 프론트 실패는 다음 프론트 서버를 실행하지 않는다", (t) => {
+  const f = fixture(t, ["api", "admin", "web"]);
+  const calls = [];
+  assert.equal(
+    testE2e(f.root, (_command, args) => {
+      calls.push(args);
+      return { status: args.at(-1) === "admin" ? 23 : 0 };
+    }),
+    23,
+  );
+  assert.equal(calls.length, 2);
+  assert.equal(calls.at(-1).at(-1), "admin");
+});
+
+test("프론트 Origin 환경 누락은 프론트 프로세스를 실행하지 않는다", () => {
+  const calls = [];
+  assert.throws(
+    () =>
+      frontendE2e("/combo", "web", { E2E_API_URL: "http://127.0.0.1:18000" }, (_command, args) => {
+        calls.push(args);
+        return { status: 0 };
+      }),
+    /E2E_WEB_URL.* — /,
+  );
+  assert.deepEqual(calls, []);
+});
 
 test("두 프론트 배치의 setup·check·E2E는 모두 실행하고 첫 프론트 실패에서 멈춘다", (t) => {
   const f = fixture(t, ["api", "web", "admin"]);

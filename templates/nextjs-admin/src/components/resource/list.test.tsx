@@ -2,11 +2,10 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { NextIntlClientProvider } from "next-intl";
+import { NextIntlClientProvider, createTranslator } from "next-intl";
 import ko from "../../../messages/ko.json";
 import shared from "../../../messages/shared/ko.json";
 import { intlFixture } from "../../../scripts/test/intl-fixture";
-import { createTranslator } from "next-intl";
 import { ResourceList, TableSkeleton } from "./list";
 import { ListScreen } from "./screen";
 import { createApiClient } from "../../lib/api/client";

@@ -151,6 +151,8 @@ export function writeCombo(
     return value;
   };
   const typescript = required(pkg.devDependencies?.typescript, "devDependencies.typescript");
+  const hasWeb = frontends.some(({ name: app }) => app === "web");
+  const hasAdmin = frontends.some(({ name: app }) => app === "admin");
   const variables: Record<string, string> = {
     NAME: name,
     NODE: required(pkg.engines?.node, "engines.node"),
@@ -169,6 +171,31 @@ export function writeCombo(
     FRONTEND_URLS: frontends
       .map(({ name: app }) => `${app} http://localhost:${app === "admin" ? "3001" : "3000"}`)
       .join(", "),
+    FRONTEND_E2E_PORTS: frontends
+      .map(({ name: app }) => `${app} ${app === "admin" ? "3101" : "3100"}`)
+      .join(", "),
+    FRONTEND_APP_ORIGINS: frontends
+      .map(
+        ({ name: app }) => `${app} 예: \`http://127.0.0.1:${app === "admin" ? "3201" : "3200"}\``,
+      )
+      .join(", "),
+    FRONTEND_CHECK_NOTES: hasWeb
+      ? " web check는 gen-feature 테스트의 설치 때문에 패키지 레지스트리 접속이 필요하다."
+      : "",
+    FRONTEND_E2E_FLOW: [
+      `gen은 api 뒤에 각 프론트를 차례로 실행한다. E2E는 api 뒤에 ${frontends
+        .map(({ name: app }) => app)
+        .sort()
+        .join(", ")} 순서로 실행하며 첫 실패에서 멈춘다.`,
+      ...(frontends.length > 1
+        ? ["두 프론트는 같은 루트 계약 생성물을 같은 바이트로 만든다."]
+        : []),
+      ...(hasAdmin ? ["admin은 E2E_SEED_ADMIN_EMAIL·E2E_SEED_ADMIN_PASSWORD를 요구한다."] : []),
+      ...(hasWeb ? ["web은 E2E_OAUTH_URL을 요구한다."] : []),
+    ].join(" "),
+    FRONTEND_HEALTHCHECK: hasAdmin
+      ? "admin은 로그인 화면으로 이동한다. healthcheck는 이동을 따라가며 200 또는 303을 받아들인다."
+      : "",
     FRONTEND_PORT_ROWS: frontends
       .map(
         ({ name: app }) =>

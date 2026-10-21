@@ -5,6 +5,10 @@ const httpUrl = z.url({ protocol: /^https?$/ });
 
 export const envSchema = z.object({
   API_BASE_URL: httpUrl,
+  TRUSTED_CLIENT_IP_HEADER: z
+    .string()
+    .regex(/^(?:x-[a-z0-9]+(?:-[a-z0-9]+)*)?$/)
+    .default(""),
   APP_URL: httpUrl,
   SESSION_SECRET: z.string().refine((value) => Buffer.byteLength(value, "utf8") >= 32),
   TIME_ZONE: z
@@ -22,6 +26,7 @@ export const envSchema = z.object({
 });
 
 const hints: Record<keyof z.infer<typeof envSchema>, string> = {
+  TRUSTED_CLIENT_IP_HEADER: "비워 두거나 신뢰 ingress가 덮어쓰는 소문자 x- 헤더 이름을 설정한다.",
   API_BASE_URL: "http(s) API 주소를 설정한다.",
   APP_URL: "http(s) web 주소를 설정한다.",
   SESSION_SECRET: "32바이트 이상의 비밀을 설정한다.",

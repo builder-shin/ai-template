@@ -21,7 +21,7 @@ const base = [
 const compose = () => readFileSync(resolve(root, plan.composeFile), "utf8");
 
 describe("전용 스택의 명령과 주소", () => {
-  it.each(["web", "admin"] as const)("%s의 알 수 없는 백엔드는 계획과 설정에서 거절한다", (app) => {
+  it.each(["web", "admin"] as const)("알 수 없는 백엔드는 계획과 설정에서 거절한다 (%s)", (app) => {
     expect(() => {
       Reflect.apply(createPlan, undefined, ["offline-04", root, app, "unknown"]);
     }).toThrow(/백엔드/);
@@ -32,7 +32,7 @@ describe("전용 스택의 명령과 주소", () => {
     }).toThrow(/백엔드/);
   });
 
-  it.each(["web", "admin"] as const)("%s의 각 백엔드는 선언한 compose 파일을 검증한다", (app) => {
+  it.each(["web", "admin"] as const)("각 백엔드는 선언한 compose 파일을 검증한다 (%s)", (app) => {
     for (const backend of ["fastapi", "nestjs"] as const) {
       const selected = createPlan("offline-04", root, app, backend);
       expect(selected.composeFile).toBe(
@@ -87,7 +87,7 @@ describe("전용 스택의 명령과 주소", () => {
   });
 
   it.each(["fastapi", "joon", "", "../fastapi", "UPPER", "x;stop", "a".repeat(41)])(
-    "보호 이름이나 잘못된 실행 ID %s를 거절한다",
+    "보호 이름이나 잘못된 실행 ID를 거절한다 (%s)",
     (id) => {
       expect(() => projectName(id)).toThrow();
     },
@@ -165,7 +165,7 @@ describe("compose의 독립성과 안전 경계", () => {
     ['RECENT_LOGIN_SECONDS: "10"', 'RECENT_LOGIN_SECONDS: "600"'],
     ["context: ../../templates/fastapi", "context: ../../other"],
     ["services:\n", "networks:\n  default:\n    external: true\nservices:\n"],
-  ])("잘못된 설정 %s를 Docker 전에 거절한다", (before, after) => {
+  ])("잘못된 설정을 Docker 전에 거절한다 (%s)", (before, after) => {
     const original = compose();
     expect(original).toContain(before);
     expect(() => {
@@ -235,8 +235,13 @@ describe("포트와 자식 명령", () => {
   });
 });
 
-describe.each(["web", "admin"] as const)("스택 수명과 실패 정리 (%s)", (app) => {
-  const plan = createPlan("offline-04", root, app);
+describe.each([
+  { app: "web", backend: "fastapi", variable: "WEB_E2E_RUN_ID" },
+  { app: "web", backend: "nestjs", variable: "WEB_E2E_RUN_ID" },
+  { app: "admin", backend: "fastapi", variable: "ADMIN_E2E_RUN_ID" },
+  { app: "admin", backend: "nestjs", variable: "ADMIN_E2E_RUN_ID" },
+] as const)("스택 수명과 실패 정리 ($app, $backend)", ({ app, backend, variable }) => {
+  const plan = createPlan("offline-04", root, app, backend);
   function harness(failure?: string, code = 7) {
     const events: string[] = [];
     const deps: Dependencies = {
@@ -312,7 +317,7 @@ describe.each(["web", "admin"] as const)("스택 수명과 실패 정리 (%s)", 
   });
 
   it.each(["containers", "volumes"] as const)(
-    "기존 %s가 있으면 기동·정리 없이 다른 실행 ID를 요구한다",
+    "기존 자원이 있으면 기동·정리 없이 다른 실행 ID를 요구한다 (%s)",
     async (resource) => {
       const { deps, events } = harness();
       const execute = deps.execute;
@@ -390,10 +395,13 @@ describe.each(["web", "admin"] as const)("스택 수명과 실패 정리 (%s)", 
     expect(deps.log).toHaveBeenCalledWith(
       expect.stringContaining(JSON.stringify(plan.commands.down)),
     );
+    expect(deps.log).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining(`(COMPOSE_DISABLE_ENV_FILE=1, ${variable}=offline-04)`),
+    );
   });
 
   it.each([130, 143])(
-    "정리 중 중단 신호 %s를 받으면 정리를 마치고 신호 코드를 반환한다",
+    "정리 중 중단 신호를 받으면 정리를 마치고 신호 코드를 반환한다 (%s)",
     async (code) => {
       const controller = new AbortController();
       const { deps, events } = harness();

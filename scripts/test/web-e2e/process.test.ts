@@ -169,8 +169,8 @@ it.skipIf(process.platform === "win32")(
       controller.abort(143);
       expect((await waitForCommand(result)).code).not.toBe(0);
       expect(alive(pid)).toBe(false);
-      expect(log).toHaveBeenCalledWith(
-        expect.stringMatching(/프로세스 그룹 .*SIGKILL로 강제 종료/),
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        `종료 한도를 넘어 프로세스 그룹(PID: ${String(pid)})에 SIGKILL을 보냈다.`,
       );
     } finally {
       controller.abort(143);

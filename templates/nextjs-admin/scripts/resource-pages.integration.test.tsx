@@ -183,6 +183,11 @@ it("수정 페이지는 단건 included로 첫 페이지 밖 역할 라벨을 �
       },
     },
   });
+  const firstPage = await seed.client.GET("/roles", {
+    params: { query: { "page[number]": 1, "page[size]": 20 } },
+  });
+  expect(firstPage.data!.meta.page.totalPages).toBeGreaterThan(1);
+  expect(firstPage.data!.data.some((item) => item.id === role!.data.id)).toBe(false);
   await seed.client.PATCH("/users/{id}", {
     params: { path: { id: member.userId } },
     body: {

@@ -4,6 +4,7 @@ API 에러 객체의 `code` 값 목록이다. 원본은 `contract/typespec/src/e
 
 - 형식은 `<영역>.<snake_case 사유>`다.
 - 클라이언트는 `code`와 `meta.params`만 믿고 문구를 번역한다. `title`과 `detail`은 개발자용 영어다.
+- `rate_limit.exceeded`의 `errors[].meta.params.retryAfter`는 `Retry-After` 헤더와 같은 양의 정수 초다. `meta.retryAfter`에는 넣지 않는다.
 - 새 코드는 TypeSpec의 `ErrorCode`와 이 표에 함께 추가하고, 프론트 템플릿의 번역 카탈로그에도 넣는다.
 
 | 코드                              | HTTP       | 의미                                                                                               |

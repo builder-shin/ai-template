@@ -1,6 +1,6 @@
 # 관리 BFF
 
-BFF의 API 요청은 BFF 주소에서 나가므로 클라이언트 주소를 전달하도록 배포를 구성하기 전에는 API의 IP별 한도를 모든 사용자가 함께 쓴다.
+BFF의 API 요청은 기본적으로 BFF 주소에서 나가 IP별 한도를 사용자끼리 공유한다. 신뢰 ingress가 덮어쓴 단일 주소를 전달하려면 [클라이언트 주소 배포](recipes/client-address.md)의 접근 제한과 `TRUSTED_CLIENT_IP_HEADER`·API 신뢰 설정을 함께 적용한다.
 
 서버가 API를 읽고 Server Action이 쓴다. 브라우저에는 계정 표시 정보만 전달한다. API 토큰은 JWE 세션 쿠키에 두며 proxy에서만 갱신한다. 여러 인스턴스에서는 갱신을 같은 프로세스로 보내는 sticky session이 필요하다.
 

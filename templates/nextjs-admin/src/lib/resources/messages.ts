@@ -45,7 +45,7 @@ export function missingResourceMessages(
     const metadata = resource.fields as Record<string, { values?: readonly string[] }> | undefined;
     const inputErrors = Object.entries(resource.fields ?? {}).flatMap(([name, field]) =>
       (field.inputValues ?? [])
-        .filter((value) => !field.values?.includes(value))
+        .filter((value) => !field.values?.some((candidate) => candidate === value))
         .map(
           (value) =>
             `${resource.type}.${name}: 입력 열거값이 표시 목록에 없다 (${value}) — inputValues를 values의 일부로 선언한다.`,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createApiClient } from "../../../lib/api/client";
+import { createRequestApiClient } from "../../../lib/api/request-client";
 import { ApiError } from "../../../lib/api/errors";
 import { getEnv } from "../../../lib/env";
 import { sessionCookie, sessionFromTokens } from "../../../lib/session/cookie";
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   const code = query.get("code");
   if (!code || query.getAll("code").length !== 1) return failed();
   try {
-    const client = createApiClient({ baseUrl: env.API_BASE_URL, locale });
+    const client = await createRequestApiClient({ locale });
     const { data } = await client.POST("/sessions", {
       body: {
         data: {
@@ -51,8 +51,7 @@ export async function GET(request: NextRequest) {
       },
     });
     const session = sessionFromTokens(data!.data.attributes, data!.data.id);
-    const authenticated = createApiClient({
-      baseUrl: env.API_BASE_URL,
+    const authenticated = await createRequestApiClient({
       locale,
       accessToken: session.accessToken,
     });

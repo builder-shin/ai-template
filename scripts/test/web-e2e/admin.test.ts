@@ -62,6 +62,9 @@ describe("admin 전용 스택", () => {
     ["image", "ai-template-web-e2e-fastapi:other"],
   ])("API 설정 거절 (%s)", (key, value) => {
     const doc = record(parse(compose(), { merge: true }));
+    expect(() => {
+      validateCompose(stringify(doc), plan);
+    }).not.toThrow();
     record(record(doc.services).api)[key] = value;
     expect(() => {
       validateCompose(stringify(doc), plan);
@@ -90,6 +93,9 @@ describe("admin 전용 스택", () => {
     ["OAUTH_NAVER_PROFILE_URL", "http://oauth:8080/naver/userinfo"],
   ])("환경 설정 거절 (%s)", (key, value) => {
     const doc = record(parse(compose(), { merge: true }));
+    expect(() => {
+      validateCompose(stringify(doc), plan);
+    }).not.toThrow();
     record(record(record(doc.services).api).environment)[key] = value;
     expect(() => {
       validateCompose(stringify(doc), plan);
@@ -110,6 +116,9 @@ it.each(["external", "name", "mount", "service", "infra-image"])(
   "전용 자원 경계를 벗어난 설정을 거절한다 (%s)",
   (kind) => {
     const doc = record(parse(compose(), { merge: true }));
+    expect(() => {
+      validateCompose(stringify(doc), plan);
+    }).not.toThrow();
     const services = record(doc.services);
     if (kind === "external") record(doc.volumes)["postgres-data"] = { external: true };
     if (kind === "name") record(doc.volumes)["postgres-data"] = { name: "fastapi_postgres-data" };

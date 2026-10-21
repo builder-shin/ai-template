@@ -65,6 +65,14 @@ it("빈 메타데이터는 범용 빈 값을 표시한다", () => {
   show("metadata", { record: { ...record, attributes: { metadata: {} } } });
   expect(screen.getByText("—")).toBeDefined();
 });
+it.each([null, undefined, "문자열", 7, true, [], ["값"]])(
+  "객체가 아닌 메타데이터는 빈 값이다: %j",
+  (metadata) => {
+    show("metadata", { record: { ...record, attributes: { metadata } } });
+    expect(screen.getByText("—")).toBeDefined();
+    expect(document.querySelector("dl")).toBeNull();
+  },
+);
 it.each(["users", "roles", "posts"])("볼 수 있는 대상만 상세 링크를 만든다: %s", (type) => {
   show("targetId", {
     locale: "en",
@@ -84,6 +92,19 @@ it("대상 종류와 id가 없으면 빈 값을 표시한다", () => {
   show("targetId", { record: { ...record, attributes: { targetType: null, targetId: null } } });
   expect(screen.getByText("—")).toBeDefined();
 });
+it.each([undefined, null, 7, true, {}, []])(
+  "문자열 아닌 대상 종류는 id만 보이고 접근 판정을 부르지 않는다: %j",
+  (targetType) => {
+    const linkable = vi.fn(() => true);
+    show("targetId", {
+      record: { ...record, attributes: { targetType, targetId: "target/id" } },
+      linkable,
+    });
+    expect(screen.getByText("target/id")).toBeDefined();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(linkable).not.toHaveBeenCalled();
+  },
+);
 it.each(["ko", "en"] as const)(
   "공개 행위자의 이름 대체값은 보기 권한 없이 링크하지 않는다: %s",
   (locale) => {

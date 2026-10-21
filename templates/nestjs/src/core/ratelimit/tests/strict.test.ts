@@ -22,7 +22,7 @@ it.each([
       code: "rate_limit.exceeded",
       title: "Too many requests",
       headers: { "Retry-After": "42" },
-      meta: { retryAfter: 42 },
+      meta: { params: { retryAfter: 42 } },
     });
     expect(evalCommand).toHaveBeenCalledExactlyOnceWith(
       expect.any(String),

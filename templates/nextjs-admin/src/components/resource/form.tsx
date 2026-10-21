@@ -7,16 +7,23 @@ import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
 import { SubmitButton } from "../submit-button";
 import { ResourceSelect } from "./select";
-import type { FormAction, ResourceState, InputProps } from "./types";
+import type { FormAction, ResourceState, ResourceFieldState, InputProps } from "./types";
 
 const FormContext = createContext<ResourceState>({ ok: true });
-export function useResourceField(name: string) {
+const FieldContext = createContext<{ name: string; notice?: string } | null>(null);
+export function useResourceField(name: string): ResourceFieldState {
   const state = useContext(FormContext);
+  const field = useContext(FieldContext);
   const errors = state.ok ? [] : (state.fieldErrors[name] ?? []);
+  const errorId = errors.length ? `${name}-errors` : undefined;
+  const noticeId = field?.name === name ? field.notice : undefined;
   return {
     errors,
     invalid: errors.length > 0,
-    describedBy: errors.length ? `${name}-errors` : undefined,
+    errorId,
+    noticeId,
+    labelledBy: `${name}-label`,
+    describedBy: [errorId, noticeId].filter(Boolean).join(" ") || undefined,
   };
 }
 export function ResourceForm({
@@ -72,7 +79,7 @@ export function ResourceInput({
 }: InputProps) {
   const state = useContext(FormContext);
   const [value, setValue] = useState(state.values?.[name] ?? defaultValue);
-  const { errors, invalid, describedBy: fieldDescription } = useResourceField(name);
+  const { errors, invalid, errorId: fieldDescription } = useResourceField(name);
   const describedBy =
     [fieldDescription, error ? `${name}-notice` : undefined].filter(Boolean).join(" ") || undefined;
   const props = { id: name, name, "aria-invalid": invalid, "aria-describedby": describedBy };
@@ -82,43 +89,52 @@ export function ResourceInput({
       className="flex min-w-0 flex-col gap-2"
       data-invalid={invalid || undefined}
     >
-      <Label htmlFor={name}>{label}</Label>
+      {children ? (
+        <span id={`${name}-label`} className="text-sm font-medium">
+          {label}
+        </span>
+      ) : (
+        <Label htmlFor={name}>{label}</Label>
+      )}
       <input type="hidden" name={`__present_${name}`} value="1" />
-      {children ??
-        (kind === "textarea" ? (
-          <textarea
-            {...props}
-            value={typeof value === "string" ? value : ""}
-            onChange={(event) => setValue(event.target.value)}
-            className="min-h-32 rounded-lg border border-input bg-transparent p-3"
-          />
-        ) : kind === "boolean" ? (
-          <Checkbox {...props} value="true" checked={value === true} onCheckedChange={setValue} />
-        ) : ["enum", "enum-many", "relation", "relation-many"].includes(kind) ? (
-          <ResourceSelect
-            name={name}
-            label={label}
-            defaultValue={value}
-            multiple={kind === "relation-many" || kind === "enum-many"}
-            {...(options ? { options } : {})}
-            {...(search ? { search } : {})}
-            invalid={invalid}
-            describedBy={describedBy}
-            allowEmpty={kind === "relation"}
-            emptyLabel="none"
-            disabled={disabled}
-          />
-        ) : (
-          <Input
-            {...props}
-            value={typeof value === "string" ? value : ""}
-            onChange={(event) => setValue(event.target.value)}
-          />
-        ))}
+      {children ? (
+        <FieldContext.Provider value={{ name, ...(error ? { notice: `${name}-notice` } : {}) }}>
+          {children}
+        </FieldContext.Provider>
+      ) : kind === "textarea" ? (
+        <textarea
+          {...props}
+          value={typeof value === "string" ? value : ""}
+          onChange={(event) => setValue(event.target.value)}
+          className="min-h-32 rounded-lg border border-input bg-transparent p-3"
+        />
+      ) : kind === "boolean" ? (
+        <Checkbox {...props} value="true" checked={value === true} onCheckedChange={setValue} />
+      ) : ["enum", "enum-many", "relation", "relation-many"].includes(kind) ? (
+        <ResourceSelect
+          name={name}
+          label={label}
+          defaultValue={value}
+          multiple={kind === "relation-many" || kind === "enum-many"}
+          {...(options ? { options } : {})}
+          {...(search ? { search } : {})}
+          invalid={invalid}
+          describedBy={describedBy}
+          allowEmpty={kind === "relation"}
+          emptyLabel="none"
+          disabled={disabled}
+        />
+      ) : (
+        <Input
+          {...props}
+          value={typeof value === "string" ? value : ""}
+          onChange={(event) => setValue(event.target.value)}
+        />
+      )}
       {errors.length > 0 && (
         <div id={fieldDescription} className="text-sm text-destructive">
-          {errors.map((error, index) => (
-            <p key={index}>{error}</p>
+          {errors.map((message, index) => (
+            <p key={index}>{message}</p>
           ))}
         </div>
       )}

@@ -1,12 +1,12 @@
 # 아키텍처
 
-BFF의 API 요청은 BFF 주소에서 나가므로 클라이언트 주소를 전달하도록 배포를 구성하기 전에는 API의 IP별 한도를 모든 사용자가 함께 쓴다.
+BFF의 API 요청은 기본적으로 BFF 주소에서 나가 IP별 한도를 사용자끼리 공유한다. 신뢰 ingress가 덮어쓴 단일 주소를 전달하려면 [클라이언트 주소 배포](recipes/client-address.md)의 접근 제한과 `TRUSTED_CLIENT_IP_HEADER`·API 신뢰 설정을 함께 적용한다.
 
 Next.js App Router의 BFF다. Server Component가 데이터를 읽고 Server Action이 쓴다.
-브라우저는 백엔드 API를 직접 부르지 않는다. W3의 실시간 Socket.IO와 presigned URL 업로드는 직접 연결한다.
+브라우저는 백엔드 API를 직접 부르지 않는다. 실시간 Socket.IO와 presigned URL 업로드는 직접 연결한다.
 API 계약·목 사본은 이 프로젝트의 `contract/` 안에 두고 자체 workspace로 실행한다.
 앱 이름과 dev·mock·e2e·e2eMock 포트의 설정 파일: `app.config.json`. 기본값: `web`, 3000·4010·3100·4110. 설정 모듈(`src/lib/app-config.mjs`)은 plain Node와 TypeScript가 함께 쓰며 kebab-case 이름과 1024–65535의 서로 다른 정수 포트를 검사한다. 운영 start 포트(`package.json`)와 APP_URL origin(`.env.example`)이 dev 설정과 다르면 check가 고칠 값을 알린다.
-W3까지 비밀번호·소셜 인증, 공개·내 글, 내 정보·비밀번호 변경·탈퇴, 세션 관리, 업로드와 실시간을 구현했다.
+비밀번호·소셜 인증, 공개·내 글, 내 정보·비밀번호 변경·탈퇴, 세션 관리, 업로드와 실시간을 제공한다.
 `features/posts`는 `pnpm gen:feature`가 복사하는 골든 기능이다. 같은 E2E 20개가 목과 외부 FastAPI에서 통과하며 standalone 이미지·일곱 레시피·고정 skill을 갖춘다. CI 실행 결과는 PR CI에서 확인한다.
 
 ## 기능과 생성기
@@ -330,7 +330,7 @@ Playwright `webServer`가 `scripts/e2e-server.ts`를 실행한다. mock 대상�
 
 `e2e/targets/`는 `E2E_TARGET`의 부수 채널 어댑터다. mock은 실제 `/_test/mail?to=…`를, fastapi는 Mailpit의 수신자·목적·새 메일을 골라 실제 web 링크를 읽는다. 메일함은 비우지 않는다. `expireRecentLogin`은 설정한 창과 여유 시간을 기다린다. 세 제공자의 성공은 username·제공자별 claims 폼과 실제 redirect를, 거부는 현재 state·redirect_uri를 쓴다. BFF의 PKCE를 유지하며 일반 E2E에 대상별 분기·전용 URL을 넣지 않는다. fastapi는 외부 API 준비 뒤 web만 기동하고 목으로 대체하지 않는다.
 
-운영 Chromium E2E 20개는 기존 가입·메일 인증·로그인·로그아웃·재설정·returnTo와 W3 프로필·아바타·언어 전환·내 글·커버·발행·취소·삭제·소셜 로그인·거부·탈퇴 재인증·비밀번호 변경을 검사한다. 두 컨텍스트의 세션 폐기·비밀번호 변경은 실제 Socket.IO 연결과 session.revoked를 확인하며 현재 세션을 유지한다. 공개 목록은 posts 구독 ack 뒤 글을 바꿔 문서 reload 없이 반영되는지 확인한다. 커버·아바타 PNG는 텍스트에서 실행 때 만들고 실제 이미지 로드까지 확인한다.
+운영 Chromium E2E 20개는 가입·메일 인증·로그인·로그아웃·재설정·returnTo와 프로필·아바타·언어 전환·내 글·커버·발행·취소·삭제·소셜 로그인·거부·탈퇴 재인증·비밀번호 변경을 검사한다. 두 컨텍스트의 세션 폐기·비밀번호 변경은 실제 Socket.IO 연결과 session.revoked를 확인하며 현재 세션을 유지한다. 공개 목록은 posts 구독 ack 뒤 글을 바꿔 문서 reload 없이 반영되는지 확인한다. 커버·아바타 PNG는 텍스트에서 실행 때 만들고 실제 이미지 로드까지 확인한다.
 
 `pnpm check`의 생성기 검사는 독립 임시 사본에 새 기능을 만들고 그 사본의 타입·경계 린트·단위·실제 목·HTTP 검사를 실행한다. 생성기 project는 기존 web 검사 뒤에 실행해 Next 빌드 산출물이 겹치지 않게 한다. 환경 파일은 임시 사본에 복사하지 않는다.
 

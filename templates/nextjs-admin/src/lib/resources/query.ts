@@ -1,7 +1,7 @@
 import "server-only";
 import { buildQuery } from "../api/jsonapi";
 import { envSchema } from "../env";
-import { calendarDateFilter } from "./date";
+import { calendarDateFilter, isPeriodEnd } from "./date";
 import type { ListQuery } from "./contract";
 import type { AnyResource } from "./definition";
 
@@ -23,7 +23,7 @@ export function resourceQuery<R extends AnyResource>(
         resource.list.filters?.[key as keyof typeof resource.list.filters] === "date"
           ? calendarDateFilter(
               value,
-              key.endsWith("To]"),
+              isPeriodEnd(key),
               envSchema.shape.TIME_ZONE.parse(process.env.TIME_ZONE),
             )
           : value;

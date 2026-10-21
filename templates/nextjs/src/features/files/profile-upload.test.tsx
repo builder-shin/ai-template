@@ -1,8 +1,7 @@
 import { ko } from "../../lib/i18n/catalogs";
 // @vitest-environment jsdom
-import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { ProfileForm } from "../me";

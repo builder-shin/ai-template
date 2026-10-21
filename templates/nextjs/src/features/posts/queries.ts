@@ -1,11 +1,10 @@
 import "server-only";
 import { cache } from "react";
 import { z } from "zod";
-import { createApiClient } from "../../lib/api/client";
+import { createRequestApiClient } from "../../lib/api/request-client";
 import { ApiError } from "../../lib/api/errors";
 import { buildQuery, resolveIncluded } from "../../lib/api/jsonapi";
 import type { components } from "../../lib/api/schema";
-import { getEnv } from "../../lib/env";
 import { createSessionApiClient } from "../../lib/api/session-client";
 import { getPathname } from "../../lib/i18n/navigation";
 import { redirectOnUnauthorized } from "../../lib/session/request";
@@ -17,7 +16,7 @@ type Locale = Schemas["Locale"];
 
 function publicClient(locale: Locale) {
   // 공개 화면에서는 로그인한 작성자에게도 초안을 보여 주지 않는다.
-  return createApiClient({ baseUrl: getEnv().API_BASE_URL, locale });
+  return createRequestApiClient({ locale });
 }
 
 function view(
@@ -39,7 +38,9 @@ function view(
 // cache는 요청 안에서만 같은 인자의 조회를 묶는다. 인자는 모두 원시값이다.
 export const getPosts = cache(
   async (locale: Locale, q = "", sort: PostSort = "latest", page = 1, size = 10) => {
-    const { data } = await publicClient(locale).GET("/posts", {
+    const { data } = await (
+      await publicClient(locale)
+    ).GET("/posts", {
       params: {
         query: buildQuery("/posts", {
           filter: { status: "published", q },
@@ -61,7 +62,9 @@ export const getPosts = cache(
 export const getPost = cache(async (locale: Locale, id: string): Promise<Post | null> => {
   if (!z.uuid().safeParse(id).success) return null;
   try {
-    const { data } = await publicClient(locale).GET("/posts/{id}", {
+    const { data } = await (
+      await publicClient(locale)
+    ).GET("/posts/{id}", {
       params: { path: { id }, query: { include: "author,coverImage" } },
     });
     if (!data) throw new Error("글 상세 응답이 없다.");

@@ -153,7 +153,7 @@ it("표시 override도 요청의 대상 상세 접근 판정을 따른다", () =
     <FieldDisplay
       name="status"
       field={{
-        display: ({ linkable }) => <span>{linkable?.("users") ? "상세 허용" : "상세 없음"}</span>,
+        display: ({ linkable }) => <span>{linkable("users") ? "상세 허용" : "상세 없음"}</span>,
       }}
       record={record}
       included={included}
@@ -164,4 +164,21 @@ it("표시 override도 요청의 대상 상세 접근 판정을 따른다", () =
     />,
   );
   expect(screen.getByText("상세 허용")).toBeDefined();
+});
+
+it("include하지 않은 사용자 관계는 이름 없는 사용자 번역 대신 id를 쓴다", () => {
+  render(
+    <FieldDisplay
+      name="author"
+      field={{ kind: "relation", relation: { type: "users", label: "name" } }}
+      record={record}
+      included={[]}
+      locale="ko"
+      timeZone="Asia/Seoul"
+      translate={translate}
+      linkable={() => false}
+    />,
+  );
+  expect(screen.getByText("u")).toBeDefined();
+  expect(screen.queryByText("layout.unnamedUser")).toBeNull();
 });

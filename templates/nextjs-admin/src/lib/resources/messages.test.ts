@@ -4,7 +4,7 @@ import { postsFixture } from "../../../scripts/test/resource-fixture";
 it("등록 선언의 제목·필드·필터·열거값·동작을 빠짐없이 모은다", () => {
   const resource = {
     ...postsFixture,
-    fields: { status: { kind: "enum" as const, values: ["draft", "published"] } },
+    fields: { status: { kind: "enum" as const, values: ["draft", "published"] as const } },
     actions: [
       {
         name: "publish",
@@ -42,8 +42,8 @@ it("입력 전용 열거값도 문구 검사에 포함하고 표시 값 밖 선�
     fields: {
       status: {
         kind: "enum" as const,
-        values: ["draft", "published"],
-        inputValues: ["unknown"],
+        values: ["draft", "published"] as const,
+        inputValues: ["unknown"] as unknown as readonly "draft"[],
       },
     },
   };

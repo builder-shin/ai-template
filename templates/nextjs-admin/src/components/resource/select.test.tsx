@@ -84,7 +84,7 @@ it("검색형 다중 선택의 키보드 Space는 같은 포커스 항목만 선
   const user = userEvent.setup();
   const { trigger, values } = show();
   await user.click(trigger);
-  const input = await screen.findByRole("textbox", { name: "대상 검색" });
+  const input = await screen.findByRole("combobox", { name: "대상 검색" });
   await user.click(input);
   await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
   const target = focusedOption();
@@ -113,7 +113,7 @@ it.each([{ defaultValue: [] }, { defaultValue: ["a"] }])(
       term === "첫 검색" ? first.promise : second.promise,
     );
     await user.click(trigger);
-    const input = await screen.findByRole("textbox", { name: "대상 검색" });
+    const input = await screen.findByRole("combobox", { name: "대상 검색" });
     await user.type(input, "첫 검색{Enter}");
     expect.soft(document.activeElement).toBe(input);
     await act(async () => first.resolve([{ value: "s", label: "첫 검색 역할" }]));
@@ -154,11 +154,13 @@ it("같은 검색의 새 응답 뒤 Space는 현재 가상 포커스 역할만 �
   let requests = 0;
   const { trigger, values } = show([], () => (++requests === 1 ? first.promise : second.promise));
   await user.click(trigger);
-  const input = await screen.findByRole("textbox", { name: "대상 검색" });
+  const input = await screen.findByRole("combobox", { name: "대상 검색" });
   await user.type(input, "역할{Enter}");
   await act(async () => first.resolve([{ value: "s", label: "이전 검색 역할" }]));
   await screen.findByRole("option", { name: "이전 검색 역할" });
-  await user.keyboard("{ArrowDown}{Enter}");
+  await user.keyboard("{ArrowDown}");
+  await user.click(screen.getByRole("button", { name: "검색" }));
+  await user.click(input);
   expect.soft(document.activeElement).toBe(input);
   await act(async () => second.resolve([{ value: "t", label: "새 검색 역할" }]));
   const current = await screen.findByRole("option", { name: "새 검색 역할" });
@@ -210,7 +212,7 @@ it.each(compositionKeys)(
     const search = vi.fn((_term: string) => result.promise);
     const { trigger, values } = show(["a"], search);
     await user.click(trigger);
-    const input = await screen.findByRole("textbox", { name: "대상 검색" });
+    const input = await screen.findByRole("combobox", { name: "대상 검색" });
     await user.type(input, "관리");
     fireEvent.compositionStart(input, { data: "ㅈ" });
     fireEvent.change(input, { target: { value: "관리자" } });
@@ -235,14 +237,18 @@ it.each(compositionKeys)(
   },
 );
 
-it.each(compositionKeys)(
+it.each(
+  compositionKeys.map((key) =>
+    key.name === "isComposing" ? { ...key, keyCode: 32, which: 32 } : key,
+  ),
+)(
   "조합 중 Space는 현재 키보드 대상과 제출값을 유지한다: $name",
   async ({ name: _name, ...key }) => {
     const user = userEvent.setup();
     const search = vi.fn(async () => options);
     const { trigger, values } = show(["a"], search);
     await user.click(trigger);
-    const input = await screen.findByRole("textbox", { name: "대상 검색" });
+    const input = await screen.findByRole("combobox", { name: "대상 검색" });
     await user.type(input, "관리");
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
     const target = focusedOption();
@@ -263,5 +269,48 @@ it.each(compositionKeys)(
     await user.keyboard(" ");
     expect.soft(focusedOption()).toBe(current);
     expect(values()).toEqual([]);
+  },
+);
+
+it("검색 입력의 combobox는 Enter로 강조한 역할을 선택하고 해제한다", async () => {
+  const user = userEvent.setup();
+  const search = vi.fn(async () => options);
+  const { trigger, values } = show([], search);
+  await user.click(trigger);
+  const input = await screen.findByRole("combobox", { name: "대상 검색" });
+  await user.click(input);
+  await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+  expect(values()).toEqual(["b"]);
+  expect(search).not.toHaveBeenCalled();
+  expect(document.activeElement).toBe(input);
+  await user.keyboard("{Enter}");
+  expect(values()).toEqual([]);
+  expect(search).not.toHaveBeenCalled();
+});
+
+it.each(["resolve", "reject"] as const)(
+  "새 검색은 기다리는 검색보다 먼저 결과를 표시하고 늦은 %s를 버린다",
+  async (settle) => {
+    const user = userEvent.setup();
+    const first = Promise.withResolvers<Option[]>();
+    const second = Promise.withResolvers<Option[]>();
+    const search = vi.fn((term: string) => (term === "첫 검색" ? first.promise : second.promise));
+    const { trigger } = show([], search);
+    await user.click(trigger);
+    const input = await screen.findByRole("combobox", { name: "대상 검색" });
+    await user.type(input, "첫 검색{Enter}");
+    await user.clear(input);
+    await user.type(input, "최신 검색{Enter}");
+    expect(search.mock.calls).toEqual([["첫 검색"], ["최신 검색"]]);
+    await act(async () => second.resolve([{ value: "new", label: "최신 결과" }]));
+    await screen.findByRole("option", { name: "최신 결과" });
+    await act(async () =>
+      settle === "resolve"
+        ? first.resolve([{ value: "old", label: "오래된 결과" }])
+        : first.reject(new Error("오래된 실패")),
+    );
+    expect(screen.queryByRole("option", { name: "오래된 결과" })).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("option", { name: "최신 결과" })).toBeTruthy();
   },
 );

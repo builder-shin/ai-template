@@ -1,3 +1,4 @@
+import { permissionCatalog } from "../../src/resources/roles/permission-catalog";
 import { defineResource } from "../../src/lib/resources/definition";
 
 // 등록하지 않는 데이터 계층 fixture다. 실제 글 관리 선언은 쓰기 화면을 제공하지 않는다.
@@ -26,7 +27,7 @@ export const rolesFixture = defineResource({
   type: "roles",
   permission: "roles:read",
   fields: {
-    permissions: { kind: "enum-many", values: ["posts:create", "posts:manage"] },
+    permissions: { kind: "enum-many", values: permissionCatalog },
   },
   list: { columns: ["id", "name"] },
   detail: { fields: ["id", "permissions"] },

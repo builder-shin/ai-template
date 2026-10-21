@@ -35,7 +35,11 @@ function UserMenu({ name }: { name: string }) {
           <DropdownMenuItem disabled={pending} render={<Link href="/me" />}>
             {t("me")}
           </DropdownMenuItem>
-          <DropdownMenuItem disabled={pending} render={<button type="submit" form="logout-form" />}>
+          <DropdownMenuItem
+            nativeButton
+            disabled={pending}
+            render={<button type="submit" form="logout-form" />}
+          >
             {t("logout")}
           </DropdownMenuItem>
         </DropdownMenuGroup>

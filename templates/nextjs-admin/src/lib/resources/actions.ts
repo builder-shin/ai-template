@@ -10,7 +10,7 @@ import { ApiError } from "../api/errors";
 import { redirectOnUnauthorized } from "../session/request";
 import { findScreen, controlsFor, type Screen } from "./access";
 import { createResourceData } from "./data";
-import { parseResourceForm, presentation, filterPresentation } from "./values";
+import { parseResourceForm, screenPresentation } from "./values";
 import { relationOptions } from "./options";
 import { resourceFormResult } from "./form-result";
 import type { AnyResource } from "./definition";
@@ -165,7 +165,7 @@ export async function searchResourceOptions(
       : screen === "create" || screen === "edit"
         ? Object.keys(ctx.resource[screen]!.fields)
         : [];
-  const field = (screen === "list" ? filterPresentation : presentation)(ctx.resource, name);
+  const field = screenPresentation(ctx.resource, name, screen);
   if (!keys.includes(name) || !field.relation || screen === "detail")
     throw denied("resource.not_found");
   const t = await getTranslations({ locale: ctx.locale });

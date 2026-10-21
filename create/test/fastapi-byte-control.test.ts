@@ -61,39 +61,37 @@ it("파일 시스템의 실행 비트가 없어도 Git 인덱스의 실행 권�
   expect(files.find((file) => file.path === "plain.txt")).toMatchObject({ mode: "100644" });
 });
 
-it.skipIf(process.platform === "win32")(
-  "FastAPI 세 조합의 파일·바이트·실행 권한을 편집 전 골든으로 보존한다",
-  async () => {
-    const source = comboFixture();
-    cpSync(join(source, "templates/nextjs"), join(source, "templates/nextjs-admin"), {
-      recursive: true,
-    });
-    for (const file of ["untracked.txt", "contract/untracked.txt"])
-      rmSync(join(source, "templates/nextjs-admin", file));
-    git(source, "add", "templates/nextjs-admin");
-    for (const entry of git(source, "ls-files", "--stage", "-z", "templates/nextjs").split("\0")) {
-      if (!entry.startsWith("100755 ")) continue;
-      const path = entry.slice(entry.indexOf("\t") + 1);
-      git(source, "update-index", "--chmod=+x", path.replace("nextjs/", "nextjs-admin/"));
-    }
-    git(source, "commit", "-m", "test: 조합 골든 입력을 고정한다");
-    const outputs: Record<string, unknown> = {};
-    for (const frontends of [["web"], ["admin"], ["web", "admin"]] as const) {
-      const target = join(temporaryFolder(), "aitpl-byte-control");
-      createProject(
-        { target, name: "byte-control", template: "combo", frontends, git: true },
-        source,
-        { pnpm: () => undefined },
-      );
-      const inventory = fileInventory(target);
+it("FastAPI 세 조합의 파일·바이트·Git 실행 권한을 골든으로 보존한다", async () => {
+  const source = comboFixture();
+  cpSync(join(source, "templates/nextjs"), join(source, "templates/nextjs-admin"), {
+    recursive: true,
+  });
+  for (const file of ["untracked.txt", "contract/untracked.txt"])
+    rmSync(join(source, "templates/nextjs-admin", file));
+  git(source, "add", "templates/nextjs-admin");
+  for (const entry of git(source, "ls-files", "--stage", "-z", "templates/nextjs").split("\0")) {
+    if (!entry.startsWith("100755 ")) continue;
+    const path = entry.slice(entry.indexOf("\t") + 1);
+    git(source, "update-index", "--chmod=+x", path.replace("nextjs/", "nextjs-admin/"));
+  }
+  git(source, "commit", "-m", "test: 조합 골든 입력을 고정한다");
+  const outputs: Record<string, unknown> = {};
+  for (const frontends of [["web"], ["admin"], ["web", "admin"]] as const) {
+    const target = join(temporaryFolder(), "aitpl-byte-control");
+    createProject(
+      { target, name: "byte-control", template: "combo", frontends, git: true },
+      source,
+      { pnpm: () => undefined },
+    );
+    const inventory = fileInventory(target);
+    if (process.platform !== "win32")
       for (const entry of inventory)
         expect(Boolean(statSync(join(target, entry.path)).mode & 0o111), entry.path).toBe(
           entry.mode === "100755",
         );
-      outputs[frontends.join("+")] = inventory;
-    }
-    await expect(JSON.stringify(outputs, null, 2) + "\n").toMatchFileSnapshot(
-      "./fixtures/fastapi-output-golden.json",
-    );
-  },
-);
+    outputs[frontends.join("+")] = inventory;
+  }
+  await expect(JSON.stringify(outputs, null, 2) + "\n").toMatchFileSnapshot(
+    "./fixtures/fastapi-output-golden.json",
+  );
+});

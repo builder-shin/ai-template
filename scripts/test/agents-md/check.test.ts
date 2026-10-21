@@ -1,12 +1,15 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { checkAgentsMd } from "../../src/agents-md/check.ts";
 
 /** { "상대 경로": "내용" }으로 임시 폴더를 만든다. */
 function tree(files: Record<string, string>): string {
-  const root = mkdtempSync(join(tmpdir(), "agents-md-"));
+  const root = mkdtempSync(join(tmpdir(), "aitpl-agents-md-"));
+  onTestFinished(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   for (const [path, content] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), content);

@@ -6,7 +6,7 @@
   - 이 문서는 기반 설계 §10에서 사이클 4로 미룬 결정을 내린다: 리소스 선언 형식, 범용 목록·상세·폼 화면의 범위, 조합에서 web과 admin이 계약·목 패키지를 함께 쓰는 방식, admin 포트.
   - 동작 기준은 [Next.js web 설계](2026-09-30-nextjs-web-design.md), [create CLI 설계](2026-10-03-create-cli-design.md), [FastAPI 설계](2026-09-26-fastapi-template-design.md)다.
 - 구현 계획: 마일스톤(§11)마다 `docs/superpowers/plans/`에 쓴다.
-- 현재 단계: A1·A2 병합(main e48f6e5), A3 구현. PR CI·main 병합 뒤 하위 프로젝트 5(NestJS)
+- 현재 상태(2026-10-21 확인): A1~A3와 CI 보완이 main에 병합되었고 NestJS 정식 구현·후속 수정도 PR #13·#14로 병합되었다. 아래 §16은 당시의 검토·미검증 기록이며 현재 후속 개선은 [통합 계획](../plans/2026-10-21-all-template-followups.md)에서 추적한다.
 
 ## 1. 목표와 범위
 

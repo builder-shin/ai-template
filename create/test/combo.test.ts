@@ -10,6 +10,39 @@ import { selectFrontendSteps } from "../src/frontend-config.ts";
 import { comboFixture, lock } from "./combo-fixture.ts";
 import { runPnpm } from "../src/pnpm.ts";
 
+it.each([
+  {
+    label: "missing root",
+    source: lock.replace("\n  .:\n    dependencies:", "\n  contract/no-app:\n    dependencies:"),
+  },
+  { label: "escaping contract", source: lock.replace("contract/mock:", "contract/../../outside:") },
+])("잘못된 importer는 설치 전에 거절하고 대상을 비워 둔다 ($label)", ({ source }) => {
+  const root = comboFixture();
+  write(root, "templates/nextjs/pnpm-lock.yaml", source);
+  git(root, "add", "templates/nextjs/pnpm-lock.yaml");
+  git(root, "commit", "-m", "test: malformed frontend lock");
+  const parent = temporaryFolder();
+  const commands: string[][] = [];
+  expect(() =>
+    createProject(
+      {
+        target: join(parent, "aitpl-invalid-lock"),
+        name: "aitpl-invalid-lock",
+        template: "combo",
+        git: false,
+      },
+      root,
+      {
+        pnpm: (_cwd, args) => {
+          commands.push(args);
+        },
+      },
+    ),
+  ).toThrow(/web.*importer/);
+  expect(commands).toEqual([["--version"]]);
+  expect(readdirSync(parent)).toEqual([]);
+});
+
 vi.mock("node:fs", async (original) => {
   const fs = await original<typeof import("node:fs")>();
   return { ...fs, mkdirSync: vi.fn(fs.mkdirSync) };
@@ -295,6 +328,33 @@ it.each(["engines", "devDependencies"])("web package.json 항목 누락을 안�
   ).toThrow(/pnpm new: .*package.json.* — .+/);
 });
 
+it.each(["@types/node", "vitest", "yaml"])(
+  "루트 계약 도구 누락은 정확한 앱·키를 안내하고 설치 전에 정리한다 (%s)",
+  (key) => {
+    const root = comboFixture();
+    const file = "templates/nextjs/package.json";
+    const pkg = JSON.parse(readFileSync(join(root, file), "utf8")) as {
+      devDependencies: Record<string, string>;
+    };
+    Reflect.deleteProperty(pkg.devDependencies, key);
+    write(root, file, JSON.stringify(pkg));
+    git(root, "add", file);
+    git(root, "commit", "-m", "chore: missing contract tool fixture");
+    const parent = temporaryFolder();
+    const target = join(parent, "aitpl-missing-tool");
+    const calls: string[][] = [];
+    expect(() =>
+      createProject({ target, name: "my-app", template: "combo", git: false }, root, {
+        pnpm: (_cwd, args) => {
+          calls.push(args);
+        },
+      }),
+    ).toThrow(`web package.json에 devDependencies.${key} 값이 없다`);
+    expect(calls).toEqual([["--version"]]);
+    expect(readdirSync(parent)).toEqual([]);
+  },
+);
+
 it.each(["install", "gen", "--version"])(
   "pnpm %s 실패는 대상·임시 형제를 남기지 않는다",
   (failure) => {
@@ -313,48 +373,66 @@ it.each(["install", "gen", "--version"])(
   },
 );
 
-it.each([["web", "admin"], ["admin"]])(
-  "조합 입력은 fixture 프론트 목록의 경로·하네스·gen을 따른다: %j",
-  (...names) => {
-    const repository = comboFixture();
-    const root = temporaryFolder();
-    cpSync(join(repository, "templates/fastapi"), join(root, "apps/api"), { recursive: true });
-    const frontends: ComboFrontend[] = names.map((name) => ({
-      name,
-      template: name === "web" ? "nextjs" : "nextjs-admin",
-    }));
-    for (const { name } of frontends)
-      cpSync(join(repository, "templates/nextjs"), join(root, "apps", name), { recursive: true });
-    const calls: string[][] = [];
-    writeCombo(
-      root,
-      "fixture-combo",
-      readComboInputs(repository, join(repository, "create/assets/combo")),
-      (_cwd, args) => {
-        calls.push(args);
-      },
-      frontends,
+it.each([
+  { label: "web", names: ["web"] },
+  { label: "admin", names: ["admin"] },
+  { label: "web, admin", names: ["web", "admin"] },
+])("조합 입력은 fixture 프론트 목록의 경로·하네스·gen을 따른다 ($label)", ({ names }) => {
+  const repository = comboFixture();
+  const root = temporaryFolder();
+  cpSync(join(repository, "templates/fastapi"), join(root, "apps/api"), { recursive: true });
+  const frontends: ComboFrontend[] = names.map((name) => ({
+    name,
+    template: name === "web" ? "nextjs" : "nextjs-admin",
+  }));
+  for (const { name } of frontends)
+    cpSync(join(repository, "templates/nextjs"), join(root, "apps", name), { recursive: true });
+  const calls: string[][] = [];
+  writeCombo(
+    root,
+    "fixture-combo",
+    readComboInputs(repository, join(repository, "create/assets/combo")),
+    (_cwd, args) => {
+      calls.push(args);
+    },
+    frontends,
+  );
+  expect(calls.filter((args) => args.includes("gen"))).toEqual(
+    names.map((name) => ["--filter", name, "run", "gen"]),
+  );
+  expect(parse(readFileSync(join(root, "pnpm-workspace.yaml"), "utf8"))).toMatchObject({
+    packages: ["apps/api", ...names.map((name) => `apps/${name}`), "contract/*"],
+  });
+  for (const name of names) {
+    expect(
+      JSON.parse(readFileSync(join(root, "apps", name, "package.json"), "utf8")),
+    ).toMatchObject({ name });
+    expect(readFileSync(join(root, "apps", name, "README.md"), "utf8")).toContain(
+      `# fixture-combo ${name}`,
     );
-    expect(calls.filter((args) => args.includes("gen"))).toEqual(
-      names.map((name) => ["--filter", name, "run", "gen"]),
-    );
-    expect(parse(readFileSync(join(root, "pnpm-workspace.yaml"), "utf8"))).toMatchObject({
-      packages: ["apps/api", ...names.map((name) => `apps/${name}`), "contract/*"],
-    });
-    for (const name of names) {
-      expect(
-        JSON.parse(readFileSync(join(root, "apps", name, "package.json"), "utf8")),
-      ).toMatchObject({ name });
-      expect(readFileSync(join(root, "apps", name, "README.md"), "utf8")).toContain(
-        `# fixture-combo ${name}`,
-      );
-      expect(
-        JSON.parse(readFileSync(join(root, "apps", name, "gen.config.json"), "utf8")),
-      ).toMatchObject({ contract: "../../contract" });
-      expect(existsSync(join(root, "apps", name, ".github"))).toBe(false);
+    expect(
+      JSON.parse(readFileSync(join(root, "apps", name, "gen.config.json"), "utf8")),
+    ).toMatchObject({ contract: "../../contract" });
+    expect(existsSync(join(root, "apps", name, ".github"))).toBe(false);
+  }
+  expect(readFileSync(join(root, "lefthook.yml"), "utf8")).toContain(
+    `--filter ${names[0] ?? ""} run -s tool betterleaks`,
+  );
+  for (const file of ["README.md", "AGENTS.md"]) {
+    const content = readFileSync(join(root, file), "utf8");
+    expect(content).not.toMatch(/\{\{\w+\}\}/);
+    for (const app of ["web", "admin"]) {
+      if (names.includes(app)) {
+        expect(content).toContain(`apps/${app}/`);
+        expect(content).toContain(app === "admin" ? "3101" : "3100");
+      } else {
+        expect(content).not.toContain(`apps/${app}/`);
+        expect(content.replaceAll("--web-url", "--frontend-url")).not.toMatch(
+          new RegExp(`\\b${app}\\b`),
+        );
+        expect(content).not.toContain(app === "admin" ? "3101" : "3100");
+      }
     }
-    expect(readFileSync(join(root, "lefthook.yml"), "utf8")).toContain(
-      `--filter ${names[0]} run -s tool betterleaks`,
-    );
-  },
-);
+    expect(content).toContain("동시 실행은 지원하지 않는다");
+  }
+});

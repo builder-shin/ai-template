@@ -2,7 +2,7 @@ import "server-only";
 import type { createApiClient } from "../api/client";
 import type { AnyResource } from "./definition";
 import type { Option, ScreenRecord } from "../../components/resource/types";
-import { presentation, filterPresentation } from "./values";
+import { screenPresentation } from "./values";
 import { recordLabel } from "./labels";
 import { ko } from "../i18n/catalogs";
 
@@ -14,7 +14,7 @@ export async function relationOptions(
   unnamedUser = ko.layout.unnamedUser,
   screen: "list" | "create" | "edit" = "list",
 ): Promise<Option[]> {
-  const relation = (screen === "list" ? filterPresentation : presentation)(resource, name).relation;
+  const relation = screenPresentation(resource, name, screen).relation;
   if (!relation) return [];
   // 경로는 서버 선언에서만 고른다. 브라우저가 대상 API 경로를 지정하지 못한다.
   const request = client.request as unknown as (

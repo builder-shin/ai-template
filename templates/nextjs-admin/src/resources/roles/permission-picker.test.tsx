@@ -59,6 +59,11 @@ it.each(["ko", "en"] as const)(
     const form = show(locale);
     const picker = screen.getByRole("group", { name: locale === "ko" ? "권한" : "Permissions" });
     expect(picker.id).toBe("permissions");
+    expect(picker.getAttribute("aria-labelledby")).toBe("permissions-label");
+    expect(document.getElementById("permissions-label")?.textContent).toBe(
+      locale === "ko" ? "권한" : "Permissions",
+    );
+    expect(document.getElementById("permissions-label")?.getAttribute("for")).toBeNull();
     expect(
       within(picker)
         .getAllByRole("group")
@@ -144,4 +149,15 @@ it("비활성 권한 선택기는 초기 선택을 유지하고 값과 존재 �
   expect(create.getAttribute("aria-checked")).toBe("true");
   expect(new FormData(form).getAll("permissions")).toEqual([]);
   expect(new FormData(form).has("__present_permissions")).toBe(false);
+});
+
+it("옵션 안내는 권한 그룹과 모든 체크박스의 설명으로 연결된다", () => {
+  show("ko", { error: "권한 옵션을 읽을 수 없습니다.", disabled: true });
+  const notice = screen.getByRole("alert");
+  expect(notice.id).toBe("permissions-notice");
+  expect(screen.getByRole("group", { name: "권한" }).getAttribute("aria-describedby")).toBe(
+    notice.id,
+  );
+  for (const checkbox of screen.getAllByRole("checkbox"))
+    expect(checkbox.getAttribute("aria-describedby")).toBe(notice.id);
 });

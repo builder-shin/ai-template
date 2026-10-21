@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { gitEnvironment } from "../../src/files/git-environment.ts";
 import { projectFiles } from "../../src/files/project-files.ts";
 
@@ -19,7 +19,10 @@ function write(root: string, path: string): void {
 }
 
 function tree(): string {
-  const root = mkdtempSync(join(tmpdir(), "project-files-"));
+  const root = mkdtempSync(join(tmpdir(), "aitpl-project-files-"));
+  onTestFinished(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   write(root, "README.md");
   write(root, "src/app.py");
   write(root, ".venv/lib/site.py");
@@ -31,7 +34,10 @@ describe("projectFiles", () => {
   it.each([false, true, "main"])(
     "hook 환경에서 다른 폴더의 git과 파일 목록을 격리한다: workTree=%s",
     (workTree) => {
-      const fixture = mkdtempSync(join(tmpdir(), "project-files-hook-"));
+      const fixture = mkdtempSync(join(tmpdir(), "aitpl-project-files-hook-"));
+      onTestFinished(() => {
+        rmSync(fixture, { recursive: true, force: true });
+      });
       const repo = join(fixture, "repo");
       const linked = join(fixture, "linked");
       const target = tree();

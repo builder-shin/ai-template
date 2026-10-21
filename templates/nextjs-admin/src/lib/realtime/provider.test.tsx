@@ -228,7 +228,7 @@ it.each([
   { nextKey: "account-a-new-session", ticket: null, state: "revoked" },
   { nextKey: "account-a-new-session", ticket: "late-a-ticket", state: "active" },
 ] as const)(
-  "새 로그인 $nextKey는 연결을 교체하고 이전 $state·$ticket 결과를 버린다",
+  "새 로그인 ($nextKey)은 연결을 교체하고 이전 ($state)·($ticket) 결과를 버린다",
   async ({ nextKey, ticket, state }) => {
     const oldTicket = deferred<string | null>();
     const oldCheck = deferred<Awaited<ReturnType<typeof checkRealtimeSession>>>();

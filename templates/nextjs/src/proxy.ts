@@ -9,6 +9,8 @@ import {
 } from "./lib/session/cookie";
 import { loginPath, requiresLogin } from "./lib/session/redirect";
 import { refreshSession } from "./lib/session/refresh";
+import { clientIpFromHeaders } from "./lib/api/client-ip";
+import { getEnv } from "./lib/env";
 
 const intl = createMiddleware(routing);
 
@@ -33,7 +35,8 @@ export default async function proxy(request: NextRequest) {
   if (Date.parse(session.accessTokenExpiresAt) - Date.now() >= 60000) return response;
 
   try {
-    const renewed = await refreshSession(session.refreshToken, locale);
+    const clientIp = clientIpFromHeaders(request.headers, getEnv().TRUSTED_CLIENT_IP_HEADER);
+    const renewed = await refreshSession(session.refreshToken, locale, clientIp);
     const nextCookie = await sessionCookie(renewed);
     request.cookies.set(nextCookie.name, nextCookie.value);
     // next-intl이 만든 로케일 헤더와 rewrite를 보존하며 요청 쿠키만 교체한다.
