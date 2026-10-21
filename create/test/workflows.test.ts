@@ -101,7 +101,7 @@ it("generated Expo CI smoke receives the actual pnpm lifecycle executable", asyn
   write(
     fixture,
     "create/test/expo-smoke.ts",
-    "import {writeFileSync} from 'node:fs'; if(!process.env.npm_execpath || process.env.npm_lifecycle_event !== 'test:expo') throw new Error('Missing pnpm lifecycle executable'); writeFileSync('passed',process.env.npm_execpath);\n",
+    "import {writeFileSync} from 'node:fs'; if(!process.env.npm_execpath || process.env.npm_lifecycle_event !== 'test:expo') throw new Error('Missing pnpm lifecycle executable: '+JSON.stringify({hasEntry:!!process.env.npm_execpath,event:process.env.npm_lifecycle_event})); writeFileSync('passed',process.env.npm_execpath);\n",
   );
   const helper = (await import(
     pathToFileURL(resolve(root, "create/assets/combo/scripts/process.mjs")).href
@@ -111,18 +111,18 @@ it("generated Expo CI smoke receives the actual pnpm lifecycle executable", asyn
   const run = workflow(".github/workflows/ci.yml").jobs["create-expo"]?.steps.at(-1)?.run;
   if (!run?.startsWith("pnpm ")) throw new Error("Generated Expo smoke command missing");
   const args = run.trim().split(/\s+/).slice(1);
+  const inherited = { ...gitEnvironment(), NPM_LIFECYCLE_EVENT: "outer-parent" };
   const result = spawnSync(
     javascript ? process.execPath : entry,
     javascript ? [entry, ...args] : args,
     {
       cwd: fixture,
-      env: {
-        ...gitEnvironment(),
-        npm_execpath: undefined,
-        npm_lifecycle_event: undefined,
-        npm_lifecycle_script: undefined,
-        npm_command: undefined,
-      },
+      env: Object.fromEntries(
+        Object.entries(inherited).filter(
+          ([key]) =>
+            !/^(npm_execpath|npm_lifecycle_event|npm_lifecycle_script|npm_command)$/i.test(key),
+        ),
+      ),
       encoding: "utf8",
     },
   );
