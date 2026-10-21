@@ -134,7 +134,12 @@ it.each(
     >;
   };
   expect(workflow.jobs.check?.env?.E2E_SKIP_MOBILE).toBe("1");
-  expect(Object.keys(workflow.jobs)).toEqual(["check", "mobile-android", "mobile-ios"]);
+  expect(Object.keys(workflow.jobs)).toEqual([
+    "check",
+    "mobile-check",
+    "mobile-android",
+    "mobile-ios",
+  ]);
   expect(JSON.stringify(workflow.jobs["mobile-android"])).toContain(
     "apps/mobile install --frozen-lockfile",
   );

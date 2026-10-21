@@ -27,7 +27,11 @@ async function fixture() {
   for (const name of ["api", "mobile"]) write(root, `apps/${name}/package.json`, "{}\n");
   for (const name of ["README.md", "AGENTS.md"]) write(root, name, "Fixture\n");
   write(root, ".github/workflows/ci.yml", "jobs: {check: {steps: []}}\n");
-  write(root, "native-ci.json", JSON.stringify({ android: { steps: [] }, ios: { steps: [] } }));
+  write(
+    root,
+    "native-ci.json",
+    JSON.stringify({ check: { steps: [] }, android: { steps: [] }, ios: { steps: [] } }),
+  );
   configureMobileDocs(root, ["mobile"]);
   return {
     root,
