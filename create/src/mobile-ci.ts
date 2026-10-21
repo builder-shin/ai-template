@@ -20,9 +20,9 @@ export function configureMobileCi(root: string): void {
   check.env = { ...check.env, E2E_SKIP_MOBILE: "1" };
   const asset = join(root, "native-ci.json"),
     native = JSON.parse(readFileSync(asset, "utf8")) as Record<string, Job>;
-  for (const platform of ["android", "ios"]) {
+  for (const platform of ["check", "android", "ios"]) {
     const job = native[platform];
-    if (!job) throw new Error("Mobile composition requires both native CI jobs.");
+    if (!job) throw new Error("Mobile composition requires SDK check and both native CI jobs.");
     job.steps = job.steps.flatMap((step) => {
       if (step.run === "pnpm install --frozen-lockfile")
         return [step, { run: "pnpm --dir apps/mobile install --frozen-lockfile" }];

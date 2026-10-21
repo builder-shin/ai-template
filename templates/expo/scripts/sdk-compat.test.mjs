@@ -15,13 +15,13 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { parse } from "yaml";
-import { command } from "./process.mjs";
+import { command, root } from "./process.mjs";
+import { contractRoot } from "./contract-root.mjs";
 
 test("CI pairs the installed SDK matrix check with the other online doctor checks", () => {
-  const workflow = parse(
-    readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"),
-  );
-  const job = workflow.jobs.check;
+  const projectRoot = dirname(contractRoot(root));
+  const workflow = parse(readFileSync(join(projectRoot, ".github/workflows/ci.yml"), "utf8"));
+  const job = workflow.jobs[projectRoot === root ? "check" : "mobile-check"];
   const compatibility = job.steps.find((step) => step.run?.includes("expo install --check"));
   const doctor = job.steps.find((step) => step.run?.includes("expo-doctor"));
   assert.equal(compatibility.env?.EXPO_OFFLINE, "1");
