@@ -92,6 +92,14 @@ export function removeOwnedMobileProject(owner: Owner): void {
       throw new Error("Native cleanup escaped ownership.");
     const stat = lstatSync(path);
     if (stat.isSymbolicLink() || stat.isFile()) {
+      const local = relative(owner.project, path).replaceAll("\\", "/").toLowerCase();
+      if (
+        basename(path).toLowerCase() === "android-media.json" &&
+        local.startsWith("apps/mobile/artifacts/native/")
+      )
+        throw new Error(
+          `Native media cleanup record remains: ${path}. Clean its exact device fixture before removing this generated project.`,
+        );
       files.push(path);
       return;
     }
