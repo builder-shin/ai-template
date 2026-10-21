@@ -1,6 +1,45 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { executeOwned } from "./command.mjs";
 import { command } from "../process.mjs";
+import { fixtureOrigin } from "./proxy.mjs";
+export async function prepareMetroBundle(origin, platform, { signal } = {}) {
+  const endpoint = fixtureOrigin(origin);
+  if (!["ios", "android"].includes(platform)) throw new Error("Invalid native Metro platform.");
+  const request = {
+    redirect: "error",
+    signal: AbortSignal.any([AbortSignal.timeout(300000), ...(signal ? [signal] : [])]),
+  };
+  const response = await fetch(endpoint, {
+    ...request,
+    headers: { Accept: "application/expo+json", "Expo-Platform": platform },
+  });
+  if (!response.ok) throw new Error(`Native Metro manifest request failed (${response.status}).`);
+  const manifest = await response.json();
+  let asset;
+  try {
+    asset = new URL(manifest.launchAsset.url);
+  } catch {
+    throw new Error("Native Metro requires its owned platform bundle.");
+  }
+  if (
+    asset.origin !== endpoint.origin ||
+    asset.username ||
+    asset.password ||
+    asset.hash ||
+    !asset.pathname.endsWith(".bundle") ||
+    asset.searchParams.getAll("platform").length !== 1 ||
+    asset.searchParams.get("platform") !== platform
+  )
+    throw new Error("Native Metro requires its owned platform bundle.");
+  const bundle = await fetch(asset, request);
+  if (!bundle.ok) throw new Error(`Native Metro bundle request failed (${bundle.status}).`);
+  if (!/^(?:application|text)\/javascript\b/i.test(bundle.headers.get("content-type") ?? ""))
+    throw new Error("Native Metro bundle response is not JavaScript.");
+  let bytes = 0;
+  for await (const chunk of bundle.body ?? []) bytes += chunk.byteLength;
+  if (!bytes) throw new Error("Native Metro bundle is empty.");
+  return bytes;
+}
 export function metroCommand(port) {
   const argv = command("expo", [
     "start",

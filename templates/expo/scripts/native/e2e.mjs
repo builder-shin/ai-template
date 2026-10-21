@@ -9,7 +9,7 @@ import { executeOwned } from "./command.mjs";
 import { buildNative } from "./build.mjs";
 import { startNativeProxy, fixtureOrigin } from "./proxy.mjs";
 import { startFixture } from "./fixture.mjs";
-import { startService, metroCommand } from "./service.mjs";
+import { startService, metroCommand, prepareMetroBundle } from "./service.mjs";
 import { prepareFlows } from "./flows.mjs";
 import { cleanNativeProject } from "./owned.mjs";
 import { contractRoot } from "../contract-root.mjs";
@@ -188,6 +188,10 @@ export async function runNative(options, ports = {}) {
     await metro.ready(`http://127.0.0.1:${plan.metroPort}/status`, async (response) =>
       (await response.text()).includes("packager-status:running"),
     );
+    if (plan.platform === "ios") {
+      await prepareMetroBundle(`http://127.0.0.1:${plan.metroPort}`, plan.platform, { signal });
+      appendFileSync(log, "Metro iOS bundle: ready.\n");
+    }
     if (plan.platform === "android") await run([...device, "install", artifact]);
     else await run(["xcrun", "simctl", "install", plan.deviceId, artifact]);
     cleanup.push(async () => {
