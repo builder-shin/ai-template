@@ -97,7 +97,7 @@
       },
       {
         "name": "Install pinned native Android platform tools",
-        "run": "sdkmanager \"platforms;android-37.0\" \"build-tools;37.0.0\" \"cmake;3.22.1\" \"ndk;27.1.12297006\""
+        "run": "\"${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager\" \"platforms;android-37.0\" \"build-tools;37.0.0\" \"cmake;3.22.1\" \"ndk;27.1.12297006\""
       },
       {
         "uses": "reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d",

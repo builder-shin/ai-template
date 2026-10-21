@@ -918,7 +918,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - &a2
         name: Install pinned native Android platform tools
-        run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0" "cmake;3.22.1" "ndk;27.1.12297006"
+        run: '"${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" "cmake;3.22.1" "ndk;27.1.12297006"'
       - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 36
@@ -1056,4 +1056,4 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
         with:
           version: 0.12.19
-      - run: pnpm exec tsx create/test/expo-smoke.ts
+      - run: pnpm --dir create run test:expo
