@@ -27,7 +27,6 @@ export class OAuthController {
   #busy = false;
   #finishing = false;
   #cancelled = false;
-  #started = false;
   #launchGeneration: number | undefined;
   #completion: { value: string; promise: Promise<void> } | undefined;
   constructor(private readonly options: Options) {}
@@ -36,12 +35,22 @@ export class OAuthController {
       throw new OAuthLinkError();
     this.#busy = true;
     this.#cancelled = false;
-    this.#started = true;
     this.#launchGeneration = this.options.session.generation?.();
     this.#completion = undefined;
     let pending: OAuthPending | undefined;
+    const check = () => {
+      if (
+        this.#cancelled ||
+        this.#launchGeneration !== this.options.session.generation?.() ||
+        this.options.session.authenticated?.()
+      )
+        throw new OAuthLinkError();
+    };
     try {
+      await this.options.pending.clear();
+      check();
       const pair = await this.options.crypto.create();
+      check();
       if (
         !/^[A-Za-z0-9._~-]{43,128}$/.test(pair.verifier) ||
         !/^[A-Za-z0-9_-]{43}$/.test(pair.challenge)
@@ -49,6 +58,7 @@ export class OAuthController {
         throw new OAuthLinkError();
       pending = { provider, verifier: pair.verifier, createdAt: (this.options.now ?? Date.now)() };
       await this.options.pending.write(pending);
+      check();
       const callback = `${this.options.config.scheme}://oauth/callback`;
       const url = new URL(`${this.options.config.apiBaseUrl}/oauth/${provider}/authorize`);
       url.searchParams.set("redirectUri", callback);
@@ -71,7 +81,7 @@ export class OAuthController {
       this.#cancelled ||
       (this.#launchGeneration !== undefined &&
         this.#launchGeneration !== this.options.session.generation?.()) ||
-      (!this.#started && this.options.session.authenticated?.())
+      this.options.session.authenticated?.()
     ) {
       this.#cancelled = true;
       return this.options.pending.clear().then(() => {
@@ -96,7 +106,11 @@ export class OAuthController {
   async #finish(value: string): Promise<void> {
     const generation = this.options.session.generation?.();
     const pending = await this.options.pending.take();
-    if (this.#cancelled || generation !== this.options.session.generation?.())
+    if (
+      this.#cancelled ||
+      generation !== this.options.session.generation?.() ||
+      this.options.session.authenticated?.()
+    )
       throw new OAuthLinkError();
     const age = (this.options.now ?? Date.now)() - (pending?.createdAt ?? 0);
     if (!pending || age < 0 || age >= 10 * 60_000) throw new OAuthLinkError();

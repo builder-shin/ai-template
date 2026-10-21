@@ -39,21 +39,147 @@ function fixture(
     expect(value?.verifier).toBe(verifier);
     return { type: "cancel" } as { type: "cancel" } | { type: "success"; url: string };
   });
+  const crypto = { create: jest.fn(async () => ({ verifier, challenge: "c".repeat(43) })) };
   const controller = new OAuthController({
     config: env,
     session: { signIn, ...state },
     pending,
-    crypto: {
-      async create() {
-        return { verifier, challenge: "c".repeat(43) };
-      },
-    },
+    crypto,
     browser,
     now: () => 1_000_000,
   });
-  return { controller, pending, browser, signIn };
+  return { controller, pending, browser, signIn, crypto };
 }
 describe("native persisted PKCE", () => {
+  test.each(["cancel", "generation"])(
+    "%s during cryptography cannot persist a verifier or open the browser",
+    async (change) => {
+      let generation = 1;
+      const h = fixture(null, { generation: () => generation });
+      const entered = deferred<void>(),
+        pair = deferred<{ verifier: string; challenge: string }>();
+      h.crypto.create.mockImplementation(async () => {
+        entered.resolve();
+        return pair.promise;
+      });
+      const browserEntered = deferred<void>(),
+        browserReturned = deferred<{ type: "cancel" }>();
+      h.browser.mockImplementation(async () => {
+        browserEntered.resolve();
+        return browserReturned.promise;
+      });
+      const completion = h.controller.beginOAuth("google").then(
+        () => undefined,
+        (error) => error as unknown,
+      );
+      try {
+        await entered.promise;
+        if (change === "cancel") await h.controller.cancel();
+        else generation++;
+        pair.resolve({ verifier, challenge: "c".repeat(43) });
+        await Promise.race([browserEntered.promise, completion]);
+        expect(await h.pending.read()).toBeNull();
+        expect(h.browser).not.toHaveBeenCalled();
+      } finally {
+        browserReturned.resolve({ type: "cancel" });
+        await completion;
+      }
+    },
+  );
+  test("starting a new authorization invalidates the previous cold verifier before cryptography", async () => {
+    const h = fixture({ provider: "naver", verifier: "old".repeat(22), createdAt: 999000 });
+    const entered = deferred<void>(),
+      pair = deferred<{ verifier: string; challenge: string }>();
+    h.crypto.create.mockImplementation(async () => {
+      entered.resolve();
+      return pair.promise;
+    });
+    const completion = h.controller.beginOAuth("google").catch(() => undefined);
+    try {
+      await entered.promise;
+      expect(await h.pending.read()).toBeNull();
+    } finally {
+      pair.resolve({ verifier, challenge: "c".repeat(43) });
+      await completion;
+    }
+  });
+  test("cancellation during a pending write cannot open a browser after that write completes", async () => {
+    const h = fixture(),
+      entered = deferred<void>(),
+      release = deferred<void>();
+    const write = h.pending.write.bind(h.pending);
+    h.pending.write = async (value) => {
+      entered.resolve();
+      await release.promise;
+      await write(value);
+    };
+    const completion = h.controller.beginOAuth("google").then(
+      () => undefined,
+      (error) => error as unknown,
+    );
+    await entered.promise;
+    await h.controller.cancel();
+    release.resolve();
+    expect(await completion).toBeInstanceOf(OAuthLinkError);
+    expect(h.browser).not.toHaveBeenCalled();
+    expect(await h.pending.read()).toBeNull();
+  });
+  test("a session restored during cryptography prevents the obsolete login from opening a browser", async () => {
+    let authenticated = false;
+    const h = fixture(null, { generation: () => 1, authenticated: () => authenticated });
+    const entered = deferred<void>(),
+      pair = deferred<{ verifier: string; challenge: string }>();
+    h.crypto.create.mockImplementation(async () => {
+      entered.resolve();
+      return pair.promise;
+    });
+    const completion = h.controller.beginOAuth("google").then(
+      () => undefined,
+      (error) => error as unknown,
+    );
+    await entered.promise;
+    authenticated = true;
+    pair.resolve({ verifier, challenge: "c".repeat(43) });
+    expect(await completion).toBeInstanceOf(OAuthLinkError);
+    expect(h.browser).not.toHaveBeenCalled();
+    expect(h.signIn).not.toHaveBeenCalled();
+    expect(await h.pending.read()).toBeNull();
+  });
+  test("restoration while the browser is open cannot replace that authenticated account in the same generation", async () => {
+    let authenticated = false;
+    const h = fixture(null, { generation: () => 1, authenticated: () => authenticated });
+    h.browser.mockImplementation(async () => {
+      authenticated = true;
+      return { type: "success", url: "aitpl-example://oauth/callback?code=late" };
+    });
+    await expect(h.controller.beginOAuth("google")).rejects.toBeInstanceOf(OAuthLinkError);
+    expect(h.signIn).not.toHaveBeenCalled();
+    expect(await h.pending.read()).toBeNull();
+  });
+  test("restoration during verifier consumption cannot replace that account", async () => {
+    let authenticated = false;
+    const h = fixture(
+      { provider: "google", verifier, createdAt: 999000 },
+      { generation: () => 1, authenticated: () => authenticated },
+    );
+    const entered = deferred<void>(),
+      release = deferred<void>(),
+      take = h.pending.take.bind(h.pending);
+    h.pending.take = async () => {
+      entered.resolve();
+      await release.promise;
+      return take();
+    };
+    const completion = h.controller.finishOAuth("aitpl-example://oauth/callback?code=late").then(
+      () => undefined,
+      (error) => error as unknown,
+    );
+    await entered.promise;
+    authenticated = true;
+    release.resolve();
+    expect(await completion).toBeInstanceOf(OAuthLinkError);
+    expect(h.signIn).not.toHaveBeenCalled();
+  });
   test("cancelled browser response cannot establish a new session", async () => {
     const h = fixture();
     const entered = deferred<void>();

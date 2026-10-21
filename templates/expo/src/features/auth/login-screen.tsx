@@ -14,6 +14,7 @@ import { Button } from "../../components/button";
 import { Text } from "../../components/text";
 import { RequestError } from "../../components/request-state";
 import { LanguagePicker } from "../../components/language-picker";
+import { Spinner } from "../../components/spinner";
 
 export function LoginScreen() {
   const scope = useSession(),
@@ -38,6 +39,12 @@ export function LoginScreen() {
       }
     }),
   );
+  if (scope.state.status === "restoring")
+    return (
+      <Screen>
+        <Spinner />
+      </Screen>
+    );
   if (scope.state.status === "authenticated")
     return <Redirect href={safeReturnPath(params.returnTo)} />;
   return (
