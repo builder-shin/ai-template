@@ -1,0 +1,21 @@
+appId: __BUNDLE_ID__
+---
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- openLink: ${output.data.scheme + '://me'}
+- tapOn: { id: "button-한국어" }
+- tapOn: { id: "button-Save" }
+- assertVisible: 저장했습니다.
+- runScript: { file: bridge.js, env: { ACTION: inspect-account } }
+- assertTrue: ${output.result.locale === 'ko'}
+- stopApp
+- launchApp
+- openLink: ${output.data.scheme + '://me'}
+- assertVisible: 내 정보
+- tapOn: { id: "button-English" }
+- tapOn: { id: "button-저장" }
+- assertVisible: Saved.
+- tapOn: { id: "button-Sessions" }
+- scrollUntilVisible: { element: { id: "button-Sign out all sessions" } }
+- tapOn: { id: "button-Sign out all sessions" }
+- tapOn: { id: "button-Confirm" }
+- assertVisible: { id: "button-Sign in" }

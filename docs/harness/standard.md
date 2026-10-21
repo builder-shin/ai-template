@@ -121,6 +121,7 @@
 
 - 프론트엔드의 `.mcp.json`에 버전을 고정한 `next-devtools-mcp`를 넣는다. 백엔드는 기본으로 MCP를 넣지 않는다.
 - 화면 확인은 Playwright의 에이전트용 CLI와 skill로 한다.
+- Expo 네이티브 화면은 development build와 명시한 기기의 Maestro로 검사한다. Windows에서 수동 확인은 Orca Android 도구를 쓴다. Metro export·네이티브 컴파일·기기 UI 증거를 구분한다.
 - 설치된 버전의 문서를 보게 한다. Next.js는 `node_modules/next/dist/docs`, 그 밖의 라이브러리는 템플릿의 `docs/stack.md`에 버전과 문서 링크를 적는다.
 
 ## 저장소의 FastAPI E2E
@@ -131,6 +132,7 @@
 
 - lefthook: pre-commit에서 스테이징된 파일을 포맷·린트하고 Betterleaks로 비밀을 스캔한다. pre-push에서 `check`를 돌린다.
 - CI: `check`, `test:e2e`, Docker 이미지 빌드. 생성 프로젝트도 자기 CI에서 같은 검사를 돈다. create-standalone은 fastapi·nextjs·nextjs-admin의 setup·check를 확인하며 create-combo는 루트 계약 하나를 쓰는 FastAPI+web+admin의 실제 백엔드 E2E와 이미지·컨테이너를 확인한다.
+- 저장소의 Expo 추가 후 필수 CI는 기존 15개와 `expo`, `expo-android`, `expo-ios`, `expo-e2e-fastapi`, `expo-e2e-nestjs`, `create-expo`를 합친 21개다. Expo의 JS 검사, 양 플랫폼 실제 UI·release 컴파일, 두 생성 백엔드의 실제 저장소·메일·OAuth 흐름, 세 생성 조합을 각각 확인한다. 모바일 의존성은 독립 workspace로 설치하며 생성 조합 CI의 기기 없는 집계 E2E는 모바일만 명시적으로 제외하고 별도 Android/iOS 작업을 둔다.
 
 ## 공유 자산
 

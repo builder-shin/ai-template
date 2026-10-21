@@ -1,0 +1,35 @@
+appId: __BUNDLE_ID__
+---
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- openLink: ${output.data.scheme + '://posts/new'}
+- tapOn: { id: "field-Title" }
+- inputText: ${output.data.title}
+- tapOn: { id: "field-Body" }
+- inputText: Native body from the device
+- hideKeyboard
+- scrollUntilVisible: { element: { id: "button-Save" } }
+- tapOn: { id: "button-Save" }
+- assertVisible: ${output.data.title}
+- assertVisible: Draft
+- runScript: { file: bridge.js, env: { ACTION: inspect-post } }
+- assertTrue: ${output.result.status === 'draft' && output.result.body === 'Native body from the device'}
+- scrollUntilVisible: { element: { id: "button-Publish" } }
+- tapOn: { id: "button-Publish" }
+- assertVisible: Published
+- runScript: { file: bridge.js, env: { ACTION: inspect-post } }
+- assertTrue: ${output.result.status === 'published'}
+- tapOn: { id: "button-Unpublish" }
+- assertVisible: Draft
+- tapOn: { id: "button-Edit" }
+- tapOn: { id: "field-Body" }
+- eraseText: 100
+- inputText: Edited on device
+- hideKeyboard
+- scrollUntilVisible: { element: { id: "button-Save" } }
+- tapOn: { id: "button-Save" }
+- assertVisible: Edited on device
+- scrollUntilVisible: { element: { id: "button-Delete" } }
+- tapOn: { id: "button-Delete" }
+- tapOn: { id: "button-Confirm" }
+- assertVisible: { id: "button-New post" }
+- assertNotVisible: ${output.data.title}

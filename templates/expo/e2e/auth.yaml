@@ -1,0 +1,56 @@
+appId: __BUNDLE_ID__
+---
+- launchApp
+- openLink: __DEV_CLIENT_URL__
+- extendedWaitUntil: { visible: "Continue|English", timeout: 120000 }
+- runFlow:
+    when: { visible: "Continue" }
+    commands: [{ tapOn: "Continue" }]
+- runFlow:
+    when: { visible: "Reload", platform: Android }
+    commands: [back]
+- runFlow:
+    when: { visible: "Reload", platform: iOS }
+    commands: [{ tapOn: { point: "50%,20%" } }]
+- extendedWaitUntil: { visible: { id: "button-English" }, timeout: 120000 }
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- tapOn: { id: "button-English" }
+- tapOn: { id: "button-Create account" }
+- tapOn: { id: "field-Name" }
+- inputText: ${output.data.name}
+- tapOn: { id: "field-Email" }
+- inputText: { text: "${output.data.email}", label: "fixture email" }
+- tapOn: { id: "field-Password" }
+- inputText: { text: "${output.data.password}", label: "fixture password" }
+- hideKeyboard
+- tapOn: { id: "button-Create account" }
+- assertVisible: "Check your email to verify your account."
+- runScript: { file: bridge.js, env: { ACTION: mail-verify } }
+- stopApp
+- openLink: ${output.result.link}
+- tapOn: { id: "button-Verify email" }
+- assertVisible: "Your email is verified. You can sign in."
+- runFlow: support/login.yaml
+- stopApp
+- launchApp
+- openLink: ${output.data.scheme + '://me/sessions'}
+- assertVisible: "Current session"
+- scrollUntilVisible: { element: { id: "button-Sign out" } }
+- tapOn: { id: "button-Sign out" }
+- tapOn: { id: "button-Forgot password" }
+- tapOn: { id: "field-Email" }
+- inputText: { text: "${output.data.email}", label: "fixture email" }
+- hideKeyboard
+- tapOn: { id: "button-Send reset email" }
+- assertVisible: "If the account is eligible, an email has been sent."
+- runScript: { file: bridge.js, env: { ACTION: mail-reset } }
+- stopApp
+- openLink: ${output.result.link}
+- tapOn: { id: "field-Password" }
+- inputText: { text: "${output.data.newPassword}", label: "new fixture password" }
+- hideKeyboard
+- tapOn: { id: "button-Reset password" }
+- assertVisible: "Your password was reset. Sign in again."
+- runScript: { file: bridge.js, env: { ACTION: password-reset } }
+- evalScript: ${output.data.password = output.data.newPassword} # betterleaks:allow runtime fixture reference
+- runFlow: support/login.yaml

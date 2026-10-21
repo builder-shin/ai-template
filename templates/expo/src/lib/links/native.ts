@@ -32,7 +32,11 @@ export function createNativeOAuth(config: MobileEnv, session: SessionManager) {
     },
     async browser(url, callback) {
       if (
-        AuthSession.makeRedirectUri({ scheme: config.scheme, path: "oauth/callback" }) !== callback
+        AuthSession.makeRedirectUri({
+          native: callback,
+          scheme: config.scheme,
+          path: "oauth/callback",
+        }) !== callback
       )
         throw new Error("Use a development build with the configured app scheme.");
       const result = await WebBrowser.openAuthSessionAsync(url, callback, {

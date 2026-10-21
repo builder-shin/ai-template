@@ -1,0 +1,15 @@
+appId: __BUNDLE_ID__
+---
+- openLink: ${output.data.scheme + '://login'}
+- tapOn: { id: "button-English" }
+- tapOn: { id: "field-Email" }
+- inputText: { text: "${output.data.email}", label: "fixture email" }
+- tapOn: { id: "field-Password" }
+- inputText: { text: "${output.data.password}", label: "fixture password" }
+- hideKeyboard
+- tapOn: { id: "button-Sign in" }
+- extendedWaitUntil:
+    visible: "Current session"
+    timeout: 30000
+- openLink: ${output.data.scheme + '://'}
+- assertVisible: { id: "button-Account" }

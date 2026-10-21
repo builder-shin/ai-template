@@ -1,0 +1,22 @@
+appId: __BUNDLE_ID__
+---
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- openLink: ${output.data.scheme + '://me'}
+- tapOn: { id: "field-Name" }
+- eraseText: 100
+- inputText: Native Updated
+- hideKeyboard
+- tapOn: { id: "button-Save" }
+- assertVisible: Saved.
+- runScript: { file: bridge.js, env: { ACTION: inspect-account } }
+- assertTrue: ${output.result.name === 'Native Updated' && output.result.locale === 'en'}
+- stopApp
+- launchApp
+- openLink: ${output.data.scheme + '://me'}
+- assertVisible: Native Updated
+- tapOn: { id: "button-Sessions" }
+- assertVisible: Current session
+- scrollUntilVisible: { element: { id: "button-Sign out other sessions" } }
+- tapOn: { id: "button-Sign out other sessions" }
+- tapOn: { id: "button-Cancel" }
+- assertVisible: Current session

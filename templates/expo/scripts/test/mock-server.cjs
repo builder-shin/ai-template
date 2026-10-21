@@ -41,9 +41,12 @@ exports.startMock = async function startMock(options = {}) {
         EXPO_NO_DOTENV: "1",
         PORT: String(port),
         HOST: "127.0.0.1",
-        API_URL: base,
+        API_URL: options.usePublicLocalhost ? base.replace("127.0.0.1", "localhost") : base,
         FRONTEND_URL: base,
         MOCK_TEST_ENDPOINTS: "true",
+        ...(options.nativeScheme
+          ? { OAUTH_REDIRECT_URIS: `${options.nativeScheme}://oauth/callback` }
+          : {}),
         SEED_ADMIN_EMAIL: "admin@example.com",
         SEED_ADMIN_PASSWORD: "admin-password", // betterleaks:allow test seed
         IDENTIFIER_HASH_SECRET: "native-test-identifier-hash-secret-32", // betterleaks:allow test key

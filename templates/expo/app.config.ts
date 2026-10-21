@@ -30,6 +30,7 @@ const config: ExpoConfig = {
       },
     ],
     "expo-localization",
+    "./plugins/native-network.cjs",
   ],
 };
 export default config;

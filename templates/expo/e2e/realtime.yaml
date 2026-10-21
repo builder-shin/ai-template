@@ -1,0 +1,29 @@
+appId: __BUNDLE_ID__
+---
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- evalScript: ${output.data.password = output.data.newPassword} # betterleaks:allow runtime fixture reference
+- openLink: ${output.data.scheme + '://'}
+- pressKey: Home
+- runScript: { file: bridge.js, env: { ACTION: remote-post } }
+- launchApp: { stopApp: false }
+- extendedWaitUntil: { visible: "${output.data.remoteTitle}", timeout: 30000 }
+- pressKey: Home
+- runScript: { file: bridge.js, env: { ACTION: revoke-app } }
+- launchApp: { stopApp: false }
+- extendedWaitUntil: { visible: { id: "button-Sign in" }, timeout: 30000 }
+- assertNotVisible: { id: "button-Account" }
+- runFlow: support/login.yaml
+- openLink: ${output.data.scheme + '://me/sessions'}
+- runScript: { file: bridge.js, env: { ACTION: arm-refresh } }
+- openLink: ${output.data.scheme + '://me'}
+- runScript: { file: bridge.js, env: { ACTION: await-refresh } }
+- assertTrue: ${output.result.count == 1}
+- openLink: ${output.data.scheme + '://me/sessions'}
+- scrollUntilVisible: { element: { id: "button-Sign out" } }
+- tapOn: { id: "button-Sign out" }
+- runScript: { file: bridge.js, env: { ACTION: release-refresh } }
+- assertVisible: { id: "button-Sign in" }
+- stopApp
+- launchApp
+- assertNotVisible: { id: "button-Account" }
+- runFlow: support/login.yaml

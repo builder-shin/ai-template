@@ -49,7 +49,7 @@ function repository(backend = "fastapi") {
   write(
     root,
     `templates/${backend}/.env.example`,
-    "OAUTH_REDIRECT_URIS=http://localhost:3000/oauth/callback\n",
+    "OAUTH_REDIRECT_URIS=http://localhost:3000/oauth/callback\nREALTIME_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001\n",
   );
   cpSync(join(root, "templates/nextjs"), join(root, "templates/nextjs-admin"), { recursive: true });
   for (const file of ["untracked.txt", "contract/untracked.txt"])
@@ -95,6 +95,9 @@ it.each(
     },
   });
   const mobile = join(target, "apps/mobile");
+  expect(readFileSync(join(target, "apps/api/.env.example"), "utf8")).toContain(
+    "REALTIME_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://10.0.2.2:8000,http://localhost:8000\n",
+  );
   const document = parseAllDocuments(readFileSync(join(mobile, "pnpm-lock.yaml"), "utf8")).at(-1);
   if (!document) throw new Error("Missing mobile lock");
   const lock = document.toJS() as { importers: Record<string, unknown> };
@@ -121,6 +124,20 @@ it.each(
   expect(existsSync(join(mobile, "contract"))).toBe(false);
   expect(existsSync(join(mobile, "Dockerfile"))).toBe(false);
   expect(existsSync(join(target, "scripts/mobile-command.mjs"))).toBe(true);
+  const workflow = parse(readFileSync(join(target, ".github/workflows/ci.yml"), "utf8")) as {
+    jobs: Record<
+      string,
+      { env?: Record<string, string>; steps: { run?: string; with?: Record<string, unknown> }[] }
+    >;
+  };
+  expect(workflow.jobs.check?.env?.E2E_SKIP_MOBILE).toBe("1");
+  expect(Object.keys(workflow.jobs)).toEqual(["check", "mobile-android", "mobile-ios"]);
+  expect(JSON.stringify(workflow.jobs["mobile-android"])).toContain(
+    "apps/mobile install --frozen-lockfile",
+  );
+  expect(JSON.stringify(workflow.jobs["mobile-ios"])).toContain("apps/mobile");
+  expect(existsSync(join(target, "native-ci.json"))).toBe(false);
+  expect(readFileSync(join(target, "scripts/test-e2e.mjs"), "utf8")).toContain("E2E_SKIP_MOBILE");
   expect(
     calls.some(
       (call) =>

@@ -1,0 +1,29 @@
+# Native builds and UI tests
+
+Use Java 21. Android needs platform 37, Build Tools 37.0.0, NDK 27.1.12297006 and CMake 3.22.1; the development emulator uses API 36 x86_64. iOS requires macOS, Xcode 26.4 or newer, CocoaPods and an available simulator runtime. EAS and store credentials are unnecessary.
+
+```sh
+pnpm build --platform android --configuration debug --run-id local-debug
+pnpm test:e2e --platform android --device emulator-5554 --run-id local-ui
+pnpm test:e2e --platform ios --device <booted-simulator-UUID> --run-id local-ios
+```
+
+Native builds copy source into a new owned directory, install the exact frozen lock and run CNG there. Source `android/`, `ios/`, environment files, installs and artifacts are excluded. Windows uses a short `C:\aitpl-n-*` directory on the temporary drive; that drive must permit creating a directory. Only the private Windows copy uses hoisted linking and shorter virtual-store paths, with a scoped Gradle init script that hashes long C++ object paths. Source workspace policies and lock bytes remain unchanged. Each successful build copies its APK/app into `artifacts/native/<run-id>/<platform>/<configuration>` and removes its owned CNG copy. A repeated run ID never overwrites an artifact or log.
+
+Release builds require explicit `EXPO_PUBLIC_API_MODE=backend` and all three HTTPS URLs (`EXPO_PUBLIC_API_BASE_URL`, `EXPO_PUBLIC_REALTIME_URL`, `EXPO_PUBLIC_FRONTEND_URL`). Compilation does not contact those example API hosts. The merged Android release manifest forbids cleartext; the compiled iOS release plist forbids arbitrary loads. iOS release compilation uses `iphoneos`, Release and `CODE_SIGNING_ALLOWED=NO`.
+
+E2E requires an explicit online device with the app absent. Inventory, occupied ports and existing ADB reverse mappings are checked before builds/services. The runner never rebinds another mapping. It installs the app, starts owned services, runs seven ordered Maestro flows, uninstalls its app and removes only its reverse mappings and owned directories. Interrupted commands stop their owned process trees with a bounded grace period and preserve signal exit codes. A mapping retargeted during a run is preserved and reported as an ownership error.
+
+The checked Maestro 2.11.0 archive runs through Java directly on Windows as well as macOS/Linux. A native debug artifact can be reused explicitly with an absolute `E2E_NATIVE_ARTIFACT` path. The runner verifies its actual package identity with pinned Android Build Tools or the iOS plist before installing it. It also verifies initial absence and owns only the subsequent installation.
+
+Windows requires a JDK with `javac`. The pinned upstream [KeyValueStore](https://github.com/mobile-dev-inc/Maestro/blob/cli-2.11.0/maestro-cli/src/main/java/maestro/cli/db/KeyValueStore.kt) opens separate file handles while holding an exclusive data-file lock, which Windows rejects. A small tracked Java adapter preserves its public ABI and performs UTF-8 reads/writes through the locked handle. It compiles inside the owned run and precedes the original distribution on the Windows classpath. Its state is redirected to that same owned directory, and a real Java read/write/delete/Unicode self-check runs before tests. The verified archive stays unchanged; no user home, credential store or existing Maestro database is read or modified by the adapter. A Maestro version change requires checking this ABI again.
+
+Mock services use loopback API proxy 4112, upstream mock 4114, fixture bridge 4113 and Metro 8082. Android creates fresh reverse mappings for API, bridge and Metro; iOS uses loopback directly. Metro prefers IPv4 and does not rewrite the checked TypeScript configuration. The bridge uses an unpredictable private path, keeps generated passwords/mail links in memory, adapts actual mailbox text and checks actual backend/storage results. An owned provider fixture automatically approves/denies a test identity after the system browser opens; the real authorization callback and PKCE exchange remain in the app/API.
+
+The proxy can inject one access-expiry response and hold the actual API refresh response. UI tests use that control to sign out before releasing the rotated grant. Raw Maestro traces/screenshots/commands can contain runtime links and credentials and are deleted with the owned run directory. Only sanitized console/build/E2E logs persist. Do not publish raw auth artifacts or print link/token/password values.
+
+The OAuth flow handles a fresh Android browser without adding an account. It also holds the owned provider before completion, stops the app, follows the actual provider/API callback and opens the resulting native URI. The app must consume its persisted verifier after that cold start. Background/foreground realtime steps resume the running process; separate stop/launch steps exercise cold restore. Refresh assertions count only rotations after the fixture was armed.
+
+In this repository, real generated FastAPI/NestJS mobile-only tests use `pnpm mobile-e2e <backend> --platform android --device <id> --run-id <id>`. Dedicated API/storage/mail/provider ports are 18102/28435/28127/28182. `--print` prints only public plans; successful `--keep` retains only the backend stack and generated project for diagnosis, and `--down --run-id <id>` removes that exact stack/volume/image/project. Docker and real backend execution belong to PR CI. Development stacks `fastapi`, `joon` and `nestjs` are protected.
+
+Standalone CI has JS, Android and iOS jobs. Generated mobile combinations retain root API/web/admin checks, explicitly skip mobile in the device-free aggregate E2E step, and add Android/iOS device jobs. The repository additionally tests each actual backend pair and three actual generation scenarios. Metro export, unit tests and a native build are separate evidence; none substitutes for device UI tests.

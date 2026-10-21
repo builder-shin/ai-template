@@ -296,7 +296,17 @@ it.each(["web", "admin"] as const)(
     expect(run).toBeDefined();
     expect(down?.if).toBe("${{ always() && steps.install-root.outcome == 'success' }}");
     expect(down?.["timeout-minutes"]).toBe(5);
-    expect(Object.keys(jobs)).toHaveLength(15);
+    expect(Object.keys(jobs)).toHaveLength(21);
+    expect(Object.keys(jobs)).toEqual(
+      expect.arrayContaining([
+        "expo",
+        "expo-android",
+        "expo-ios",
+        "expo-e2e-fastapi",
+        "expo-e2e-nestjs",
+        "create-expo",
+      ]),
+    );
   },
 );
 

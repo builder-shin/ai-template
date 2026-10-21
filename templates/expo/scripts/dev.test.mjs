@@ -22,6 +22,8 @@ test("the mock advertises reachable native API/storage/OAuth URLs for each platf
   const ios = devEnvironment("mock", "ios", {});
   assert.equal(android.API_URL, "http://10.0.2.2:4012");
   assert.equal(ios.API_URL, "http://localhost:4012");
+  assert.equal(android.REALTIME_ALLOWED_ORIGINS, android.API_URL);
+  assert.equal(ios.REALTIME_ALLOWED_ORIGINS, ios.API_URL);
   assert.equal(android.OAUTH_REDIRECT_URIS, `${identity.scheme}://oauth/callback`);
   assert.equal(android.EXPO_PUBLIC_API_BASE_URL, `${android.API_URL}/api/v1`);
   assert.equal(ios.EXPO_PUBLIC_API_BASE_URL, `${ios.API_URL}/api/v1`);

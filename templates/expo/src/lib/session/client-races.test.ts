@@ -2,6 +2,7 @@ import { createApiClient } from "../api/client";
 import { readPublicEnv } from "../config/env";
 import { SessionManager } from "./manager";
 import { memoryStore, passwordGrant, tokens, deferred } from "./test-fixtures";
+import { nodeApiFetch } from "../testing/api-fetch";
 
 describe("request cancellation and generation fences", () => {
   afterEach(() => jest.restoreAllMocks());
@@ -13,7 +14,10 @@ describe("request cancellation and generation fences", () => {
         revoke: jest.fn(async () => {}),
       },
     });
-    return { manager, client: createApiClient(readPublicEnv({}, "ios", false), manager) };
+    return {
+      manager,
+      client: createApiClient(readPublicEnv({}, "ios", false), manager, undefined, nodeApiFetch),
+    };
   }
   test("a request begun anonymous cannot publish after signing in", async () => {
     const { manager, client } = setup();

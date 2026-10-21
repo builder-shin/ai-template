@@ -63,7 +63,7 @@ export async function stopProcessTree(child, graceMs = 5000, deps = {}) {
     }
     return true;
   }
-  signal("SIGTERM");
+  signal(deps.initialSignal ?? "SIGTERM");
   if (await wait(graceMs)) return;
   signal("SIGKILL");
   if (!(await wait(2000))) throw new Error("시작한 프로세스 트리가 종료 한도를 넘겼다.");

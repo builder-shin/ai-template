@@ -1,6 +1,7 @@
 import { createApiClient } from "./client";
 import { readPublicEnv } from "../config/env";
 import { ApiError } from "./errors";
+import { nodeApiFetch } from "../testing/api-fetch";
 
 describe("confined JSON:API transport", () => {
   const config = readPublicEnv({}, "ios", false);
@@ -12,7 +13,7 @@ describe("confined JSON:API transport", () => {
         headers: { "Content-Type": "application/vnd.api+json" },
       }),
     );
-    const client = createApiClient(config);
+    const client = createApiClient(config, undefined, undefined, nodeApiFetch);
     await client.GET("/posts", {
       headers: {
         "Accept-Language": "en",
@@ -31,7 +32,7 @@ describe("confined JSON:API transport", () => {
 
   test("refuses an external base override before fetch", async () => {
     const fetcher = jest.spyOn(global, "fetch");
-    const client = createApiClient(config);
+    const client = createApiClient(config, undefined, undefined, nodeApiFetch);
     await expect(client.GET("/posts", { baseUrl: "https://attacker.example" })).rejects.toThrow(
       /origin|base/i,
     );
@@ -51,7 +52,7 @@ describe("confined JSON:API transport", () => {
       ),
     );
     try {
-      await createApiClient(config).GET("/posts");
+      await createApiClient(config, undefined, undefined, nodeApiFetch).GET("/posts");
       throw new Error("Expected failure.");
     } catch (error) {
       expect(error).toBeInstanceOf(ApiError);

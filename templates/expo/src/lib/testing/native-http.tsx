@@ -7,6 +7,7 @@ import { createApiClient } from "../api/client";
 import { createQueryClient } from "../query/client";
 import { OAuthController } from "../links/oauth";
 import i18n, { locale } from "../i18n";
+import { nodeApiFetch } from "./api-fetch";
 
 const host = globalThis as typeof globalThis & {
   __nodeHttp: Pick<
@@ -41,7 +42,7 @@ export function createHttpScope(base: string) {
   let cancelPending = async () => {};
   const manager = new SessionManager({
     store,
-    transport: createSessionTransport(config, language),
+    transport: createSessionTransport(config, language, nodeApiFetch),
     onBoundary: () => {
       void queryClient.cancelQueries();
       queryClient.clear();
@@ -62,7 +63,12 @@ export function createHttpScope(base: string) {
     crypto: { create: async () => ({ verifier: "v".repeat(64), challenge: "c".repeat(43) }) },
     browser: async () => ({ type: "cancel" }),
   });
-  const value = { config, manager, oauth, api: createApiClient(config, manager, language) };
+  const value = {
+    config,
+    manager,
+    oauth,
+    api: createApiClient(config, manager, language, nodeApiFetch),
+  };
   cancelPending = () => oauth.cancel();
   return {
     value,

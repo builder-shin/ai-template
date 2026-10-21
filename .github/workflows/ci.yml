@@ -860,3 +860,200 @@ jobs:
           fi
           rm -rf "$root" || status=1
           exit "$status"
+
+  expo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env: &a1
+      EXPO_NO_DOTENV: "1"
+      EXPO_PUBLIC_API_MODE: backend
+      EXPO_PUBLIC_API_BASE_URL: https://api.example.com/api/v1
+      EXPO_PUBLIC_REALTIME_URL: https://api.example.com
+      EXPO_PUBLIC_FRONTEND_URL: https://app.example.com
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.6.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: templates/expo/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir templates/expo install --frozen-lockfile
+      - run: pnpm --dir templates/expo check
+      - run: pnpm --dir templates/expo exec expo install --check
+      - run: pnpm --dir templates/expo exec expo-doctor
+      - run: pnpm --dir templates/expo export --platform android
+      - run: pnpm --dir templates/expo export --platform ios
+  expo-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env: *a1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.6.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: templates/expo/pnpm-lock.yaml
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir templates/expo install --frozen-lockfile
+      - name: Enable KVM
+        run: |-
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - &a2
+        name: Install pinned native Android platform tools
+        run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0" "cmake;3.22.1" "ndk;27.1.12297006"
+      - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: NATIVE_ANDROID_ARCHITECTURES=x86_64 pnpm --dir templates/expo test:e2e --platform android --device emulator-5554 --run-id ci-android
+      - run: pnpm --dir templates/expo build --platform android --configuration release --run-id ci-android
+  expo-ios:
+    runs-on: macos-26
+    timeout-minutes: 90
+    env: *a1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.6.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: templates/expo/pnpm-lock.yaml
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir templates/expo install --frozen-lockfile
+      - run: node --import tsx scripts/native/ci-ios.mjs
+        working-directory: templates/expo
+  expo-e2e-fastapi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_NO_DOTENV: "1"
+      MOBILE_NATIVE_RUN_ID: ci-fa-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.6.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: templates/expo/pnpm-lock.yaml
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: pnpm install --frozen-lockfile
+      - *a2
+      - name: Enable KVM
+        run: |-
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: NATIVE_ANDROID_ARCHITECTURES=x86_64 pnpm mobile-e2e fastapi --platform android --device emulator-5554 --run-id "$MOBILE_NATIVE_RUN_ID"
+      - name: Clean exact native stack and image
+        if: always()
+        run: pnpm mobile-e2e fastapi --run-id "$MOBILE_NATIVE_RUN_ID" --down
+  expo-e2e-nestjs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_NO_DOTENV: "1"
+      MOBILE_NATIVE_RUN_ID: ci-ne-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.6.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: templates/expo/pnpm-lock.yaml
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: pnpm install --frozen-lockfile
+      - *a2
+      - name: Enable KVM
+        run: |-
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: NATIVE_ANDROID_ARCHITECTURES=x86_64 pnpm mobile-e2e nestjs --platform android --device emulator-5554 --run-id "$MOBILE_NATIVE_RUN_ID"
+      - name: Clean exact native stack and image
+        if: always()
+        run: pnpm mobile-e2e nestjs --run-id "$MOBILE_NATIVE_RUN_ID" --down
+  create-expo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_NO_DOTENV: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.6.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: templates/expo/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          version: 0.12.19
+      - run: pnpm exec tsx create/test/expo-smoke.ts

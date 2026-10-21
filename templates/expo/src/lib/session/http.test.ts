@@ -6,6 +6,7 @@ import { readPublicEnv } from "../config/env";
 import { SessionManager } from "./manager";
 import { createSessionTransport } from "./transport";
 import { memoryStore, passwordGrant, tokens } from "./test-fixtures";
+import { nodeApiFetch } from "../testing/api-fetch";
 
 const nativeHttp = (
   globalThis as typeof globalThis & {
@@ -98,12 +99,12 @@ describe("real HTTP authentication retry boundary", () => {
     );
     const manager = new SessionManager({
       store: memoryStore(),
-      transport: createSessionTransport(config, () => "en"),
+      transport: createSessionTransport(config, () => "en", nodeApiFetch),
     });
     await manager.signIn(passwordGrant);
     return {
       manager,
-      client: createApiClient(config, manager),
+      client: createApiClient(config, manager, undefined, nodeApiFetch),
       requests,
       counts: () => ({ refreshes, gets }),
     };

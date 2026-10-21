@@ -11,6 +11,11 @@ module.exports = class NodeHttpEnvironment extends NativeEnvironment {
     super(config, context);
     this.global.__nodeHttp = nodeHttp;
     this.global.__startMock = require("./mock-server.cjs").startMock;
+    this.global.__reactNativeRequest = require(
+      require.resolve("whatwg-fetch", {
+        paths: [dirname(require.resolve("react-native/package.json"))],
+      }),
+    ).Request;
     // The same pinned Socket.IO client uses Node networking outside SDK VM mocks.
     this.global.__nodeSocketIO = require("socket.io-client");
   }

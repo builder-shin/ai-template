@@ -13,6 +13,7 @@ export function Field({
       <TextInput
         accessibilityLabel={label}
         accessibilityHint={error}
+        testID={`field-${label}`}
         placeholderTextColor="#64748b"
         {...props}
         style={[styles.input, { color }, props.style]}

@@ -18,6 +18,7 @@ import { ProtectedLayout } from "../../lib/session/protected-layout";
 import { SessionsScreen } from "./sessions-screen";
 import { Text } from "react-native";
 import { protectedRouteStubs } from "../../lib/testing/routes";
+import { nodeApiFetch } from "../../lib/testing/api-fetch";
 
 jest.mock("expo-localization", () => ({ getLocales: () => [{ languageCode: "en" }] }));
 const host = globalThis as typeof globalThis & {
@@ -44,7 +45,7 @@ test("native Router login and all-session confirmation clear both native credent
   });
   const manager = new SessionManager({
     store,
-    transport: createSessionTransport(config, () => "en"),
+    transport: createSessionTransport(config, () => "en", nodeApiFetch),
     onBoundary: () => {
       void queryClient.cancelQueries();
       queryClient.clear();
@@ -59,7 +60,12 @@ test("native Router login and all-session confirmation clear both native credent
     crypto: { create: async () => ({ verifier: "v".repeat(64), challenge: "c".repeat(43) }) },
     browser: async () => ({ type: "cancel" }),
   });
-  const value = { manager, config, oauth, api: createApiClient(config, manager, () => "en") };
+  const value = {
+    manager,
+    config,
+    oauth,
+    api: createApiClient(config, manager, () => "en", nodeApiFetch),
+  };
   await renderRouter(
     {
       ...protectedRouteStubs(),
@@ -114,10 +120,10 @@ test("native form registration, mail verification, password reset and every sess
   const store = memoryStore();
   const manager = new SessionManager({
     store,
-    transport: createSessionTransport(config, () => "en"),
+    transport: createSessionTransport(config, () => "en", nodeApiFetch),
   });
   await manager.restore();
-  const client = createApiClient(config, manager, () => "en");
+  const client = createApiClient(config, manager, () => "en", nodeApiFetch);
   const auth = new AuthApi(client),
     account = new AccountApi(client);
   const email = "native-flow@example.com",
@@ -144,7 +150,7 @@ test("native form registration, mail verification, password reset and every sess
   expect((await account.me()).data.attributes.locale).toBe("en");
   const other = new SessionManager({
     store: memoryStore(),
-    transport: createSessionTransport(config, () => "en"),
+    transport: createSessionTransport(config, () => "en", nodeApiFetch),
   });
   await other.signIn(grant);
   expect((await account.sessions(1)).data).toHaveLength(2);

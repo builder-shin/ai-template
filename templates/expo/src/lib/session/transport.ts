@@ -2,12 +2,14 @@ import type { MobileEnv } from "../config/env";
 import { createApiClient } from "../api/client";
 import { ApiError } from "../api/errors";
 import type { SessionTransport } from "./types";
+import { nativeApiFetch, apiFetchPolicy, type ApiFetch } from "../api/fetch";
 
 export function createSessionTransport(
   config: MobileEnv,
   locale: () => "ko" | "en",
+  fetcher: ApiFetch = nativeApiFetch,
 ): SessionTransport {
-  const bare = createApiClient(config);
+  const bare = createApiClient(config, undefined, undefined, fetcher);
   return {
     async grant(input, signal) {
       const result = await bare.POST("/sessions", {
@@ -32,12 +34,8 @@ export function createSessionTransport(
       const timeout = setTimeout(() => controller.abort(), 10_000);
       try {
         // Explicit captured token: local generation is already invalidated, so use a bare confined request.
-        const response = await fetch(
-          `${config.apiBaseUrl}/sessions/${encodeURIComponent(sessionId)}`,
-          {
-            credentials: "omit",
-            redirect: "error",
-            cache: "no-store",
+        const response = await fetcher(
+          new Request(`${config.apiBaseUrl}/sessions/${encodeURIComponent(sessionId)}`, {
             method: "DELETE",
             headers: {
               Accept: "application/vnd.api+json",
@@ -45,7 +43,8 @@ export function createSessionTransport(
               Authorization: `Bearer ${accessToken}`,
             },
             signal: controller.signal,
-          },
+          }),
+          apiFetchPolicy,
         );
         if (!response.ok && response.status !== 401 && response.status !== 404)
           throw await ApiError.fromResponse(response);

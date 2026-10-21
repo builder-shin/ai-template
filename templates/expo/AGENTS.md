@@ -28,4 +28,5 @@ iOS·Android 네이티브 앱이다. 설계와 설치된 라이브러리 문서�
 - Android/iOS·EAS·스토어의 자격 증명을 코드에 넣지 않는다. Expo Go를 OAuth 검증 증거로 쓰지 않는다.
 - `android/`·`ios/`·설치물·캐시·실행 산출물은 추적하지 않는다. 실행기는 포트·기기·자원 소유권을 먼저 확인한다.
 - 새 기능은 [기능 추가](docs/recipes/add-feature.md), 개발은 [개발 환경](docs/recipes/development.md)을 따른다.
+- 네이티브 검증·도구·임시 경로·로그·기기 정리는 [native testing](docs/recipes/native-testing.md)을 따른다. 실제 UI·release 컴파일·Metro export 증거를 구분한다.
 - 커밋·PR에 AI 표시를 넣지 않으며 PR은 담당자를 지정한다. 검사를 건너뛰거나 강제 푸시하지 않는다.

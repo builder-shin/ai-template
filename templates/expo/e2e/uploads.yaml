@@ -1,0 +1,36 @@
+appId: __BUNDLE_ID__
+---
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- openLink: ${output.data.scheme + '://me'}
+- scrollUntilVisible: { element: { id: "button-Choose image: Avatar" } }
+- tapOn: { id: "button-Choose image: Avatar" }
+- runFlow:
+    when: { visible: "Allow.*|Select photos.*" }
+    commands: [{ tapOn: "Allow.*|Select photos.*" }]
+- runFlow:
+    when: { platform: Android }
+    commands: [back]
+- runFlow:
+    when: { platform: iOS }
+    commands: [{ tapOn: "Cancel" }]
+- assertVisible: "No image selected."
+- addMedia: native.png
+- tapOn: { id: "button-Choose image: Avatar" }
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - tapOn: { id: ".*:id/icon_thumbnail", index: 0 }
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - tapOn: { text: "Photo.*|Image.*", index: 0 }
+      - runFlow:
+          when: { visible: "Add|Done|Choose" }
+          commands: [{ tapOn: "Add|Done|Choose" }]
+- scrollUntilVisible:
+    element: { id: "button-Remove image: Avatar", enabled: true }
+    timeout: 30000
+- runScript: { file: bridge.js, env: { ACTION: inspect-upload } }
+- assertTrue: ${output.result.ok && output.result.size > 0}
+- tapOn: { id: "button-Remove image: Avatar" }
+- assertVisible: "No image selected."

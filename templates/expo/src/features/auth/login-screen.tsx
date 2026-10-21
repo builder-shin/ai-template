@@ -1,6 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, Redirect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { loginSchema, emailSchema } from "./schemas";
 import { AuthApi } from "./api";
@@ -38,6 +38,8 @@ export function LoginScreen() {
       }
     }),
   );
+  if (scope.state.status === "authenticated")
+    return <Redirect href={safeReturnPath(params.returnTo)} />;
   return (
     <Screen>
       <LanguagePicker />

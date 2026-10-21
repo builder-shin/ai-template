@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { once } from "node:events";
 import { createUploader } from "./core";
 import { createApiClient } from "../api/client";
+import { nodeApiFetch } from "../testing/api-fetch";
 import { readPublicEnv } from "../config/env";
 import { SessionManager } from "../session/manager";
 import { deferred, memoryStore, passwordGrant, tokens } from "../session/test-fixtures";
@@ -117,6 +118,8 @@ async function harness(mode: Mode, release = false) {
   const api = createApiClient(
     readPublicEnv({ EXPO_PUBLIC_API_BASE_URL: `${base}/api/v1` }, "ios", false),
     manager,
+    undefined,
+    nodeApiFetch,
   );
   const uploader = createUploader({
     api,

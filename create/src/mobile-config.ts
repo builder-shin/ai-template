@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { configureMobileCi } from "./mobile-ci.ts";
 
 export function configureMobileApp(root: string): void {
   const app = join(root, "apps/mobile"),
@@ -40,8 +41,24 @@ export function configureMobileApp(root: string): void {
       source +
         `\n# Explicit native callback allowlist; retain existing web callbacks when configuring deployment.\nOAUTH_REDIRECT_URIS=${identity.scheme}://oauth/callback\n`,
     );
+  // Native WebSockets send their API origin, independently of the selected web frontends.
+  const example = readFileSync(env, "utf8");
+  const origins = ["http://10.0.2.2:8000", "http://localhost:8000"];
+  const realtime = /^(REALTIME_ALLOWED_ORIGINS=)([^\r\n]*)/m;
+  writeFileSync(
+    env,
+    realtime.test(example)
+      ? example.replace(
+          realtime,
+          (_line, key: string, values: string) =>
+            key + [...new Set([...values.split(",").filter(Boolean), ...origins])].join(","),
+        )
+      : example +
+          `\n# Exact native development WebSocket origins; configure deployment explicitly.\nREALTIME_ALLOWED_ORIGINS=${origins.join(",")}\n`,
+  );
 }
 export function configureMobileDocs(root: string, apps: readonly string[]): void {
+  configureMobileCi(root);
   const runner = join(root, "scripts/frontend-e2e.mjs");
   let text = readFileSync(runner, "utf8");
   text = 'import { mobileEnvironment, mobileE2e } from "./mobile-e2e.mjs";\n' + text;

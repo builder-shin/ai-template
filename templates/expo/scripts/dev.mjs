@@ -24,6 +24,7 @@ export function devEnvironment(mode, platform, input) {
       ? {
           PORT: "4012",
           API_URL: api.origin,
+          REALTIME_ALLOWED_ORIGINS: api.origin,
           FRONTEND_URL: config.frontendUrl,
           OAUTH_REDIRECT_URIS: `${config.scheme}://oauth/callback`,
         }
