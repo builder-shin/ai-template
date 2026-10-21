@@ -19,6 +19,7 @@ import { maestroFailureLog, pickerHierarchy } from "./logs.mjs";
 import { prepareWindowsMaestro } from "./windows.mjs";
 import { verifyArtifactIdentity } from "./artifact.mjs";
 import { startStorageProxy } from "./storage-proxy.mjs";
+import { seedAndroidImage } from "./media.mjs";
 
 export async function runNative(options, ports = {}) {
   const input = ports.env ?? process.env,
@@ -192,6 +193,16 @@ export async function runNative(options, ports = {}) {
     });
     const flows = prepareFlows(plan, fixture);
     cleanup.push(() => cleanNativeProject(flows));
+    if (plan.platform === "android")
+      cleanup.push(
+        await seedAndroidImage(plan, flows, {
+          adb,
+          execute,
+          env,
+          signal,
+          record: join(resolve(log, ".."), "android-media.json"),
+        }),
+      );
     const windows = await prepareWindowsMaestro(java, flows, { execute, signal });
     const launch = `${env.EXPO_PUBLIC_APP_SCHEME}://expo-development-client/?url=${encodeURIComponent(`http://127.0.0.1:${plan.metroPort}`)}`;
     const launchCommand =
@@ -233,7 +244,7 @@ export async function runNative(options, ports = {}) {
         );
         appendFileSync(log, `Native ${flow}: passed (${result.code}).\n`);
       } catch (error) {
-        if (flow === "uploads" && !signal?.aborted) {
+        if (!signal?.aborted) {
           try {
             const hierarchy = await run(
               maestroCommand(

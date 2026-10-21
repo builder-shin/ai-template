@@ -5,10 +5,51 @@ import { redactNative } from "./redact.mjs";
 import { nativeFlows } from "./flows.mjs";
 export function pickerHierarchy(raw) {
   const nodes = [],
-    labels = new Set(["Photos", "Albums", "Dismiss", "Cancel", "No image selected."]);
+    labels = new Set([
+      "Photos",
+      "Albums",
+      "Dismiss",
+      "Cancel",
+      "No image selected.",
+      "Continue",
+      "English",
+      "한국어",
+      "Allow",
+      "Don't Allow",
+      "OK",
+      "Open",
+      "Not Now",
+      "Reload",
+      "Go Home",
+      "Home",
+      "Safari",
+      "Settings",
+      "Expo Mobile",
+      "Get Started",
+      "Get started",
+      "Development servers",
+      "Development builds",
+      "Recently opened",
+      "Enter URL",
+      "Connect",
+      "Connect to Server",
+      "No development servers found",
+      "Something went wrong",
+      "Developer menu",
+    ]);
   function label(value) {
     if (!value) return undefined;
     if (/^Photo taken on /.test(value)) return "Photo available";
+    if (
+      /could not connect|unable to connect|cannot connect|connection refused|network request failed|failed to load|unable to load|could not load/i.test(
+        value,
+      )
+    )
+      return "Development server connection failure";
+    if (/local network|find and connect to/i.test(value)) return "Local network permission";
+    if (/unmatched route|doesn't exist|application error/i.test(value)) return "Application error";
+    if (/development servers|development build|expo go|connect to.*server|enter.*url/i.test(value))
+      return "Development launcher";
     return labels.has(value) ? value : "<other text>";
   }
   function visit(node) {

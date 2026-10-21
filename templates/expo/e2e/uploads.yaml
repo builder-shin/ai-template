@@ -14,7 +14,9 @@ appId: __BUNDLE_ID__
     when: { platform: iOS }
     commands: [{ tapOn: "Cancel" }]
 - assertVisible: "No image selected."
-- addMedia: [native.png]
+- runFlow:
+    when: { platform: iOS }
+    commands: [{ addMedia: [native.png] }]
 - runScript: { file: bridge.js, env: { ACTION: storage-unavailable } }
 - assertTrue: ${output.result.apiReachable}
 - tapOn: { id: "button-Choose image: Avatar" }

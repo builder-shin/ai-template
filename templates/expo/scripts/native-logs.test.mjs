@@ -6,6 +6,26 @@ import { join } from "node:path";
 import { prepareNativeProject, cleanNativeProject } from "./native/owned.mjs";
 import { maestroFailureLog, pickerHierarchy } from "./native/logs.mjs";
 
+test("initial iOS diagnostics identify system controls and connection failures without echoing URLs", () => {
+  const result = pickerHierarchy(
+    JSON.stringify({
+      children: [
+        { attributes: { accessibilityText: "Continue" } },
+        { attributes: { accessibilityText: "Don't Allow" } },
+        {
+          attributes: {
+            text: "Could not connect to development server https://private.example/?code=secret",
+          },
+        },
+      ],
+    }),
+  );
+  assert.match(result, /Continue/);
+  assert.match(result, /Don't Allow/);
+  assert.match(result, /Development server connection failure/);
+  assert.doesNotMatch(result, /private|secret|https/);
+});
+
 test("picker diagnostics retain system labels and structure without arbitrary screen content", () => {
   const result = pickerHierarchy(
     JSON.stringify({

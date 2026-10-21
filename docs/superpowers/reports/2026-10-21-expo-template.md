@@ -77,3 +77,5 @@ iOS 실제 UI·unsigned release와 실제 FastAPI/NestJS 저장소·메일·제�
 CI에서 확인한 실행 경로도 회귀 시험으로 고정했다. SDK 도구는 설치 경로로 실행하고, 생성 smoke와 iOS 실행기는 실제 pnpm lifecycle로 호출한다. iOS simulator는 SDK가 호환성을 확인한 모델만 채택하며 생성한 UUID만 정리한다. 생성 조합의 세 실행 스크립트도 고정 formatter로 정리한다. 관련 create 전체 시험은 357개와 Node 82개가 통과했다(각 1개 환경 조건 skip).
 
 Navikt 6.0.3에는 거절 전용 form이 없으므로 기존 web 하네스처럼 현재 state와 `access_denied`를 정확한 API callback으로 전달한다. 실제 API가 native 교환 코드 없이 거절하는 회귀를 포함하며 승인 로그인은 제공자 form·token 교환을 사용한다. 생성된 모바일 예제의 추가 origin 때문에 깨진 FastAPI 정규화 시험은 명시한 입력으로 분리해 27개를 통과했고, 반복 회원가입 응답 시험은 실제 응답 필드 반영을 기다리도록 고쳤다.
+
+빈 Android 사진함의 CI 회귀도 별도로 재현했다. PNG의 IDAT 체크섬을 바로잡고, Android에서는 SDK로 전송을 닫은 뒤 정확한 상대 경로·바이트 크기의 MediaStore 등록을 확인한다. 새 nonce 폴더를 원자적으로 확보하고 해당 행·파일·빈 폴더만 정리한다. 새 기기의 `win-media-uploads-a3`는 사진 선택·스토리지 중단·실패 안내·연결 복구·실제 68바이트 전송과 정리를 통과했다. 고정 Maestro Android 스트림과 iOS 미디어 경로를 구분하며, 각 PNG chunk의 체크섬 회귀를 추가했다.
