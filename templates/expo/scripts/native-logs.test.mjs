@@ -11,6 +11,53 @@ import {
   hierarchyDiagnostic,
 } from "./native/logs.mjs";
 
+test("only the native SDK error cell can retain a bounded reason with explicit fixture redaction", () => {
+  const reason =
+    "Native initialization failed for private-name private@example.com UnlistedOpaqueSecretLetterString token=private-code at https://private.example/?code=opaque";
+  const raw = JSON.stringify({
+    children: [
+      {
+        attributes: {
+          "resource-id": "redbox-error",
+          accessibilityText: "redbox-error",
+          value: reason,
+        },
+      },
+      { attributes: { "resource-id": "private-field", value: "private-name" } },
+    ],
+  });
+  assert.doesNotMatch(pickerHierarchy(raw), /Native initialization failed/);
+  const result = pickerHierarchy(raw, ["private-name"]);
+  assert.match(result, /Native initialization failed/);
+  assert.doesNotMatch(
+    result,
+    /private-name|private@example|private-code|private\.example|UnlistedOpaqueSecretLetterString/,
+  );
+  const path = pickerHierarchy(
+    JSON.stringify({
+      attributes: {
+        "resource-id": "redbox-error",
+        value: "Failure in C:/Users/private person/project/index.js",
+      },
+    }),
+    [],
+  );
+  assert.match(path, /Failure in \[source path omitted\]/);
+  assert.doesNotMatch(path, /private person|project|Users/);
+  const long = JSON.parse(
+    pickerHierarchy(
+      JSON.stringify({
+        attributes: {
+          "resource-id": "redbox-error",
+          value: "Public failure reason ".repeat(100),
+        },
+      }),
+      [],
+    ).slice("Picker hierarchy ".length),
+  );
+  assert.ok(long[0].nativeError.length <= 600);
+});
+
 test("iOS native error shortcuts and SDK-only stack symbols survive diagnostic filtering", () => {
   const result = pickerHierarchy(
     JSON.stringify({
@@ -143,12 +190,19 @@ test("failure diagnostics use the paired stored hierarchy without reopening an i
         children: [
           { attributes: { accessibilityText: "Continue" } },
           { attributes: { text: "private@example.com" } },
+          {
+            attributes: { "resource-id": "redbox-error", value: "Native startup fixture-private" },
+          },
         ],
       }),
     );
     const result = maestroFailureHierarchy(owned, "auth");
     assert.match(result, /Continue/);
     assert.doesNotMatch(result, /private@example/);
+    assert.doesNotMatch(result, /Native startup/);
+    const contextual = maestroFailureHierarchy(owned, "auth", ["fixture-private"]);
+    assert.match(contextual, /Native startup/);
+    assert.doesNotMatch(contextual, /fixture-private|private@example/);
     assert.throws(() => maestroFailureHierarchy({ parent: source }, "auth"), /ownership/);
   } finally {
     cleanNativeProject(owned);

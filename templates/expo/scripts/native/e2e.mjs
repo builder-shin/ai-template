@@ -260,7 +260,14 @@ export async function runNative(options, ports = {}) {
       } catch (error) {
         if (!signal?.aborted) {
           try {
-            let diagnostic = maestroFailureHierarchy(flows, flow);
+            const diagnosticSecrets =
+              plan.platform === "ios" && flow === "auth"
+                ? [
+                    ...fixture.secrets,
+                    ...Object.values(fixture.data).filter((value) => typeof value === "string"),
+                  ]
+                : undefined;
+            let diagnostic = maestroFailureHierarchy(flows, flow, diagnosticSecrets);
             if (!diagnostic) {
               const hierarchy = await execute(
                 maestroCommand(
@@ -280,7 +287,7 @@ export async function runNative(options, ports = {}) {
                   ]),
                 },
               );
-              diagnostic = hierarchyDiagnostic(hierarchy);
+              diagnostic = hierarchyDiagnostic(hierarchy, diagnosticSecrets);
             }
             appendFileSync(log, diagnostic + "\n");
             process.stdout.write(diagnostic + "\n");

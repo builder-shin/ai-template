@@ -5,7 +5,7 @@ import { redactNative } from "./redact.mjs";
 import { nativeFlows } from "./flows.mjs";
 import en from "../../src/lib/i18n/messages/en.json" with { type: "json" };
 import ko from "../../src/lib/i18n/messages/ko.json" with { type: "json" };
-export function pickerHierarchy(raw) {
+export function pickerHierarchy(raw, secrets) {
   const nodes = [],
     labels = new Set([
       "Photos",
@@ -109,7 +109,7 @@ export function pickerHierarchy(raw) {
   function label(value) {
     if (typeof value !== "string" || !value) return undefined;
     if (labels.has(value)) return value;
-    const shortcut = /^(Dismiss|Reload|Copy|Extra Info)\n\((?:ESC|[⌘⌥RC E]+)\)$/.exec(value);
+    const shortcut = /^(Dismiss|Reload|Copy|Extra Info)\s+\((?:ESC|[⌘⌥RC E]+)\)$/.exec(value);
     if (shortcut) return shortcut[1];
     const bareFrames = publicFrames.filter((path) => {
       const name = path.slice(path.lastIndexOf("/") + 1);
@@ -208,10 +208,14 @@ export function pickerHierarchy(raw) {
         bounds: /^\[\d+,\d+\]\[\d+,\d+\]$/.test(a.bounds ?? "") ? a.bounds : undefined,
         text: label(a.text),
         accessibility: label(a.accessibilityText),
+        value: label(a.value),
+        title: label(a.title),
+        nativeError: nativeErrorReason(a),
         sdkModules: modules.length ? modules : undefined,
-        resource:
-          /^(?:button|field)-/.test(a["resource-id"] ?? "") &&
-          labels.has(a["resource-id"].replace(/^(?:button|field)-/, ""))
+        resource: /^redbox-(?:error|dismiss|reload|copy|extra)$/.test(a["resource-id"] ?? "")
+          ? a["resource-id"]
+          : /^(?:button|field)-/.test(a["resource-id"] ?? "") &&
+              labels.has(a["resource-id"].replace(/^(?:button|field)-/, ""))
             ? a["resource-id"]
             : undefined,
         clickable: a.clickable === "true",
@@ -220,6 +224,30 @@ export function pickerHierarchy(raw) {
     }
     if (Array.isArray(node.children)) for (const child of node.children) visit(child);
   }
+  function nativeErrorReason(attributes) {
+    if (attributes["resource-id"] !== "redbox-error" || !Array.isArray(secrets)) return undefined;
+    const message =
+      [attributes.value, attributes.title, attributes.text, attributes.accessibilityText]
+        .filter((value) => typeof value === "string")
+        .sort((left, right) => right.length - left.length)[0] ?? "";
+    return redactNative(message, secrets)
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
+      .replace(/\b[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\b/gi, "[identifier]")
+      .replace(/\b[A-Za-z0-9_-]{24,}\b/g, (value) =>
+        [
+          "NSInvalidArgumentException",
+          "NSInternalInconsistencyException",
+          "UnrecognizedSelectorException",
+        ].includes(value)
+          ? value
+          : "[opaque]",
+      )
+      .split(/\r?\n/)
+      .slice(0, 3)
+      .map((line) => line.replace(/\S*[\\/].*$/, "[source path omitted]"))
+      .join(" ")
+      .slice(0, 600);
+  }
   try {
     visit(JSON.parse(raw));
   } catch {
@@ -227,8 +255,8 @@ export function pickerHierarchy(raw) {
   }
   return `Picker hierarchy ${JSON.stringify(nodes)}`;
 }
-export function hierarchyDiagnostic(result) {
-  if (result.code === 0) return pickerHierarchy(result.stdout ?? "");
+export function hierarchyDiagnostic(result, secrets) {
+  if (result.code === 0) return pickerHierarchy(result.stdout ?? "", secrets);
   const stderr = String(result.stderr ?? ""),
     code = Number.isInteger(result.code) ? result.code : "unknown";
   const cause = /timeout|timed out|deadline/i.test(stderr)
@@ -240,7 +268,7 @@ export function hierarchyDiagnostic(result) {
         : "diagnostic command failed";
   return `Hierarchy unavailable (exit ${code}): ${cause}.`;
 }
-export function maestroFailureHierarchy(owned, flow) {
+export function maestroFailureHierarchy(owned, flow, secrets) {
   nativeProjectPath(owned);
   if (flow !== "setup" && !nativeFlows.includes(flow))
     throw new Error("Unknown native diagnostic flow.");
@@ -262,7 +290,7 @@ export function maestroFailureHierarchy(owned, flow) {
   }
   if (existsSync(root)) visit(root);
   const selected = candidates.sort((a, b) => b.mtime - a.mtime || b.file.localeCompare(a.file))[0];
-  return selected ? pickerHierarchy(readFileSync(selected.file, "utf8")) : "";
+  return selected ? pickerHierarchy(readFileSync(selected.file, "utf8"), secrets) : "";
 }
 export function maestroFailureLog(owned, flow, secrets) {
   nativeProjectPath(owned);
