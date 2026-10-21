@@ -1,17 +1,12 @@
-import {
-  TextInput,
-  Text,
-  View,
-  StyleSheet,
-  useColorScheme,
-  type TextInputProps,
-} from "react-native";
+import { TextInput, Text, View, StyleSheet, useColorScheme } from "react-native";
+import type { ComponentPropsWithRef } from "react";
 export function Field({
   label,
   error,
   ...props
-}: TextInputProps & { label: string; error?: string | undefined }) {
-  const color = useColorScheme() === "dark" ? "#f8fafc" : "#101828";
+}: ComponentPropsWithRef<typeof TextInput> & { label: string; error?: string | undefined }) {
+  const dark = useColorScheme() === "dark";
+  const color = dark ? "#f8fafc" : "#101828";
   return (
     <View style={styles.group}>
       <Text style={{ color }}>{label}</Text>
@@ -23,7 +18,7 @@ export function Field({
         style={[styles.input, { color }, props.style]}
       />
       {error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
+        <Text accessibilityRole="alert" style={{ color: dark ? "#fda4af" : "#b91c1c" }}>
           {error}
         </Text>
       ) : null}
@@ -40,5 +35,4 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 17,
   },
-  error: { color: "#dc2626" },
 });

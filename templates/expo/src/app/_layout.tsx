@@ -6,7 +6,7 @@ export default function Layout() {
   return (
     <Providers>
       <StatusBar style="auto" />
-      <Stack />
+      <Stack screenOptions={{ headerShown: false }} />
     </Providers>
   );
 }

@@ -41,6 +41,14 @@ paths = ['''^templates/expo/src/lib/i18n/messages/en\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"password": "Password",?\s*$''']
 
+[[allowlists]]
+description = "Expo 인증 화면의 공개 비밀번호 탐색 레이블 네 줄"
+condition = "AND"
+targetRules = ["generic-password"]
+paths = ['''^templates/expo/src/lib/i18n/messages/(?:ko|en)\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"forgotPassword": "(?:Forgot password|비밀번호 찾기)",?\s*$''', '''^\s*"resetPassword": "(?:Reset password|비밀번호 재설정)",?\s*$''']
+
 # 계획 문서(docs/superpowers/plans)는 템플릿과 적합성 스위트의 코드를 그대로 옮겨 적는다. 마크다운 안의
 # 타입 선언과 테스트 상수(`password: Password`, `password: PASSWORD`)를 generic-password 규칙이 비밀번호로
 # 오탐하므로, 계획 문서에서만 이 규칙을 끈다. 다른 규칙(키, 토큰)은 계획 문서도 그대로 본다.

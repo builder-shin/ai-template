@@ -6,7 +6,11 @@ export function Screen({ children }: PropsWithChildren) {
   const dark = useColorScheme() === "dark";
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: dark ? "#101828" : "#f8fafc" }]}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.body}>{children}</View>
       </ScrollView>
     </SafeAreaView>

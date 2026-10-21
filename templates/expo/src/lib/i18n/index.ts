@@ -8,8 +8,12 @@ export type Locale = "ko" | "en";
 export function locale(value: unknown): Locale {
   return value === "en" ? "en" : "ko";
 }
+const resources: Record<Locale, { translation: typeof ko }> = {
+  ko: { translation: ko },
+  en: { translation: en },
+};
 void i18n.use(initReactI18next).init({
-  resources: { ko: { translation: ko }, en: { translation: en } },
+  resources,
   lng: locale(getLocales()[0]?.languageCode),
   fallbackLng: "ko",
   interpolation: { escapeValue: false },

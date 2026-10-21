@@ -1,4 +1,4 @@
-import type { ErrorCode } from "./generated/error-codes";
+import { errorCodes, type ErrorCode } from "./generated/error-codes";
 
 export interface RemoteError {
   code: ErrorCode;
@@ -15,10 +15,30 @@ export class ApiError extends Error {
   }
   static async fromResponse(response: Response): Promise<ApiError> {
     const body: unknown = await response.json().catch(() => null);
-    const errors =
+    const candidates: unknown[] =
       body && typeof body === "object" && "errors" in body && Array.isArray(body.errors)
-        ? (body.errors as RemoteError[])
+        ? body.errors
         : [];
+    const errors: RemoteError[] = candidates.flatMap((candidate) => {
+      if (
+        !candidate ||
+        typeof candidate !== "object" ||
+        !("code" in candidate) ||
+        typeof candidate.code !== "string" ||
+        !errorCodes.includes(candidate.code as ErrorCode)
+      )
+        return [];
+      const result: RemoteError = { code: candidate.code as ErrorCode };
+      if (
+        "source" in candidate &&
+        candidate.source &&
+        typeof candidate.source === "object" &&
+        "pointer" in candidate.source &&
+        typeof candidate.source.pointer === "string"
+      )
+        result.source = { pointer: candidate.source.pointer };
+      return [result];
+    });
     return new ApiError(response.status, errors);
   }
   fieldErrors(): Record<string, string> {

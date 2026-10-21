@@ -1,6 +1,7 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "../components/text";
 import { useTranslation } from "react-i18next";
 import i18n, { locale } from "./i18n";
 import { createQueryClient } from "./query/client";
@@ -15,14 +16,17 @@ import {
 } from "./session";
 import { Button } from "../components/button";
 import { createNativeOAuth } from "./links";
+import { SessionLocale } from "./session/locale";
 
 function StorageNotice() {
   const { state, manager } = useSession();
   const { t } = useTranslation();
-  if (!state.storageError) return null;
+  if (!state.storageError && !state.networkError) return null;
   return (
     <View>
-      <Text accessibilityRole="alert">{t("secureStorageError")}</Text>
+      <Text accessibilityRole="alert">
+        {t(state.storageError ? "secureStorageError" : "offline")}
+      </Text>
       <Button
         title={t("retry")}
         onPress={() => {
@@ -60,6 +64,7 @@ export function Providers({ children }: PropsWithChildren) {
   return (
     <QueryClientProvider client={scope.queryClient}>
       <SessionProvider value={scope.value}>
+        <SessionLocale />
         <StorageNotice />
         {children}
       </SessionProvider>

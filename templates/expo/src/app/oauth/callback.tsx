@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Text } from "react-native";
+import { Text } from "../../components/text";
 import { useTranslation } from "react-i18next";
 import { Screen } from "../../components/screen";
 import { Spinner } from "../../components/spinner";

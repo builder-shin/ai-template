@@ -43,7 +43,9 @@ describe("confined JSON:API transport", () => {
     fetcher.mockResolvedValue(
       new Response(
         JSON.stringify({
-          errors: [{ code: "validation.failed", source: { pointer: "/data/attributes/title" } }],
+          errors: [
+            { code: "validation.invalid_format", source: { pointer: "/data/attributes/title" } },
+          ],
         }),
         { status: 422 },
       ),
@@ -53,7 +55,7 @@ describe("confined JSON:API transport", () => {
       throw new Error("Expected failure.");
     } catch (error) {
       expect(error).toBeInstanceOf(ApiError);
-      expect((error as ApiError).fieldErrors()).toEqual({ title: "validation.failed" });
+      expect((error as ApiError).fieldErrors()).toEqual({ title: "validation.invalid_format" });
     }
   });
 });

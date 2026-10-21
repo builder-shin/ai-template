@@ -10,5 +10,6 @@ module.exports = class NodeHttpEnvironment extends NativeEnvironment {
   constructor(config, context) {
     super(config, context);
     this.global.__nodeHttp = nodeHttp;
+    this.global.__startMock = require("./mock-server.cjs").startMock;
   }
 };

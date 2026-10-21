@@ -3,6 +3,20 @@ import { parseAppLink } from "./parse";
 
 const product =
   /^(?:\/|\/login|\/signup|\/forgot-password|\/me(?:\/sessions)?|\/posts\/(?:new|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/edit)?))$/;
+export function safeReturnPath(value: unknown): string {
+  return typeof value === "string" &&
+    product.test(value) &&
+    !["/login", "/signup", "/forgot-password"].includes(value)
+    ? value
+    : "/me/sessions";
+}
+export function mailToken(params: Record<string, unknown>): string | null {
+  return Object.keys(params).length === 1 &&
+    typeof params.token === "string" &&
+    /^[A-Za-z0-9_-]{1,512}$/.test(params.token)
+    ? params.token
+    : null;
+}
 export function routeIncomingPath(path: string, env: MobileEnv): string {
   try {
     const internal = path.startsWith("/") && !path.startsWith("//");
