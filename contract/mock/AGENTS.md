@@ -86,7 +86,7 @@
 - `REALTIME_ALLOWED_ORIGINS`는 두 쪽 모두 값마다 Origin(스킴://호스트[:포트])으로 정규화하고 `*`와 http(s) 주소가 아닌 값을 설정 오류로 거절한다. 다만 목은 호스트를 WHATWG URL로 읽어 브라우저가 보낼 모양으로 바꿔 받고(ASCII가 아닌 호스트는 punycode로, `127.1`은 `127.0.0.1`로), FastAPI(`core/config.py`의 `Origins`)는 그렇게 바꿔야 하는 호스트를 설정 오류로 거절한다. 반대로 `xn--` 라벨이 올바른 punycode인지는 목만 본다(`http://xn--a.com`은 목에서 설정 오류, FastAPI에서는 어느 브라우저와도 맞지 않는 값). 이름에 쓰지 않는 글자가 든 호스트(예: `*.example.com`)도 다르다: WHATWG URL이 그대로 두므로 목은 그대로 받아들이고, FastAPI는 설정 오류로 거절한다. 값에 `\`가 있어도 다르다: WHATWG URL은 http(s)에서 `\`를 만나면 거기서 authority를 끝내 목은 그 앞부분을 호스트로 읽지만, FastAPI가 쓰는 `urlsplit`은 `\`를 구분자로 보지 않아 같은 값을 다른 호스트로 읽을 수 있으므로 FastAPI는 `\`가 든 값을 통째로 설정 오류로 거절한다.
 - 본문 인코딩이 다르다: JSON의 `NaN`·`Infinity`는 목에서 400이다(Python의 `json`은 받아들인다). CESU-8로 짝을 이룬 서로게이트 바이트, UTF-16·UTF-32 본문도 Python의 `json.loads`와 다르게 다룬다(`src/jsonapi/validation.ts`, `src/jsonapi/surrogates.ts`).
 - snake_case 속성 이름을 FastAPI(`validate_by_name`)는 camelCase와 함께 받지만, 목은 스키마에 없는 속성으로 보고 조용히 버린다(`removeAdditional`). 그 속성이 필수면 422가 난다.
-- 두 설정은 목의 검증이 FastAPI보다 빡빡하다: `OAUTH_REDIRECT_URIS`의 각 값은 http(s) 주소여야 하고 `SEED_ADMIN_EMAIL`은 이메일 형식이어야 한다. FastAPI는 값을 그대로 받는다(각각 CommaSeparated, 빈 문자열만 아니면 되는 문자열).
+- `OAUTH_REDIRECT_URIS`는 세 대상 모두 정확한 HTTP(S) 콜백 또는 private-scheme://oauth/callback만 허용한다. 실제 authorize는 설정 목록과 문자열이 같아야 한다. `SEED_ADMIN_EMAIL`은 목에서 이메일 형식이어야 하고 FastAPI는 빈 문자열만 아니면 받는다.
 - 끝에 슬래시가 붙은 경로는 목에서 404다(FastAPI/Starlette는 307로 리다이렉트한다).
 - GET만 선언한 라우트에 HEAD로 요청하면 목은 200이다(Hono가 GET 처리기로 넘긴다). FastAPI는 404다.
 - 이메일 형식은 흔한 경우만 email-validator와 같다(`src/jsonapi/email.ts`).

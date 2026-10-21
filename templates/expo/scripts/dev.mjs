@@ -2,6 +2,30 @@ import { createServer } from "node:net";
 import { pathToFileURL } from "node:url";
 import { command, child } from "./process.mjs";
 import { stopProcessTree } from "./process-tree.mjs";
+import { readPublicEnv } from "../src/lib/config/env.ts";
+
+export function devEnvironment(mode, platform, input) {
+  const config = readPublicEnv({ ...input, EXPO_PUBLIC_API_MODE: mode }, platform, false);
+  const api = new URL(config.apiBaseUrl);
+  if (mode === "mock" && api.port !== "4012")
+    throw new Error("Mock mode uses port 4012; use backend mode for a prepared API.");
+  return {
+    EXPO_NO_DOTENV: "1",
+    EXPO_PUBLIC_API_MODE: config.mode,
+    EXPO_PUBLIC_API_BASE_URL: config.apiBaseUrl,
+    EXPO_PUBLIC_REALTIME_URL: config.realtimeUrl,
+    EXPO_PUBLIC_FRONTEND_URL: config.frontendUrl,
+    EXPO_PUBLIC_APP_SCHEME: config.scheme,
+    ...(mode === "mock"
+      ? {
+          PORT: "4012",
+          API_URL: api.origin,
+          FRONTEND_URL: config.frontendUrl,
+          OAUTH_REDIRECT_URIS: `${config.scheme}://oauth/callback`,
+        }
+      : {}),
+  };
+}
 
 export function devPlan(mode, port) {
   if (!["mock", "backend"].includes(mode)) throw new Error("Invalid API mode.");
@@ -24,9 +48,17 @@ export function assertPortFree(port) {
   });
 }
 async function main() {
+  const args = process.argv.slice(2);
+  if (
+    args.length &&
+    (args.length !== 2 || args[0] !== "--platform" || !["android", "ios"].includes(args[1]))
+  )
+    throw new Error("Use pnpm dev [--platform android|ios].");
+  const platform = args[1] ?? "android";
   const mode = process.env.EXPO_PUBLIC_API_MODE ?? "mock";
   const port = Number(process.env.METRO_PORT ?? 8081);
   const plans = devPlan(mode, port);
+  const runtime = devEnvironment(mode, platform, process.env);
   await assertPortFree(port);
   if (mode === "mock") await assertPortFree(4012);
   const children = [];
@@ -42,14 +74,7 @@ async function main() {
     const owned = child(plan.argv, {
       env: {
         ...process.env,
-        EXPO_NO_DOTENV: "1",
-        ...(plan.role === "mock"
-          ? {
-              PORT: "4012",
-              FRONTEND_URL: "http://localhost:3000",
-              OAUTH_REDIRECT_URIS: "http://localhost:3000/oauth/callback",
-            }
-          : {}),
+        ...runtime,
       },
     });
     children.push(owned);

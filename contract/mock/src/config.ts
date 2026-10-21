@@ -1,3 +1,4 @@
+import { validOAuthCallback } from "./core/oauth-callback.ts";
 /**
  * 목 서버 설정. 시작할 때 환경 변수에서 읽고, 틀린 변수가 있으면 변수마다 한 줄씩 알리고 멈춘다.
  *
@@ -172,6 +173,13 @@ function secret(min: number): (raw: string) => Parsed<string> {
       : { problem: `${String(min)}자 이상이어야 한다` };
 }
 
+function oauthCallback(raw: string): Parsed<string> {
+  const value = raw.trim();
+  return validOAuthCallback(value)
+    ? { value }
+    : { problem: "정확한 HTTP(S) 콜백 또는 private-scheme://oauth/callback을 적는다" };
+}
+
 function httpUrl(raw: string): Parsed<string> {
   const value = raw.trim();
   if (/^https?:\/\//.test(value) && URL.canParse(value)) return { value };
@@ -253,7 +261,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
     oauthRedirectUris: read(
       "OAUTH_REDIRECT_URIS",
       defaults.oauthRedirectUris,
-      commaSeparated(httpUrl),
+      commaSeparated(oauthCallback),
     ),
     identifierHashSecret: read(
       "IDENTIFIER_HASH_SECRET",

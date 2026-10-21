@@ -2,11 +2,13 @@ import { createContext, useContext, useSyncExternalStore, type PropsWithChildren
 import type { createApiClient } from "../api/client";
 import type { MobileEnv } from "../config/env";
 import type { SessionManager } from "./manager";
+import type { OAuthController } from "../links/oauth";
 
 export interface SessionContextValue {
   manager: SessionManager;
   api: ReturnType<typeof createApiClient>;
   config: MobileEnv;
+  oauth: OAuthController;
 }
 const Context = createContext<SessionContextValue | null>(null);
 export function SessionProvider({

@@ -53,6 +53,10 @@ export function readPublicEnv(
   if (!new URL(apiBaseUrl).pathname.endsWith("/api/v1"))
     throw new Error("API_BASE_URL: end the path with /api/v1.");
   const scheme = input.EXPO_PUBLIC_APP_SCHEME ?? identity.scheme;
+  if (scheme !== identity.scheme)
+    throw new Error(
+      "APP_SCHEME must match app-identity.json; rebuild the native client after changing its identity.",
+    );
   if (
     !/^[a-z][a-z0-9-]{2,63}$/.test(scheme) ||
     ["http", "https", "exp", "exps", "file", "javascript", "data"].includes(scheme)

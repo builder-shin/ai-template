@@ -1,0 +1,13 @@
+# Authentication links
+
+Use a development build with `app-identity.json`'s scheme. Expo Go cannot validate this flow. The native callback is exactly `<scheme>://oauth/callback`; configure that exact value in the API's `OAUTH_REDIRECT_URIS`. Production defaults do not enable the conformance callback `aitpl-example://oauth/callback`; it appears only in explicit test configuration.
+
+The app persists a short-lived PKCE verifier in a separate device-only SecureStore record before opening the system browser. The API handles Google/Kakao/Naver secrets and provider state. Native callbacks consume the verifier once and exchange the API's 60-second code. Pending handoffs expire after 10 minutes; cancellation, account generation changes and callbacks received after another account has signed in cannot establish a session.
+
+All logout/session-revocation UI paths must await `oauth.cancel()` together with `manager.signOut()`. This clears an outstanding browser handoff as well as the refresh session. Show failures without native error details or link values. A new provider button starts a new handoff explicitly.
+
+For Universal Links/App Links, choose a real HTTPS `EXPO_PUBLIC_FRONTEND_URL`. Publish the examples in `docs/app-links` as `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json`. Replace `REPLACE_TEAM_ID`, `REPLACE_IOS_BUNDLE_IDENTIFIER`, `REPLACE_ANDROID_APPLICATION_ID` and `REPLACE_SHA256_CERTIFICATE_FINGERPRINT` with the app's actual identifiers and signing certificate fingerprint. Configure `ios.associatedDomains` and Android `intentFilters` in `app.config.ts` for that domain. Serve JSON directly over HTTPS without redirects. Domain and signing ownership require your deployment configuration; these examples do not claim it is verified.
+
+Associated links accept only `/verify-email`, `/reset-password` and their `/ko` or `/en` forms with one `token` parameter. Private development links use `<scheme>://verify-email?token=…` or `<scheme>://reset-password?token=…`. Unknown origins, fragments, encoded path confusion, repeated/extra parameters and URL-supplied identities are rejected.
+
+Development/CI uses `scripts/mail-link.ts`: read the owned mock mailbox with `readMockMailLink`, or translate an already fetched Mailpit text body with `nativeLinkFromMail`. The adapter validates the original frontend origin/path before returning the private app link. Pass that result directly to the owned device driver. Never print it, use it as a test title, place it in CI artifacts, or capture it in screenshots. Native E2E runners perform the device opening and redact diagnostics.

@@ -27,7 +27,7 @@ x-app: &app
     FRONTEND_URL: http://localhost:3000
     REALTIME_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
     API_URL: http://localhost:8000
-    OAUTH_REDIRECT_URIS: http://localhost:3000/oauth/callback
+    OAUTH_REDIRECT_URIS: http://localhost:3000/oauth/callback,aitpl-example://oauth/callback
     OAUTH_GOOGLE_CLIENT_ID: local-google-client
     OAUTH_GOOGLE_CLIENT_SECRET: local-google-secret # betterleaks:allow 사유: compose 모의 OAuth 공개 fixture
     OAUTH_GOOGLE_AUTHORIZE_URL: http://127.0.0.1:28080/google/authorize

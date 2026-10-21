@@ -103,7 +103,9 @@ describe("적합성 대상", () => {
     const env = processTarget("mock").processEnv;
     expect(env.API_URL).toBe("http://localhost:4010");
     // oauth.test.ts의 FRONT_CALLBACK과 같은 값이다.
-    expect(env.OAUTH_REDIRECT_URIS).toBe("http://localhost:3000/oauth/callback");
+    expect(env.OAUTH_REDIRECT_URIS).toBe(
+      "http://localhost:3000/oauth/callback,aitpl-example://oauth/callback",
+    );
     // files.test.ts가 기대하는 목의 기본값(src/config.ts의 DEFAULT_CONFIG)과 같다.
     expect(env.FILE_MAX_SIZE).toBe("10485760");
     expect(env.FILE_ALLOWED_TYPES).toBe("image/gif,image/jpeg,image/png,image/webp");

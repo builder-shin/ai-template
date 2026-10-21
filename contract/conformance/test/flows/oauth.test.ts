@@ -49,6 +49,22 @@ function person(email?: string, emailVerified = false) {
 
 describe(`소셜 로그인 (${target.name})`, () => {
   it.each(PROVIDERS)(
+    "%s 네이티브 콜백도 원래 verifier로만 교환하고 재사용을 거절한다",
+    async (provider) => {
+      const native = "aitpl-example://oauth/callback";
+      const wrong = await oauth.signIn(provider, native, person());
+      const rejected = await signInWith(wrong.query.get("code"), "z".repeat(43));
+      expect(rejected.response.status).toBe(401);
+      expect(codes(rejected.error)).toEqual(["auth.oauth_code_invalid"]);
+      const valid = await oauth.signIn(provider, native, person());
+      const created = await signInWith(valid.query.get("code"), valid.codeVerifier);
+      expect(created.response.status).toBe(201);
+      const replay = await signInWith(valid.query.get("code"), valid.codeVerifier);
+      expect(replay.response.status).toBe(401);
+      expect(codes(replay.error)).toEqual(["auth.oauth_code_invalid"]);
+    },
+  );
+  it.each(PROVIDERS)(
     "%s로 처음 로그인하면 계정을 만들고, 1회용 코드는 한 번만 쓴다",
     async (provider) => {
       const back = await oauth.signIn(provider, FRONT_CALLBACK, person());

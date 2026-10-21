@@ -17,7 +17,6 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, override
-from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -42,6 +41,7 @@ from app.core.jsonapi.query import (
     query_error,
     single,
 )
+from app.core.oauth_urls import valid_oauth_callback
 
 REF_TEMPLATE = "#/components/schemas/{model}"
 
@@ -313,7 +313,7 @@ class RedirectOperation(Operation):
                     raise query_error(ErrorCode.JSONAPI_INVALID_QUERY, item.name, detail)
                 continue
             value = single(request, item.name)
-            if item.format == "uri" and not _is_url(value):
+            if item.format == "uri" and not valid_oauth_callback(value):
                 detail = f"Query parameter {item.name} must be an absolute URL."
                 raise query_error(ErrorCode.JSONAPI_INVALID_QUERY, item.name, detail)
             if item.pattern is not None and re.fullmatch(item.pattern, value) is None:
@@ -321,16 +321,6 @@ class RedirectOperation(Operation):
                 raise query_error(ErrorCode.JSONAPI_INVALID_QUERY, item.name, detail)
             values[item.name] = value
         return RedirectQuery(include=(), fields={}, values=values)
-
-
-def _is_url(value: str) -> bool:
-    # urlparse는 IPv6 호스트로 보이는 일부 잘못된 값(예: "http://[::1")에 ValueError를 던진다.
-    # 그런 값도 형식이 틀린 것일 뿐이니 400으로 돌린다.
-    try:
-        parts = urlparse(value)
-    except ValueError:
-        return False
-    return parts.scheme in {"http", "https"} and bool(parts.netloc)
 
 
 def _access(operation: Operation) -> list[Any]:

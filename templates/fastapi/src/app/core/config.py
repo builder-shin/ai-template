@@ -23,6 +23,8 @@ from pydantic import (
 from pydantic_core import ErrorDetails
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from app.core.oauth_urls import valid_oauth_callback
+
 NonEmpty = Annotated[str, Field(min_length=1)]
 HttpUrl = Annotated[str, Field(pattern=r"^https?://")]
 # 레이트 리밋 한도: 한 윈도(분이나 시간) 동안 받는 요청 수
@@ -40,6 +42,15 @@ def _comma_separated(value: object) -> object:
 CommaSeparated = Annotated[
     frozenset[str], NoDecode, BeforeValidator(_comma_separated), Field(min_length=1)
 ]
+
+
+def _oauth_callbacks(values: frozenset[str]) -> frozenset[str]:
+    if not all(valid_oauth_callback(value) for value in values):
+        raise ValueError("정확한 HTTP(S) 콜백 또는 private-scheme://oauth/callback을 적는다")
+    return values
+
+
+OAuthRedirectUris = Annotated[CommaSeparated, AfterValidator(_oauth_callbacks)]
 
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 # 소문자로 바꾼 호스트 이름에 쓰는 글자: 영문자, 숫자, 하이픈, 밑줄, 점
@@ -186,7 +197,7 @@ class Settings(BaseSettings):
     api_url: HttpUrl
     # 소셜 로그인 뒤 돌아갈 프론트 콜백 주소(쉼표로 구분). authorize의 redirectUri가 이 중
     # 하나와 같아야 한다
-    oauth_redirect_uris: CommaSeparated
+    oauth_redirect_uris: OAuthRedirectUris
     # 소셜 로그인 제공자(google, kakao, naver)마다 클라이언트와 주소. 인가 주소는 브라우저가, 토큰과
     # 프로필 주소는 서버가 부른다. 운영 주소는 .env.example의 주석에 있다
     oauth_google_client_id: NonEmpty

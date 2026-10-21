@@ -2,6 +2,14 @@ import { readPublicEnv } from "./env";
 import { nativeIdentity } from "./identity";
 
 describe("native public configuration", () => {
+  const release = {
+    EXPO_PUBLIC_API_BASE_URL: "https://api.example.com/api/v1",
+    EXPO_PUBLIC_REALTIME_URL: "https://api.example.com",
+    EXPO_PUBLIC_FRONTEND_URL: "https://app.example.com",
+  };
+  test("explicit HTTPS release endpoints are accepted", () => {
+    expect(readPublicEnv(release, "ios", true).apiBaseUrl).toBe(release.EXPO_PUBLIC_API_BASE_URL);
+  });
   test.each([
     ["android", "http://10.0.2.2:4012/api/v1"],
     ["ios", "http://localhost:4012/api/v1"],
@@ -24,7 +32,9 @@ describe("native public configuration", () => {
     "https://user:pass@api.example.com/api/v1",
     "https://api.example.com/api/v1?token=a",
   ])("rejects unsafe release URL %s", (url) => {
-    expect(() => readPublicEnv({ EXPO_PUBLIC_API_BASE_URL: url }, "ios", true)).toThrow();
+    expect(() =>
+      readPublicEnv({ ...release, EXPO_PUBLIC_API_BASE_URL: url }, "ios", true),
+    ).toThrow();
   });
 
   test("requires explicit release endpoints", () => {
@@ -49,5 +59,11 @@ describe("native public configuration", () => {
       androidApplicationId: "com.example.my_app",
     });
     expect(() => nativeIdentity("../wrong")).toThrow();
+  });
+
+  test("runtime scheme must match the installed native identity", () => {
+    expect(() =>
+      readPublicEnv({ EXPO_PUBLIC_APP_SCHEME: "aitpl-unregistered" }, "ios", false),
+    ).toThrow(/app-identity/);
   });
 });

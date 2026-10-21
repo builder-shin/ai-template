@@ -1,6 +1,24 @@
 {
   "assets": [
     {
+      "source": "contract/mock/src/core/oauth-callback.ts",
+      "targets": [
+        {
+          "template": "nestjs",
+          "path": "src/core/config/oauth-callback.ts"
+        }
+      ]
+    },
+    {
+      "source": "tsconfig.base.json",
+      "targets": [
+        {
+          "template": "expo",
+          "path": "tsconfig.base.json"
+        }
+      ]
+    },
+    {
       "source": ".gitattributes",
       "targets": [
         {

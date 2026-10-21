@@ -14,6 +14,7 @@ import {
   useSession,
 } from "./session";
 import { Button } from "../components/button";
+import { createNativeOAuth } from "./links";
 
 function StorageNotice() {
   const { state, manager } = useSession();
@@ -49,6 +50,7 @@ export function Providers({ children }: PropsWithChildren) {
         manager,
         config,
         api: createApiClient(config, manager, () => locale(i18n.language)),
+        oauth: createNativeOAuth(config, manager),
       },
     };
   });

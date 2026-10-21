@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:net";
-import { devPlan, assertPortFree } from "./dev.mjs";
+import { devPlan, assertPortFree, devEnvironment } from "./dev.mjs";
 
 test("backend plan does not start a mock and never uses a shell", () => {
   assert.deepEqual(
@@ -14,6 +14,23 @@ test("backend plan does not start a mock and never uses a shell", () => {
   );
   assert.throws(() => devPlan("other", 8081), /mode/);
   assert.throws(() => devPlan("mock", 0), /port/);
+});
+
+test("the mock advertises reachable native API/storage/OAuth URLs for each platform", () => {
+  const android = devEnvironment("mock", "android", {});
+  const ios = devEnvironment("mock", "ios", {});
+  assert.equal(android.API_URL, "http://10.0.2.2:4012");
+  assert.equal(ios.API_URL, "http://localhost:4012");
+  assert.equal(android.OAUTH_REDIRECT_URIS, "aitpl-expo-template://oauth/callback");
+  assert.equal(android.EXPO_PUBLIC_API_BASE_URL, `${android.API_URL}/api/v1`);
+  assert.equal(ios.EXPO_PUBLIC_API_BASE_URL, `${ios.API_URL}/api/v1`);
+  assert.throws(
+    () =>
+      devEnvironment("mock", "android", {
+        EXPO_PUBLIC_API_BASE_URL: "http://localhost:8000/api/v1",
+      }),
+    /4012/,
+  );
 });
 
 test("occupied port is rejected without replacing the listener", async () => {
