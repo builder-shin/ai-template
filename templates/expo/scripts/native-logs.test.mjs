@@ -70,6 +70,24 @@ test("native fatal reasons expose fixed categories and known SDK modules without
   }
 });
 
+test("native RedBox filename frames retain only unique known public source paths", () => {
+  const result = pickerHierarchy(
+    JSON.stringify({
+      children: [
+        { attributes: { accessibilityText: "verify-screen.tsx:12:8" } },
+        { attributes: { accessibilityText: "env.ts:21:4 private-value" } },
+        { attributes: { accessibilityText: "private-person.tsx:20:4 private-value" } },
+        { attributes: { accessibilityText: "client.ts:20:4 private-value" } },
+        { attributes: { accessibilityText: "_layout.tsx:20:4 private-value" } },
+        { attributes: { accessibilityText: "privateverify-screen.tsx:20:4" } },
+      ],
+    }),
+  );
+  assert.match(result, /Source frame: src\/features\/auth\/verify-screen\.tsx:12/);
+  assert.match(result, /Source frame: src\/lib\/config\/env\.ts:21/);
+  assert.doesNotMatch(result, /private-person|private-value|privateverify|client\.ts|_layout\.tsx/);
+});
+
 test("external-app confirmations expose their kind without exposing the target name", () => {
   for (const prompt of ["Open this page in “Private project”?", "Open in “Private project”?"]) {
     const result = pickerHierarchy(

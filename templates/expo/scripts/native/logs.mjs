@@ -90,15 +90,39 @@ export function pickerHierarchy(raw) {
     "src/lib/providers.tsx",
     "src/lib/links/intent.ts",
     "src/lib/links/parse.ts",
+    "src/lib/config/env.ts",
+    "src/lib/config/runtime.ts",
+    "src/lib/config/identity.ts",
+    "src/lib/session/manager.ts",
+    "src/lib/session/store.ts",
+    "src/lib/session/transport.ts",
+    "src/lib/session/context.tsx",
+    "src/lib/session/protected-layout.tsx",
+    "src/lib/api/client.ts",
+    "src/lib/query/client.ts",
+    "src/lib/api/session-client.ts",
+    "src/lib/api/session-port.ts",
+    "src/lib/links/pending.ts",
+    "src/lib/links/oauth.ts",
+    "src/lib/realtime/connection.ts",
   ];
   function label(value) {
     if (typeof value !== "string" || !value) return undefined;
     if (labels.has(value)) return value;
     const shortcut = /^(Dismiss|Reload|Copy|Extra Info)\n\((?:ESC|[⌘⌥RC E]+)\)$/.exec(value);
     if (shortcut) return shortcut[1];
-    const frame = publicFrames.find((path) => value.includes(path));
+    const bareFrames = publicFrames.filter((path) => {
+      const name = path.slice(path.lastIndexOf("/") + 1);
+      if (name === "_layout.tsx") return false; // Nested Router layouts share this filename.
+      const index = value.indexOf(name + ":");
+      return index >= 0 && (index === 0 || /[\s,\\/]/.test(value[index - 1]));
+    });
+    const frame =
+      publicFrames.find((path) => value.includes(path)) ??
+      (bareFrames.length === 1 ? bareFrames[0] : undefined);
     if (frame) {
-      const line = Number(/^:(\d+)/.exec(value.slice(value.indexOf(frame) + frame.length))?.[1]);
+      const name = value.includes(frame) ? frame : frame.slice(frame.lastIndexOf("/") + 1);
+      const line = Number(/^:(\d+)/.exec(value.slice(value.indexOf(name) + name.length))?.[1]);
       return `Source frame: ${frame}${line > 0 && line <= 400 ? `:${line}` : ""}`;
     }
     if (/^Photo taken on /.test(value)) return "Photo available";
