@@ -1,5 +1,8 @@
 import { cpSync, existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { createRequire } from "node:module";
+import { execFileSync } from "node:child_process";
+import { check, resolveConfig } from "prettier";
 import { expect, it } from "vitest";
 import { parse, parseAllDocuments } from "yaml";
 import type { WorkspaceDocument } from "../src/workspace.ts";
@@ -156,6 +159,46 @@ it.each(
     "-f apps/mobile/Dockerfile",
   );
 });
+it.each([
+  { backend: "fastapi", apps: ["mobile"] },
+  { backend: "nestjs", apps: ["web", "admin", "mobile"] },
+])(
+  "formats every adapted mobile runner with the actual pinned formatter: $backend",
+  async ({ backend, apps }) => {
+    const source = repository(backend),
+      target = join(temporaryFolder(), "Formatted Mobile"),
+      options = parseArguments(
+        [
+          target,
+          "--api",
+          backend,
+          ...apps.map((app) => `--${app}`),
+          "--name",
+          "formatted-mobile",
+          "--no-git",
+        ],
+        {},
+      );
+    if (options === "help") throw new Error("Expected generation options");
+    const formatter = createRequire(import.meta.url).resolve("prettier/bin/prettier.cjs");
+    createProject(options, source, {
+      pnpm: (cwd, args) => {
+        if (args[0] === "exec" && args[1] === "prettier")
+          execFileSync(process.execPath, [formatter, ...args.slice(2)], { cwd, stdio: "pipe" });
+      },
+    });
+    for (const name of ["apps.mjs", "frontend-e2e.mjs", "test-e2e.mjs"]) {
+      const file = join(target, "scripts", name);
+      expect(
+        await check(readFileSync(file, "utf8"), {
+          ...((await resolveConfig(file)) ?? {}),
+          filepath: file,
+        }),
+        name,
+      ).toBe(true);
+    }
+  },
+);
 it.each(["install --lockfile-only", "install --frozen-lockfile", "--filter mobile run gen"])(
   "cleans a failed creation at %s",
   (failure) => {

@@ -62,6 +62,32 @@ test("iOS boot failure still shuts down and deletes only the created simulator",
     ],
   );
 });
+for (const oldFirst of [false, true])
+  test(`iOS creates a compatible owned device regardless of type order (oldFirst=${oldFirst})`, async () => {
+    const p = ports(),
+      original = p.execute;
+    const modern = { name: "iPhone 17", productFamily: "iPhone", identifier: "modern" },
+      obsolete = { name: "iPhone 6s Plus", productFamily: "iPhone", identifier: "obsolete" };
+    p.execute = async (argv, options) => {
+      const result = await original(argv, options);
+      if (argv[2] === "list" && argv[3] === "devicetypes")
+        return {
+          ...result,
+          stdout: JSON.stringify({
+            devicetypes: oldFirst ? [obsolete, modern] : [modern, obsolete],
+          }),
+        };
+      if (argv[2] === "create" && argv[4] === "obsolete")
+        return { code: 147, stdout: "", stderr: "Incompatible device" };
+      return result;
+    };
+    await runIOSCi(p);
+    const creates = p.calls.filter(({ argv }) => argv[2] === "create");
+    assert.equal(creates.at(-1).argv[4], "modern");
+    assert.ok(creates.length >= 1 && creates.length <= 2);
+    assert.equal(p.nativeCalls.length, 1);
+    assert.equal(p.calls.filter(({ argv }) => argv[2] === "delete").length, 1);
+  });
 test("iOS device UI and unsigned release share the owned identity and clean up on success", async () => {
   const p = ports();
   await runIOSCi(p);

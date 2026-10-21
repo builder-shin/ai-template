@@ -15,9 +15,12 @@ export async function runIOSCi(ports = {}) {
       signal: cleanup ? AbortSignal.timeout(60000) : signal,
     });
     if (result.code !== 0)
-      throw new Error(
-        `Owned iOS simulator command failed (${args.join(" ")}; exit ${result.code}): ` +
-          redactNative(`${result.stdout ?? ""}\n${result.stderr ?? ""}`).slice(-3000),
+      throw Object.assign(
+        new Error(
+          `Owned iOS simulator command failed (${args.join(" ")}; exit ${result.code}): ` +
+            redactNative(`${result.stdout ?? ""}\n${result.stderr ?? ""}`).slice(-3000),
+        ),
+        { exitCode: result.code },
       );
     return result.stdout.trim();
   }
@@ -32,14 +35,33 @@ export async function runIOSCi(ports = {}) {
       )
       .at(-1);
     const types = JSON.parse(await sdk(["list", "devicetypes", "--json"])).devicetypes;
-    const type = types.findLast(
+    const phones = types.filter(
       (item) => item.name.startsWith("iPhone") && item.productFamily === "iPhone",
     );
-    if (!runtime || !type)
+    if (!runtime || !phones.length)
       throw new Error("An available iOS runtime and iPhone simulator type are required.");
     const runId = ports.runId ?? `ci-ios-${randomUUID().slice(0, 8)}`;
-    device = await sdk(["create", `aitpl-${runId}`, type.identifier, runtime.identifier]);
-    if (!/^[A-Fa-f0-9-]{36}$/.test(device)) throw new Error("Invalid created simulator identity.");
+    let incompatible;
+    for (const type of phones) {
+      try {
+        const created = await sdk([
+          "create",
+          `aitpl-${runId}`,
+          type.identifier,
+          runtime.identifier,
+        ]);
+        if (!/^[A-Fa-f0-9-]{36}$/.test(created))
+          throw new Error("Invalid created simulator identity.");
+        device = created;
+        break;
+      } catch (error) {
+        // simctl validates compatibility before creation; never retry other SDK failures.
+        if (error.exitCode !== 147) throw error;
+        incompatible = error;
+      }
+    }
+    if (!device)
+      throw incompatible ?? new Error("No compatible iPhone simulator type is available.");
     await sdk(["boot", device]);
     await sdk(["bootstatus", device, "-b"]);
     await (ports.native ?? runNative)(

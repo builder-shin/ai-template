@@ -310,6 +310,7 @@ export function writeCombo(
     "package.json",
     "turbo.json",
     ".github/workflows/ci.yml",
+    ...(mobile ? ["scripts/apps.mjs", "scripts/frontend-e2e.mjs", "scripts/test-e2e.mjs"] : []),
     "AGENTS.md",
     "README.md",
   ]);
