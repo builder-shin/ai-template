@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { nativeLinkFromMail, readMockMailLink } from "../mail-link.ts";
 import { storageActions } from "./storage-actions.mjs";
+import { completeProviderRequest } from "./provider.mjs";
 
 export const fixtureImage = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=",
@@ -55,27 +56,19 @@ export async function startFixture({
     return launch.toString();
   }
   async function completeProvider(endpoint) {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      redirect: "manual",
-      signal: AbortSignal.timeout(10000),
-      body: new URLSearchParams(
-        denyProvider
-          ? { error: "access_denied" }
-          : {
-              username: `native-${suffix}`,
-              claims: JSON.stringify({
-                sub: `native-${suffix}`,
-                email: `native-${suffix}@gmail.com`,
-                email_verified: true,
-                name: `OAuth ${suffix}`,
-              }),
-            },
-      ),
+    const location = await completeProviderRequest(endpoint, {
+      target,
+      denied: denyProvider,
+      apiBaseUrl: config.apiBaseUrl,
+      signal,
+      username: `native-${suffix}`,
+      claims: {
+        sub: `native-${suffix}`,
+        email: `native-${suffix}@gmail.com`,
+        email_verified: true,
+        name: `OAuth ${suffix}`,
+      },
     });
-    const location = response.headers.get("location");
-    if (response.status !== 302 || !location)
-      throw new Error("Owned OAuth provider did not redirect.");
     secrets.push(location);
     return location;
   }

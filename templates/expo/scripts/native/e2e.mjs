@@ -15,7 +15,7 @@ import { cleanNativeProject } from "./owned.mjs";
 import { contractRoot } from "../contract-root.mjs";
 import { readPublicEnv } from "../../src/lib/config/env.ts";
 import { redactNative } from "./redact.mjs";
-import { maestroFailureLog } from "./logs.mjs";
+import { maestroFailureLog, pickerHierarchy } from "./logs.mjs";
 import { prepareWindowsMaestro } from "./windows.mjs";
 import { verifyArtifactIdentity } from "./artifact.mjs";
 import { startStorageProxy } from "./storage-proxy.mjs";
@@ -233,6 +233,27 @@ export async function runNative(options, ports = {}) {
         );
         appendFileSync(log, `Native ${flow}: passed (${result.code}).\n`);
       } catch (error) {
+        if (flow === "uploads" && !signal?.aborted) {
+          try {
+            const hierarchy = await run(
+              maestroCommand(
+                java,
+                installation,
+                ["--device", plan.deviceId, "--no-ansi", "hierarchy", "--no-reinstall-driver"],
+                windows,
+              ),
+              {
+                capture: true,
+                signal: AbortSignal.any([AbortSignal.timeout(15000), ...(signal ? [signal] : [])]),
+              },
+            );
+            const diagnostic = pickerHierarchy(hierarchy.stdout) + "\n";
+            appendFileSync(log, diagnostic);
+            process.stdout.write(diagnostic);
+          } catch {
+            appendFileSync(log, "Picker hierarchy unavailable.\n");
+          }
+        }
         appendFileSync(log, maestroFailureLog(flows, flow, fixture.secrets));
         for (const event of fixture.diagnostics)
           appendFileSync(log, `Fixture ${JSON.stringify(event)}\n`);

@@ -103,4 +103,4 @@ jobs:
           distribution: temurin
           java-version: "21"
       - run: pnpm install --frozen-lockfile
-      - run: node --import tsx scripts/native/ci-ios.mjs
+      - run: pnpm run test:ci:ios

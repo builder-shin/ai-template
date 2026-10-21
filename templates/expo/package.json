@@ -18,6 +18,7 @@
     "test": "jest",
     "test:node": "node --import tsx --test scripts/*.test.mjs scripts/*.test.ts scripts/check/*.test.ts",
     "test:e2e": "node --import tsx scripts/native/e2e.mjs",
+    "test:ci:ios": "tsx scripts/native/ci-ios.mjs",
     "gen": "tsx scripts/gen.ts",
     "gen:feature": "tsx scripts/gen-feature/cli.ts",
     "tool": "tsx scripts/tools/cli.ts"

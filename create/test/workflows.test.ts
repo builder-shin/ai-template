@@ -94,41 +94,65 @@ it.skipIf(!existsSync(bash))(
     }
   },
 );
-it("generated Expo CI smoke receives the actual pnpm lifecycle executable", async () => {
-  const fixture = temporaryFolder();
-  write(fixture, "package.json", '{"private":true}\n');
-  write(fixture, "create/package.json", readFileSync(resolve(root, "create/package.json"), "utf8"));
-  write(
-    fixture,
-    "create/test/expo-smoke.ts",
-    "import {writeFileSync} from 'node:fs'; if(!process.env.npm_execpath || process.env.npm_lifecycle_event !== 'test:expo') throw new Error('Missing pnpm lifecycle executable: '+JSON.stringify({hasEntry:!!process.env.npm_execpath,event:process.env.npm_lifecycle_event})); writeFileSync('passed',process.env.npm_execpath);\n",
-  );
-  const helper = (await import(
-    pathToFileURL(resolve(root, "create/assets/combo/scripts/process.mjs")).href
-  )) as { pnpmEntry(): string };
-  const entry = helper.pnpmEntry(),
-    javascript = /\.[cm]?js$/.test(entry);
-  const run = workflow(".github/workflows/ci.yml").jobs["create-expo"]?.steps.at(-1)?.run;
-  if (!run?.startsWith("pnpm ")) throw new Error("Generated Expo smoke command missing");
-  const args = run.trim().split(/\s+/).slice(1);
-  const inherited = { ...gitEnvironment(), NPM_LIFECYCLE_EVENT: "outer-parent" };
-  const result = spawnSync(
-    javascript ? process.execPath : entry,
-    javascript ? [entry, ...args] : args,
-    {
-      cwd: fixture,
-      env: Object.fromEntries(
-        Object.entries(inherited).filter(
-          ([key]) =>
-            !/^(npm_execpath|npm_lifecycle_event|npm_lifecycle_script|npm_command)$/i.test(key),
+it.each([
+  {
+    kind: "create",
+    folder: "create",
+    file: "test/expo-smoke.ts",
+    event: "test:expo",
+    job: "create-expo",
+  },
+  {
+    kind: "ios",
+    folder: "templates/expo",
+    file: "scripts/native/ci-ios.mjs",
+    event: "test:ci:ios",
+    job: "expo-ios",
+  },
+])(
+  "$kind CI receives the actual pnpm lifecycle executable",
+  async ({ folder, file, event, job }) => {
+    const fixture = temporaryFolder();
+    write(fixture, "package.json", '{"private":true}\n');
+    write(
+      fixture,
+      `${folder}/package.json`,
+      readFileSync(resolve(root, `${folder}/package.json`), "utf8"),
+    );
+    write(
+      fixture,
+      `${folder}/${file}`,
+      `import {writeFileSync} from 'node:fs'; if(!process.env.npm_execpath || process.env.npm_lifecycle_event !== ${JSON.stringify(event)}) throw new Error('Missing pnpm lifecycle executable: '+JSON.stringify({hasEntry:!!process.env.npm_execpath,event:process.env.npm_lifecycle_event})); writeFileSync('passed',process.env.npm_execpath);\n`,
+    );
+    const helper = (await import(
+      pathToFileURL(resolve(root, "create/assets/combo/scripts/process.mjs")).href
+    )) as { pnpmEntry(): string };
+    const entry = helper.pnpmEntry(),
+      javascript = /\.[cm]?js$/.test(entry);
+    const step = workflow(".github/workflows/ci.yml").jobs[job]?.steps.at(-1),
+      run = step?.run;
+    if (!run?.startsWith("pnpm "))
+      throw new Error("CI must run through the declared pnpm lifecycle");
+    const args = run.trim().split(/\s+/).slice(1);
+    const inherited = { ...gitEnvironment(), NPM_LIFECYCLE_EVENT: "outer-parent" };
+    const result = spawnSync(
+      javascript ? process.execPath : entry,
+      javascript ? [entry, ...args] : args,
+      {
+        cwd: step?.["working-directory"] ? join(fixture, step["working-directory"]) : fixture,
+        env: Object.fromEntries(
+          Object.entries(inherited).filter(
+            ([key]) =>
+              !/^(npm_execpath|npm_lifecycle_event|npm_lifecycle_script|npm_command)$/i.test(key),
+          ),
         ),
-      ),
-      encoding: "utf8",
-    },
-  );
-  expect(result.status, result.stderr).toBe(0);
-  expect(readFileSync(join(fixture, "create/passed"), "utf8")).toBeTruthy();
-});
+        encoding: "utf8",
+      },
+    );
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(fixture, folder, "passed"), "utf8")).toBeTruthy();
+  },
+);
 it.skipIf(!existsSync(bash))("작업 트리가 바뀌면 CI는 해결 방법을 stderr로 알리고 실패한다", () => {
   const step = workflow(".github/workflows/ci.yml").jobs["create-combo"]?.steps.find(
     (step) => step.name === "생성 프로젝트의 작업 트리 확인",
