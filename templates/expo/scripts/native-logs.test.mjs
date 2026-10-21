@@ -11,6 +11,65 @@ import {
   hierarchyDiagnostic,
 } from "./native/logs.mjs";
 
+test("iOS native error shortcuts and SDK-only stack symbols survive diagnostic filtering", () => {
+  const result = pickerHierarchy(
+    JSON.stringify({
+      children: [
+        { attributes: { accessibilityText: "Dismiss\n(ESC)" } },
+        { attributes: { accessibilityText: "Reload\n(⌘R)" } },
+        { attributes: { accessibilityText: "Copy\n(⌥⌘C)" } },
+        { attributes: { accessibilityText: "Extra Info\n(⌘E)" } },
+        {
+          attributes: {
+            accessibilityText: "guardedLoadModule\n/private-person/private-project.js:12:1",
+          },
+        },
+      ],
+    }),
+  );
+  for (const label of ["Dismiss", "Reload", "Copy", "Extra Info", "SDK frame: guardedLoadModule"])
+    assert.ok(result.includes(label), label);
+  assert.doesNotMatch(result, /private-person|private-project|⌘|ESC/);
+});
+
+test("native fatal reasons expose fixed categories and known SDK modules without arbitrary message text", () => {
+  const known = pickerHierarchy(
+    JSON.stringify({
+      attributes: {
+        accessibilityText: "Cannot find native module 'ExpoCrypto' private-value",
+      },
+    }),
+  );
+  assert.match(known, /"sdkModules":\["ExpoCrypto"\]/);
+  assert.doesNotMatch(known, /private-value/);
+  const cases = [
+    [
+      "Invariant Violation: TurboModuleRegistry.getEnforcing(...): 'PrivateModule' could not be found. private-value",
+      "Native module unavailable",
+    ],
+    [
+      "Invariant Violation: main has not been registered. private-value",
+      "Application registration error",
+    ],
+    [
+      "new NativeEventEmitter() requires a non-null argument: private-value",
+      "Native event emitter unavailable",
+    ],
+    [
+      "WorkletsError: [Worklets] Mismatch between JavaScript part and native part private-value",
+      "Worklets runtime error",
+    ],
+    ["TypeError: Cannot convert undefined value to object private-value", "Runtime value error"],
+    ["ReferenceError: Can't find variable: private-value", "Runtime reference error"],
+    ["Error: private-value", "Runtime Error (unclassified)"],
+  ];
+  for (const [message, expected] of cases) {
+    const result = pickerHierarchy(JSON.stringify({ attributes: { accessibilityText: message } }));
+    assert.ok(result.includes(expected), expected);
+    assert.doesNotMatch(result, /private-value|PrivateModule/);
+  }
+});
+
 test("external-app confirmations expose their kind without exposing the target name", () => {
   for (const prompt of ["Open this page in “Private project”?", "Open in “Private project”?"]) {
     const result = pickerHierarchy(

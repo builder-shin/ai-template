@@ -59,6 +59,24 @@ export function pickerHierarchy(raw) {
     ]);
   for (const value of [...Object.values(en), ...Object.values(ko)])
     if (typeof value === "string") labels.add(value);
+  const sdkModules = [
+    "ExpoSecureStore",
+    "ExpoCrypto",
+    "ExpoLinking",
+    "ExpoWebBrowser",
+    "ExpoImagePicker",
+    "ExpoFileSystem",
+    "ExpoLocalization",
+    "ExpoConstants",
+    "ExponentConstants",
+    "ExpoSystemUI",
+    "ReanimatedModule",
+    "RNWorklets",
+    "RNCSafeAreaContext",
+    "RNGestureHandlerModule",
+    "PlatformConstants",
+    "SourceCode",
+  ];
   const publicFrames = [
     "src/app/_layout.tsx",
     "src/app/+native-intent.ts",
@@ -76,6 +94,8 @@ export function pickerHierarchy(raw) {
   function label(value) {
     if (typeof value !== "string" || !value) return undefined;
     if (labels.has(value)) return value;
+    const shortcut = /^(Dismiss|Reload|Copy|Extra Info)\n\((?:ESC|[⌘⌥RC E]+)\)$/.exec(value);
+    if (shortcut) return shortcut[1];
     const frame = publicFrames.find((path) => value.includes(path));
     if (frame) {
       const line = Number(/^:(\d+)/.exec(value.slice(value.indexOf(frame) + frame.length))?.[1]);
@@ -83,13 +103,32 @@ export function pickerHierarchy(raw) {
     }
     if (/^Photo taken on /.test(value)) return "Photo available";
     if (/^open(?: this (?:page|link))? in .+\?$/i.test(value)) return "External app confirmation";
-    if (/cannot read (?:properties|property)|undefined is not|is not a function/i.test(value))
+    if (
+      /cannot read (?:properties|property)|cannot convert (?:undefined|null)|undefined is not|is not a function/i.test(
+        value,
+      )
+    )
       return "Runtime value error";
+    if (/invalid hook call/i.test(value)) return "React hook usage error";
+    if (/has not been registered/i.test(value)) return "Application registration error";
+    if (/NativeEventEmitter.*(?:non-null|requires)/i.test(value))
+      return "Native event emitter unavailable";
+    if (/WorkletsError|ReanimatedError|\[(?:Worklets|Reanimated)\]/i.test(value))
+      return "Worklets runtime error";
+    if (/React Native version mismatch/i.test(value)) return "React Native version mismatch";
+    if (/tried to register two views/i.test(value)) return "Native view registration conflict";
+    if (/can't find variable|ReferenceError:/i.test(value)) return "Runtime reference error";
+    if (/unable to resolve module|requiring unknown module/i.test(value))
+      return "JavaScript module unavailable";
     if (/rendered (?:more|fewer) hooks|change in the order of hooks/i.test(value))
       return "React hook order error";
     if (/navigate before mounting|navigation context|no navigation object/i.test(value))
       return "Navigation initialization error";
-    if (/cannot find native module|native module.*(?:null|not found)/i.test(value))
+    if (
+      /cannot find native module|native module.*(?:null|not found)|TurboModuleRegistry.*(?:not found|could not be found)/i.test(
+        value,
+      )
+    )
       return "Native module unavailable";
     if (
       /could not connect|unable to connect|cannot connect|connection refused|network request failed|failed to load|unable to load|could not load/i.test(
@@ -106,17 +145,46 @@ export function pickerHierarchy(raw) {
       return "Application error";
     if (/development servers|development build|expo go|connect to.*server|enter.*url/i.test(value))
       return "Development launcher";
+    const symbol = [
+      "registerRootComponent",
+      "AppRegistry",
+      "metroRequire",
+      "loadModuleImplementation",
+      "guardedLoadModule",
+      "requireNativeModule",
+      "getEnforcing",
+      "installTurboModule",
+      "NativeEventEmitter",
+      "TurboModuleRegistry",
+      "callFunctionReturnFlushedQueue",
+      "runApplication",
+      "AppContainer",
+      "ExpoRoot",
+      "ContextNavigator",
+      "getDevServer",
+      "setUpReactDevTools",
+      "renderWithHooks",
+    ].find((name) => new RegExp(`(?:^|\\W)${name}(?:\\W|$)`).test(value));
+    if (symbol) return `SDK frame: ${symbol}`;
+    const error = /\b(TypeError|SyntaxError|RangeError|Invariant Violation|Error):/.exec(value);
+    if (error) return `Runtime ${error[1]} (unclassified)`;
     return "<other text>";
   }
   function visit(node) {
     if (nodes.length >= 120 || !node || typeof node !== "object") return;
     const a = node.attributes;
-    if (a)
+    if (a) {
+      const modules = sdkModules.filter((name) =>
+        new RegExp(`(?:^|\\W)${name}(?:\\W|$)`).test(
+          `${a.text ?? ""} ${a.accessibilityText ?? ""}`,
+        ),
+      );
       nodes.push({
         class: /^[\w.$]+$/.test(a.class ?? "") ? a.class : undefined,
         bounds: /^\[\d+,\d+\]\[\d+,\d+\]$/.test(a.bounds ?? "") ? a.bounds : undefined,
         text: label(a.text),
         accessibility: label(a.accessibilityText),
+        sdkModules: modules.length ? modules : undefined,
         resource:
           /^(?:button|field)-/.test(a["resource-id"] ?? "") &&
           labels.has(a["resource-id"].replace(/^(?:button|field)-/, ""))
@@ -125,6 +193,7 @@ export function pickerHierarchy(raw) {
         clickable: a.clickable === "true",
         enabled: a.enabled === "true",
       });
+    }
     if (Array.isArray(node.children)) for (const child of node.children) visit(child);
   }
   try {
