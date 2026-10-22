@@ -1,0 +1,51 @@
+appId: __BUNDLE_ID__
+---
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- evalScript: ${output.data.password = output.data.newPassword} # betterleaks:allow runtime fixture reference
+- openLink: ${output.data.scheme + '://me/sessions'}
+- runFlow: support/open-link.yaml
+- scrollUntilVisible: { element: { id: "button-Sign out" }, centerElement: true }
+- tapOn: { id: "button-Sign out" }
+- extendedWaitUntil: { visible: { id: "button-Sign in" }, timeout: 30000 }
+- runScript: { file: bridge.js, env: { ACTION: oauth-approve } }
+- scrollUntilVisible: { element: { id: "button-Continue with Google" }, centerElement: true }
+- tapOn: { id: "button-Continue with Google" }
+- runFlow: support/browser.yaml
+- extendedWaitUntil: { visible: "Current session", timeout: 60000 }
+- openLink: ${output.data.homeLink}
+- runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Account" }, timeout: 60000 }
+- assertVisible: { id: "button-Account" }
+- stopApp
+- openLink: ${output.data.sessionsLink}
+- runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: "Current session", timeout: 60000 }
+- assertVisible: "Current session"
+- scrollUntilVisible: { element: { id: "button-Sign out" }, centerElement: true }
+- tapOn: { id: "button-Sign out" }
+- extendedWaitUntil: { visible: { id: "button-Sign in" }, timeout: 30000 }
+- runScript: { file: bridge.js, env: { ACTION: oauth-hold } }
+- scrollUntilVisible: { element: { id: "button-Continue with Google" }, centerElement: true }
+- tapOn: { id: "button-Continue with Google" }
+- runScript: { file: bridge.js, env: { ACTION: await-provider } }
+- stopApp
+- runFlow:
+    when: { platform: Android, visible: "Close tab" }
+    commands: [{ tapOn: "Close tab" }]
+- runScript: { file: bridge.js, env: { ACTION: complete-provider } }
+- openLink: ${output.result.link}
+- runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Account" }, timeout: 60000 }
+- openLink: ${output.data.scheme + '://me/sessions'}
+- runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: "Current session", timeout: 60000 }
+- scrollUntilVisible: { element: { id: "button-Sign out" }, centerElement: true }
+- tapOn: { id: "button-Sign out" }
+- extendedWaitUntil: { visible: { id: "button-Sign in" }, timeout: 30000 }
+- runScript: { file: bridge.js, env: { ACTION: oauth-deny } }
+- scrollUntilVisible: { element: { id: "button-Continue with Google" }, centerElement: true }
+- tapOn: { id: "button-Continue with Google" }
+- runFlow: support/browser.yaml
+- extendedWaitUntil: { visible: { id: "button-Sign in" }, timeout: 60000 }
+- assertNotVisible: { id: "button-Account" }
+- runFlow: support/login.yaml

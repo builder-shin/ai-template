@@ -1,7 +1,7 @@
 import { ko, en } from "../../lib/i18n/catalogs";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { SignupForm } from "./signup-form";
@@ -115,9 +115,11 @@ it("반복 실패 응답의 이름·이메일을 복원하고 수정값을 다�
   );
   await submit();
   const user = userEvent.setup();
-  expect(screen.getByLabelText("이름")).toHaveProperty("value", "Returned 1");
-  expect(screen.getByLabelText("이메일")).toHaveProperty("value", "returned1@example.com");
-  expect(screen.getByLabelText("비밀번호")).toHaveProperty("value", "");
+  await waitFor(() => {
+    expect(screen.getByLabelText("이름")).toHaveProperty("value", "Returned 1");
+    expect(screen.getByLabelText("이메일")).toHaveProperty("value", "returned1@example.com");
+    expect(screen.getByLabelText("비밀번호")).toHaveProperty("value", "");
+  });
   await user.clear(screen.getByLabelText("이름"));
   await user.type(screen.getByLabelText("이름"), "Edited");
   await user.clear(screen.getByLabelText("이메일"));
@@ -129,9 +131,11 @@ it("반복 실패 응답의 이름·이메일을 복원하고 수정값을 다�
     ["User", "user@example.com", "sample-password"],
     ["Edited", "edited@example.com", "another-password"],
   ]);
-  expect(screen.getByLabelText("이름")).toHaveProperty("value", "Returned 2");
-  expect(screen.getByLabelText("이메일")).toHaveProperty("value", "returned2@example.com");
-  expect(screen.getByLabelText("비밀번호")).toHaveProperty("value", "");
+  await waitFor(() => {
+    expect(screen.getByLabelText("이름")).toHaveProperty("value", "Returned 2");
+    expect(screen.getByLabelText("이메일")).toHaveProperty("value", "returned2@example.com");
+    expect(screen.getByLabelText("비밀번호")).toHaveProperty("value", "");
+  });
   expect(errors.mock.calls).toEqual([]);
   expect(warnings.mock.calls).toEqual([]);
 });
@@ -150,7 +154,9 @@ it("재발송은 가입 이메일을 보내고 pending·429 안내 후에도 메
     ),
   );
   await submit();
-  const button = screen.getByRole("button", { name: "인증 메일 재발송" }) as HTMLButtonElement;
+  const button = (await screen.findByRole("button", {
+    name: "인증 메일 재발송",
+  })) as HTMLButtonElement;
   await userEvent.setup().click(button);
   expect(email).toBe("user@example.com");
   expect(button.disabled).toBe(true);

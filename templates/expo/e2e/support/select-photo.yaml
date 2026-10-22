@@ -1,0 +1,14 @@
+appId: __BUNDLE_ID__
+---
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - tapOn: { text: "Photo taken on .*", index: 0 }
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - tapOn: { text: "Photo(?!s$).*|Image.*", index: 0 }
+      - runFlow:
+          when: { visible: "Add|Done|Choose" }
+          commands: [{ tapOn: "Add|Done|Choose" }]
+      - extendedWaitUntil: { notVisible: "Cancel", timeout: 30000 }

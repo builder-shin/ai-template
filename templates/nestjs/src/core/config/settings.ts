@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validOAuthCallback } from "./oauth-callback.js";
 
 export const SETTINGS: unique symbol = Symbol("SETTINGS");
 export const EXAMPLE_SECRETS: Readonly<
@@ -100,7 +101,16 @@ export const settingsSchema = z
     FRONTEND_URL: httpUrl,
     REALTIME_ALLOWED_ORIGINS: origins,
     API_URL: httpUrl,
-    OAUTH_REDIRECT_URIS: commaList.pipe(z.array(httpUrl).min(1, "주소를 하나 이상 적는다")),
+    OAUTH_REDIRECT_URIS: commaList.pipe(
+      z
+        .array(
+          nonEmpty.refine(
+            validOAuthCallback,
+            "정확한 HTTP(S) 콜백 또는 private-scheme://oauth/callback을 적는다",
+          ),
+        )
+        .min(1, "주소를 하나 이상 적는다"),
+    ),
     OAUTH_GOOGLE_CLIENT_ID: nonEmpty,
     OAUTH_GOOGLE_CLIENT_SECRET: nonEmpty,
     OAUTH_GOOGLE_AUTHORIZE_URL: httpUrl,

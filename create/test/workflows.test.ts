@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, chmodSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -54,6 +55,104 @@ it("조합 workflow의 run 명령은 create-combo가 같은 순서로 검증한�
 });
 
 const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
+it.skipIf(!existsSync(bash))(
+  "native SDK installation works without sdkmanager on PATH and preserves package arguments",
+  () => {
+    const fixture = temporaryFolder(),
+      sdk = join(fixture, "SDK with spaces").replaceAll("\\", "/"),
+      calls = join(fixture, "sdk-calls").replaceAll("\\", "/");
+    write(
+      fixture,
+      "SDK with spaces/cmdline-tools/latest/bin/sdkmanager",
+      '#!/bin/sh\nprintf "%s\\n" "$@" > "$CALLS"\n',
+    );
+    chmodSync(join(sdk, "cmdline-tools/latest/bin/sdkmanager"), 0o755);
+    const native = JSON.parse(
+      readFileSync(resolve(root, "create/assets/combo/mobile-only/native-ci.json"), "utf8"),
+    ) as Workflow["jobs"];
+    const jobs = [
+      workflow(".github/workflows/ci.yml").jobs["expo-android"],
+      workflow("templates/expo/.github/workflows/ci.yml").jobs.android,
+      native.android,
+    ];
+    for (const job of jobs) {
+      const run = job?.steps.find(
+        (step) => step.name === "Install pinned native Android platform tools",
+      )?.run;
+      if (!run) throw new Error("Native SDK installation missing");
+      const result = spawnSync(bash, ["-c", `set -e\nsdkmanager() { return 127; }\n${run}`], {
+        env: { ...process.env, ANDROID_HOME: sdk, ANDROID_SDK_ROOT: sdk, CALLS: calls },
+        encoding: "utf8",
+      });
+      expect(result.status, result.stderr).toBe(0);
+      expect(readFileSync(calls, "utf8").trim().split("\n")).toEqual([
+        "platforms;android-37.0",
+        "build-tools;37.0.0",
+        "cmake;3.22.1",
+        "ndk;27.1.12297006",
+      ]);
+    }
+  },
+);
+it.each([
+  {
+    kind: "create",
+    folder: "create",
+    file: "test/expo-smoke.ts",
+    event: "test:expo",
+    job: "create-expo",
+  },
+  {
+    kind: "ios",
+    folder: "templates/expo",
+    file: "scripts/native/ci-ios.mjs",
+    event: "test:ci:ios",
+    job: "expo-ios",
+  },
+])(
+  "$kind CI receives the actual pnpm lifecycle executable",
+  async ({ folder, file, event, job }) => {
+    const fixture = temporaryFolder();
+    write(fixture, "package.json", '{"private":true}\n');
+    write(
+      fixture,
+      `${folder}/package.json`,
+      readFileSync(resolve(root, `${folder}/package.json`), "utf8"),
+    );
+    write(
+      fixture,
+      `${folder}/${file}`,
+      `import {writeFileSync} from 'node:fs'; if(!process.env.npm_execpath || process.env.npm_lifecycle_event !== ${JSON.stringify(event)}) throw new Error('Missing pnpm lifecycle executable: '+JSON.stringify({hasEntry:!!process.env.npm_execpath,event:process.env.npm_lifecycle_event})); writeFileSync('passed',process.env.npm_execpath);\n`,
+    );
+    const helper = (await import(
+      pathToFileURL(resolve(root, "create/assets/combo/scripts/process.mjs")).href
+    )) as { pnpmEntry(): string };
+    const entry = helper.pnpmEntry(),
+      javascript = /\.[cm]?js$/.test(entry);
+    const step = workflow(".github/workflows/ci.yml").jobs[job]?.steps.at(-1),
+      run = step?.run;
+    if (!run?.startsWith("pnpm "))
+      throw new Error("CI must run through the declared pnpm lifecycle");
+    const args = run.trim().split(/\s+/).slice(1);
+    const inherited = { ...gitEnvironment(), NPM_LIFECYCLE_EVENT: "outer-parent" };
+    const result = spawnSync(
+      javascript ? process.execPath : entry,
+      javascript ? [entry, ...args] : args,
+      {
+        cwd: step?.["working-directory"] ? join(fixture, step["working-directory"]) : fixture,
+        env: Object.fromEntries(
+          Object.entries(inherited).filter(
+            ([key]) =>
+              !/^(npm_execpath|npm_lifecycle_event|npm_lifecycle_script|npm_command)$/i.test(key),
+          ),
+        ),
+        encoding: "utf8",
+      },
+    );
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(fixture, folder, "passed"), "utf8")).toBeTruthy();
+  },
+);
 it.skipIf(!existsSync(bash))("작업 트리가 바뀌면 CI는 해결 방법을 stderr로 알리고 실패한다", () => {
   const step = workflow(".github/workflows/ci.yml").jobs["create-combo"]?.steps.find(
     (step) => step.name === "생성 프로젝트의 작업 트리 확인",

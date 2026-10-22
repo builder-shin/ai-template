@@ -67,6 +67,7 @@ def test_realtime_origins_become_the_origins_browsers_send(
 ) -> None:
     """경로, 쿼리, 조각, 계정과 기본 포트는 떼고 호스트는 소문자로 쓴다. 겹치는 값은 하나다."""
     write_dotenv(tmp_path)
+    monkeypatch.setenv("REALTIME_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001")
     assert load_settings().realtime_allowed_origins == {
         "http://localhost:3000",
         "http://localhost:3001",

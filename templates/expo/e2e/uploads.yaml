@@ -1,0 +1,40 @@
+appId: __BUNDLE_ID__
+---
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- openLink: ${output.data.scheme + '://me'}
+- runFlow: support/open-link.yaml
+- scrollUntilVisible: { element: { id: "button-Choose image: Avatar" }, centerElement: true }
+- tapOn: { id: "button-Choose image: Avatar" }
+- runFlow:
+    when: { visible: "Allow.*|Select photos.*" }
+    commands: [{ tapOn: "Allow.*|Select photos.*" }]
+- runFlow:
+    when: { platform: Android }
+    commands: [back]
+- runFlow:
+    when: { platform: iOS }
+    commands: [{ tapOn: "Cancel" }]
+- assertVisible: "No image selected."
+- runFlow:
+    when: { platform: iOS }
+    commands: [{ addMedia: [native.png] }]
+- runScript: { file: bridge.js, env: { ACTION: storage-unavailable } }
+- assertTrue: ${output.result.apiReachable}
+- tapOn: { id: "button-Choose image: Avatar" }
+- runFlow: support/select-photo.yaml
+- extendedWaitUntil:
+    visible: "Storage is unreachable from this device. Check the storage address and connection."
+    timeout: 30000
+- runScript: { file: bridge.js, env: { ACTION: inspect-storage-failure } }
+- assertTrue: ${output.result.ok && output.result.apiReachable}
+- runScript: { file: bridge.js, env: { ACTION: storage-available } }
+- tapOn: { id: "button-Choose image: Avatar" }
+- runFlow: support/select-photo.yaml
+- scrollUntilVisible:
+    element: { id: "button-Remove image: Avatar", enabled: true }
+    centerElement: true
+    timeout: 30000
+- runScript: { file: bridge.js, env: { ACTION: inspect-upload } }
+- assertTrue: ${output.result.ok && output.result.size > 0}
+- tapOn: { id: "button-Remove image: Avatar" }
+- assertVisible: "No image selected."

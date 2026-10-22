@@ -5,18 +5,19 @@
  * 쿼리 파라미터는 계약의 선언(이름, required, format, pattern)대로 본다. 실패는 400
  * jsonapi.invalid_query이고 source.parameter에 파라미터 이름을 담는다. 먼저 걸린 것 하나만 알린다.
  * 1. 선언하지 않은 파라미터. 제공자가 돌아오는 콜백(callback)은 제공자가 덧붙이는 것(scope 등)을 받는다
- * 2. 선언 순서대로 파라미터마다: 필수인데 없다, 두 번 왔다, 형식 uri(http(s) 절대 주소)가 아니다,
+ * 2. 선언 순서대로 파라미터마다: 필수인데 없다, 두 번 왔다, 허용한 콜백 URI 형식이 아니다,
  *    pattern에 값 전체가 맞지 않는다
  */
 
-import { isHttpUrl, quote } from "../core/urls.ts";
+import { quote } from "../core/urls.ts";
+import { validOAuthCallback } from "../core/oauth-callback.ts";
 import { type QueryParams, queryError, single } from "./query.ts";
 
 /** 리다이렉트 operation의 쿼리 파라미터 선언(계약의 parameters에서 읽는다). */
 export interface RedirectParameter {
   readonly name: string;
   readonly required: boolean;
-  /** 값 형식. uri는 http(s) 절대 주소다(Python urlparse로 본 스킴과 netloc). */
+  /** 값 형식. uri는 HTTP(S) 또는 정확한 private-scheme://oauth/callback이다. */
   readonly format: "uri" | undefined;
   /** 값 전체가 맞아야 하는 정규식(Python의 re.fullmatch). */
   readonly pattern: string | undefined;
@@ -53,7 +54,7 @@ export function parseRedirectQuery(
       continue;
     }
     const value = single(query, name);
-    if (format === "uri" && !isHttpUrl(value)) {
+    if (format === "uri" && !validOAuthCallback(value)) {
       throw invalid(name, `Query parameter ${name} must be an absolute URL.`);
     }
     if (pattern !== undefined && !matches(pattern, value)) {

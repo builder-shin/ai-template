@@ -4,8 +4,8 @@ import { OAuthService, SessionsService } from "../../index.js";
 import { testApp, errorDocument, mediaType } from "../../../../core/http/tests/fixtures.js";
 import { sessionFixture } from "../../tests/session-fixtures.js";
 import { oauthFixture, FRONT, CHALLENGE, VERIFIER } from "./fixtures.js";
-async function fixture() {
-  const oauth = oauthFixture();
+async function fixture(redirectUris?: readonly string[]) {
+  const oauth = oauthFixture(redirectUris);
   const sessions = sessionFixture(oauth.store);
   const app = await testApp([], {
     configure: (app) => {
@@ -23,6 +23,44 @@ async function fixture() {
       .query({ redirectUri: FRONT, codeChallenge: CHALLENGE });
   return { ...app, oauth, sessions, authorize };
 }
+it("명시한 네이티브 콜백으로 돌아가 원래 verifier로 세션을 만들고 재사용을 거절한다", async () => {
+  const native = "aitpl-example://oauth/callback";
+  const f = await fixture([FRONT, native]);
+  const started = await f.http
+    .get("/api/v1/oauth/google/authorize")
+    .query({ redirectUri: native, codeChallenge: CHALLENGE });
+  expect(started.status).toBe(302);
+  const state = new URL(started.headers.location as string).searchParams.get("state");
+  const back = await f.http
+    .get("/api/v1/oauth/google/callback")
+    .query({ state, code: "provider-code" });
+  expect(back.status).toBe(302);
+  const url = new URL(back.headers.location as string);
+  expect([url.protocol, url.hostname, url.pathname]).toEqual([
+    "aitpl-example:",
+    "oauth",
+    "/callback",
+  ]);
+  const user = f.oauth.data.users[0];
+  if (!user) throw new Error("사용자가 없다");
+  f.sessions.addUser(user);
+  const document = {
+    data: {
+      type: "sessions",
+      attributes: {
+        grantType: "oauthCode",
+        code: url.searchParams.get("code"),
+        codeVerifier: VERIFIER,
+      },
+    },
+  };
+  expect(
+    (await f.http.post("/api/v1/sessions").set("Content-Type", mediaType).send(document)).status,
+  ).toBe(201);
+  expect(
+    (await f.http.post("/api/v1/sessions").set("Content-Type", mediaType).send(document)).status,
+  ).toBe(401);
+});
 it("OAuth authorize는 쿼리를 검증하고 본문 없는 302 Location을 보낸다", async () => {
   const f = await fixture();
   const response = await f.authorize();

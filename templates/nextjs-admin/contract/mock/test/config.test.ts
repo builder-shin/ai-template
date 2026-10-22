@@ -149,7 +149,7 @@ describe("loadConfig", () => {
       "설정 오류: SEED_ADMIN_EMAIL — 이메일 주소여야 한다(현재: admin).",
       "설정 오류: SEED_ADMIN_PASSWORD — 8자 이상이어야 한다.",
       "설정 오류: FRONTEND_URL — http:// 또는 https://로 시작하는 주소여야 한다(현재: localhost:3000).",
-      "설정 오류: OAUTH_REDIRECT_URIS — http:// 또는 https://로 시작하는 주소여야 한다(현재: myapp://callback).",
+      "설정 오류: OAUTH_REDIRECT_URIS — 정확한 HTTP(S) 콜백 또는 private-scheme://oauth/callback을 적는다.",
       "설정 오류: IDENTIFIER_HASH_SECRET — 32자 이상이어야 한다.",
       "설정 오류: RATE_LIMIT_LOGIN_IP — 1 이상의 정수여야 한다(현재: 0).",
       "설정 오류: FILE_MAX_SIZE — 1 이상의 정수여야 한다(현재: 10MB).",

@@ -1,0 +1,15 @@
+{
+  "name": "mobile",
+  "private": true,
+  "scripts": {
+    "setup": "node ../../scripts/mobile-command.mjs setup",
+    "dev": "node ../../scripts/mobile-command.mjs dev",
+    "check": "node ../../scripts/mobile-command.mjs check",
+    "fix": "node ../../scripts/mobile-command.mjs fix",
+    "test": "node ../../scripts/mobile-command.mjs test",
+    "gen": "node ../../scripts/mobile-command.mjs gen",
+    "build": "node ../../scripts/mobile-command.mjs build",
+    "test:e2e": "node ../../scripts/mobile-command.mjs test:e2e",
+    "tool": "node ../../scripts/mobile-command.mjs tool"
+  }
+}

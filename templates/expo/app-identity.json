@@ -1,0 +1,5 @@
+{
+  "scheme": "aitpl-expo-template",
+  "iosBundleIdentifier": "com.example.expo-template",
+  "androidApplicationId": "com.example.expo_template"
+}

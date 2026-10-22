@@ -70,7 +70,7 @@ export const TARGETS: Readonly<Record<string, ConformanceTarget>> = {
       // FastAPI의 compose처럼 web의 Origin만 받는다. 흐름은 이 Origin의 연결이 붙고 다른 Origin은 거부되는지 본다.
       REALTIME_ALLOWED_ORIGINS: "http://localhost:3000",
       // oauth.test.ts의 FRONT_CALLBACK(흐름이 돌아올 프론트 콜백)과 같은 값이다.
-      OAUTH_REDIRECT_URIS: "http://localhost:3000/oauth/callback",
+      OAUTH_REDIRECT_URIS: "http://localhost:3000/oauth/callback,aitpl-example://oauth/callback",
       // files.test.ts가 이 한도와 허용 타입을 그대로 기댄다(목의 기본값. src/config.ts의 DEFAULT_CONFIG).
       FILE_MAX_SIZE: "10485760",
       FILE_ALLOWED_TYPES: "image/gif,image/jpeg,image/png,image/webp",

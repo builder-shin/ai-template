@@ -1,0 +1,19 @@
+appId: __BUNDLE_ID__
+---
+- openLink: ${output.data.scheme + '://login'}
+- runFlow: open-link.yaml
+- tapOn: { id: "button-English" }
+- tapOn: { id: "field-Email" }
+- inputText: { text: "${output.data.email}", label: "fixture email" }
+- tapOn: { id: "field-Password" }
+- inputText: { text: "${output.data.password}", label: "fixture password" }
+- runFlow: dismiss-keyboard.yaml
+- tapOn: { id: "button-Sign in" }
+- runFlow: login-password-prompt.yaml
+- extendedWaitUntil:
+    visible: "Current session"
+    timeout: 30000
+- openLink: ${output.data.homeLink}
+- runFlow: open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Account" }, timeout: 60000 }
+- assertVisible: { id: "button-Account" }
