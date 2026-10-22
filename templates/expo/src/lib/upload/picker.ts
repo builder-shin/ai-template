@@ -11,7 +11,7 @@ export async function pickImage(): Promise<PickedFile | null> {
       allowsEditing: false,
       quality: 1,
       preferredAssetRepresentationMode:
-        ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+        ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Current,
     });
     if (result.canceled) return null;
     const asset = result.assets[0];

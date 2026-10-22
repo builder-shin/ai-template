@@ -4,7 +4,7 @@ import { errorKey } from "../forms/errors";
 jest.mock("expo-image-picker", () => ({
   launchImageLibraryAsync: jest.fn(),
   requestMediaLibraryPermissionsAsync: jest.fn(),
-  UIImagePickerPreferredAssetRepresentationMode: { Compatible: "compatible" },
+  UIImagePickerPreferredAssetRepresentationMode: { Current: "current" },
 }));
 jest.mock("expo-file-system", () => ({
   File: class {
