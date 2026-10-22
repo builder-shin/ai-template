@@ -16,6 +16,7 @@ appId: __BUNDLE_ID__
 - stopApp
 - openLink: ${output.data.profileLink}
 - runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: { id: "field-Name" }, timeout: 60000 }
 - assertVisible: Native Updated
 - tapOn: { id: "button-Sessions" }
 - assertVisible: Current session

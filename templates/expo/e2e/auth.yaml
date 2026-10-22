@@ -36,12 +36,14 @@ appId: __BUNDLE_ID__
 - stopApp
 - openLink: ${output.result.link}
 - runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Verify email" }, timeout: 60000 }
 - tapOn: { id: "button-Verify email" }
 - assertVisible: "Your email is verified. You can sign in."
 - runFlow: support/login.yaml
 - stopApp
 - openLink: ${output.data.sessionsLink}
 - runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: "Current session", timeout: 60000 }
 - assertVisible: "Current session"
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
 - tapOn: { id: "button-Sign out" }
@@ -55,6 +57,7 @@ appId: __BUNDLE_ID__
 - stopApp
 - openLink: ${output.result.link}
 - runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Reset password" }, timeout: 60000 }
 - tapOn: { id: "field-Password" }
 - inputText: { text: "${output.data.newPassword}", label: "new fixture password" }
 - runFlow: support/dismiss-keyboard.yaml

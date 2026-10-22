@@ -17,6 +17,7 @@ appId: __BUNDLE_ID__
 - stopApp
 - openLink: ${output.data.sessionsLink}
 - runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: "Current session", timeout: 60000 }
 - assertVisible: "Current session"
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
 - tapOn: { id: "button-Sign out" }

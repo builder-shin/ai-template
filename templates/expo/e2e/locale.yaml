@@ -11,6 +11,7 @@ appId: __BUNDLE_ID__
 - stopApp
 - openLink: ${output.data.profileLink}
 - runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: "내 정보", timeout: 60000 }
 - assertVisible: 내 정보
 - tapOn: { id: "button-English" }
 - tapOn: { id: "button-저장" }
