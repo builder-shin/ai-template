@@ -168,7 +168,7 @@ export async function runNative(options, ports = {}) {
         if (apiDiagnostics.length > 20) apiDiagnostics.shift();
       },
       observeQueryError: (event) => {
-        const line = `API GET /api/v1/posts 400 reason ${event.code}${event.parameter ? ` parameter ${event.parameter}` : ""}\n`;
+        const line = `API GET /api/v1/posts 400 reason ${event.code}${event.parameter ? ` parameter ${event.parameter}` : ""} include-format ${event.includeFormat}\n`;
         appendFileSync(log, line);
         apiDiagnostics.push(line);
         if (apiDiagnostics.length > 20) apiDiagnostics.shift();

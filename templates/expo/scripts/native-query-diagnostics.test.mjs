@@ -95,7 +95,43 @@ for (const [name, payload, expected] of [
       assert.equal(response.status, 400);
       assert.equal(await response.text(), payload);
       assert.deepEqual(headers, [{ method: "GET", path: "/api/v1/posts", status: 400 }]);
-      assert.deepEqual(errors, [expected]);
+      assert.deepEqual(errors, [{ ...expected, includeFormat: "absent" }]);
+      assert.equal(JSON.stringify(errors).includes(privateValue), false);
+    } finally {
+      await proxy?.stop();
+      await new Promise((resolve) => upstream.close(resolve));
+    }
+  });
+}
+
+for (const [query, includeFormat] of [
+  ["include=author%2CcoverImage", "expected"],
+  ["include=author%252CcoverImage", "encoded-delimiter"],
+  ["include=author%25252CcoverImage", "double-encoded-delimiter"],
+  [`include=${privateValue}`, "other"],
+  ["include=author&include=coverImage", "repeated"],
+]) {
+  test(`query diagnostics expose only an include encoding label: ${includeFormat}`, async () => {
+    const upstream = createServer((_, res) =>
+      res.writeHead(400).end(body("jsonapi.unsupported_include", "include")),
+    ).listen(0, "127.0.0.1");
+    await once(upstream, "listening");
+    let proxy;
+    try {
+      const errors = [];
+      proxy = await startNativeProxy({
+        upstream: `http://127.0.0.1:${upstream.address().port}`,
+        port: 0,
+        observeQueryError: (event) => errors.push(event),
+      });
+      await (await fetch(`${proxy.origin}/api/v1/posts?${query}`)).text();
+      assert.deepEqual(errors, [
+        {
+          code: "jsonapi.unsupported_include",
+          parameter: "include",
+          includeFormat,
+        },
+      ]);
       assert.equal(JSON.stringify(errors).includes(privateValue), false);
     } finally {
       await proxy?.stop();

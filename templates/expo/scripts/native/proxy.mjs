@@ -90,7 +90,7 @@ export async function startNativeProxy({ upstream, port, intercept, observe, obs
         path === "/api/v1/posts" &&
         response.statusCode === 400
       )
-        observeError(response, observeQueryError);
+        observeError(response, observeQueryError, req.url);
       if (refresh) {
         count++;
         if (held) {

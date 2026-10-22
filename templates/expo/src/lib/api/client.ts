@@ -1,10 +1,15 @@
-import createClient from "openapi-fetch";
+import createClient, { createQuerySerializer } from "openapi-fetch";
 import type { paths } from "./generated/schema";
 import type { MobileEnv } from "../config/env";
 import type { SessionPort } from "./session-port";
 import { ApiError } from "./errors";
 import { bindSession } from "./session-client";
 import { nativeApiFetch, apiFetchPolicy, type ApiFetch } from "./fetch";
+
+const serializeQuery = createQuerySerializer({
+  array: { style: "form", explode: false },
+  object: { style: "deepObject", explode: true },
+});
 
 export function createApiClient(
   config: MobileEnv,
@@ -15,10 +20,8 @@ export function createApiClient(
   const base = new URL(config.apiBaseUrl);
   const client = createClient<paths, "application/vnd.api+json">({
     baseUrl: config.apiBaseUrl,
-    querySerializer: {
-      array: { style: "form", explode: false },
-      object: { style: "deepObject", explode: true },
-    },
+    // Encode JSON:API bracketed names as well as values before the native URL boundary.
+    querySerializer: (query) => new URLSearchParams(serializeQuery(query)).toString(),
     bodySerializer: JSON.stringify,
     fetch: async (input) => {
       const request = new Request(input as Request, {

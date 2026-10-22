@@ -39,6 +39,35 @@ describe("confined JSON:API transport", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  test("fully encodes query names while preserving JSON:API includes and literal filter values", async () => {
+    const fetcher = jest.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ data: [] }), {
+        headers: { "Content-Type": "application/vnd.api+json" },
+      }),
+    );
+    const query = "서울 A+B%2C&include=forged";
+    await createApiClient(config, undefined, undefined, nodeApiFetch).GET("/posts", {
+      params: {
+        query: {
+          "page[number]": 1,
+          "page[size]": 20,
+          include: "author,coverImage",
+          "fields[posts]": "title,body",
+          "filter[q]": query,
+        },
+      },
+    });
+    const request = fetcher.mock.calls[0]![0] as Request;
+    expect(request.url).not.toMatch(/[\[\] ]/);
+    expect(request.url).toContain("page%5Bnumber%5D=1");
+    const params = new URL(request.url).searchParams;
+    expect(params.getAll("include")).toEqual(["author,coverImage"]);
+    expect(params.get("page[number]")).toBe("1");
+    expect(params.get("fields[posts]")).toBe("title,body");
+    expect(params.get("filter[q]")).toBe(query);
+    expect([...params]).toHaveLength(5);
+  });
+
   test("exposes typed server field pointers without raw payloads", async () => {
     const fetcher = jest.spyOn(global, "fetch");
     fetcher.mockResolvedValue(
