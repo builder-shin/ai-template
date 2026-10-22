@@ -1,6 +1,7 @@
 import { createServer, request } from "node:http";
 import { connect } from "node:net";
 import { once } from "node:events";
+import { observeQueryError as observeError } from "./query-diagnostics.mjs";
 
 /** Owned test proxy. The API still performs grants, writes, storage and revocations. */
 export function fixtureOrigin(value) {
@@ -22,7 +23,7 @@ export function fixtureOrigin(value) {
     throw new Error("Native fixture requires an explicit loopback origin.");
   return target;
 }
-export async function startNativeProxy({ upstream, port, intercept, observe }) {
+export async function startNativeProxy({ upstream, port, intercept, observe, observeQueryError }) {
   const target = fixtureOrigin(upstream);
   let armed = false,
     count = 0,
@@ -83,6 +84,13 @@ export async function startNativeProxy({ upstream, port, intercept, observe }) {
       // Never pass query strings, credentials, headers or response bodies to diagnostics.
       if (path.startsWith("/api/v1/"))
         observe?.({ method: req.method, path, status: response.statusCode });
+      if (
+        observeQueryError &&
+        req.method === "GET" &&
+        path === "/api/v1/posts" &&
+        response.statusCode === 400
+      )
+        observeError(response, observeQueryError);
       if (refresh) {
         count++;
         if (held) {

@@ -3,9 +3,7 @@ appId: __BUNDLE_ID__
 - runScript: { file: bridge.js, env: { ACTION: data } }
 - openLink: ${output.data.scheme + '://me'}
 - runFlow: support/open-link.yaml
-- tapOn: { id: "field-Name" }
-- longPressOn: { id: "field-Name" }
-- tapOn: "Select all|Select All"
+- tapOn: { id: "field-Name", point: "95%,50%" }
 - eraseText: 100
 - inputText: Native Updated
 - runFlow: support/dismiss-keyboard.yaml

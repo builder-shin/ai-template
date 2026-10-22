@@ -167,6 +167,12 @@ export async function runNative(options, ports = {}) {
         apiDiagnostics.push(line);
         if (apiDiagnostics.length > 20) apiDiagnostics.shift();
       },
+      observeQueryError: (event) => {
+        const line = `API GET /api/v1/posts 400 reason ${event.code}${event.parameter ? ` parameter ${event.parameter}` : ""}\n`;
+        appendFileSync(log, line);
+        apiDiagnostics.push(line);
+        if (apiDiagnostics.length > 20) apiDiagnostics.shift();
+      },
     });
     cleanup.push(() => proxy.stop());
     fixture = await startFixture({
