@@ -83,7 +83,7 @@ jobs:
       - run: pnpm build --platform android --configuration release --run-id ci-android
   ios:
     runs-on: macos-26
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       EXPO_NO_DOTENV: "1"
       EXPO_PUBLIC_API_MODE: backend

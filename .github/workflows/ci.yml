@@ -935,7 +935,7 @@ jobs:
       - run: pnpm --dir templates/expo build --platform android --configuration release --run-id ci-android
   expo-ios:
     runs-on: macos-26
-    timeout-minutes: 90
+    timeout-minutes: 120
     env: *a1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
