@@ -8,7 +8,7 @@ appId: __BUNDLE_ID__
 - tapOn: "Select all|Select All"
 - eraseText: 100
 - inputText: Native Updated
-- hideKeyboard
+- runFlow: support/dismiss-keyboard.yaml
 - tapOn: { id: "button-Save" }
 - assertVisible: Saved.
 - runScript: { file: bridge.js, env: { ACTION: inspect-account } }

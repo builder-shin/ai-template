@@ -7,7 +7,7 @@ appId: __BUNDLE_ID__
 - inputText: { text: "${output.data.email}", label: "fixture email" }
 - tapOn: { id: "field-Password" }
 - inputText: { text: "${output.data.password}", label: "fixture password" }
-- hideKeyboard
+- runFlow: dismiss-keyboard.yaml
 - tapOn: { id: "button-Sign in" }
 - extendedWaitUntil:
     visible: "Current session"

@@ -7,7 +7,7 @@ appId: __BUNDLE_ID__
 - inputText: ${output.data.title}
 - tapOn: { id: "field-Body" }
 - inputText: Native body from the device
-- hideKeyboard
+- runFlow: support/dismiss-keyboard.yaml
 - scrollUntilVisible: { element: { id: "button-Save" } }
 - tapOn: { id: "button-Save" }
 - assertVisible: ${output.data.title}
@@ -27,7 +27,7 @@ appId: __BUNDLE_ID__
 - tapOn: "Select all|Select All"
 - eraseText: 100
 - inputText: Edited on device
-- hideKeyboard
+- runFlow: support/dismiss-keyboard.yaml
 - scrollUntilVisible: { element: { id: "button-Save" } }
 - tapOn: { id: "button-Save" }
 - runScript: { file: bridge.js, env: { ACTION: inspect-post } }

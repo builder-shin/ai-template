@@ -23,7 +23,7 @@ appId: __BUNDLE_ID__
 - inputText: { text: "${output.data.email}", label: "fixture email" }
 - tapOn: { id: "field-Password" }
 - inputText: { text: "${output.data.password}", label: "fixture password" }
-- hideKeyboard
+- runFlow: support/dismiss-keyboard.yaml
 - tapOn: { id: "button-Create account" }
 - assertVisible: "Check your email to verify your account."
 - runScript: { file: bridge.js, env: { ACTION: mail-verify } }
@@ -42,7 +42,7 @@ appId: __BUNDLE_ID__
 - tapOn: { id: "button-Forgot password" }
 - tapOn: { id: "field-Email" }
 - inputText: { text: "${output.data.email}", label: "fixture email" }
-- hideKeyboard
+- runFlow: support/dismiss-keyboard.yaml
 - tapOn: { id: "button-Send reset email" }
 - assertVisible: "If the account is eligible, an email has been sent."
 - runScript: { file: bridge.js, env: { ACTION: mail-reset } }
@@ -51,7 +51,7 @@ appId: __BUNDLE_ID__
 - runFlow: support/open-link.yaml
 - tapOn: { id: "field-Password" }
 - inputText: { text: "${output.data.newPassword}", label: "new fixture password" }
-- hideKeyboard
+- runFlow: support/dismiss-keyboard.yaml
 - tapOn: { id: "button-Reset password" }
 - assertVisible: "Your password was reset. Sign in again."
 - runScript: { file: bridge.js, env: { ACTION: password-reset } }

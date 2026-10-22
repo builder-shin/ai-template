@@ -83,3 +83,5 @@ Navikt 6.0.3에는 거절 전용 form이 없으므로 기존 web 하네스처럼
 iOS 초기 화면에서 발생한 네이티브 오류는 AppState의 Android 전용 `focus`·`blur` 구독이 원인이었다. 고정 SDK의 iOS `RCTAppState`는 해당 이벤트를 지원하지 않는다. 실제 어댑터에 플랫폼 조건을 적용했고, iOS의 지원 이벤트·초기 상태·구독 정리와 Android의 포커스·백그라운드 처리를 재현하는 RED→GREEN을 추가했다. 관련 실시간 시험 17개가 통과했으며, iOS 전체 UI 7개와 unsigned release의 최종 통과는 PR CI에서 판정한다.
 
 그다음 실제 iOS 실행은 시작·회원가입을 통과했고 cold 이메일 인증 링크에서 SecureStore 오류를 보였다. OSStatus는 기록되지 않아 특정 오류 번호로 단정하지 않았다. Debug에도 적용하던 서명 금지를 없애고 Simulator 전용 ad-hoc 서명으로 바꿨다. 빌드 산출물과 재사용 앱의 실제 서명·bundle ID를 검사하며, unsigned 기기용 Release와 ATS 검사는 유지한다. Windows의 가짜 SDK 명령을 사용한 실제 빌드 실행기 시험은 기존 unsigned 산출물을 RED로 재현하고 서명·불일치 거절·소유 사본 정리를 검증한다. 실제 Keychain과 전체 iOS 흐름의 판정은 최신 PR CI가 담당한다.
+
+서명 수정 뒤 실제 Xcode Debug 빌드와 서명·식별자 검사는 통과했다. 다음 iOS 실행은 회원가입 제출 후 완료 문구를 기다리다 실패했고, 저장된 hierarchy에는 키보드 시작 위치(y=459)가 제출 버튼 중앙(y=467)을 가린 상태였다. 고정 Maestro의 iOS `hideKeyboard`는 짧은 드래그를 사용하지만 공통 ScrollView의 기본 `keyboardDismissMode`는 `none`이었다. 화면에 `on-drag`를 적용해 사용자의 스크롤과 기존 네이티브 시험의 드래그가 키보드를 닫도록 했다. UI assertion·timeout·인증 흐름은 그대로 유지하며, cold 링크와 실제 SecureStore 복구 성공 여부도 후속 전체 iOS CI에서 확인한다.

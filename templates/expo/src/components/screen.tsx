@@ -8,6 +8,7 @@ export function Screen({ children }: PropsWithChildren) {
     <SafeAreaView style={[styles.safe, { backgroundColor: dark ? "#101828" : "#f8fafc" }]}>
       <ScrollView
         automaticallyAdjustKeyboardInsets
+        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >
