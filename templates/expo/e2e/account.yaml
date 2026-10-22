@@ -17,6 +17,7 @@ appId: __BUNDLE_ID__
 - runFlow: support/open-link.yaml
 - extendedWaitUntil: { visible: { id: "field-Name" }, timeout: 60000 }
 - assertVisible: Native Updated
+- scrollUntilVisible: { element: { id: "button-Sessions" }, centerElement: true }
 - tapOn: { id: "button-Sessions" }
 - assertVisible: Current session
 - scrollUntilVisible: { element: { id: "button-Sign out other sessions" } }

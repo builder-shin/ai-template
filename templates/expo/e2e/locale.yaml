@@ -18,6 +18,7 @@ appId: __BUNDLE_ID__
 - tapOn: { id: "button-저장" }
 - extendedWaitUntil: { visible: "Saved.", timeout: 60000 }
 - assertVisible: Saved.
+- scrollUntilVisible: { element: { id: "button-Sessions" }, centerElement: true }
 - tapOn: { id: "button-Sessions" }
 - scrollUntilVisible: { element: { id: "button-Sign out all sessions" } }
 - tapOn: { id: "button-Sign out all sessions" }
