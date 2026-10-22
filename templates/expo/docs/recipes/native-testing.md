@@ -75,7 +75,7 @@ The query diagnostic also labels the `include` shape as expected, encoded delimi
 
 OAuth preparation verifies that the ordinary Sign in screen appears within 30 seconds after Sign out, before opening the next provider flow. A native tap reported as completed does not establish that logout occurred. The actual app gesture, session/API behavior and original OAuth assertions remain required.
 
-The account and locale flows scroll Sessions to the center before tapping it. The observed iOS cold-profile layout placed that button against the bottom edge, and a reported completed tap left the profile visible without a sessions request. The original session assertions still verify real navigation.
+Existing scrolls that locate a button center it before the ordinary tap. Observed iOS profile and multi-session layouts placed Sessions or Sign out against the bottom edge, where a reported completed tap left the screen unchanged without a sessions/logout request. Text-only scroll assertions keep their original behavior. All original readiness budgets and navigation/session assertions remain required.
 
 The iOS image selector excludes the observed Photos navigation label from its photo-item match, then verifies that the picker Cancel control disappears. A reported completed tap on Photos left the picker open without a file request. The actual storage failure/recovery and exact uploaded fixture-byte assertions remain required.
 

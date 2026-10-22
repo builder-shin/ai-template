@@ -20,8 +20,8 @@ appId: __BUNDLE_ID__
 - assertVisible: Saved.
 - scrollUntilVisible: { element: { id: "button-Sessions" }, centerElement: true }
 - tapOn: { id: "button-Sessions" }
-- scrollUntilVisible: { element: { id: "button-Sign out all sessions" } }
+- scrollUntilVisible: { element: { id: "button-Sign out all sessions" }, centerElement: true }
 - tapOn: { id: "button-Sign out all sessions" }
-- scrollUntilVisible: { element: { id: "button-Confirm" } }
+- scrollUntilVisible: { element: { id: "button-Confirm" }, centerElement: true }
 - tapOn: { id: "button-Confirm" }
 - assertVisible: { id: "button-Sign in" }

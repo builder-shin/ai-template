@@ -3,7 +3,7 @@ appId: __BUNDLE_ID__
 - runScript: { file: bridge.js, env: { ACTION: data } }
 - openLink: ${output.data.scheme + '://me'}
 - runFlow: support/open-link.yaml
-- scrollUntilVisible: { element: { id: "button-Choose image: Avatar" } }
+- scrollUntilVisible: { element: { id: "button-Choose image: Avatar" }, centerElement: true }
 - tapOn: { id: "button-Choose image: Avatar" }
 - runFlow:
     when: { visible: "Allow.*|Select photos.*" }
@@ -32,6 +32,7 @@ appId: __BUNDLE_ID__
 - runFlow: support/select-photo.yaml
 - scrollUntilVisible:
     element: { id: "button-Remove image: Avatar", enabled: true }
+    centerElement: true
     timeout: 30000
 - runScript: { file: bridge.js, env: { ACTION: inspect-upload } }
 - assertTrue: ${output.result.ok && output.result.size > 0}

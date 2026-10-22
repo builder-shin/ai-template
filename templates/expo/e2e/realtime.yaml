@@ -24,7 +24,7 @@ appId: __BUNDLE_ID__
 - assertTrue: ${output.result.count == 1}
 - openLink: ${output.data.scheme + '://me/sessions'}
 - runFlow: support/open-link.yaml
-- scrollUntilVisible: { element: { id: "button-Sign out" } }
+- scrollUntilVisible: { element: { id: "button-Sign out" }, centerElement: true }
 - tapOn: { id: "button-Sign out" }
 - runScript: { file: bridge.js, env: { ACTION: release-refresh } }
 - assertVisible: { id: "button-Sign in" }

@@ -20,9 +20,9 @@ appId: __BUNDLE_ID__
 - scrollUntilVisible: { element: { id: "button-Sessions" }, centerElement: true }
 - tapOn: { id: "button-Sessions" }
 - assertVisible: Current session
-- scrollUntilVisible: { element: { id: "button-Sign out other sessions" } }
+- scrollUntilVisible: { element: { id: "button-Sign out other sessions" }, centerElement: true }
 - tapOn: { id: "button-Sign out other sessions" }
-- scrollUntilVisible: { element: { id: "button-Cancel" } }
+- scrollUntilVisible: { element: { id: "button-Cancel" }, centerElement: true }
 - tapOn: { id: "button-Cancel" }
 - scrollUntilVisible: { element: { text: "Current session" }, direction: UP }
 - assertVisible: Current session
