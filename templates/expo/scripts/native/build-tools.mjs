@@ -39,9 +39,15 @@ export function nativeCmakeInit(owned, platform = process.platform) {
   return file;
 }
 
-export async function buildTools(platform, input, execute, signal) {
+export async function buildTools(
+  platform,
+  input,
+  execute,
+  signal,
+  hostPlatform = process.platform,
+) {
   if (platform === "ios") {
-    if (process.platform !== "darwin")
+    if (hostPlatform !== "darwin")
       throw new Error("iOS native compilation requires macOS and Xcode.");
     const version = await execute(["xcodebuild", "-version"], { capture: true, signal });
     const match = /Xcode (\d+)\.(\d+)/.exec(version.stdout);

@@ -23,6 +23,7 @@ import {
   nativeCmakeInit,
 } from "./build-tools.mjs";
 import { redactNative } from "./redact.mjs";
+import { verifyIosSimulatorSignature } from "./artifact.mjs";
 
 function localCommand(copy, tool, args) {
   const require = createRequire(join(copy, "package.json")),
@@ -58,7 +59,7 @@ export async function buildNative(input, ports = {}) {
   );
   if (existsSync(dirname(artifact)))
     throw new Error("Native artifact output already exists; choose another --run-id.");
-  const tools = await buildTools(options.platform, environment, execute, signal);
+  const tools = await buildTools(options.platform, environment, execute, signal, ports.platform);
   signal?.throwIfAborted();
   const logFile = join(dirname(dirname(artifact)), `${options.configuration}.build.log`);
   if (existsSync(logFile))
@@ -142,7 +143,9 @@ export async function buildNative(input, ports = {}) {
           ...iosTarget,
           "-derivedDataPath",
           derived,
-          "CODE_SIGNING_ALLOWED=NO",
+          ...(configuration === "Release"
+            ? ["CODE_SIGNING_ALLOWED=NO"]
+            : ["CODE_SIGNING_ALLOWED=YES", "CODE_SIGN_IDENTITY=-"]),
           "build",
         ],
         owned.path,
@@ -156,6 +159,8 @@ export async function buildNative(input, ports = {}) {
       const apps = readdirSync(products).filter((name) => name.endsWith(".app"));
       if (apps.length !== 1) throw new Error("Xcode did not produce one native app.");
       produced = join(products, apps[0]);
+      if (configuration === "Debug")
+        await verifyIosSimulatorSignature(produced, { execute, signal });
       if (configuration === "Release") {
         const ats = await execute(
           [

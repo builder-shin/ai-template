@@ -29,9 +29,12 @@ test("an explicit native artifact must identify the app whose initial absence th
         stdout:
           platform === "android"
             ? "package: name='com.example.owned' versionCode='1'"
-            : argv[2] === "Print :CFBundleIdentifier"
-              ? "com.example.owned\n"
-              : "false\n",
+            : argv[0] === "/usr/bin/codesign"
+              ? "Identifier=com.example.owned\nSignature=adhoc\n"
+              : argv[2] === "Print :CFBundleIdentifier"
+                ? "com.example.owned\n"
+                : "false\n",
+        stderr: "",
       }),
       env: {},
     });
