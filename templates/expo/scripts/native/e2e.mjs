@@ -15,7 +15,12 @@ import { cleanNativeProject } from "./owned.mjs";
 import { contractRoot } from "../contract-root.mjs";
 import { readPublicEnv } from "../../src/lib/config/env.ts";
 import { redactNative } from "./redact.mjs";
-import { maestroFailureLog, maestroFailureHierarchy, hierarchyDiagnostic } from "./logs.mjs";
+import {
+  maestroFailureLog,
+  maestroFailureDiagnostic,
+  maestroFailureHierarchy,
+  hierarchyDiagnostic,
+} from "./logs.mjs";
 import { prepareWindowsMaestro } from "./windows.mjs";
 import { verifyArtifactIdentity } from "./artifact.mjs";
 import { startStorageProxy } from "./storage-proxy.mjs";
@@ -258,15 +263,14 @@ export async function runNative(options, ports = {}) {
         );
         appendFileSync(log, `Native ${flow}: passed (${result.code}).\n`);
       } catch (error) {
+        const fixtureContext = [
+          ...fixture.secrets,
+          ...Object.values(fixture.data).filter((value) => typeof value === "string"),
+        ];
         if (!signal?.aborted) {
           try {
             const diagnosticSecrets =
-              plan.platform === "ios" && flow === "auth"
-                ? [
-                    ...fixture.secrets,
-                    ...Object.values(fixture.data).filter((value) => typeof value === "string"),
-                  ]
-                : undefined;
+              plan.platform === "ios" && flow === "auth" ? fixtureContext : undefined;
             let diagnostic = maestroFailureHierarchy(flows, flow, diagnosticSecrets);
             if (!diagnostic) {
               const hierarchy = await execute(
@@ -296,6 +300,9 @@ export async function runNative(options, ports = {}) {
             process.stdout.write("Picker hierarchy unavailable.\n");
           }
         }
+        const detail = maestroFailureDiagnostic(flows, flow, fixtureContext);
+        appendFileSync(log, detail + "\n");
+        process.stdout.write(detail + "\n");
         appendFileSync(log, maestroFailureLog(flows, flow, fixture.secrets));
         for (const event of fixture.diagnostics)
           appendFileSync(log, `Fixture ${JSON.stringify(event)}\n`);

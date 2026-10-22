@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { prepareNativeProject, cleanNativeProject } from "./native/owned.mjs";
 import {
   maestroFailureLog,
+  maestroFailureDiagnostic,
   pickerHierarchy,
   maestroFailureHierarchy,
   hierarchyDiagnostic,
@@ -308,6 +309,31 @@ test("only redacted Maestro text diagnostics survive owned raw-trace cleanup", (
     assert.match(log, /Activity not found/);
     assert.doesNotMatch(log, /fixture-private-value|opaque|commands|example.com/);
     assert.throws(() => maestroFailureLog({ parent: source }, "auth", []), /ownership/);
+  } finally {
+    if (owned) cleanNativeProject(owned);
+    rmSync(source, { recursive: true, force: true });
+  }
+});
+
+test("owned Maestro failure reasons are bounded and require complete fixture redaction", () => {
+  const source = mkdtempSync(join(tmpdir(), "aitpl-maestro-reason-test-"));
+  let owned;
+  try {
+    owned = prepareNativeProject(source);
+    const raw = join(owned.parent, "raw-maestro/account");
+    mkdirSync(raw, { recursive: true });
+    writeFileSync(
+      join(raw, "maestro.log"),
+      "DEBUG private user data\nERROR: JavaScriptException connection refused fixture-name unlisted@example.com UnlistedOpaqueSecretLetterString https://example.com?token=opaque\nCaused by: Activity not found C:\\private\\source.js\nERROR " +
+        "x".repeat(1500),
+    );
+    assert.equal(maestroFailureDiagnostic(owned, "account"), "");
+    const result = maestroFailureDiagnostic(owned, "account", ["fixture-name"]);
+    assert.match(result, /JavaScriptException connection refused/);
+    assert.match(result, /Activity not found/);
+    assert.doesNotMatch(result, /private|fixture-name|unlisted|UnlistedOpaque|https|example.com/);
+    assert.ok(result.length <= 640);
+    assert.ok(result.split("\n").length <= 3);
   } finally {
     if (owned) cleanNativeProject(owned);
     rmSync(source, { recursive: true, force: true });

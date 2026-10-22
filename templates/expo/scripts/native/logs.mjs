@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, lstatSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { nativeProjectPath } from "./owned.mjs";
-import { redactNative } from "./redact.mjs";
+import { redactNative, safeNativeReason } from "./redact.mjs";
 import { nativeFlows } from "./flows.mjs";
 import en from "../../src/lib/i18n/messages/en.json" with { type: "json" };
 import ko from "../../src/lib/i18n/messages/ko.json" with { type: "json" };
@@ -230,23 +230,7 @@ export function pickerHierarchy(raw, secrets) {
       [attributes.value, attributes.title, attributes.text, attributes.accessibilityText]
         .filter((value) => typeof value === "string")
         .sort((left, right) => right.length - left.length)[0] ?? "";
-    return redactNative(message, secrets)
-      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
-      .replace(/\b[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\b/gi, "[identifier]")
-      .replace(/\b[A-Za-z0-9_-]{24,}\b/g, (value) =>
-        [
-          "NSInvalidArgumentException",
-          "NSInternalInconsistencyException",
-          "UnrecognizedSelectorException",
-        ].includes(value)
-          ? value
-          : "[opaque]",
-      )
-      .split(/\r?\n/)
-      .slice(0, 3)
-      .map((line) => line.replace(/\S*[\\/].*$/, "[source path omitted]"))
-      .join(" ")
-      .slice(0, 600);
+    return safeNativeReason(message, secrets);
   }
   try {
     visit(JSON.parse(raw));
@@ -309,4 +293,13 @@ export function maestroFailureLog(owned, flow, secrets) {
     if (output.length > 2 * 1024 * 1024) break;
   }
   return output;
+}
+export function maestroFailureDiagnostic(owned, flow, secrets) {
+  if (!Array.isArray(secrets)) return "";
+  const errors = maestroFailureLog(owned, flow, secrets)
+    .split(/\r?\n/)
+    .filter((line) => /\bERROR\b|\bCaused by:|\b[\w.$]*Exception\b/.test(line))
+    .slice(-3);
+  const reason = safeNativeReason(errors.join("\n"), secrets);
+  return reason ? `Maestro failure detail: ${reason}` : "Maestro failure detail unavailable.";
 }

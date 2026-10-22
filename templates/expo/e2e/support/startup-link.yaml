@@ -1,0 +1,12 @@
+appId: __BUNDLE_ID__
+---
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - extendedWaitUntil: { visible: "Open|Continue|English", timeout: 30000 }
+      - runFlow: open-link.yaml
+      - extendedWaitUntil: { visible: "Continue|English", timeout: 90000 }
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - extendedWaitUntil: { visible: "Continue|English", timeout: 120000 }

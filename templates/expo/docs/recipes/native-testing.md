@@ -25,11 +25,15 @@ Before the first iOS UI flow, preparation reads the owned Metro SDK manifest and
 
 On iOS, the first Maestro flow owns the initial URL; the runner does not open it beforehand. Opening private links can display an Open/Cancel system confirmation before the app receives the link. Every explicit link step runs the shared iOS confirmation flow; it requires both buttons before accepting Open, handles at most two consecutive confirmations and fails if another remains. Android and links without that confirmation continue directly.
 
+The initial development-client link waits up to 30 seconds for either the iOS Open confirmation or the app's Continue/English screen before checking confirmations. It then waits up to 90 seconds for Continue/English. This preserves the original 120-second startup budget while allowing the OS dialog to appear asynchronously; it does not open the URL a second time.
+
 Form submissions use the shared keyboard-dismissal flow. On iOS it first drags the ScrollView's outer padding, outside editable fields, exercising the app's `on-drag` keyboard dismissal before the standard `hideKeyboard` command. Maestro's iOS command can report completion while the keyboard still covers a button. Android keeps the standard command. This adds no assertion retries or longer UI timeouts.
 
 Owned iOS E2E Debug builds use `NATIVE_E2E_BUILD=1` to select the SDK's launcher-only mode and disable developer onboarding, menu auto-open and floating tools. The explicit cold URI then owns the project load. Normal Debug and Release builds retain the SDK defaults. A reused iOS Debug app must be compiled with the same flag; the runner checks its actual `DEV_CLIENT_TRY_TO_LAUNCH_LAST_BUNDLE` plist value before installation. SDK error screens remain available to failure diagnostics, which retain public labels, known source frames and error categories while omitting private values.
 
 Owned iOS authentication failures can retain a short reason from React Native's known `redbox-error` cell only when the runner supplies its fixture-redaction context. It replaces fixture values, credentials, tokens, emails, URLs, identifiers, opaque strings and source paths before retaining at most three lines and 600 characters. Other screen values use the public-label filter, and raw hierarchies and screenshots are removed with their owned run.
+
+Failed Maestro commands also report at most three error/exception lines and 600 characters from their owned text log, using the same complete fixture context and privacy filter. This retains a cause when a flow stops before its first command; arbitrary debug lines and raw command artifacts are not printed.
 
 The checked Maestro 2.11.0 archive runs through Java directly on Windows as well as macOS/Linux. A native debug artifact can be reused explicitly with an absolute `E2E_NATIVE_ARTIFACT` path. The runner verifies its actual package identity with pinned Android Build Tools or the iOS plist before installing it. It also verifies initial absence and owns only the subsequent installation.
 
