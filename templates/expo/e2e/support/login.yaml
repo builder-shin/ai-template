@@ -9,6 +9,7 @@ appId: __BUNDLE_ID__
 - inputText: { text: "${output.data.password}", label: "fixture password" }
 - runFlow: dismiss-keyboard.yaml
 - tapOn: { id: "button-Sign in" }
+- runFlow: login-password-prompt.yaml
 - extendedWaitUntil:
     visible: "Current session"
     timeout: 30000
