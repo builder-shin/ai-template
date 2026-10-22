@@ -162,7 +162,7 @@ export async function runNative(options, ports = {}) {
       port: 4112,
       intercept: (req, res) => fixture?.provider(req, res),
       observe: (event) => {
-        const line = `API ${event.method} ${event.path.replace(/[a-f0-9]{8}-[a-f0-9-]{27,}/gi, ":id")} ${event.status}\n`;
+        const line = `API ${event.method} ${event.path.replace(/[a-f0-9]{8}-[a-f0-9-]{27,}/gi, ":id")} ${event.status} headers at ${new Date().toISOString()}\n`;
         appendFileSync(log, line);
         apiDiagnostics.push(line);
         if (apiDiagnostics.length > 20) apiDiagnostics.shift();

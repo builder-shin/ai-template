@@ -5,6 +5,7 @@ appId: __BUNDLE_ID__
 - runFlow: support/open-link.yaml
 - tapOn: { id: "button-한국어" }
 - tapOn: { id: "button-Save" }
+- extendedWaitUntil: { visible: "저장했습니다.", timeout: 60000 }
 - assertVisible: 저장했습니다.
 - runScript: { file: bridge.js, env: { ACTION: inspect-account } }
 - assertTrue: ${output.result.locale === 'ko'}
@@ -15,6 +16,7 @@ appId: __BUNDLE_ID__
 - assertVisible: 내 정보
 - tapOn: { id: "button-English" }
 - tapOn: { id: "button-저장" }
+- extendedWaitUntil: { visible: "Saved.", timeout: 60000 }
 - assertVisible: Saved.
 - tapOn: { id: "button-Sessions" }
 - scrollUntilVisible: { element: { id: "button-Sign out all sessions" } }

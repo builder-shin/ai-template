@@ -10,6 +10,7 @@ appId: __BUNDLE_ID__
 - inputText: Native Updated
 - runFlow: support/dismiss-keyboard.yaml
 - tapOn: { id: "button-Save" }
+- extendedWaitUntil: { visible: "Saved.", timeout: 60000 }
 - assertVisible: Saved.
 - runScript: { file: bridge.js, env: { ACTION: inspect-account } }
 - assertTrue: ${output.result.name === 'Native Updated' && output.result.locale === 'en'}

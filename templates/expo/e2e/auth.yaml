@@ -31,6 +31,7 @@ appId: __BUNDLE_ID__
 - inputText: { text: "${output.data.password}", label: "fixture password" }
 - runFlow: support/dismiss-keyboard.yaml
 - tapOn: { id: "button-Create account" }
+- extendedWaitUntil: { visible: "Check your email to verify your account.", timeout: 60000 }
 - assertVisible: "Check your email to verify your account."
 - runScript: { file: bridge.js, env: { ACTION: mail-verify } }
 - stopApp
@@ -38,6 +39,7 @@ appId: __BUNDLE_ID__
 - runFlow: support/open-link.yaml
 - extendedWaitUntil: { visible: { id: "button-Verify email" }, timeout: 60000 }
 - tapOn: { id: "button-Verify email" }
+- extendedWaitUntil: { visible: "Your email is verified. You can sign in.", timeout: 60000 }
 - assertVisible: "Your email is verified. You can sign in."
 - runFlow: support/login.yaml
 - stopApp
@@ -52,6 +54,9 @@ appId: __BUNDLE_ID__
 - inputText: { text: "${output.data.email}", label: "fixture email" }
 - runFlow: support/dismiss-keyboard.yaml
 - tapOn: { id: "button-Send reset email" }
+- extendedWaitUntil:
+    visible: "If the account is eligible, an email has been sent."
+    timeout: 60000
 - assertVisible: "If the account is eligible, an email has been sent."
 - runScript: { file: bridge.js, env: { ACTION: mail-reset } }
 - stopApp
@@ -62,6 +67,7 @@ appId: __BUNDLE_ID__
 - inputText: { text: "${output.data.newPassword}", label: "new fixture password" }
 - runFlow: support/dismiss-keyboard.yaml
 - tapOn: { id: "button-Reset password" }
+- extendedWaitUntil: { visible: "Your password was reset. Sign in again.", timeout: 60000 }
 - assertVisible: "Your password was reset. Sign in again."
 - runScript: { file: bridge.js, env: { ACTION: password-reset } }
 - evalScript: ${output.data.password = output.data.newPassword} # betterleaks:allow runtime fixture reference

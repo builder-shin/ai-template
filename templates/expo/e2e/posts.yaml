@@ -10,16 +10,19 @@ appId: __BUNDLE_ID__
 - runFlow: support/dismiss-keyboard.yaml
 - scrollUntilVisible: { element: { id: "button-Save" } }
 - tapOn: { id: "button-Save" }
+- extendedWaitUntil: { visible: "Draft", timeout: 60000 }
 - assertVisible: ${output.data.title}
 - assertVisible: Draft
 - runScript: { file: bridge.js, env: { ACTION: inspect-post } }
 - assertTrue: ${output.result.status === 'draft' && output.result.body === 'Native body from the device'}
 - scrollUntilVisible: { element: { id: "button-Publish" } }
 - tapOn: { id: "button-Publish" }
+- extendedWaitUntil: { visible: "Published", timeout: 60000 }
 - assertVisible: Published
 - runScript: { file: bridge.js, env: { ACTION: inspect-post } }
 - assertTrue: ${output.result.status === 'published'}
 - tapOn: { id: "button-Unpublish" }
+- extendedWaitUntil: { visible: "Draft", timeout: 60000 }
 - assertVisible: Draft
 - tapOn: { id: "button-Edit" }
 - tapOn: { id: "field-Body" }
@@ -30,6 +33,7 @@ appId: __BUNDLE_ID__
 - runFlow: support/dismiss-keyboard.yaml
 - scrollUntilVisible: { element: { id: "button-Save" } }
 - tapOn: { id: "button-Save" }
+- extendedWaitUntil: { notVisible: { id: "button-Save" }, timeout: 60000 }
 - runScript: { file: bridge.js, env: { ACTION: inspect-post } }
 - assertTrue: ${output.result.body === 'Edited on device'}
 - scrollUntilVisible: { element: { text: "Edited on device" }, direction: UP }
@@ -37,5 +41,6 @@ appId: __BUNDLE_ID__
 - scrollUntilVisible: { element: { id: "button-Delete" } }
 - tapOn: { id: "button-Delete" }
 - tapOn: { id: "button-Confirm" }
+- extendedWaitUntil: { visible: { id: "button-New post" }, timeout: 60000 }
 - assertVisible: { id: "button-New post" }
 - assertNotVisible: ${output.data.title}

@@ -1,7 +1,8 @@
-import { render, screen, userEvent } from "@testing-library/react-native";
+import { act, render, screen, userEvent } from "@testing-library/react-native";
 import i18n from "../../lib/i18n";
 import { SignupForm } from "./signup-screen";
 import { ApiError } from "../../lib/api/errors";
+import { deferred } from "../../lib/session/test-fixtures";
 
 jest.mock("expo-localization", () => ({ getLocales: () => [{ languageCode: "en" }] }));
 beforeEach(async () => {
@@ -36,6 +37,26 @@ test("native signup keeps email/name, clears passwords, and re-localizes an exis
     locale: "ko",
   });
 });
+test("signup remains pending until the complete operation resolves and submits only once", async () => {
+  const completion = deferred<void>();
+  const register = jest.fn(() => completion.promise);
+  await render(<SignupForm register={register} />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Email"), "pending@example.com");
+  await user.type(screen.getByLabelText("Name"), "Pending User");
+  await user.type(screen.getByLabelText("Password"), "valid-password"); // betterleaks:allow test password
+  const button = screen.getByRole("button", { name: "Create account" });
+  await user.press(button);
+  expect(button).toBeDisabled();
+  expect(screen.queryByText("Check your email to verify your account.")).toBeNull();
+  await user.press(button);
+  expect(register).toHaveBeenCalledTimes(1);
+  await act(async () => completion.resolve(undefined));
+  expect(await screen.findByText("Check your email to verify your account.")).toBeTruthy();
+  expect(button).toBeEnabled();
+  expect(screen.getByLabelText("Password").props.value).toBe("");
+});
+
 test("schema errors prevent HTTP and success offers verification without retaining passwords", async () => {
   const register = jest.fn().mockResolvedValue(undefined);
   await render(<SignupForm register={register} />);
