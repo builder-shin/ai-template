@@ -11,8 +11,9 @@ appId: __BUNDLE_ID__
 - tapOn: { id: "button-Continue with Google" }
 - runFlow: support/browser.yaml
 - extendedWaitUntil: { visible: "Current session", timeout: 60000 }
-- openLink: ${output.data.scheme + '://'}
+- openLink: ${output.data.homeLink}
 - runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Account" }, timeout: 60000 }
 - assertVisible: { id: "button-Account" }
 - stopApp
 - openLink: ${output.data.sessionsLink}

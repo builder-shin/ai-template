@@ -2,8 +2,9 @@ appId: __BUNDLE_ID__
 ---
 - runScript: { file: bridge.js, env: { ACTION: data } }
 - evalScript: ${output.data.password = output.data.newPassword} # betterleaks:allow runtime fixture reference
-- openLink: ${output.data.scheme + '://'}
+- openLink: ${output.data.homeLink}
 - runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Account" }, timeout: 60000 }
 - pressKey: Home
 - runScript: { file: bridge.js, env: { ACTION: remote-post } }
 - launchApp: { stopApp: false }

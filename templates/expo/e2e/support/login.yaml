@@ -13,6 +13,7 @@ appId: __BUNDLE_ID__
 - extendedWaitUntil:
     visible: "Current session"
     timeout: 30000
-- openLink: ${output.data.scheme + '://'}
+- openLink: ${output.data.homeLink}
 - runFlow: open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Account" }, timeout: 60000 }
 - assertVisible: { id: "button-Account" }
