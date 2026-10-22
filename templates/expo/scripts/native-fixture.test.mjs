@@ -4,6 +4,10 @@ import { createRequire } from "node:module";
 import { startFixture, fixtureImage } from "./native/fixture.mjs";
 import { createHash } from "node:crypto";
 import { readPublicEnv } from "../src/lib/config/env.ts";
+import { routeNativeIntent } from "../src/lib/links/native-intent.ts";
+const { unwrapDevLaunchURL } = await import(
+  new URL("../src/devLaunchURL.ts", import.meta.resolve("expo-linking"))
+);
 const { startMock } = createRequire(import.meta.url)("./test/mock-server.cjs");
 test("focused fixture setup creates and resets only its actual owned account through the API and mail", async () => {
   const mock = await startMock();
@@ -72,6 +76,9 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
     assert.ok(data.email.endsWith("@example.com"));
     assert.equal(new URL(data.profileLink).host, "me");
     assert.equal(new URL(data.profileLink).searchParams.get("__expo_url"), "http://127.0.0.1:8082");
+    assert.equal(unwrapDevLaunchURL(data.profileLink), "http://127.0.0.1:8082");
+    assert.equal(routeNativeIntent(data.profileLink, env, true), "/me");
+    assert.equal(routeNativeIntent(data.sessionsLink, env, true), "/me/sessions");
     const post = async (path, type, attributes) =>
       fetch(mock.base + "/api/v1" + path, {
         method: "POST",
@@ -92,6 +99,12 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
     const verify = await call("mail-verify");
     assert.ok(verify.link.startsWith(env.scheme + "://verify-email?token="));
     assert.equal(new URL(verify.link).searchParams.get("__expo_url"), "http://127.0.0.1:8082");
+    assert.equal(unwrapDevLaunchURL(verify.link), "http://127.0.0.1:8082");
+    assert.equal(
+      routeNativeIntent(verify.link, env, true),
+      `/verify-email?token=${new URL(verify.link).searchParams.get("token")}`,
+    );
+    assert.equal(routeNativeIntent(verify.link, env, false), "/login");
     assert.equal(
       (
         await post("/email-verifications", "email-verifications", {
@@ -107,6 +120,10 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
       202,
     );
     const reset = await call("mail-reset");
+    assert.equal(
+      routeNativeIntent(reset.link, env, true),
+      `/reset-password?token=${new URL(reset.link).searchParams.get("token")}`,
+    );
     assert.equal(
       (
         await post("/password-resets", "password-resets", {
@@ -253,6 +270,7 @@ test("cold OAuth bridge completes the actual provider and API callback with the 
     assert.equal(new URL(link).searchParams.get("__expo_url"), "http://127.0.0.1:8082");
     const code = new URL(link).searchParams.get("code");
     assert.ok(code);
+    assert.equal(routeNativeIntent(link, config, true), `/oauth/callback?code=${code}`);
     const grant = await fetch(mock.base + "/api/v1/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/vnd.api+json" },

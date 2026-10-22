@@ -57,4 +57,6 @@ In this repository, real generated FastAPI/NestJS mobile-only tests use `pnpm mo
 
 Standalone CI has JS, Android and iOS jobs. Generated mobile combinations retain root API/web/admin checks, explicitly skip mobile in the device-free aggregate E2E step, and add Android/iOS device jobs. The repository additionally tests each actual backend pair and three actual generation scenarios. Metro export, unit tests and a native build are separate evidence; none substitutes for device UI tests.
 
+Router calls `+native-intent` before unwrapping SDK launch commands. Development fixture links carry the original app destination plus the explicit loopback Metro target and two launcher controls. The development intent adapter validates and removes only those three controls before the ordinary strict link parser. Release builds reject these launch-command links. Do not replace the destination with the SDK-unwrapped Metro root.
+
 iOS device E2E compiles Debug for its selected simulator and active architecture; unsigned Release targets physical iOS. The first flow installs the pinned Maestro driver and later flows reuse that run's installation. Every default flow still executes. Failure diagnostics first sanitize Maestro's saved `screen-hierarchy` artifact, avoiding a second driver startup; arbitrary UI text and raw images are not published.
