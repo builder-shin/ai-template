@@ -49,10 +49,9 @@ export async function startFixture({
   }
   function developmentLink(link) {
     if (!metroOrigin) return link;
-    const launch = new URL(link);
-    launch.searchParams.set("__expo_url", metroOrigin);
-    launch.searchParams.set("__expo_disable_onboarding", "1");
-    launch.searchParams.set("__expo_disable_auto_launch", "1");
+    const launch = new URL(`${config.scheme}://expo-development-client/`);
+    launch.searchParams.set("url", metroOrigin);
+    launch.searchParams.set("aitpl_link", link);
     return launch.toString();
   }
   async function completeProvider(endpoint) {

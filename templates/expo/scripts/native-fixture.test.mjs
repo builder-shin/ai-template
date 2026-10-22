@@ -9,6 +9,7 @@ const { unwrapDevLaunchURL } = await import(
   new URL("../src/devLaunchURL.ts", import.meta.resolve("expo-linking"))
 );
 const { startMock } = createRequire(import.meta.url)("./test/mock-server.cjs");
+const appUrl = (link, config) => new URL(routeNativeIntent(link, config, true), config.frontendUrl);
 test("focused fixture setup creates and resets only its actual owned account through the API and mail", async () => {
   const mock = await startMock();
   let bridge;
@@ -74,8 +75,8 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
     assert.equal((await fetch(bridge.origin + "/data")).status, 404);
     const data = await call("data");
     assert.ok(data.email.endsWith("@example.com"));
-    assert.equal(new URL(data.profileLink).host, "me");
-    assert.equal(new URL(data.profileLink).searchParams.get("__expo_url"), "http://127.0.0.1:8082");
+    assert.equal(new URL(data.profileLink).host, "expo-development-client");
+    assert.equal(new URL(data.profileLink).searchParams.get("url"), "http://127.0.0.1:8082");
     assert.equal(unwrapDevLaunchURL(data.profileLink), "http://127.0.0.1:8082");
     assert.equal(routeNativeIntent(data.profileLink, env, true), "/me");
     assert.equal(routeNativeIntent(data.sessionsLink, env, true), "/me/sessions");
@@ -97,18 +98,18 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
       201,
     );
     const verify = await call("mail-verify");
-    assert.ok(verify.link.startsWith(env.scheme + "://verify-email?token="));
-    assert.equal(new URL(verify.link).searchParams.get("__expo_url"), "http://127.0.0.1:8082");
+    assert.equal(appUrl(verify.link, env).pathname, "/verify-email");
+    assert.equal(new URL(verify.link).searchParams.get("url"), "http://127.0.0.1:8082");
     assert.equal(unwrapDevLaunchURL(verify.link), "http://127.0.0.1:8082");
     assert.equal(
       routeNativeIntent(verify.link, env, true),
-      `/verify-email?token=${new URL(verify.link).searchParams.get("token")}`,
+      `/verify-email?token=${appUrl(verify.link, env).searchParams.get("token")}`,
     );
     assert.equal(routeNativeIntent(verify.link, env, false), "/login");
     assert.equal(
       (
         await post("/email-verifications", "email-verifications", {
-          token: new URL(verify.link).searchParams.get("token"),
+          token: appUrl(verify.link, env).searchParams.get("token"),
         })
       ).status,
       201,
@@ -122,12 +123,12 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
     const reset = await call("mail-reset");
     assert.equal(
       routeNativeIntent(reset.link, env, true),
-      `/reset-password?token=${new URL(reset.link).searchParams.get("token")}`,
+      `/reset-password?token=${appUrl(reset.link, env).searchParams.get("token")}`,
     );
     assert.equal(
       (
         await post("/password-resets", "password-resets", {
-          token: new URL(reset.link).searchParams.get("token"),
+          token: appUrl(reset.link, env).searchParams.get("token"),
           password: data.newPassword,
         })
       ).status,
@@ -209,7 +210,7 @@ test("owned bridge verifies mail, owner drafts and the exact selected image byte
         .status,
       202,
     );
-    assert.ok((await call("mail-reset")).link.startsWith(env.scheme + "://reset-password?token="));
+    assert.equal(appUrl((await call("mail-reset")).link, env).pathname, "/reset-password");
     assert.equal((await fetch(bridge.url + "/unknown")).status, 404);
   } finally {
     await bridge?.stop();
@@ -266,9 +267,9 @@ test("cold OAuth bridge completes the actual provider and API callback with the 
     assert.equal(status, 200);
     await action("await-provider");
     const { link } = await action("complete-provider");
-    assert.ok(link.startsWith(config.scheme + "://oauth/callback?"));
-    assert.equal(new URL(link).searchParams.get("__expo_url"), "http://127.0.0.1:8082");
-    const code = new URL(link).searchParams.get("code");
+    assert.equal(appUrl(link, config).pathname, "/oauth/callback");
+    assert.equal(new URL(link).searchParams.get("url"), "http://127.0.0.1:8082");
+    const code = appUrl(link, config).searchParams.get("code");
     assert.ok(code);
     assert.equal(routeNativeIntent(link, config, true), `/oauth/callback?code=${code}`);
     const grant = await fetch(mock.base + "/api/v1/sessions", {

@@ -225,11 +225,16 @@ export function pickerHierarchy(raw, secrets) {
     if (Array.isArray(node.children)) for (const child of node.children) visit(child);
   }
   function nativeErrorReason(attributes) {
-    if (attributes["resource-id"] !== "redbox-error" || !Array.isArray(secrets)) return undefined;
+    if (!Array.isArray(secrets)) return undefined;
     const message =
       [attributes.value, attributes.title, attributes.text, attributes.accessibilityText]
         .filter((value) => typeof value === "string")
         .sort((left, right) => right.length - left.length)[0] ?? "";
+    const launcherError =
+      /^(?:Could not (?:load the app from|find the server at|connect to|reach)|The (?:request|connection) to)\s/.test(
+        message,
+      );
+    if (attributes["resource-id"] !== "redbox-error" && !launcherError) return undefined;
     return safeNativeReason(message, secrets);
   }
   try {

@@ -26,7 +26,10 @@ test("the actual Router and public mail screen handle the cold SDK launch comman
     "+native-intent": nativeIntent,
     "verify-email": VerifyEmail,
   };
-  const incoming = `${scheme}://verify-email?token=safe-token&__expo_url=http%3A%2F%2F127.0.0.1%3A8082&__expo_disable_onboarding=1&__expo_disable_auto_launch=1`;
+  const incoming = `${scheme}://expo-development-client/?${new URLSearchParams({
+    url: "http://127.0.0.1:8082",
+    aitpl_link: `${scheme}://verify-email?token=safe-token`,
+  })}`;
   const linkingModule = jest.requireMock<typeof import("expo-linking")>("expo-linking");
   jest.spyOn(linkingModule, "getLinkingURL").mockReturnValue(incoming);
   const redirect = jest.spyOn(nativeIntent, "redirectSystemPath");

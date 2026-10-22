@@ -12,6 +12,35 @@ import {
   hierarchyDiagnostic,
 } from "./native/logs.mjs";
 
+test("SDK launcher load errors retain only bounded fixture-redacted reasons", () => {
+  const raw = JSON.stringify({
+    children: [
+      {
+        attributes: {
+          accessibilityText:
+            "Could not load the app from http://127.0.0.1:8082/?token=private-code. NSURLErrorDomain -1004 fixture-name unlisted@example.com UnlistedOpaqueSecretLetterString\n" + // betterleaks:allow fake SDK diagnostic
+            "x".repeat(1500),
+        },
+      },
+      { attributes: { text: "fixture-name private arbitrary error" } },
+    ],
+  });
+  assert.equal(
+    JSON.parse(pickerHierarchy(raw).slice("Picker hierarchy ".length))[0].nativeError,
+    undefined,
+  );
+  const nodes = JSON.parse(
+    pickerHierarchy(raw, ["fixture-name"]).slice("Picker hierarchy ".length),
+  );
+  assert.match(nodes[0].nativeError, /NSURLErrorDomain -1004/);
+  assert.doesNotMatch(
+    nodes[0].nativeError,
+    /private-code|fixture-name|unlisted|UnlistedOpaque|127|http/,
+  );
+  assert.ok(nodes[0].nativeError.length <= 600);
+  assert.equal(nodes[1].nativeError, undefined);
+});
+
 test("only the native SDK error cell can retain a bounded reason with explicit fixture redaction", () => {
   const reason =
     "Native initialization failed for private-name private@example.com UnlistedOpaqueSecretLetterString token=private-code at https://private.example/?code=opaque";
