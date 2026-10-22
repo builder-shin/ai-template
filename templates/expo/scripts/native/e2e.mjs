@@ -76,7 +76,8 @@ export async function runNative(options, ports = {}) {
   if (existsSync(log)) throw new Error("Native E2E log already exists; choose another --run-id.");
   mkdirSync(resolve(log, ".."), { recursive: true });
   const cleanup = [],
-    secrets = [];
+    secrets = [],
+    apiDiagnostics = [];
   let failure, fixture, proxy;
   async function run(argv, extra = {}) {
     const result = await execute(argv, {
@@ -160,11 +161,12 @@ export async function runNative(options, ports = {}) {
       upstream,
       port: 4112,
       intercept: (req, res) => fixture?.provider(req, res),
-      observe: (event) =>
-        appendFileSync(
-          log,
-          `API ${event.method} ${event.path.replace(/[a-f0-9]{8}-[a-f0-9-]{27,}/gi, ":id")} ${event.status}\n`,
-        ),
+      observe: (event) => {
+        const line = `API ${event.method} ${event.path.replace(/[a-f0-9]{8}-[a-f0-9-]{27,}/gi, ":id")} ${event.status}\n`;
+        appendFileSync(log, line);
+        apiDiagnostics.push(line);
+        if (apiDiagnostics.length > 20) apiDiagnostics.shift();
+      },
     });
     cleanup.push(() => proxy.stop());
     fixture = await startFixture({
@@ -303,6 +305,7 @@ export async function runNative(options, ports = {}) {
         const detail = maestroFailureDiagnostic(flows, flow, fixtureContext);
         appendFileSync(log, detail + "\n");
         process.stdout.write(detail + "\n");
+        for (const line of apiDiagnostics) process.stdout.write(line);
         appendFileSync(log, maestroFailureLog(flows, flow, fixture.secrets));
         for (const event of fixture.diagnostics)
           appendFileSync(log, `Fixture ${JSON.stringify(event)}\n`);

@@ -21,6 +21,13 @@ appId: __BUNDLE_ID__
 - tapOn: { id: "field-Email" }
 - inputText: { text: "${output.data.email}", label: "fixture email" }
 - tapOn: { id: "field-Password" }
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - inputText: { text: "x", label: "new-password focus setup" }
+      - tapOn: { id: "field-Email" }
+      - tapOn: { id: "field-Password" }
+      - eraseText: 100
 - inputText: { text: "${output.data.password}", label: "fixture password" }
 - runFlow: support/dismiss-keyboard.yaml
 - tapOn: { id: "button-Create account" }
