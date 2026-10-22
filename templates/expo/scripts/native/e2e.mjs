@@ -258,7 +258,7 @@ export async function runNative(options, ports = {}) {
               plan.deviceId,
               "--no-ansi",
               "test",
-              ...(index > 0 ? ["--no-reinstall-driver"] : []),
+              ...(plan.platform === "android" && index > 0 ? ["--no-reinstall-driver"] : []),
               "--test-output-dir",
               join(flows.parent, "raw-maestro", flow),
               "--debug-output",

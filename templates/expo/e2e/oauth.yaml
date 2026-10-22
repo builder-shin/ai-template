@@ -5,7 +5,7 @@ appId: __BUNDLE_ID__
 - openLink: ${output.data.scheme + '://me/sessions'}
 - runFlow: support/open-link.yaml
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
-- tapOn: { id: "button-Sign out", retryTapIfNoChange: true }
+- tapOn: { id: "button-Sign out" }
 - extendedWaitUntil: { visible: { id: "button-Sign in" }, timeout: 30000 }
 - runScript: { file: bridge.js, env: { ACTION: oauth-approve } }
 - scrollUntilVisible: { element: { id: "button-Continue with Google" } }
@@ -22,7 +22,7 @@ appId: __BUNDLE_ID__
 - extendedWaitUntil: { visible: "Current session", timeout: 60000 }
 - assertVisible: "Current session"
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
-- tapOn: { id: "button-Sign out", retryTapIfNoChange: true }
+- tapOn: { id: "button-Sign out" }
 - extendedWaitUntil: { visible: { id: "button-Sign in" }, timeout: 30000 }
 - runScript: { file: bridge.js, env: { ACTION: oauth-hold } }
 - scrollUntilVisible: { element: { id: "button-Continue with Google" } }
@@ -40,7 +40,7 @@ appId: __BUNDLE_ID__
 - runFlow: support/open-link.yaml
 - extendedWaitUntil: { visible: "Current session", timeout: 60000 }
 - scrollUntilVisible: { element: { id: "button-Sign out" } }
-- tapOn: { id: "button-Sign out", retryTapIfNoChange: true }
+- tapOn: { id: "button-Sign out" }
 - extendedWaitUntil: { visible: { id: "button-Sign in" }, timeout: 30000 }
 - runScript: { file: bridge.js, env: { ACTION: oauth-deny } }
 - scrollUntilVisible: { element: { id: "button-Continue with Google" } }
