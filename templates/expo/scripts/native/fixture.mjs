@@ -71,7 +71,7 @@ export async function startFixture({
     secrets.push(location);
     return location;
   }
-  async function jsonRequest(path, method = "GET", body, token) {
+  async function jsonRequest(path, method = "GET", body, access, retry = true) {
     signal?.throwIfAborted();
     const response = await fetch(api + path, {
       method,
@@ -82,11 +82,16 @@ export async function startFixture({
         "Content-Type": "application/vnd.api+json",
         "Accept-Language": "en",
         "User-Agent": "aitpl-native-fixture",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(access ? { Authorization: `Bearer ${access}` } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     record({ method, path: new URL(api + path).pathname, status: response.status });
+    if (response.status === 401 && retry && access && access === session?.attributes.accessToken) {
+      await response.body?.cancel();
+      session = undefined;
+      return jsonRequest(path, method, body, await token(), false);
+    }
     if (!response.ok) throw new Error(`Native fixture API assertion failed (${response.status}).`);
     const text = await response.text();
     return text ? JSON.parse(text) : undefined;
