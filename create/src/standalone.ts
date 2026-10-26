@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { isMap, isScalar, parseDocument, stringify } from "yaml";
 import type { Template } from "./arguments.ts";
 import { CreateError } from "./errors.ts";
+import { nativeIdentity } from "./mobile-identity.ts";
 
 export function renameStandalone(
   root: string,
@@ -18,6 +19,12 @@ export function renameStandalone(
     const pkg = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
     pkg.name = name;
     writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
+  }
+  if (template === "expo") {
+    writeFileSync(
+      join(root, "app-identity.json"),
+      JSON.stringify({ ...nativeIdentity(name), name }, null, 2) + "\n",
+    );
   }
   if (template === "fastapi" || template === "nestjs") {
     const path = join(root, "compose.yaml");

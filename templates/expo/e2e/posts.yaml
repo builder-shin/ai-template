@@ -1,0 +1,46 @@
+appId: __BUNDLE_ID__
+---
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- openLink: ${output.data.scheme + '://posts/new'}
+- runFlow: support/open-link.yaml
+- tapOn: { id: "field-Title" }
+- inputText: ${output.data.title}
+- tapOn: { id: "field-Body" }
+- inputText: Native body from the device
+- runFlow: support/dismiss-keyboard.yaml
+- scrollUntilVisible: { element: { id: "button-Save" }, centerElement: true }
+- tapOn: { id: "button-Save" }
+- extendedWaitUntil: { visible: "Draft", timeout: 60000 }
+- assertVisible: ${output.data.title}
+- assertVisible: Draft
+- runScript: { file: bridge.js, env: { ACTION: inspect-post } }
+- assertTrue: ${output.result.status === 'draft' && output.result.body === 'Native body from the device'}
+- scrollUntilVisible: { element: { id: "button-Publish" }, centerElement: true }
+- tapOn: { id: "button-Publish" }
+- extendedWaitUntil: { visible: "Published", timeout: 60000 }
+- assertVisible: Published
+- runScript: { file: bridge.js, env: { ACTION: inspect-post } }
+- assertTrue: ${output.result.status === 'published'}
+- tapOn: { id: "button-Unpublish" }
+- extendedWaitUntil: { visible: "Draft", timeout: 60000 }
+- assertVisible: Draft
+- tapOn: { id: "button-Edit" }
+- tapOn: { id: "field-Body" }
+- longPressOn: { id: "field-Body" }
+- tapOn: "Select all|Select All"
+- eraseText: 100
+- inputText: Edited on device
+- runFlow: support/dismiss-keyboard.yaml
+- scrollUntilVisible: { element: { id: "button-Save" }, centerElement: true }
+- tapOn: { id: "button-Save" }
+- extendedWaitUntil: { notVisible: { id: "button-Save" }, timeout: 60000 }
+- runScript: { file: bridge.js, env: { ACTION: inspect-post } }
+- assertTrue: ${output.result.body === 'Edited on device'}
+- scrollUntilVisible: { element: { text: "Edited on device" }, direction: UP }
+- assertVisible: Edited on device
+- scrollUntilVisible: { element: { id: "button-Delete" }, centerElement: true }
+- tapOn: { id: "button-Delete" }
+- tapOn: { id: "button-Confirm" }
+- extendedWaitUntil: { visible: { id: "button-New post" }, timeout: 60000 }
+- assertVisible: { id: "button-New post" }
+- assertNotVisible: ${output.data.title}

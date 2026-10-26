@@ -1,0 +1,110 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(./.env.example)",
+      "Bash(pnpm setup *)",
+      "Bash(pnpm dev *)",
+      "Bash(pnpm check *)",
+      "Bash(pnpm fix *)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm test:e2e *)",
+      "Bash(pnpm gen *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "PowerShell(pnpm setup *)",
+      "PowerShell(pnpm dev *)",
+      "PowerShell(pnpm check *)",
+      "PowerShell(pnpm fix *)",
+      "PowerShell(pnpm test *)",
+      "PowerShell(pnpm test:e2e *)",
+      "PowerShell(pnpm gen *)",
+      "PowerShell(git status *)",
+      "PowerShell(git log *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git show *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./**/.env)",
+      "Read(./.env.local)",
+      "Read(./.env.development)",
+      "Read(./.env.development.local)",
+      "Read(./.env.production)",
+      "Read(./.env.production.local)",
+      "Read(./.env.test)",
+      "Read(./.env.test.local)",
+      "Edit(./**/generated/**)",
+      "Write(./**/generated/**)",
+      "Edit(./src/lib/api/schema.d.ts)",
+      "Write(./src/lib/api/schema.d.ts)",
+      "Edit(./contract/openapi.yaml)",
+      "Write(./contract/openapi.yaml)",
+      "Bash(git push --force *)",
+      "Bash(git push --force-with-lease *)",
+      "Bash(git push -f *)",
+      "Bash(git commit --no-verify *)",
+      "Bash(git push --no-verify *)",
+      "Bash(rm -rf *)",
+      "PowerShell(git push --force *)",
+      "PowerShell(git push --force-with-lease *)",
+      "PowerShell(git push -f *)",
+      "PowerShell(git commit --no-verify *)",
+      "PowerShell(git push --no-verify *)",
+      "PowerShell(Remove-Item -Recurse -Force *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/post-tool-use.mjs"],
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-check.mjs"],
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-tool-use.mjs"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.mjs"],
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

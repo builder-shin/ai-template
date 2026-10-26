@@ -1,0 +1,74 @@
+appId: __BUNDLE_ID__
+---
+- launchApp
+- openLink: __DEV_CLIENT_URL__
+- runFlow: support/startup-link.yaml
+- runFlow:
+    when: { visible: "Continue" }
+    commands: [{ tapOn: "Continue" }]
+- runFlow:
+    when: { visible: "Reload", platform: Android }
+    commands: [back]
+- runFlow:
+    when: { visible: "Reload", platform: iOS }
+    commands: [{ tapOn: { point: "50%,20%" } }]
+- extendedWaitUntil: { visible: { id: "button-English" }, timeout: 120000 }
+- runScript: { file: bridge.js, env: { ACTION: data } }
+- tapOn: { id: "button-English" }
+- tapOn: { id: "button-Create account" }
+- tapOn: { id: "field-Name" }
+- inputText: ${output.data.name}
+- tapOn: { id: "field-Email" }
+- inputText: { text: "${output.data.email}", label: "fixture email" }
+- tapOn: { id: "field-Password" }
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - inputText: { text: "x", label: "new-password focus setup" }
+      - tapOn: { id: "field-Email" }
+      - tapOn: { id: "field-Password" }
+      - eraseText: 100
+- inputText: { text: "${output.data.password}", label: "fixture password" }
+- runFlow: support/dismiss-keyboard.yaml
+- tapOn: { id: "button-Create account" }
+- extendedWaitUntil: { visible: "Check your email to verify your account.", timeout: 60000 }
+- assertVisible: "Check your email to verify your account."
+- runScript: { file: bridge.js, env: { ACTION: mail-verify } }
+- stopApp
+- openLink: ${output.result.link}
+- runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Verify email" }, timeout: 60000 }
+- tapOn: { id: "button-Verify email" }
+- extendedWaitUntil: { visible: "Your email is verified. You can sign in.", timeout: 60000 }
+- assertVisible: "Your email is verified. You can sign in."
+- runFlow: support/login.yaml
+- stopApp
+- openLink: ${output.data.sessionsLink}
+- runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: "Current session", timeout: 60000 }
+- assertVisible: "Current session"
+- scrollUntilVisible: { element: { id: "button-Sign out" }, centerElement: true }
+- tapOn: { id: "button-Sign out" }
+- tapOn: { id: "button-Forgot password" }
+- tapOn: { id: "field-Email" }
+- inputText: { text: "${output.data.email}", label: "fixture email" }
+- runFlow: support/dismiss-keyboard.yaml
+- tapOn: { id: "button-Send reset email" }
+- extendedWaitUntil:
+    visible: "If the account is eligible, an email has been sent."
+    timeout: 60000
+- assertVisible: "If the account is eligible, an email has been sent."
+- runScript: { file: bridge.js, env: { ACTION: mail-reset } }
+- stopApp
+- openLink: ${output.result.link}
+- runFlow: support/open-link.yaml
+- extendedWaitUntil: { visible: { id: "button-Reset password" }, timeout: 60000 }
+- tapOn: { id: "field-Password" }
+- inputText: { text: "${output.data.newPassword}", label: "new fixture password" }
+- runFlow: support/dismiss-keyboard.yaml
+- tapOn: { id: "button-Reset password" }
+- extendedWaitUntil: { visible: "Your password was reset. Sign in again.", timeout: 60000 }
+- assertVisible: "Your password was reset. Sign in again."
+- runScript: { file: bridge.js, env: { ACTION: password-reset } }
+- evalScript: ${output.data.password = output.data.newPassword} # betterleaks:allow runtime fixture reference
+- runFlow: support/login.yaml

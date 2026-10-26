@@ -3,8 +3,9 @@ import { parseArgs } from "node:util";
 import { CreateError, errorReason } from "./errors.ts";
 import type { Backend } from "./backends.ts";
 
-export type Template = Backend | "nextjs" | "nextjs-admin";
-export type Frontend = "web" | "admin";
+import type { Frontend } from "./frontends.ts";
+export type { Frontend } from "./frontends.ts";
+export type Template = Backend | "nextjs" | "nextjs-admin" | "expo";
 
 export interface CreateOptions {
   readonly target: string;
@@ -16,13 +17,13 @@ export interface CreateOptions {
 }
 
 export const usage = `사용법:
-  pnpm new <대상 폴더> --template <fastapi|nestjs|nextjs|nextjs-admin> [--name <이름>] [--no-git]
-  pnpm new <대상 폴더> --api <fastapi|nestjs> [--web] [--admin] [--name <이름>] [--no-git]
+  pnpm new <대상 폴더> --template <fastapi|nestjs|nextjs|nextjs-admin|expo> [--name <이름>] [--no-git]
+  pnpm new <대상 폴더> --api <fastapi|nestjs> [--web] [--admin] [--mobile] [--name <이름>] [--no-git]
   pnpm new --help
 
 이름은 소문자로 시작하는 kebab-case이며 50자 이하다.
 상대 경로는 명령을 실행한 폴더 기준이다.
-조합은 --web, --admin 가운데 하나 이상이 필요하다.
+조합은 --web, --admin, --mobile 가운데 하나 이상이 필요하다.
 `;
 
 export function parseArguments(
@@ -43,6 +44,7 @@ export function parseArguments(
         api: { type: "string" },
         web: { type: "boolean" },
         admin: { type: "boolean" },
+        mobile: { type: "boolean" },
       },
     });
   } catch (error) {
@@ -66,18 +68,24 @@ export function parseArguments(
   }
   const { values, positionals } = parsed;
   if (values.help) return "help";
-  if (values.template !== undefined && (values.api !== undefined || values.web || values.admin)) {
+  if (
+    values.template !== undefined &&
+    (values.api !== undefined || values.web || values.admin || values.mobile)
+  ) {
     throw new CreateError(
       "단독과 조합 옵션을 함께 지정했다",
-      "--template 또는 --api와 프론트 옵션(--web, --admin)을 고른다.",
+      "--template 또는 --api와 프론트 옵션(--web, --admin, --mobile)을 고른다.",
       2,
     );
   }
-  if (values.api !== undefined || values.web || values.admin) {
-    if (!["fastapi", "nestjs"].includes(values.api ?? "") || (!values.web && !values.admin)) {
+  if (values.api !== undefined || values.web || values.admin || values.mobile) {
+    if (
+      !["fastapi", "nestjs"].includes(values.api ?? "") ||
+      (!values.web && !values.admin && !values.mobile)
+    ) {
       throw new CreateError(
         "조합 옵션이 올바르지 않다",
-        "--api fastapi 또는 nestjs에 --web, --admin 가운데 하나 이상을 지정한다.",
+        "--api fastapi 또는 nestjs에 --web, --admin, --mobile 가운데 하나 이상을 지정한다.",
         2,
       );
     }
@@ -85,7 +93,7 @@ export function parseArguments(
   if (positionals.length !== 1 || !positionals[0]) {
     throw new CreateError(
       "대상 폴더 하나가 필요하다",
-      "pnpm new <대상 폴더> --template <fastapi|nestjs|nextjs|nextjs-admin>로 실행한다.",
+      "pnpm new <대상 폴더> --template <fastapi|nestjs|nextjs|nextjs-admin|expo>로 실행한다.",
       2,
     );
   }
@@ -94,11 +102,12 @@ export function parseArguments(
     values.template !== "fastapi" &&
     values.template !== "nestjs" &&
     values.template !== "nextjs" &&
-    values.template !== "nextjs-admin"
+    values.template !== "nextjs-admin" &&
+    values.template !== "expo"
   ) {
     throw new CreateError(
       "템플릿이 올바르지 않다",
-      "--template fastapi, nestjs, nextjs 또는 nextjs-admin을 지정한다.",
+      "--template fastapi, nestjs, nextjs, nextjs-admin 또는 expo를 지정한다.",
       2,
     );
   }
@@ -119,7 +128,7 @@ export function parseArguments(
       2,
     );
   }
-  if (values.api !== undefined && ["api", "web", "admin"].includes(name)) {
+  if (values.api !== undefined && ["api", "web", "admin", "mobile"].includes(name)) {
     throw new CreateError(
       `조합 앱의 workspace 패키지 이름(${name})과 겹친다`,
       "다른 --name을 지정한다.",
@@ -137,6 +146,7 @@ export function parseArguments(
           frontends: [
             ...(values.web ? ["web" as const] : []),
             ...(values.admin ? ["admin" as const] : []),
+            ...(values.mobile ? ["mobile" as const] : []),
           ],
         }
       : {}),

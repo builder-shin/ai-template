@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [{
+      "appIDs": ["REPLACE_TEAM_ID.REPLACE_IOS_BUNDLE_IDENTIFIER"],
+      "components": [
+        { "/": "/verify-email" }, { "/": "/reset-password" },
+        { "/": "/ko/verify-email" }, { "/": "/ko/reset-password" },
+        { "/": "/en/verify-email" }, { "/": "/en/reset-password" }
+      ]
+    }]
+  }
+}

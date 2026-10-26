@@ -1,0 +1,10 @@
+appId: __BUNDLE_ID__
+---
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - swipe:
+          start: "97%,40%"
+          end: "97%,25%"
+          duration: 300
+- hideKeyboard

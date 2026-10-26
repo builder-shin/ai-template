@@ -1,0 +1,16 @@
+# 독립 프로젝트에서 pnpm setup이 설치한다. 저장소 사본은 상위 hook을 유지한다.
+pre-commit:
+  jobs:
+    - name: format
+      glob: "*.{ts,tsx,js,mjs,json,md,yaml,yml,css}"
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    - name: lint
+      glob: "*.{ts,tsx,js,mjs}"
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
+    - name: secrets
+      run: pnpm run -s tool betterleaks git --pre-commit --staged --no-banner --redact
+pre-push:
+  jobs:
+    - name: check
+      run: pnpm check

@@ -45,7 +45,11 @@ export function fileResource(state: MockState, config: MockConfig, file: FileRow
   };
   if (file.status !== "ready") return resource;
   const key = objectKey(file.id);
-  const download = state.storage.presignDownload(config.apiUrl, key, DOWNLOAD_EXPIRES);
+  const download = state.storage.presignDownload(
+    config.storageUrl ?? config.apiUrl,
+    key,
+    DOWNLOAD_EXPIRES,
+  );
   const meta = {
     downloadUrl: download.url,
     downloadUrlExpiresAt: formatInstant(download.expiresAt),

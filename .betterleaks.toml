@@ -13,6 +13,8 @@ filter.matchesAny(attributes["path"], [
   `^templates/nextjs/contract/typespec/src/.+\.tsp$`,
   `^templates/nextjs-admin/contract/openapi\.yaml$`,
   `^templates/nextjs-admin/contract/typespec/src/.+\.tsp$`,
+  `^templates/expo/contract/openapi\.yaml$`,
+  `^templates/expo/contract/typespec/src/.+\.tsp$`,
   `^templates/[^/]+/openapi\.json$`,
   `^prototypes/nestjs/openapi\.json$`,
   `^contract/api-style/dist/lint\.mjs$`,
@@ -27,9 +29,25 @@ useDefault = true
 description = "생성한 프런트엔드 잠금 파일의 @inquirer/password 패키지 이름"
 condition = "AND"
 targetRules = ["generic-password"]
-paths = ['''^templates/(?:nextjs(?:-admin)?|nestjs)/pnpm-lock\.yaml$''', '''^prototypes/nestjs/pnpm-lock\.yaml$''', '''^create/test/fixtures/(?:nestjs|nextjs(?:-admin)?)/pnpm-lock\.yaml$''']
+paths = ['''^templates/(?:nextjs(?:-admin)?|nestjs|expo)/pnpm-lock\.yaml$''', '''^prototypes/nestjs/pnpm-lock\.yaml$''', '''^create/test/fixtures/(?:nestjs|nextjs(?:-admin)?)/pnpm-lock\.yaml$''']
 regexTarget = "line"
 regexes = ['''@inquirer/password''']
+
+[[allowlists]]
+description = "Expo UI의 공개 비밀번호 레이블 한 줄"
+condition = "AND"
+targetRules = ["generic-password"]
+paths = ['''^templates/expo/src/lib/i18n/messages/en\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"password": "Password",?\s*$''']
+
+[[allowlists]]
+description = "Expo 인증 화면의 공개 비밀번호 탐색 레이블 네 줄"
+condition = "AND"
+targetRules = ["generic-password"]
+paths = ['''^templates/expo/src/lib/i18n/messages/(?:ko|en)\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"forgotPassword": "(?:Forgot password|비밀번호 찾기)",?\s*$''', '''^\s*"resetPassword": "(?:Reset password|비밀번호 재설정)",?\s*$''']
 
 # 계획 문서(docs/superpowers/plans)는 템플릿과 적합성 스위트의 코드를 그대로 옮겨 적는다. 마크다운 안의
 # 타입 선언과 테스트 상수(`password: Password`, `password: PASSWORD`)를 generic-password 규칙이 비밀번호로

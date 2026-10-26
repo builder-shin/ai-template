@@ -1,6 +1,28 @@
 {
   "assets": [
     {
+      "source": ".prettierrc.json",
+      "targets": [{ "template": "expo", "path": ".prettierrc.json" }]
+    },
+    {
+      "source": "contract/mock/src/core/oauth-callback.ts",
+      "targets": [
+        {
+          "template": "nestjs",
+          "path": "src/core/config/oauth-callback.ts"
+        }
+      ]
+    },
+    {
+      "source": "tsconfig.base.json",
+      "targets": [
+        {
+          "template": "expo",
+          "path": "tsconfig.base.json"
+        }
+      ]
+    },
+    {
       "source": ".gitattributes",
       "targets": [
         {
@@ -17,6 +39,10 @@
         },
         {
           "template": "nestjs",
+          "path": ".gitattributes"
+        },
+        {
+          "template": "expo",
           "path": ".gitattributes"
         }
       ]
@@ -38,6 +64,10 @@
         },
         {
           "template": "nestjs",
+          "path": ".editorconfig"
+        },
+        {
+          "template": "expo",
           "path": ".editorconfig"
         }
       ]
@@ -65,6 +95,10 @@
         {
           "template": "nextjs-admin",
           "path": "contract/mock"
+        },
+        {
+          "template": "expo",
+          "path": "contract/mock"
         }
       ]
     },
@@ -77,6 +111,10 @@
         },
         {
           "template": "nextjs-admin",
+          "path": "contract/typespec"
+        },
+        {
+          "template": "expo",
           "path": "contract/typespec"
         }
       ]
@@ -91,6 +129,10 @@
         {
           "template": "nextjs-admin",
           "path": "contract/openapi.yaml"
+        },
+        {
+          "template": "expo",
+          "path": "contract/openapi.yaml"
         }
       ]
     },
@@ -104,6 +146,10 @@
         {
           "template": "nextjs-admin",
           "path": "docs/conventions/jsonapi.md"
+        },
+        {
+          "template": "expo",
+          "path": "docs/conventions/jsonapi.md"
         }
       ]
     },
@@ -116,6 +162,10 @@
         },
         {
           "template": "nextjs-admin",
+          "path": "docs/conventions/error-codes.md"
+        },
+        {
+          "template": "expo",
           "path": "docs/conventions/error-codes.md"
         }
       ]
@@ -593,6 +643,46 @@
         {
           "template": "nestjs",
           "path": "scripts/process-tree.mjs"
+        },
+        {
+          "template": "expo",
+          "path": "scripts/process-tree.mjs"
+        }
+      ]
+    },
+    {
+      "source": "shared/nextjs/.claude/hooks/pre-tool-use.mjs",
+      "targets": [
+        {
+          "template": "expo",
+          "path": ".claude/hooks/pre-tool-use.mjs"
+        }
+      ]
+    },
+    {
+      "source": "shared/nextjs/scripts/tools/cli.ts",
+      "targets": [
+        {
+          "template": "expo",
+          "path": "scripts/tools/cli.ts"
+        }
+      ]
+    },
+    {
+      "source": "shared/nextjs/scripts/tools/betterleaks.ts",
+      "targets": [
+        {
+          "template": "expo",
+          "path": "scripts/tools/betterleaks.ts"
+        }
+      ]
+    },
+    {
+      "source": "create/src/mobile-identity.ts",
+      "targets": [
+        {
+          "template": "expo",
+          "path": "src/lib/config/identity.ts"
         }
       ]
     }

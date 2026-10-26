@@ -1,0 +1,12 @@
+appId: __BUNDLE_ID__
+---
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - repeat:
+          times: 2
+          while: { visible: "Open" }
+          commands:
+            - assertVisible: "Cancel"
+            - tapOn: "Open"
+      - assertNotVisible: "Open"

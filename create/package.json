@@ -5,6 +5,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run && node --test assets/combo/scripts/*.test.mjs assets/combo/.claude/hooks/*.test.mjs",
+    "test:expo": "tsx test/expo-smoke.ts",
     "check": "pnpm run typecheck && pnpm run test"
   },
   "dependencies": {

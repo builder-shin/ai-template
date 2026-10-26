@@ -1,3 +1,4 @@
+import { validOAuthCallback } from "./core/oauth-callback.ts";
 /**
  * 목 서버 설정. 시작할 때 환경 변수에서 읽고, 틀린 변수가 있으면 변수마다 한 줄씩 알리고 멈춘다.
  *
@@ -56,6 +57,8 @@ export interface MockConfig {
    * 가짜 스토리지의 presigned URL(<API_URL>/_storage/...)이 이 주소를 쓴다.
    */
   readonly apiUrl: string;
+  /** 별도 스토리지 공개 주소(MOCK_STORAGE_URL). 생략하면 API_URL을 사용한다. */
+  readonly storageUrl?: string;
   /**
    * 테스트 통로(/_test, /_mock)를 여는가(MOCK_TEST_ENDPOINTS). 가짜 OAuth 서버(/_mock/oauth)도 테스트
    * 통로라, 끄면 소셜 로그인은 제공자 화면이 없어 끝나지 않는다(FastAPI에서 모의 OAuth 서버를 띄우지
@@ -172,6 +175,13 @@ function secret(min: number): (raw: string) => Parsed<string> {
       : { problem: `${String(min)}자 이상이어야 한다` };
 }
 
+function oauthCallback(raw: string): Parsed<string> {
+  const value = raw.trim();
+  return validOAuthCallback(value)
+    ? { value }
+    : { problem: "정확한 HTTP(S) 콜백 또는 private-scheme://oauth/callback을 적는다" };
+}
+
 function httpUrl(raw: string): Parsed<string> {
   const value = raw.trim();
   if (/^https?:\/\//.test(value) && URL.canParse(value)) return { value };
@@ -240,6 +250,9 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
     port: listenPort,
     host: read("HOST", defaults.host, text),
     apiUrl: read("API_URL", `http://localhost:${String(listenPort)}`, httpUrl),
+    ...(env.MOCK_STORAGE_URL?.trim()
+      ? { storageUrl: read("MOCK_STORAGE_URL", defaults.apiUrl, httpUrl) }
+      : {}),
     testEndpoints: read("MOCK_TEST_ENDPOINTS", defaults.testEndpoints, flag),
     seedAdmin: {
       email: read("SEED_ADMIN_EMAIL", defaults.seedAdmin.email, email),
@@ -253,7 +266,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): M
     oauthRedirectUris: read(
       "OAUTH_REDIRECT_URIS",
       defaults.oauthRedirectUris,
-      commaSeparated(httpUrl),
+      commaSeparated(oauthCallback),
     ),
     identifierHashSecret: read(
       "IDENTIFIER_HASH_SECRET",

@@ -1,0 +1,12 @@
+node_modules/
+.expo/
+dist/
+android/
+ios/
+coverage/
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+.cache/
+artifacts/

@@ -24,6 +24,7 @@
     "conformance": "tsx scripts/src/conformance/cli.ts",
     "web-e2e": "tsx scripts/src/web-e2e/cli.ts",
     "admin-e2e": "tsx scripts/src/web-e2e/cli.ts admin",
+    "mobile-e2e": "tsx scripts/src/mobile-e2e/cli.ts",
     "sync": "tsx scripts/src/sync/cli.ts"
   },
   "devDependencies": {

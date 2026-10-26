@@ -49,7 +49,7 @@ export function memoryRedis() {
 }
 type Link = { provider: string; subject: string; userId: string; email: string | null };
 type Data = { users: AuthUser[]; links: Link[]; assignments: { userId: string; roleId: string }[] };
-export function oauthFixture() {
+export function oauthFixture(redirectUris: readonly string[] = settings.OAUTH_REDIRECT_URIS) {
   const memory = memoryRedis();
   const store = new OAuthState(memory.redis);
   let committed: Data = { users: [], links: [], assignments: [] };
@@ -174,7 +174,10 @@ export function oauthFixture() {
     }
   }
   const client = new FixtureClient(settings);
-  const service = new OAuthService(unit, store, client, settings);
+  const service = new OAuthService(unit, store, client, {
+    ...settings,
+    OAUTH_REDIRECT_URIS: [...redirectUris],
+  });
   return {
     service,
     client,

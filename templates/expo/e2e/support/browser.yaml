@@ -1,0 +1,14 @@
+appId: __BUNDLE_ID__
+---
+- runFlow:
+    when: { visible: "Use without an account", platform: Android }
+    commands: [{ tapOn: "Use without an account" }]
+- runFlow:
+    when: { visible: "No thanks", platform: Android }
+    commands: [{ tapOn: "No thanks" }]
+- runFlow:
+    when: { visible: "Got it", platform: Android }
+    commands: [{ tapOn: "Got it" }]
+- runFlow:
+    when: { visible: "Continue", platform: iOS }
+    commands: [{ tapOn: "Continue" }]
