@@ -78,7 +78,9 @@ function ProfileForm({
               disabled={submit.pending}
               onPress={() => field.onChange("en")}
             />
-            <Text>{field.value === "ko" ? "한국어" : "English"}</Text>
+            <Text testID={`profile-locale-${field.value}`}>
+              {field.value === "ko" ? "한국어" : "English"}
+            </Text>
           </>
         )}
       />

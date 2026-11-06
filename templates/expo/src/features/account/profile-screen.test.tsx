@@ -14,6 +14,7 @@ import { deferred } from "../../lib/session/test-fixtures";
 import i18n from "../../lib/i18n";
 import { PostsApi, PostsListScreen, PostDetailScreen, PostEditorScreen } from "../posts";
 import type { components } from "../../lib/api/generated/schema";
+import { invalidateEvent } from "../../lib/realtime/events";
 jest.mock("expo-localization", () => ({ getLocales: () => [{ languageCode: "en" }] }));
 jest.mock("expo-image-picker", () => ({
   launchImageLibraryAsync: jest.fn(),
@@ -99,10 +100,34 @@ test("native profile saves name and locale through the actual account contract",
   expect(me.data.attributes).toMatchObject({ name: "Mobile Profile", locale: "ko" });
   expect(i18n.language).toBe("ko");
 });
+test("a locale-only selection survives a realtime profile refetch and saves in both languages", async () => {
+  const user = userEvent.setup();
+  await screen.findByLabelText("Name");
+  const generation = scope.value.manager.generation();
+  for (const [language, selected, save, saved] of [
+    ["ko", "한국어", "Save", "저장했습니다."],
+    ["en", "English", "저장", "Saved."],
+  ] as const) {
+    await user.press(screen.getByRole("button", { name: selected }));
+    expect(screen.getByTestId(`profile-locale-${language}`).props.children).toBe(selected);
+    await act(async () => {
+      invalidateEvent(scope.queryClient, generation, "me.updated", {
+        meta: { changed: ["profile"] },
+      });
+    });
+    await waitFor(() => expect(scope.queryClient.isFetching()).toBe(0));
+    expect(screen.getByTestId(`profile-locale-${language}`).props.children).toBe(selected);
+    await user.press(screen.getByRole("button", { name: save }));
+    expect(await screen.findByText(saved)).toBeTruthy();
+    expect((await new AccountApi(scope.value.api).me()).data.attributes.locale).toBe(language);
+    expect(i18n.language).toBe(language);
+  }
+});
 test.each(["profile", "post", "post edit"])(
   "a transient refresh failure and retry preserve dirty %s input and session generation",
   async (feature) => {
     const user = userEvent.setup();
+    await screen.findByLabelText("Name");
     let editingId: string | undefined;
     if (feature === "post edit") {
       const created = await new PostsApi(scope.value.api).create({
@@ -160,14 +185,8 @@ test.each(["profile", "post", "post edit"])(
     expect(manager.snapshot().status).toBe("authenticated");
     expect(screen.getByDisplayValue("Unsaved native input")).toBeTruthy();
     expect(screen.getByText(i18n.t("offline"))).toBeTruthy();
-    await user.press(screen.getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(manager.snapshot().networkError).toBe(false));
-    expect(screen.getByDisplayValue("Unsaved native input")).toBeTruthy();
-    expect(manager.generation()).toBe(generation);
-    expect(manager.credentials()?.accessToken).not.toBe(credentials.accessToken);
-    expect(screen.queryByText(i18n.t("offline"))).toBeNull();
     if (editingId) {
-      await user.press(screen.getByRole("button", { name: "Retry" }));
+      // A transient refresh failure is retryable; the detail query recovers automatically.
       await waitFor(() => {
         const query = scope.queryClient
           .getQueryCache()
@@ -175,9 +194,13 @@ test.each(["profile", "post", "post edit"])(
         expect(query?.state.status).toBe("success");
         expect(query?.state.fetchStatus).toBe("idle");
       });
-      expect(screen.getByDisplayValue("Unsaved native input")).toBeTruthy();
-      expect(manager.generation()).toBe(generation);
     }
+    await user.press(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(manager.snapshot().networkError).toBe(false));
+    expect(screen.getByDisplayValue("Unsaved native input")).toBeTruthy();
+    expect(manager.generation()).toBe(generation);
+    expect(manager.credentials()?.accessToken).not.toBe(credentials.accessToken);
+    expect(screen.queryByText(i18n.t("offline"))).toBeNull();
   },
 );
 test("picker cancellation has no transfer; an image is uploaded, attached, downloaded and removed", async () => {

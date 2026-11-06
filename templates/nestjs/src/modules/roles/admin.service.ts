@@ -123,6 +123,12 @@ export class RolesAdminService {
       await this.roles.lock(tx, id);
       const role = await this.current(tx, id);
       if (role.system) throw protectedRole();
+      if (!canGrant(principal.permissions, this.roles.permissions(role)))
+        throw new ApiError({
+          status: 403,
+          code: "permission.denied",
+          title: "자신에게 없는 권한을 가진 역할은 지울 수 없다",
+        });
       const members = await this.roles.members(tx, id);
       await this.roles.delete(tx, id);
       await recordAudit(tx, {

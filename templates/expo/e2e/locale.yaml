@@ -3,7 +3,13 @@ appId: __BUNDLE_ID__
 - runScript: { file: bridge.js, env: { ACTION: data } }
 - openLink: ${output.data.scheme + '://me'}
 - runFlow: support/open-link.yaml
-- tapOn: { id: "button-한국어" }
+- scrollUntilVisible: { element: { id: "button-한국어" }, centerElement: true }
+- repeat:
+    times: 3
+    while: { notVisible: { id: "profile-locale-ko" } }
+    commands:
+      - tapOn: { id: "button-한국어" }
+- assertVisible: { id: "profile-locale-ko" }
 - tapOn: { id: "button-Save" }
 - extendedWaitUntil: { visible: "저장했습니다.", timeout: 60000 }
 - assertVisible: 저장했습니다.
@@ -14,10 +20,18 @@ appId: __BUNDLE_ID__
 - runFlow: support/open-link.yaml
 - extendedWaitUntil: { visible: "내 정보", timeout: 60000 }
 - assertVisible: 내 정보
-- tapOn: { id: "button-English" }
+- scrollUntilVisible: { element: { id: "button-English" }, centerElement: true }
+- repeat:
+    times: 3
+    while: { notVisible: { id: "profile-locale-en" } }
+    commands:
+      - tapOn: { id: "button-English" }
+- assertVisible: { id: "profile-locale-en" }
 - tapOn: { id: "button-저장" }
 - extendedWaitUntil: { visible: "Saved.", timeout: 60000 }
 - assertVisible: Saved.
+- runScript: { file: bridge.js, env: { ACTION: inspect-account } }
+- assertTrue: ${output.result.locale === 'en'}
 - scrollUntilVisible: { element: { id: "button-Sessions" }, centerElement: true }
 - tapOn: { id: "button-Sessions" }
 - scrollUntilVisible: { element: { id: "button-Sign out all sessions" }, centerElement: true }

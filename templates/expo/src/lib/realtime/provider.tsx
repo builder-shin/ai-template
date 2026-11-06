@@ -15,6 +15,9 @@ export function RealtimeProvider() {
         appState: nativeAppState(),
         ticket: ticketRequest(api),
         socket: nativeSocket(config.realtimeUrl),
+        revalidate: async (signal) => {
+          await api.GET("/me", { signal });
+        },
         onRevoked: async (generation) => {
           if (manager.generation() === generation) await endSession({ manager, oauth });
         },
