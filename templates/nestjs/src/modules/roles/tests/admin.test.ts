@@ -26,6 +26,16 @@ it.each([adminId, memberId])("시스템 역할 %s는 삭제할 수 없다", asyn
     init: { status: 422, code: "role.system_role_protected" },
   });
 });
+it.each([adminId, memberId])("제한된 관리자도 시스템 역할 %s 삭제는 보호 오류다", async (id) => {
+  const { f, service } = setup();
+  const limited = { ...admin, permissions: new Set(["roles:manage"] as const) };
+  const before = structuredClone(f.state);
+  await expect(service.delete(limited, id)).rejects.toMatchObject({
+    init: { status: 422, code: "role.system_role_protected" },
+  });
+  expect(f.state).toEqual(before);
+  expect(f.events).toEqual([]);
+});
 it("admin 권한과 시스템 역할 이름은 바꿀 수 없다", async () => {
   const { service } = setup();
   await expect(
@@ -45,6 +55,36 @@ it("자신에게 없는 권한으로 역할을 만들거나 수정할 수 없다
     service.update(limited, customId, { permissions: ["users:manage"] }),
   ).rejects.toMatchObject({ init: { status: 403, code: "permission.denied" } });
   expect(f.state.audits).toEqual([]);
+});
+it("권한 밖의 역할 삭제는 역할과 부여와 감사와 알림을 바꾸지 않는다", async () => {
+  const { f, service } = setup();
+  const limited = { ...admin, permissions: new Set(["roles:manage"] as const) };
+  f.state.assignments.push({ userId: otherId, roleId: customId });
+  const before = structuredClone(f.state);
+  await expect(service.delete(limited, customId)).rejects.toMatchObject({
+    init: { status: 403, code: "permission.denied" },
+  });
+  expect(f.state).toEqual(before);
+  expect(f.events).toEqual([]);
+});
+it("권한 안의 역할 삭제는 제한된 관리자에게도 허용한다", async () => {
+  const { f, service } = setup();
+  const limited = { ...admin, permissions: new Set(["roles:manage", "posts:create"] as const) };
+  f.state.assignments.push({ userId: otherId, roleId: customId });
+  await service.delete(limited, customId);
+  expect(f.state.roles.some((r) => r.id === customId)).toBe(false);
+  expect(f.state.assignments.some((a) => a.roleId === customId)).toBe(false);
+  expect(f.state.audits).toMatchObject([
+    { action: "role.deleted", actorUserId: uid, targetType: "roles", targetId: customId },
+  ]);
+  expect(f.events).toEqual([
+    {
+      name: "me.updated",
+      rooms: ["user:" + otherId],
+      payload: { meta: { changed: ["roles"] } },
+    },
+    { name: "recheck", userId: otherId },
+  ]);
 });
 it("역할 생성과 수정과 삭제는 원인 트랜잭션에 세 감사를 남긴다", async () => {
   const { f, service } = setup();

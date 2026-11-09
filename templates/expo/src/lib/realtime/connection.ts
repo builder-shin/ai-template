@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { SessionManager } from "../session/manager";
+import { ApiError } from "../api/errors";
 import { invalidateEvent, revalidateForeground, validEvent, type EventName } from "./events";
 export interface AppStatePort {
   current(): "active" | "background" | "inactive";
@@ -25,6 +26,7 @@ export interface RealtimeInput {
   appState: AppStatePort;
   ticket(signal: AbortSignal): Promise<Ticket>;
   socket(ticket: string, handlers: SocketHandlers): Connection;
+  revalidate(signal: AbortSignal): Promise<void>;
   onRevoked(generation: number): Promise<void>;
 }
 export function startRealtime(input: RealtimeInput): () => void {
@@ -36,6 +38,7 @@ export function startRealtime(input: RealtimeInput): () => void {
     revokedGeneration = -1;
   let socket: Connection | undefined,
     pending: AbortController | undefined,
+    checking: AbortController | undefined,
     timer: ReturnType<typeof setTimeout> | undefined;
   function retire() {
     lease++;
@@ -43,6 +46,8 @@ export function startRealtime(input: RealtimeInput): () => void {
     timer = undefined;
     pending?.abort();
     pending = undefined;
+    checking?.abort();
+    checking = undefined;
     const old = socket;
     socket = undefined;
     old?.close();
@@ -64,6 +69,29 @@ export function startRealtime(input: RealtimeInput): () => void {
       timer = undefined;
       reconcile();
     }, delay);
+  }
+  async function revalidate(epoch: number, generation: number) {
+    if (checking) return;
+    const controller = new AbortController();
+    checking = controller;
+    try {
+      await input.revalidate(controller.signal);
+    } catch (error) {
+      if (!owns(epoch, generation) || controller.signal.aborted) return;
+      if (!(error instanceof ApiError) || error.status !== 401) return;
+      revokedGeneration = generation;
+      retire();
+      void input.queryClient.cancelQueries();
+      input.queryClient.clear();
+      // Start synchronously: endSession must fence this identity before another can sign in.
+      try {
+        void input.onRevoked(generation).catch(() => undefined);
+      } catch {
+        /* Memory/cache are already closed. */
+      }
+    } finally {
+      if (checking === controller) checking = undefined;
+    }
   }
   async function attempt() {
     const generation = input.session.generation(),
@@ -95,16 +123,7 @@ export function startRealtime(input: RealtimeInput): () => void {
         event: (name, payload) => {
           if (!owns(epoch, generation) || !validEvent(name, payload)) return;
           if (name === "session.revoked") {
-            revokedGeneration = generation;
-            retire();
-            void input.queryClient.cancelQueries();
-            input.queryClient.clear();
-            // Start synchronously: endSession must fence this identity before another can sign in.
-            try {
-              void input.onRevoked(generation).catch(() => undefined);
-            } catch {
-              /* Memory/cache are already closed. */
-            }
+            void revalidate(epoch, generation);
           } else invalidateEvent(input.queryClient, generation, name, payload);
         },
       });

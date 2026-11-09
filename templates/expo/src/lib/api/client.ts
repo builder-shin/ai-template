@@ -43,8 +43,14 @@ export function createApiClient(
       if (credentials) request.headers.set("Authorization", `Bearer ${credentials.accessToken}`);
       const retry = request.clone();
       let response = await transport(request, apiFetchPolicy);
+      if (request.signal.aborted) throw new DOMException("Request cancelled.", "AbortError");
       if (response.status === 401 && credentials && session) {
         const next = await session.refresh(credentials);
+        if (request.signal.aborted) throw new DOMException("Request cancelled.", "AbortError");
+        // A transient rotation failure leaves this identity authenticated. Its original 401
+        // cannot establish revocation, even if another request later rotates successfully.
+        if (!next && session.credentials()?.generation === credentials.generation)
+          throw new TypeError("Session refresh unavailable.");
         if (next) {
           retry.headers.set("Authorization", `Bearer ${next.accessToken}`);
           response = await transport(retry, apiFetchPolicy);

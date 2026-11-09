@@ -2,6 +2,7 @@ import { startRealtime, type AppStatePort, type SocketHandlers } from "./connect
 import { createQueryClient, sessionQueryKey } from "../query/client";
 import { SessionManager, endSession } from "../session";
 import { deferred, memoryStore, passwordGrant, tokens } from "../session/test-fixtures";
+import { ApiError } from "../api/errors";
 
 class State implements AppStatePort {
   value: "active" | "background" | "inactive" = "active";
@@ -56,6 +57,9 @@ async function harness(automatic = true) {
   });
   const cancel = jest.fn(async () => {});
   const onRevoked = jest.fn(() => endSession({ manager: session, oauth: { cancel } }));
+  const revalidate = jest.fn(async (signal: AbortSignal): Promise<void> => {
+    void signal;
+  });
   const key = () => [...sessionQueryKey(session.generation(), "en"), "posts", "list"];
   return {
     queryClient,
@@ -67,8 +71,10 @@ async function harness(automatic = true) {
     socket,
     cancel,
     onRevoked,
+    revalidate,
     key,
-    start: () => startRealtime({ session, queryClient, appState, ticket, socket, onRevoked }),
+    start: () =>
+      startRealtime({ session, queryClient, appState, ticket, socket, onRevoked, revalidate }),
   };
 }
 beforeEach(() => {
@@ -131,8 +137,9 @@ test("expired tickets are never connected and retries fetch a new one", async ()
   scope.queryClient.clear();
 });
 test("revocation cancels pending OAuth, clears private data and ends the secure session", async () => {
-  const scope = await harness(),
-    stop = scope.start();
+  const scope = await harness();
+  scope.revalidate.mockRejectedValueOnce(new ApiError(401));
+  const stop = scope.start();
   await jest.advanceTimersByTimeAsync(0);
   scope.queryClient.setQueryData(scope.key(), [{ id }]);
   scope.peers[0]!.handlers.event("session.revoked", { meta: { reason: "revoked" } });
@@ -144,6 +151,84 @@ test("revocation cancels pending OAuth, clears private data and ends the secure 
   stop();
   scope.queryClient.clear();
 });
+test("another device's revocation preserves an active session and its private cache", async () => {
+  const scope = await harness(),
+    stop = scope.start();
+  await jest.advanceTimersByTimeAsync(0);
+  const stored = scope.store.value;
+  scope.queryClient.setQueryData(scope.key(), [{ id }]);
+  scope.peers[0]!.handlers.event("session.revoked", { meta: { reason: "revoked" } });
+  await jest.advanceTimersByTimeAsync(0);
+  expect(scope.session.snapshot().status).toBe("authenticated");
+  expect(scope.store.value).toEqual(stored);
+  expect(scope.queryClient.getQueryData(scope.key())).toEqual([{ id }]);
+  expect(scope.peers[0]!.close).not.toHaveBeenCalled();
+  expect(scope.cancel).not.toHaveBeenCalled();
+  stop();
+  scope.queryClient.clear();
+});
+test.each([new TypeError("Network unavailable"), new ApiError(503), new ApiError(429)])(
+  "an inconclusive revocation check preserves the session (%s)",
+  async (error) => {
+    const scope = await harness();
+    scope.revalidate.mockRejectedValueOnce(error);
+    const stop = scope.start();
+    await jest.advanceTimersByTimeAsync(0);
+    scope.queryClient.setQueryData(scope.key(), [{ id }]);
+    scope.peers[0]!.handlers.event("session.revoked", { meta: { reason: "revoked" } });
+    await jest.advanceTimersByTimeAsync(0);
+    expect(scope.session.snapshot().status).toBe("authenticated");
+    expect(scope.store.value).not.toBeNull();
+    expect(scope.queryClient.getQueryData(scope.key())).toEqual([{ id }]);
+    stop();
+    scope.queryClient.clear();
+  },
+);
+test("duplicate revocation events share one check and can check again after it completes", async () => {
+  const scope = await harness(),
+    pending = deferred<void>();
+  scope.revalidate.mockReturnValueOnce(pending.promise);
+  const stop = scope.start();
+  await jest.advanceTimersByTimeAsync(0);
+  for (let count = 0; count < 3; count++)
+    scope.peers[0]!.handlers.event("session.revoked", { meta: { reason: "revoked" } });
+  expect(scope.revalidate).toHaveBeenCalledTimes(1);
+  expect(scope.session.snapshot().status).toBe("authenticated");
+  pending.resolve();
+  await jest.advanceTimersByTimeAsync(0);
+  scope.revalidate.mockRejectedValueOnce(new ApiError(401));
+  scope.peers[0]!.handlers.event("session.revoked", { meta: { reason: "revoked" } });
+  await jest.advanceTimersByTimeAsync(0);
+  expect(scope.revalidate).toHaveBeenCalledTimes(2);
+  expect(scope.cancel).toHaveBeenCalledTimes(1);
+  expect(scope.session.snapshot().status).toBe("anonymous");
+  stop();
+  scope.queryClient.clear();
+});
+test.each(["account", "background", "stop"] as const)(
+  "a late invalid-session check cannot change state after %s",
+  async (boundary) => {
+    const scope = await harness(),
+      pending = deferred<void>();
+    scope.revalidate.mockReturnValueOnce(pending.promise);
+    const stop = scope.start();
+    await jest.advanceTimersByTimeAsync(0);
+    scope.peers[0]!.handlers.event("session.revoked", { meta: { reason: "revoked" } });
+    if (boundary === "account") await scope.session.signIn(passwordGrant);
+    else if (boundary === "background") scope.appState.emit("background");
+    else stop();
+    scope.queryClient.setQueryData(scope.key(), [{ id }]);
+    pending.reject(new ApiError(401));
+    await jest.advanceTimersByTimeAsync(0);
+    expect(scope.revalidate.mock.calls[0]?.[0].aborted).toBe(true);
+    expect(scope.session.snapshot().status).toBe("authenticated");
+    expect(scope.session.snapshot().sessionId).toBe(boundary === "account" ? "second" : "first");
+    expect(scope.queryClient.getQueryData(scope.key())).toEqual([{ id }]);
+    expect(scope.cancel).not.toHaveBeenCalled();
+    stop();
+    scope.queryClient.clear();
+  },
+);
 test("old connection/event callbacks cannot touch the next account", async () => {
   const scope = await harness(),
     stop = scope.start();

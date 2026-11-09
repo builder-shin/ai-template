@@ -84,7 +84,8 @@ function connect(
 ) {
   const appState = new State(),
     ready = deferred<void>();
-  let connections = 0;
+  let connections = 0,
+    validations = 0;
   const ticket = jest.fn(ticketPort),
     factory = nativeSocket(server.base);
   const socket = (token: string, handlers: SocketHandlers) =>
@@ -103,12 +104,25 @@ function connect(
       appState,
       ticket,
       socket,
+      revalidate: async (signal) => {
+        try {
+          await current.value.api.GET("/me", { signal });
+        } finally {
+          validations++;
+        }
+      },
       onRevoked: async (generation) => {
         if (current.value.manager.generation() === generation) await endSession(current.value);
       },
     }),
   );
-  return { appState, ticket, ready: ready.promise, connections: () => connections };
+  return {
+    appState,
+    ticket,
+    ready: ready.promise,
+    connections: () => connections,
+    validations: () => validations,
+  };
 }
 test("real mock Socket.IO refreshes a live own-post query from authoritative HTTP", async () => {
   const current = await scope(),
@@ -205,5 +219,60 @@ test.each([false, true])(
     expect(current.store.value).toBeNull();
     expect(cancel).toHaveBeenCalled();
     expect(current.queryClient.getQueryCache().getAll()).toHaveLength(0);
+  },
+);
+test.each(["logout", "others", "password"] as const)(
+  "the current mobile session survives a real user-wide %s event for another session",
+  async (action) => {
+    const current = await scope(),
+      other = await scope(),
+      observer = await observePosts(current),
+      live = connect(current),
+      refresh = jest.spyOn(current.value.manager, "refresh"),
+      cancel = jest.spyOn(current.value.oauth, "cancel");
+    await live.ready;
+    const generation = current.value.manager.generation(),
+      stored = current.store.value,
+      data = observer.getCurrentResult().data;
+    if (action === "logout") await other.value.manager.signOut();
+    else if (action === "others")
+      await current.value.api.POST("/session-revocations", {
+        body: { data: { type: "session-revocations", attributes: { scope: "others" } } },
+      });
+    else {
+      await current.value.api.POST("/password-changes", {
+        body: {
+          data: {
+            type: "password-changes",
+            attributes: {
+              currentPassword: "admin-password", // betterleaks:allow mock seed
+              newPassword: "updated-admin-password", // betterleaks:allow test password
+            },
+          },
+        },
+      });
+    }
+    await until(() => live.validations() > 0);
+    expect(current.value.manager.snapshot().status).toBe("authenticated");
+    expect(current.value.manager.generation()).toBe(generation);
+    expect(current.store.value).toEqual(stored);
+    expect(observer.getCurrentResult().data).toEqual(data);
+    expect(refresh).not.toHaveBeenCalled();
+    expect(cancel).not.toHaveBeenCalled();
+    await expect(current.value.api.GET("/me")).resolves.toMatchObject({
+      response: { status: 200 },
+    });
+    if (action === "password")
+      await current.value.api.POST("/password-changes", {
+        body: {
+          data: {
+            type: "password-changes",
+            attributes: {
+              currentPassword: "updated-admin-password", // betterleaks:allow test password
+              newPassword: "admin-password", // betterleaks:allow mock seed
+            },
+          },
+        },
+      });
   },
 );

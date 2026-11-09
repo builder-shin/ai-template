@@ -131,6 +131,47 @@ describe(`역할 (${target.name})`, () => {
     });
   });
 
+  it("내 권한을 넘는 역할 삭제는 역할과 부여와 감사를 바꾸지 않는다", async () => {
+    const [admin, manager, member] = await Promise.all([
+      signInAdmin(),
+      userWith(["roles:read", "roles:manage"]),
+      userWith(["users:manage"]),
+    ]);
+    const path = { params: { path: { id: member.roleId } } };
+    const userPath = { params: { path: { id: member.userId } } };
+    try {
+      const beforeRole = await admin.api.GET("/api/v1/roles/{id}", path);
+      const beforeUser = await admin.api.GET("/api/v1/users/{id}", userPath);
+      expect(beforeRole.response.status).toBe(200);
+      expect(beforeUser.response.status).toBe(200);
+      expect(beforeUser.data?.data.relationships.roles.data).toContainEqual({
+        type: "roles",
+        id: member.roleId,
+      });
+      const removed = await manager.api.DELETE("/api/v1/roles/{id}", path);
+      expect(removed.response.status).toBe(403);
+      expect(codes(removed.error)).toEqual(["permission.denied"]);
+
+      const role = await admin.api.GET("/api/v1/roles/{id}", path);
+      const user = await admin.api.GET("/api/v1/users/{id}", userPath);
+      expect(role.response.status).toBe(200);
+      expect(user.response.status).toBe(200);
+      expect(role.data).toEqual(beforeRole.data);
+      expect(user.data?.data.relationships.roles).toEqual(
+        beforeUser.data?.data.relationships.roles,
+      );
+      const audits = await admin.api.GET("/api/v1/audit-logs", {
+        params: {
+          query: { "filter[actor]": manager.userId, "filter[action]": "role.deleted" },
+        },
+      });
+      expect(audits.response.status).toBe(200);
+      expect(audits.data?.data).toEqual([]);
+    } finally {
+      await admin.api.DELETE("/api/v1/roles/{id}", path);
+    }
+  });
+
   it("내 권한을 넘는 역할은 attributes가 없거나 비어 있어도 고치지 못한다", async () => {
     const manager = await userWith(["roles:read", "roles:manage"]);
     const id = await systemRole(manager, "admin");
